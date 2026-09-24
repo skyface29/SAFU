@@ -27,14 +27,21 @@ jobs:
         run: |
           mkdir -p Payload
           cp -R build/Release-iphoneos/SAFU.app Payload/
-          zip -qr SAFU.ipa Payload
+          V=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Payload/SAFU.app/Info.plist)
+          NAME="SAFU-v${V}-build${{ github.run_number }}.ipa"
+          zip -qr "$NAME" Payload
+          cp "$NAME" SAFU.ipa
+          echo "IPA_NAME=$NAME" >> $GITHUB_ENV
+          echo "APP_VERSION=$V" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
-          name: SAFU-ipa
-          path: SAFU.ipa
+          name: ${{ env.IPA_NAME }}
+          path: ${{ env.IPA_NAME }}
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: САФУ сборка ${{ github.run_number }}
-          files: SAFU.ipa
+          name: САФУ ${{ env.APP_VERSION }} (сборка ${{ github.run_number }})
+          files: |
+            ${{ env.IPA_NAME }}
+            SAFU.ipa
           make_latest: true
