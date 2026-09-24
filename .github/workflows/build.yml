@@ -1,0 +1,32 @@
+name: Build IPA
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack
+        run: |
+          if [ -f SAFU.zip ]; then unzip -o -q SAFU.zip; fi
+          if [ -d SAFU ]; then cp -R SAFU/. .; fi
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - name: Build
+        run: |
+          xcodebuild -project SAFU.xcodeproj -scheme SAFU \
+            -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            SYMROOT="$PWD/build" CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+      - name: Package
+        run: |
+          mkdir -p Payload
+          cp -R build/Release-iphoneos/SAFU.app Payload/
+          zip -qr SAFU.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SAFU-ipa
+          path: SAFU.ipa
