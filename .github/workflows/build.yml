@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Unpack
         run: |
           if [ -f SAFU.zip ]; then unzip -o -q SAFU.zip; fi
@@ -17,19 +17,63 @@ jobs:
       - run: brew install xcodegen
       - run: xcodegen generate
       - name: Build
+        shell: bash
         run: |
+          set -o pipefail
           xcodebuild -project SAFU.xcodeproj -scheme SAFU \
             -configuration Release -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             SYMROOT="$PWD/build" CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+            CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build.log
+      - name: Show compile errors
+        if: failure()
+        shell: bash
+        run: |
+          # ошибки компиляции видны прямо на странице запуска (Annotations)
+          grep -E "error:" build.log | sort -u | head -20 | while IFS= read -r L; do
+            F=$(echo "$L" | sed -E 's#^.*/(Sources|Shared|Widget)/#\1/#' | cut -c1-300)
+            echo "::error::$F"
+          done
+          exit 1
       - name: Package
         run: |
-          mkdir -p Payload
-          cp -R build/Release-iphoneos/SAFU.app Payload/
+          set -e
+          APP=build/Release-iphoneos/SAFU.app
+          test -d "$APP" || { echo "Сборка не создала SAFU.app"; exit 1; }
+          rm -rf Payload && mkdir -p Payload
+          # копируем без ресурсных вилок и расширенных атрибутов
+          ditto --norsrc --noextattr --noacl "$APP" Payload/SAFU.app
+          find Payload -name '.DS_Store' -delete
+          find Payload -name '._*' -delete
+          xattr -cr Payload || true
+          # симлинки меняем на настоящие файлы (подписывальщики их не любят)
+          find Payload -type l | while read -r L; do
+            T=$(readlink -f "$L"); rm "$L"; cp -R "$T" "$L"; done
+          # Info.plist в XML — его читает любой подписывальщик
+          for P in Payload/SAFU.app/Info.plist Payload/SAFU.app/PlugIns/*.appex/Info.plist; do
+            if [ -f "$P" ]; then plutil -convert xml1 "$P"; plutil -lint "$P"; fi
+          done
+          # проверки структуры
+          ls -la Payload Payload/SAFU.app | head -40
+          test -f Payload/SAFU.app/Info.plist || { echo "НЕТ Info.plist"; exit 1; }
+          EXE=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" Payload/SAFU.app/Info.plist)
+          test -f "Payload/SAFU.app/$EXE" || { echo "НЕТ бинарника $EXE"; exit 1; }
+          for A in Payload/SAFU.app/PlugIns/*.appex; do
+            [ -d "$A" ] && { test -f "$A/Info.plist" || { echo "НЕТ Info.plist в $A"; exit 1; }; }
+          done
+          [ "$(ls -A Payload | wc -l | tr -d ' ')" = "1" ] || { echo "В Payload лишнее"; exit 1; }
           V=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Payload/SAFU.app/Info.plist)
           NAME="SAFU-v${V}-build${{ github.run_number }}.ipa"
-          zip -qr "$NAME" Payload
+          rm -f "$NAME"
+          # Info.plist кладём первым, дальше всё остальное; без -y (никаких симлинков в архиве)
+          zip -qX "$NAME" Payload/ Payload/SAFU.app/ Payload/SAFU.app/Info.plist
+          zip -qrX "$NAME" Payload -x '*.DS_Store' -x '__MACOSX*'
+          # проверяем готовый .ipa распаковкой, как это сделает телефон
+          rm -rf /tmp/ipacheck && mkdir /tmp/ipacheck
+          unzip -q "$NAME" -d /tmp/ipacheck
+          test -f /tmp/ipacheck/Payload/SAFU.app/Info.plist && echo "Info.plist OK"
+          plutil -lint /tmp/ipacheck/Payload/SAFU.app/Info.plist
+          unzip -l "$NAME" | head -8
           cp "$NAME" SAFU.ipa
           echo "IPA_NAME=$NAME" >> $GITHUB_ENV
           echo "APP_VERSION=$V" >> $GITHUB_ENV
