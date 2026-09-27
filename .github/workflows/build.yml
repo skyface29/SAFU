@@ -2,7 +2,7 @@ name: Build IPA
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, 'claude/**' ]
 permissions:
   contents: write
 jobs:
@@ -56,6 +56,24 @@ jobs:
           for P in Payload/SAFU.app/Info.plist Payload/SAFU.app/PlugIns/*.appex/Info.plist; do
             if [ -f "$P" ]; then plutil -convert xml1 "$P"; plutil -lint "$P"; fi
           done
+          # Временная подпись с общей группой приложения и виджета (group.ru.student.safuhub).
+          # AltStore, SideStore, Feather и другие берут группы из этой подписи и включают их при переподписи —
+          # тогда виджет сам получает группу и пары из приложения. Не вышло — IPA остаётся как раньше.
+          cat > /tmp/ent.plist <<'PL'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>com.apple.security.application-groups</key>
+            <array><string>group.ru.student.safuhub</string></array>
+          </dict></plist>
+          PL
+          (
+            set +e
+            find Payload/SAFU.app -name '*.dylib' -o -name '*.framework' | while read -r F; do codesign -f -s - "$F"; done
+            for A in Payload/SAFU.app/PlugIns/*.appex; do [ -d "$A" ] && codesign -f -s - --entitlements /tmp/ent.plist "$A"; done
+            codesign -f -s - --entitlements /tmp/ent.plist Payload/SAFU.app
+            codesign -d --entitlements - Payload/SAFU.app 2>&1 | head -20
+          ) || true
           # проверки структуры
           ls -la Payload Payload/SAFU.app | head -40
           test -f Payload/SAFU.app/Info.plist || { echo "НЕТ Info.plist"; exit 1; }
