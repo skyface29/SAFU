@@ -1,13 +1,16 @@
 package ru.student.safuhub
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.Text
+import androidx.activity.enableEdgeToEdge
+import androidx.fragment.app.FragmentActivity
+import ru.student.safuhub.ui.RootView
+import ru.student.safuhub.ui.theme.SafuTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        setContent { Text("САФУ") }
+        setContent { SafuTheme { RootView() } }
     }
 }

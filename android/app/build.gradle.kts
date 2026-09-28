@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "ru.student.safuhub"
     compileSdk = 36
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "ru.student.safuhub"
