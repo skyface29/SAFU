@@ -87,9 +87,9 @@ object Dialogs {
 
     /** Алерт с полем ввода */
     fun prompt(title: String, message: String? = null, placeholder: String, initial: String = "", button: String = "Готово",
-               keyboard: KeyboardType = KeyboardType.Text, secure: Boolean = false, onSubmit: (String) -> Unit) {
+               keyboard: KeyboardType = KeyboardType.Text, secure: Boolean = false, onCancel: () -> Unit = {}, onSubmit: (String) -> Unit) {
         queue.value = queue.value + AlertRequest(title, message,
-            listOf(AlertAction("Отмена", AlertAction.Role.CANCEL), AlertAction(button, AlertAction.Role.BOLD)), sheet = false,
+            listOf(AlertAction("Отмена", AlertAction.Role.CANCEL, onCancel), AlertAction(button, AlertAction.Role.BOLD)), sheet = false,
             field = FieldSpec(placeholder, initial, keyboard, secure, onSubmit))
     }
 

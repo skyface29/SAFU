@@ -99,6 +99,7 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1")
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("com.rmtheis:tess-two:9.1.0")
     implementation("com.yandex.android:maps.mobile:4.24.0-lite")
     implementation("com.alphacephei:vosk-android:0.3.47")
     implementation("net.java.dev.jna:jna:5.13.0@aar")

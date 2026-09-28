@@ -29,6 +29,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ru.student.safuhub.core.Defaults
+import ru.student.safuhub.ui.design.viewport
 import ru.student.safuhub.ui.theme.AppFonts
 import ru.student.safuhub.ui.theme.Brand
 import ru.student.safuhub.ui.theme.Ios
@@ -50,6 +56,18 @@ import ru.student.safuhub.ui.theme.rgb
 
 /** Экран вложен в стек (есть кнопка «Назад») */
 val LocalPushed = compositionLocalOf { false }
+
+/** Кнопка «Готово» справа на корневом экране листа (как ToolbarItem(.confirmationAction)) */
+val LocalDoneAction = compositionLocalOf<Pair<String, () -> Unit>?> { null }
+
+/** Лист со своим стеком и кнопкой «Готово» */
+@Composable
+fun DoneSheet(title: String = "Готово", content: @Composable () -> Unit) {
+    NavigationStack {
+        val dismiss = LocalDismiss.current
+        CompositionLocalProvider(LocalDoneAction provides (title to dismiss)) { content() }
+    }
+}
 
 /** Верхняя панель как в iOS: заголовок по центру, кнопки слева и справа */
 @Composable
@@ -84,6 +102,8 @@ fun NavBar(
             Row(Modifier.align(Alignment.CenterEnd).padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 trailing?.invoke(this)
+                val done = LocalDoneAction.current
+                if (done != null && !LocalPushed.current) BarButton(done.first, bold = true) { done.second() }
             }
         }
     }
@@ -156,16 +176,61 @@ fun Screen(
             NavBar(title, leading, trailing, titleAlpha = if (scroll) titleAlpha else 1f)
             val body = Modifier.fillMaxWidth().weight(1f).imePadding()
             if (scroll) {
-                Column(body.verticalScroll(scrollState).padding(contentPadding)) {
-                    if (large) LargeTitle(title)
-                    content()
-                    Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
-                    Spacer(Modifier.height(24.dp))
+                val vp = ru.student.safuhub.ui.design.rememberViewport()
+                CompositionLocalProvider(ru.student.safuhub.ui.design.LocalViewport provides vp) {
+                    Column(body.then(Modifier.viewport(vp)).verticalScroll(scrollState).padding(contentPadding)) {
+                        if (large) LargeTitle(title)
+                        content()
+                        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                        Spacer(Modifier.height(24.dp))
+                    }
                 }
             } else {
                 Column(body.padding(contentPadding)) { content() }
             }
         }
+    }
+}
+
+/**
+ * Страница без панели сверху (главная, расписание): живой фон, прокрутка, отступы.
+ */
+@Composable
+fun ScrollPage(
+    scrollState: ScrollState = rememberScrollState(),
+    horizontal: Dp = 20.dp,
+    spacing: Dp = 24.dp,
+    top: Dp = 12.dp,
+    background: (@Composable () -> Unit)? = { ru.student.safuhub.ui.design.AmbientBackground() },
+    onRefresh: (suspend () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Box(Modifier.fillMaxSize()) {
+        background?.invoke()
+        val vp = ru.student.safuhub.ui.design.rememberViewport()
+        val body = @Composable {
+            CompositionLocalProvider(ru.student.safuhub.ui.design.LocalViewport provides vp) {
+                Column(
+                    Modifier.fillMaxSize().then(Modifier.viewport(vp)).verticalScroll(scrollState)
+                        .padding(horizontal = horizontal),
+                    verticalArrangement = Arrangement.spacedBy(spacing),
+                ) {
+                    TopInset()
+                    Spacer(Modifier.height((top.value - spacing.value).coerceAtLeast(0f).dp))
+                    content()
+                    Spacer(Modifier.height(16.dp))
+                }
+            }
+        }
+        if (onRefresh != null) {
+            var refreshing by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
+            androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = { scope.launch { refreshing = true; try { onRefresh() } finally { refreshing = false } } },
+                modifier = Modifier.fillMaxSize(),
+            ) { body() }
+        } else body()
     }
 }
 

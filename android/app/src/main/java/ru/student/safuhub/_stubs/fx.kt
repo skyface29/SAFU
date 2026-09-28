@@ -9,3 +9,4 @@ object Celebrations {
     fun taskDone(title: String, left: Int) {}
 }
 @Composable fun CelebrationOverlay() {}
+@Composable fun CelebrationSettingsScreen() { ru.student.safuhub.ui.kit.FormScreen("Праздники") {} }

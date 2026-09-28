@@ -7,6 +7,9 @@ object Boot {
     fun onAppCreate(ctx: Context) {
         ru.student.safuhub.ui.theme.FirstLook.applyIfNew()
         ru.student.safuhub.ui.theme.StrictLook.applyOnce()
+        ru.student.safuhub.data.ScheduleStore.load()
+        ru.student.safuhub.data.TaskStore.load()
+        ru.student.safuhub.data.ResourceStore.load()
         ru.student.safuhub.system.Notify.createChannels(ctx)
         ru.student.safuhub.background.BackgroundRefresh.schedule(ctx)
     }

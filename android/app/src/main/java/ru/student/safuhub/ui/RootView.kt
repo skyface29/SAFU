@@ -92,11 +92,10 @@ import ru.student.safuhub.system.rememberCamera
 import ru.student.safuhub.ui.design.AmbientBackground
 import ru.student.safuhub.ui.design.Haptics
 import ru.student.safuhub.ui.design.gradientTint
-import ru.student.safuhub.ui.kit.BarButton
+import ru.student.safuhub.ui.kit.DoneSheet
 import ru.student.safuhub.ui.kit.Dialogs
 import ru.student.safuhub.ui.kit.FormScreen
 import ru.student.safuhub.ui.kit.FormSection
-import ru.student.safuhub.ui.kit.LocalDismiss
 import ru.student.safuhub.ui.kit.LocalSheets
 import ru.student.safuhub.ui.kit.Nav
 import ru.student.safuhub.ui.kit.NavigationStack
@@ -298,18 +297,9 @@ fun RootView() {
         val boardTarget = remember { mutableStateOf<BoardRouter.Target?>(null) }
         LaunchedEffect(BoardRouter.target) { boardTarget.value = BoardRouter.target }
         LaunchedEffect(boardTarget.value) { if (boardTarget.value == null) BoardRouter.target = null }
-        SheetItem(boardTarget) { t ->
-            NavigationStack {
-                val dismiss = LocalDismiss.current
-                BoardBatchScreen(LessonPhotos.batchFor(t, ScheduleStore.data), doneButton = { BarButton("Готово", bold = true) { dismiss() } })
-            }
-        }
-        SheetBinding(showBoards) {
-            NavigationStack {
-                val dismiss = LocalDismiss.current
-                BoardBatchesListScreen(null, doneButton = { BarButton("Готово", bold = true) { dismiss() } })
-            }
-        }
+        SheetItem(boardTarget) { t -> DoneSheet { BoardBatchScreen(LessonPhotos.batchFor(t, ScheduleStore.data)) } }
+        SheetBinding(showBoards) { DoneSheet { BoardBatchesListScreen(null) } }
+        SheetItem(ru.student.safuhub.feature.web.WebLauncher.opened, full = true) { r -> ru.student.safuhub.feature.web.WebScreen(r) }
         val registration = remember { mutableStateOf(false) }
         val regWanted = !showSplash && (registering || onboardingAgain)
         LaunchedEffect(regWanted) { registration.value = regWanted }
