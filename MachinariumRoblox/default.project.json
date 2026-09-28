@@ -1,0 +1,44 @@
+{
+  "name": "Machinarium",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Machinarium": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "MachinariumServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$properties": {
+        "LoadCharacterAppearance": false,
+        "CharacterUseJumpPower": true,
+        "CharacterJumpPower": 50,
+        "CameraMaxZoomDistance": 60,
+        "GameSettingsAvatar": "R15"
+      },
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "MachinariumClient": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Lighting": {
+      "$className": "Lighting"
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "$properties": {
+        "Gravity": 196.2,
+        "StreamingEnabled": false
+      }
+    }
+  }
+}
