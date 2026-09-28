@@ -321,6 +321,7 @@ fun IosTextField(
     onDone: (() -> Unit)? = null,
     textAlign: TextAlign = TextAlign.Start,
     color: Color = Ios.label,
+    words: Boolean = false,
 ) {
     BasicTextField(
         value = value,
@@ -333,7 +334,9 @@ fun IosTextField(
         cursorBrush = SolidColor(Brand.color),
         keyboardOptions = KeyboardOptions(
             keyboardType = keyboard,
-            capitalization = if (capitalize && !secure && keyboard == KeyboardType.Text) androidx.compose.ui.text.input.KeyboardCapitalization.Sentences else androidx.compose.ui.text.input.KeyboardCapitalization.None,
+            capitalization = if (capitalize && !secure && keyboard == KeyboardType.Text)
+                (if (words) androidx.compose.ui.text.input.KeyboardCapitalization.Words else androidx.compose.ui.text.input.KeyboardCapitalization.Sentences)
+            else androidx.compose.ui.text.input.KeyboardCapitalization.None,
             autoCorrectEnabled = capitalize && !secure,
             imeAction = if (singleLine) androidx.compose.ui.text.input.ImeAction.Done else androidx.compose.ui.text.input.ImeAction.Default,
         ),

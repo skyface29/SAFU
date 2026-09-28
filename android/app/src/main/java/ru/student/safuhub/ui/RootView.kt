@@ -327,6 +327,7 @@ fun RootView() {
                 }
             }
             SheetsLayer(sheets)
+            ru.student.safuhub.feature.nuke.NukeLayer()
             CelebrationOverlay()
             AnimatedVisibility(showSplash, enter = fadeIn(tween(0)), exit = fadeOut(tween(500))) { SplashView() }
             if (privacyShield && !active && !showSplash && Build.VERSION.SDK_INT < 33) PrivacyShield()

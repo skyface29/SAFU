@@ -35,6 +35,15 @@ object Haptics {
         } catch (_: Throwable) {}
     }
 
+    /** Короткий жёсткий «хлопок» (UIImpactFeedbackGenerator(style: .rigid)) */
+    fun rigid() {
+        if (!enabled) return
+        try {
+            if (Build.VERSION.SDK_INT >= 29) vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+            else vibrator?.vibrate(VibrationEffect.createOneShot(14, 200))
+        } catch (_: Throwable) {}
+    }
+
     fun heavy() {
         if (!enabled) return
         try {

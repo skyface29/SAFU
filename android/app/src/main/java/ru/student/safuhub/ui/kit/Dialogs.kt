@@ -59,7 +59,11 @@ class AlertAction(val title: String, val role: Role = Role.DEFAULT, val action: 
 private class AlertRequest(
     val title: String?, val message: String?, val actions: List<AlertAction>, val sheet: Boolean,
     val field: FieldSpec? = null,
+    val fields: MultiFields? = null,
 )
+
+/** Несколько полей в одном алерте (как .alert с несколькими TextField) */
+class MultiFields(val fields: List<Pair<String, KeyboardType>>, val initial: List<String>, val onSubmit: (List<String>) -> Unit)
 
 class FieldSpec(val placeholder: String, val initial: String, val keyboard: KeyboardType = KeyboardType.Text, val secure: Boolean = false,
                 val onSubmit: (String) -> Unit)
@@ -93,6 +97,14 @@ object Dialogs {
             field = FieldSpec(placeholder, initial, keyboard, secure, onSubmit))
     }
 
+    /** Алерт с несколькими полями: placeholder и клавиатура у каждого */
+    fun promptFields(title: String, message: String? = null, fields: List<Pair<String, KeyboardType>>, initial: List<String> = emptyList(),
+                     button: String = "Готово", onSubmit: (List<String>) -> Unit) {
+        queue.value = queue.value + AlertRequest(title, message,
+            listOf(AlertAction("Отмена", AlertAction.Role.CANCEL), AlertAction(button, AlertAction.Role.BOLD)), sheet = false,
+            fields = MultiFields(fields, List(fields.size) { initial.getOrElse(it) { "" } }, onSubmit))
+    }
+
     fun showToast(text: String, icon: String? = null) {
         toastId++
         toast.value = text to icon
@@ -113,6 +125,15 @@ object Dialogs {
     private fun AlertView(req: AlertRequest) {
         val dark = LocalDark.current
         var text by remember(req) { mutableStateOf(req.field?.initial ?: "") }
+        val texts = remember(req) { androidx.compose.runtime.mutableStateListOf(*(req.fields?.initial ?: emptyList()).toTypedArray()) }
+        fun submit(a: AlertAction) {
+            pop()
+            if (a.role != AlertAction.Role.CANCEL) {
+                req.field?.onSubmit?.invoke(text)
+                req.fields?.onSubmit?.invoke(texts.toList())
+            }
+            a.action()
+        }
         Dialog(onDismissRequest = { pop(); req.actions.firstOrNull { it.role == AlertAction.Role.CANCEL }?.action?.invoke() },
             properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Column(
@@ -130,28 +151,33 @@ object Dialogs {
                                 .background(if (dark) Color(0xFF1C1C1E) else Color.White).padding(horizontal = 8.dp, vertical = 7.dp),
                             style = ft(13f), keyboard = req.field.keyboard, secure = req.field.secure)
                     }
-                }
-                Divider()
-                val horizontal = req.actions.size == 2
-                if (horizontal) {
-                    Row(Modifier.fillMaxWidth().height(44.dp)) {
-                        req.actions.forEachIndexed { i, a ->
-                            if (i > 0) Box(Modifier.width(0.5.dp).fillMaxSize().background(Ios.separator).weight(0.001f))
-                            AlertButton(a, Modifier.weight(1f)) {
-                                pop()
-                                if (req.field != null && a.role != AlertAction.Role.CANCEL) req.field.onSubmit(text)
-                                a.action()
+                    if (req.fields != null) {
+                        Column(Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(6.dp))
+                            .background(if (dark) Color(0xFF1C1C1E) else Color.White)) {
+                            req.fields.fields.forEachIndexed { i, (placeholder, keyboard) ->
+                                if (i > 0) Divider()
+                                IosTextField(texts[i], { texts[i] = it }, placeholder, Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
+                                    style = ft(13f), keyboard = keyboard)
                             }
                         }
                     }
-                } else {
-                    req.actions.forEachIndexed { i, a ->
-                        if (i > 0) Divider()
-                        AlertButton(a, Modifier.fillMaxWidth().height(44.dp)) {
-                            pop()
-                            if (req.field != null && a.role != AlertAction.Role.CANCEL) req.field.onSubmit(text)
-                            a.action()
+                }
+                Divider()
+                val horizontal = req.actions.size == 2
+                // как в iOS: «Отмена» слева в строке из двух кнопок и внизу в столбике
+                val cancel = req.actions.filter { it.role == AlertAction.Role.CANCEL }
+                val others = req.actions.filter { it.role != AlertAction.Role.CANCEL }
+                if (horizontal) {
+                    Row(Modifier.fillMaxWidth().height(44.dp)) {
+                        (cancel + others).forEachIndexed { i, a ->
+                            if (i > 0) Box(Modifier.width(0.5.dp).fillMaxSize().background(Ios.separator).weight(0.001f))
+                            AlertButton(a, Modifier.weight(1f)) { submit(a) }
                         }
+                    }
+                } else {
+                    (others + cancel).forEachIndexed { i, a ->
+                        if (i > 0) Divider()
+                        AlertButton(a, Modifier.fillMaxWidth().height(44.dp)) { submit(a) }
                     }
                 }
             }
