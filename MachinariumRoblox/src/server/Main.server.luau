@@ -1024,6 +1024,14 @@ handlers.Egg = function(player, data, s, id)
 	return false
 end
 
+handlers.SetGfx = function(player, data, s, id)
+	if type(id) == "string" and #id <= 16 then
+		data.gfx = id
+		return true
+	end
+	return false
+end
+
 handlers.HintBook = function(player, data, s)
 	if not data.hintBook then
 		data.hintBook = true

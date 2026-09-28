@@ -46,6 +46,7 @@ local function default()
 		wins = 0,
 		endings = 0,
 		hintBook = false,
+		gfx = "sunset",
 	}
 end
 

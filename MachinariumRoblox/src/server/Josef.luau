@@ -93,11 +93,24 @@ function Josef.BuildMorph(character: Model, data: any)
 
 	-- ГОЛОВА: цилиндр + купол, огромные глаза
 	attach(morph, limb("Head"), function(f, cf)
-		Art.part(f, "Cyl", Vector3.new(0.34, 0.8, 0.34), cf * CFrame.new(0, -0.65, 0), dark, darkMat, "Neck")
-		Art.part(f, "Cyl", Vector3.new(1.6, 0.14, 1.6), cf * CFrame.new(0, -0.35, 0), dark, darkMat, "HeadRing")
+		-- телескопическая шея: три вложенных колена
+		Art.part(f, "Cyl", Vector3.new(0.3, 0.8, 0.3), cf * CFrame.new(0, -0.65, 0), dark, darkMat, "Neck")
+		for i = 0, 2 do
+			Art.part(f, "Cyl", Vector3.new(0.42 - i * 0.04, 0.08, 0.42 - i * 0.04), cf * CFrame.new(0, -0.95 + i * 0.2, 0), body, Enum.Material.Metal, "NeckRing")
+		end
+		Art.part(f, "Cyl", Vector3.new(1.62, 0.14, 1.62), cf * CFrame.new(0, -0.35, 0), dark, darkMat, "HeadRing")
 		Art.part(f, "Cyl", Vector3.new(1.5, 1.15, 1.5), cf * CFrame.new(0, 0.22, 0), body, mat, "HeadCan")
+		Art.part(f, "Cyl", Vector3.new(1.54, 0.08, 1.54), cf * CFrame.new(0, 0.78, 0), dark, darkMat, "DomeSeam")
 		Art.part(f, "Ball", Vector3.new(1.5, 1.5, 1.5), cf * CFrame.new(0, 0.8, 0), body, mat, "HeadDome")
-		Art.eyes(f, cf * CFrame.new(0, 0.35, 0), { size = 0.62, gap = 0.31, z = -0.76 })
+		-- заклёпки по шву купола
+		for i = 0, 11 do
+			local a = i / 12 * math.pi * 2
+			Art.part(f, "Ball", Vector3.new(0.1, 0.1, 0.1), cf * CFrame.new(math.sin(a) * 0.77, 0.78, math.cos(a) * 0.77), C.Brass, Enum.Material.Metal, "Rivet")
+		end
+		-- огромные глаза с оправой, бликом и тяжёлыми веками — фирменный взгляд Йозефа
+		Art.eyes(f, cf * CFrame.new(0, 0.35, 0), { size = 0.62, gap = 0.31, z = -0.76, lid = body, rim = dark })
+		-- «нос»-заклёпка между глаз
+		Art.part(f, "Ball", Vector3.new(0.14, 0.14, 0.14), cf * CFrame.new(0, 0.15, -0.78), C.Brass, Enum.Material.Metal, "Nose")
 		-- «рот»-решётка
 		for i = -1, 1 do
 			Art.part(f, "Block", Vector3.new(0.08, 0.2, 0.05), cf * CFrame.new(i * 0.14, -0.12, -0.76), C.Soot, nil, "Grill")
@@ -144,7 +157,21 @@ function Josef.BuildMorph(character: Model, data: any)
 	-- ТЕЛО-БАНКА с люком в животе
 	attach(morph, limb("UpperTorso"), function(f, cf)
 		Art.part(f, "Cyl", Vector3.new(1.9, 1.6, 1.9), cf * CFrame.new(0, -0.15, 0), body, mat, "BodyCan")
+		-- обручи корпуса-банки
+		for _, yy in { 0.6, -0.9 } do
+			Art.part(f, "Cyl", Vector3.new(1.98, 0.12, 1.98), cf * CFrame.new(0, yy, 0), dark, darkMat, "Hoop")
+		end
 		Art.part(f, "Cyl", Vector3.new(1.4, 0.22, 1.4), cf * CFrame.new(0, 0.72, 0), dark, darkMat, "Collar")
+		-- петли люка и болты по кругу
+		for _, yy in { 0.05, -0.55 } do
+			Art.part(f, "CylZ", Vector3.new(0.12, 0.12, 0.2), cf * CFrame.new(-0.5, yy, -0.96), dark, darkMat, "Hinge")
+		end
+		for i = 0, 7 do
+			local a = i / 8 * math.pi * 2
+			Art.part(f, "Ball", Vector3.new(0.08, 0.08, 0.08), cf * CFrame.new(math.sin(a) * 0.52, -0.25 + math.cos(a) * 0.52, -1.0), dark, darkMat, "HatchBolt")
+		end
+		-- заплатка на боку
+		Art.part(f, "Block", Vector3.new(0.05, 0.45, 0.55), cf * CFrame.new(0.96, -0.3, 0.2) * CFrame.Angles(0, 0, math.rad(6)), dark:Lerp(body, 0.4), Enum.Material.DiamondPlate, "Patch")
 		Art.part(f, "CylZ", Vector3.new(0.95, 0.95, 0.12), cf * CFrame.new(0, -0.25, -0.93), C.Brass, Enum.Material.Metal, "Hatch")
 		Art.part(f, "CylZ", Vector3.new(0.72, 0.72, 0.12), cf * CFrame.new(0, -0.25, -0.98), Color3.fromRGB(50, 40, 34), Enum.Material.Metal, "HatchIn")
 		Art.part(f, "Block", Vector3.new(0.12, 0.3, 0.12), cf * CFrame.new(0.42, -0.25, -1.02), C.Brass, Enum.Material.Metal, "HatchLatch")
@@ -163,6 +190,9 @@ function Josef.BuildMorph(character: Model, data: any)
 	end)
 	attach(morph, limb("LowerTorso"), function(f, cf)
 		Art.part(f, "Cyl", Vector3.new(1.55, 0.55, 1.55), cf * CFrame.new(0, 0.05, 0), dark, darkMat, "Hips")
+		for _, sx in { -1, 1 } do
+			Art.part(f, "Ball", Vector3.new(0.5, 0.5, 0.5), cf * CFrame.new(sx * 0.5, -0.25, 0), dark, darkMat, "HipJoint")
+		end
 	end)
 
 	-- РУКИ-трубочки (левой нет, пока не найдена на свалке)
@@ -170,16 +200,20 @@ function Josef.BuildMorph(character: Model, data: any)
 		local visible = side == "Right" or parts.arm
 		if visible then
 			attach(morph, limb(side .. "UpperArm"), function(f, cf)
-				Art.part(f, "Ball", Vector3.new(0.6, 0.6, 0.6), cf * CFrame.new(0, 0.4, 0), dark, darkMat, "Shoulder")
+				Art.part(f, "Ball", Vector3.new(0.62, 0.62, 0.62), cf * CFrame.new(0, 0.4, 0), dark, darkMat, "Shoulder")
+				Art.part(f, "Cyl", Vector3.new(0.7, 0.1, 0.7), cf * CFrame.new(0, 0.35, 0), body, Enum.Material.Metal, "ShoulderRing")
 				Art.part(f, "Cyl", Vector3.new(0.34, 1.1, 0.34), cf, body, mat, "UpperArm")
+				Art.part(f, "Cyl", Vector3.new(0.4, 0.08, 0.4), cf * CFrame.new(0, -0.2, 0), dark, darkMat, "ArmRing")
 			end)
 			attach(morph, limb(side .. "LowerArm"), function(f, cf)
 				Art.part(f, "Ball", Vector3.new(0.42, 0.42, 0.42), cf * CFrame.new(0, 0.45, 0), dark, darkMat, "Elbow")
 				Art.part(f, "Cyl", Vector3.new(0.3, 1.0, 0.3), cf, body, mat, "LowerArm")
 			end)
 			attach(morph, limb(side .. "Hand"), function(f, cf)
+				Art.part(f, "Cyl", Vector3.new(0.4, 0.16, 0.4), cf * CFrame.new(0, 0.12, 0), dark, darkMat, "Wrist")
 				for _, sx in { -1, 1 } do
-					Art.part(f, "Block", Vector3.new(0.14, 0.5, 0.3), cf * CFrame.new(sx * 0.13, -0.1, 0) * CFrame.Angles(0, 0, sx * math.rad(12)), dark, darkMat, "Claw")
+					Art.part(f, "Block", Vector3.new(0.14, 0.32, 0.3), cf * CFrame.new(sx * 0.12, -0.05, 0) * CFrame.Angles(0, 0, sx * math.rad(12)), dark, darkMat, "Claw")
+					Art.part(f, "Block", Vector3.new(0.12, 0.26, 0.26), cf * CFrame.new(sx * 0.16, -0.3, 0) * CFrame.Angles(0, 0, sx * math.rad(-18)), dark, darkMat, "ClawTip")
 				end
 			end)
 		end
@@ -191,13 +225,18 @@ function Josef.BuildMorph(character: Model, data: any)
 		if visible then
 			attach(morph, limb(side .. "UpperLeg"), function(f, cf)
 				Art.part(f, "Cyl", Vector3.new(0.38, 1.2, 0.38), cf, body, mat, "UpperLeg")
+				Art.part(f, "Cyl", Vector3.new(0.46, 0.08, 0.46), cf * CFrame.new(0, 0.2, 0), dark, darkMat, "LegRing")
 			end)
 			attach(morph, limb(side .. "LowerLeg"), function(f, cf)
 				Art.part(f, "Ball", Vector3.new(0.5, 0.5, 0.5), cf * CFrame.new(0, 0.55, 0), dark, darkMat, "Knee")
 				Art.part(f, "Cyl", Vector3.new(0.32, 1.2, 0.32), cf, body, mat, "LowerLeg")
 			end)
 			attach(morph, limb(side .. "Foot"), function(f, cf)
-				Art.part(f, "Block", Vector3.new(0.85, 0.34, 1.25), cf * CFrame.new(0, -0.02, -0.15), dark, darkMat, "Foot")
+				-- круглая пятка + носок-«калоша»
+				Art.part(f, "Cyl", Vector3.new(0.8, 0.34, 0.8), cf * CFrame.new(0, -0.02, 0.1), dark, darkMat, "Heel")
+				Art.part(f, "Block", Vector3.new(0.78, 0.32, 0.7), cf * CFrame.new(0, -0.03, -0.35), dark, darkMat, "Foot")
+				Art.part(f, "CylX", Vector3.new(0.78, 0.32, 0.32), cf * CFrame.new(0, -0.03, -0.7), dark, darkMat, "ToeCap")
+				Art.part(f, "Cyl", Vector3.new(0.5, 0.1, 0.5), cf * CFrame.new(0, 0.18, 0.05), body, Enum.Material.Metal, "Ankle")
 			end)
 		else
 			-- временная «ходуля» вместо ноги

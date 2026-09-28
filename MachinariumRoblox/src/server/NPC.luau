@@ -156,7 +156,7 @@ function NPC.SpawnBerta(player: Player, data: any)
 	-- табличка с именем
 	local bb = Instance.new("BillboardGui")
 	bb.Size = UDim2.fromOffset(160, 26)
-	bb.StudsOffsetWorldSpace = Vector3.new(0, 7.2, 0)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, 6.3, 0)
 	bb.AlwaysOnTop = false
 	bb.MaxDistance = 60
 	bb.Adornee = model.PrimaryPart

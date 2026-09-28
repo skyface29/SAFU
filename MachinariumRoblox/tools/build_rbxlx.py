@@ -60,7 +60,10 @@ def main():
         '<token name="GameSettingsAvatar">1</token>',
         item("StarterPlayerScripts", "StarterPlayerScripts", "",
              item("Folder", "MachinariumClient", "", scripts("src/client"))))
-    lighting = item("Lighting", "Lighting", '<float name="ClockTime">17.4</float>')
+    lighting = item("Lighting", "Lighting",
+                    '<float name="ClockTime">17.4</float>'
+                    '<token name="Technology">4</token>'  # Future: свет и тени от каждой лампы
+                    '<bool name="GlobalShadows">true</bool>')
 
     xml = ('<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" '
            'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '

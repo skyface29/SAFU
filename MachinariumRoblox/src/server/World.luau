@@ -206,7 +206,62 @@ local houseColors = {
 	Color3.fromRGB(120, 84, 56),
 }
 
--- Дом: коробка с окнами, трубами, крышей. face — направление фасада (градусы по Y).
+local function smokeOn(part: BasePart, rate: number?, color: Color3?)
+	local smoke = Instance.new("ParticleEmitter")
+	smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	smoke.Rate = rate or 2
+	smoke.Lifetime = NumberRange.new(4, 6)
+	smoke.Speed = NumberRange.new(2, 3)
+	smoke.Size = NumberSequence.new(1, 5)
+	smoke.Transparency = NumberSequence.new(0.6, 1)
+	smoke.Color = ColorSequence.new(color or Color3.fromRGB(120, 110, 100))
+	smoke.EmissionDirection = Enum.NormalId.Right
+	smoke.LightInfluence = 1
+	smoke.Parent = part
+	return smoke
+end
+
+-- Окно: рама, переплёт, подоконник, иногда ставни и ящик с цветами
+local function window(m: Instance, cf: CFrame, lit: boolean, withLight: boolean)
+	local frameC = C.RustDark
+	for _, k in { -1, 1 } do
+		box(m, Vector3.new(0.25, 3.2, 0.35), cf * CFrame.new(k * 1.2, 0, -0.1), frameC, Enum.Material.Metal, "Frame")
+		box(m, Vector3.new(2.65, 0.25, 0.35), cf * CFrame.new(0, k * 1.5, -0.1), frameC, Enum.Material.Metal, "Frame")
+	end
+	local pane = box(m, Vector3.new(2.2, 2.8, 0.12), cf, if lit then C.WarmLight else Color3.fromRGB(40, 48, 54), if lit then Enum.Material.Neon else Enum.Material.Glass, "Window")
+	pane.CanCollide = false
+	if not lit then
+		pane.Reflectance = 0.25
+	end
+	box(m, Vector3.new(0.12, 2.8, 0.2), cf * CFrame.new(0, 0, -0.08), frameC, Enum.Material.Metal, "Mullion").CanCollide = false
+	box(m, Vector3.new(2.2, 0.12, 0.2), cf * CFrame.new(0, 0.3, -0.08), frameC, Enum.Material.Metal, "Mullion").CanCollide = false
+	box(m, Vector3.new(3, 0.3, 0.6), cf * CFrame.new(0, -1.6, -0.25), C.RustDark, Enum.Material.Metal, "Sill")
+	local r = rng:NextNumber()
+	if r < 0.3 then
+		for _, k in { -1, 1 } do
+			local sh = box(m, Vector3.new(1.1, 2.9, 0.15), cf * CFrame.new(k * 1.9, 0, -0.2) * CFrame.Angles(0, k * math.rad(25), 0), Color3.fromRGB(90, 110, 100), Enum.Material.WoodPlanks, "Shutter")
+			sh.CanCollide = false
+		end
+	elseif r < 0.45 then
+		box(m, Vector3.new(2.6, 0.5, 0.6), cf * CFrame.new(0, -1.35, -0.55), C.RustLight, Enum.Material.WoodPlanks, "FlowerBox")
+		for i = -1, 1 do
+			ball(m, 0.5, cf * CFrame.new(i * 0.8, -0.95, -0.55), if i == 0 then C.BertaPink else C.Moss, Enum.Material.Grass, "Plant").CanCollide = false
+		end
+	end
+	if lit and withLight then
+		local sl = Instance.new("SurfaceLight")
+		sl.Face = Enum.NormalId.Front
+		sl.Range = 14
+		sl.Angle = 110
+		sl.Brightness = 1.2
+		sl.Color = C.WarmLight
+		sl.Shadows = true
+		sl.Parent = pane
+	end
+end
+
+-- Дом с деталями: цоколь, пояса этажей, углы, рамы окон, ставни, балконы,
+-- дверь с фонарём, водостоки, щиток, бак или скатная крыша, антенны.
 local function house(parent: Instance, pos: Vector3, w: number, d: number, h: number, face: number?, opts: any?)
 	opts = opts or {}
 	local m = Instance.new("Model")
@@ -214,46 +269,228 @@ local function house(parent: Instance, pos: Vector3, w: number, d: number, h: nu
 	m.Parent = parent
 	local cf = CFrame.new(pos) * CFrame.Angles(0, math.rad(face or 0), 0)
 	local col = opts.color or houseColors[rng:NextInteger(1, #houseColors)]
+	local trim = col:Lerp(Color3.new(0, 0, 0), 0.35)
 	box(m, Vector3.new(w, h, d), cf * CFrame.new(0, h / 2, 0), col, opts.material or Enum.Material.CorrodedMetal, "Walls")
-	-- карниз
-	box(m, Vector3.new(w + 1, 0.8, d + 1), cf * CFrame.new(0, h + 0.4, 0), C.RustDark, Enum.Material.Metal, "Roof")
-	-- окна на фасаде (-Z) и сзади
+	-- цоколь
+	box(m, Vector3.new(w + 0.6, 1.4, d + 0.6), cf * CFrame.new(0, 0.7, 0), Color3.fromRGB(80, 72, 64), Enum.Material.Brick, "Plinth")
+	-- угловые пилястры
+	for _, cx in { -1, 1 } do
+		for _, cz in { -1, 1 } do
+			box(m, Vector3.new(0.9, h, 0.9), cf * CFrame.new(cx * w / 2, h / 2, cz * d / 2), trim, Enum.Material.Metal, "Corner")
+		end
+	end
 	local floors = math.max(1, math.floor(h / 7))
+	local fh = h / floors
+	-- межэтажные пояса
+	for f = 1, floors - 1 do
+		box(m, Vector3.new(w + 0.4, 0.5, d + 0.4), cf * CFrame.new(0, f * fh, 0), trim, Enum.Material.Metal, "FloorBand")
+	end
+	-- карниз + парапет
+	box(m, Vector3.new(w + 1.2, 0.8, d + 1.2), cf * CFrame.new(0, h + 0.4, 0), C.RustDark, Enum.Material.Metal, "Roof")
+	for _, k in { -1, 1 } do
+		box(m, Vector3.new(w + 1.2, 1, 0.4), cf * CFrame.new(0, h + 1.3, k * (d / 2 + 0.4)), trim, Enum.Material.Metal, "Parapet")
+		box(m, Vector3.new(0.4, 1, d + 1.2), cf * CFrame.new(k * (w / 2 + 0.4), h + 1.3, 0), trim, Enum.Material.Metal, "Parapet")
+	end
+	-- окна на фасаде (-Z)
 	local cols = math.max(1, math.floor(w / 6))
+	local lightsLeft = 1
 	for f = 1, floors do
 		for cIdx = 1, cols do
 			local x = -w / 2 + (cIdx - 0.5) * (w / cols)
-			local y = (f - 0.5) * (h / floors) + 1
+			local y = (f - 0.5) * fh + 1
 			if not (f == 1 and cIdx == math.ceil(cols / 2) and opts.door ~= false) then
-				local lit = rng:NextNumber() < 0.55
-				local win = box(m, Vector3.new(2.2, 2.8, 0.2), cf * CFrame.new(x, y, -d / 2 - 0.1), if lit then C.WarmLight else Color3.fromRGB(40, 44, 48), if lit then Enum.Material.Neon else Enum.Material.Glass, "Window")
-				win.CanCollide = false
-				box(m, Vector3.new(2.8, 0.3, 0.5), cf * CFrame.new(x, y - 1.55, -d / 2 - 0.2), C.RustDark, Enum.Material.Metal, "Sill")
+				local lit = rng:NextNumber() < 0.5
+				local withLight = lit and lightsLeft > 0 and f == 1
+				if withLight then
+					lightsLeft -= 1
+				end
+				window(m, cf * CFrame.new(x, y, -d / 2 - 0.12), lit, withLight)
+			end
+		end
+		-- балкон
+		if f >= 2 and rng:NextNumber() < 0.35 then
+			local bx = -w / 2 + (rng:NextInteger(1, cols) - 0.5) * (w / cols)
+			local by = (f - 1) * fh + 0.3
+			box(m, Vector3.new(4.2, 0.4, 2), cf * CFrame.new(bx, by, -d / 2 - 1), C.IronDark, Enum.Material.DiamondPlate, "Balcony")
+			for i = 0, 6 do
+				cyl(m, 0.14, 1.4, cf * CFrame.new(bx - 2 + i * 0.66, by + 0.9, -d / 2 - 1.9), C.IronDark, Enum.Material.Metal, "Baluster").CanCollide = false
+			end
+			box(m, Vector3.new(4.2, 0.16, 0.16), cf * CFrame.new(bx, by + 1.6, -d / 2 - 1.95), C.Brass, Enum.Material.Metal, "Rail")
+			for _, k in { -1, 1 } do
+				wedge(m, Vector3.new(0.3, 0.8, 1.6), cf * CFrame.new(bx + k * 1.8, by - 0.6, -d / 2 - 0.8) * CFrame.Angles(0, math.pi, 0), C.IronDark, Enum.Material.Metal)
 			end
 		end
 	end
 	if opts.door ~= false then
-		box(m, Vector3.new(3, 5, 0.3), cf * CFrame.new(0, 2.5, -d / 2 - 0.15), C.RustDark, Enum.Material.Wood, "FrontDoor")
+		local dcf = cf * CFrame.new(0, 0, -d / 2)
+		box(m, Vector3.new(4, 6, 0.4), dcf * CFrame.new(0, 3, -0.1), trim, Enum.Material.Metal, "DoorFrame")
+		box(m, Vector3.new(3, 5, 0.3), dcf * CFrame.new(0, 2.6, -0.3), C.RustDark, Enum.Material.WoodPlanks, "FrontDoor")
+		for _, yy in { 1.6, 3.6 } do
+			box(m, Vector3.new(2.2, 1.4, 0.1), dcf * CFrame.new(0, yy, -0.48), C.RustDark:Lerp(Color3.new(0, 0, 0), 0.25), Enum.Material.Wood, "DoorPanel")
+		end
+		ball(m, 0.3, dcf * CFrame.new(1, 2.6, -0.55), C.Brass, Enum.Material.Metal, "Knob")
+		box(m, Vector3.new(4.4, 0.4, 1.6), dcf * CFrame.new(0, 0.2, -0.9), Color3.fromRGB(90, 84, 76), Enum.Material.Concrete, "Step")
+		-- козырёк и фонарь над дверью
+		wedge(m, Vector3.new(4.6, 0.8, 1.4), dcf * CFrame.new(0, 6.4, -0.8) * CFrame.Angles(0, math.pi, 0), C.Rust, Enum.Material.CorrodedMetal)
+		local lamp = ball(m, 0.6, dcf * CFrame.new(1.8, 5.2, -0.5), C.WarmLight, Enum.Material.Neon, "DoorLamp")
+		lamp.CanCollide = false
+		local pl = light(lamp, 16, 1.1)
+		pl.Shadows = true
 	end
-	-- трубы и дымоходы
+	-- дымоход с дымом
 	if opts.chimney ~= false then
 		local chim = cyl(m, 1.4, 4, cf * CFrame.new(w * 0.3, h + 2.5, d * 0.2), C.IronDark, Enum.Material.Metal, "Chimney")
+		cyl(m, 1.8, 0.4, cf * CFrame.new(w * 0.3, h + 4.6, d * 0.2), C.RustDark, Enum.Material.Metal, "ChimneyCap")
 		if rng:NextNumber() < 0.5 then
-			local smoke = Instance.new("ParticleEmitter")
-			smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
-			smoke.Rate = 2
-			smoke.Lifetime = NumberRange.new(4, 6)
-			smoke.Speed = NumberRange.new(2, 3)
-			smoke.Size = NumberSequence.new(1, 5)
-			smoke.Transparency = NumberSequence.new(0.6, 1)
-			smoke.Color = ColorSequence.new(Color3.fromRGB(120, 110, 100))
-			smoke.EmissionDirection = Enum.NormalId.Right
-			smoke.Parent = chim
+			smokeOn(chim)
 		end
 	end
-	-- водосточная труба сбоку
-	cyl(m, 0.6, h, cf * CFrame.new(w / 2 + 0.4, h / 2, -d / 2 + 1), C.Iron, Enum.Material.Metal, "Pipe")
+	-- крыша: бак с водой или скатная кровля
+	local roofKind = opts.roof or (if rng:NextNumber() < 0.5 then "tank" else "pitched")
+	if roofKind == "tank" and w > 12 then
+		local tp = cf * CFrame.new(-w * 0.25, h + 0.8, -d * 0.1)
+		for _, cx in { -1, 1 } do
+			for _, cz in { -1, 1 } do
+				cyl(m, 0.3, 3, tp * CFrame.new(cx * 1.4, 1.5, cz * 1.4), C.IronDark, Enum.Material.Metal, "TankLeg")
+			end
+		end
+		cyl(m, 4, 3.5, tp * CFrame.new(0, 4.6, 0), Color3.fromRGB(120, 90, 60), Enum.Material.WoodPlanks, "RoofTank")
+		for _, yy in { 3.3, 5.9 } do
+			cyl(m, 4.1, 0.15, tp * CFrame.new(0, yy, 0), C.IronDark, Enum.Material.Metal, "TankHoop")
+		end
+		wedge(m, Vector3.new(4, 1, 2), tp * CFrame.new(0, 6.85, -1), C.RustDark, Enum.Material.CorrodedMetal)
+		wedge(m, Vector3.new(4, 1, 2), tp * CFrame.new(0, 6.85, 1) * CFrame.Angles(0, math.pi, 0), C.RustDark, Enum.Material.CorrodedMetal)
+	elseif roofKind == "pitched" then
+		local rh = math.min(6, d * 0.35)
+		for _, k in { -1, 1 } do
+			wedge(m, Vector3.new(w + 1, rh, d / 2 + 0.6), cf * CFrame.new(0, h + 0.8 + rh / 2, k * (d / 4 + 0.3)) * CFrame.Angles(0, if k < 0 then math.pi else 0, 0), C.Rust:Lerp(col, 0.3), Enum.Material.CorrodedMetal)
+		end
+		-- слуховое окошко
+		local dw = cf * CFrame.new(0, h + 0.8 + rh * 0.35, -d / 4)
+		box(m, Vector3.new(2.4, 2, 1.5), dw, col, Enum.Material.CorrodedMetal, "Dormer")
+		box(m, Vector3.new(1.4, 1.2, 0.1), dw * CFrame.new(0, 0, -0.78), C.WarmLight, Enum.Material.Neon, "DormerWindow")
+	end
+	-- антенна
+	if rng:NextNumber() < 0.5 then
+		local ap = cf * CFrame.new(w * 0.35, h + 0.8, -d * 0.3)
+		cyl(m, 0.16, 5, ap * CFrame.new(0, 2.5, 0), C.IronDark, Enum.Material.Metal, "Antenna")
+		for i = 1, 3 do
+			box(m, Vector3.new(2.4 - i * 0.5, 0.1, 0.1), ap * CFrame.new(0, 2.5 + i * 0.8, 0), C.IronDark, Enum.Material.Metal, "AntennaBar")
+		end
+	end
+	-- водосток с хомутами и воронкой
+	local px = w / 2 + 0.5
+	cyl(m, 0.6, h, cf * CFrame.new(px, h / 2, -d / 2 + 1), C.Iron, Enum.Material.Metal, "Pipe")
+	cyl(m, 1.1, 0.8, cf * CFrame.new(px, h - 0.3, -d / 2 + 1), C.Iron, Enum.Material.Metal, "Funnel")
+	for yy = 3, h - 2, 4 do
+		cyl(m, 0.8, 0.2, cf * CFrame.new(px, yy, -d / 2 + 1), C.IronDark, Enum.Material.Metal, "Bracket")
+	end
+	-- электрощиток и труба с вентилем
+	if rng:NextNumber() < 0.6 then
+		local fb = box(m, Vector3.new(1.6, 2, 0.5), cf * CFrame.new(-w / 2 + 2, 4, -d / 2 - 0.3), Color3.fromRGB(90, 100, 96), Enum.Material.Metal, "FuseBox")
+		local _ = fb
+		ball(m, 0.25, cf * CFrame.new(-w / 2 + 2.4, 4.6, -d / 2 - 0.6), Color3.fromRGB(255, 80, 60), Enum.Material.Neon, "FuseLamp").CanCollide = false
+	end
+	if rng:NextNumber() < 0.5 then
+		local py = rng:NextNumber(2.5, math.max(3, h - 4))
+		Art.part(m, "CylX", Vector3.new(w, 0.5, 0.5), cf * CFrame.new(0, py, -d / 2 - 0.5), C.Iron, Enum.Material.Metal, "WallPipe").Anchored = true
+		local vcf = cf * CFrame.new(w * 0.2, py, -d / 2 - 0.9)
+		Art.part(m, "CylZ", Vector3.new(1.1, 1.1, 0.12), vcf, Color3.fromRGB(180, 50, 40), Enum.Material.Metal, "Valve").Anchored = true
+		cyl(m, 0.3, 0.6, vcf * CFrame.Angles(math.rad(90), 0, 0) * CFrame.new(0, 0.2, 0), C.IronDark, Enum.Material.Metal, "ValveStem")
+	end
 	return m, cf
+end
+
+-- Уличный фонарь: основание, столб с кольцами, кронштейн, фонарь со стеклом и тенями
+local function streetLamp(parent: Instance, pos: Vector3, faceDir: number?)
+	local cf = CFrame.new(pos) * CFrame.Angles(0, math.rad(faceDir or 0), 0)
+	cyl(parent, 1.4, 0.8, cf * CFrame.new(0, 0.4, 0), C.IronDark, Enum.Material.Metal, "LampBase")
+	cyl(parent, 1.0, 0.6, cf * CFrame.new(0, 1.1, 0), C.IronDark, Enum.Material.Metal, "LampBase")
+	cyl(parent, 0.45, 11, cf * CFrame.new(0, 6, 0), C.IronDark, Enum.Material.Metal, "LampPost")
+	for _, yy in { 3, 7, 10.5 } do
+		cyl(parent, 0.7, 0.25, cf * CFrame.new(0, yy, 0), C.Brass, Enum.Material.Metal, "PostRing")
+	end
+	box(parent, Vector3.new(0.3, 0.3, 2.6), cf * CFrame.new(0, 11.2, -1.2), C.IronDark, Enum.Material.Metal, "Arm")
+	wedge(parent, Vector3.new(0.25, 1.2, 1.2), cf * CFrame.new(0, 10.4, -0.7) * CFrame.Angles(0, math.pi, math.pi), C.IronDark, Enum.Material.Metal)
+	local head = cf * CFrame.new(0, 10.4, -2.4)
+	cyl(parent, 1.6, 0.3, head * CFrame.new(0, 0.95, 0), C.IronDark, Enum.Material.Metal, "LampCap")
+	ball(parent, 0.5, head * CFrame.new(0, 1.3, 0), C.Brass, Enum.Material.Metal, "LampFinial")
+	local glass = cyl(parent, 1.2, 1.5, head, Color3.fromRGB(255, 230, 180), Enum.Material.Glass, "LampGlass")
+	glass.Transparency = 0.5
+	glass.CanCollide = false
+	local bulb = ball(parent, 0.7, head, C.WarmLight, Enum.Material.Neon, "Lamp")
+	bulb.CanCollide = false
+	local pl = light(bulb, 26, 1.4)
+	pl.Shadows = true
+	return bulb
+end
+
+-- Уличный хлам: бочки, ящики, люки, лужи, провода с лампочками
+local function barrel(parent: Instance, pos: Vector3)
+	local c = if rng:NextNumber() < 0.5 then Color3.fromRGB(120, 60, 40) else Color3.fromRGB(70, 90, 80)
+	cyl(parent, 2, 2.8, CFrame.new(pos + Vector3.new(0, 1.4, 0)), c, Enum.Material.CorrodedMetal, "Barrel")
+	for _, yy in { 0.5, 1.4, 2.3 } do
+		cyl(parent, 2.08, 0.14, CFrame.new(pos + Vector3.new(0, yy, 0)), C.IronDark, Enum.Material.Metal, "BarrelHoop")
+	end
+end
+
+local function crate(parent: Instance, pos: Vector3, size: number?)
+	local sz = size or 2.4
+	local cf = CFrame.new(pos + Vector3.new(0, sz / 2, 0)) * CFrame.Angles(0, rng:NextNumber(0, 1.5), 0)
+	box(parent, Vector3.new(sz, sz, sz), cf, Color3.fromRGB(150, 110, 70), Enum.Material.WoodPlanks, "Crate")
+	for _, k in { -1, 1 } do
+		box(parent, Vector3.new(sz + 0.1, 0.25, 0.25), cf * CFrame.new(0, k * (sz / 2 - 0.12), -sz / 2), Color3.fromRGB(110, 78, 48), Enum.Material.Wood, "CrateEdge")
+	end
+	box(parent, Vector3.new(0.25, sz * 1.3, 0.1), cf * CFrame.new(0, 0, -sz / 2 - 0.02) * CFrame.Angles(0, 0, math.rad(45)), Color3.fromRGB(110, 78, 48), Enum.Material.Wood, "CrateBrace")
+end
+
+local function puddle(parent: Instance, pos: Vector3, d: number)
+	local p = cyl(parent, d, 0.06, CFrame.new(pos + Vector3.new(0, 0.44, 0)), Color3.fromRGB(40, 44, 42), Enum.Material.Glass, "Puddle")
+	p.Reflectance = 0.45
+	p.Transparency = 0.15
+	p.CanCollide = false
+end
+
+local function manhole(parent: Instance, pos: Vector3)
+	cyl(parent, 3, 0.1, CFrame.new(pos + Vector3.new(0, 0.44, 0)), C.IronDark, Enum.Material.DiamondPlate, "Manhole")
+	local grate = box(parent, Vector3.new(2, 0.05, 2), CFrame.new(pos + Vector3.new(0, 0.5, 0)), C.Soot, Enum.Material.Metal, "Grate")
+	grate.CanCollide = false
+	local steam = Instance.new("ParticleEmitter")
+	steam.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	steam.Rate = 4
+	steam.Lifetime = NumberRange.new(2, 3.5)
+	steam.Speed = NumberRange.new(2, 4)
+	steam.Size = NumberSequence.new(1, 4)
+	steam.Transparency = NumberSequence.new(0.55, 1)
+	steam.Color = ColorSequence.new(Color3.fromRGB(230, 220, 205))
+	steam.EmissionDirection = Enum.NormalId.Top
+	steam.Parent = grate
+end
+
+-- провод с лампочками между двумя точками (провисает)
+local function wireWithBulbs(parent: Instance, a: Vector3, b: Vector3, bulbs: number)
+	local segs = 10
+	local sag = (b - a).Magnitude * 0.08
+	local prev = a
+	for i = 1, segs do
+		local t = i / segs
+		local p = a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * sag, 0)
+		local mid = (prev + p) / 2
+		local seg = box(parent, Vector3.new(0.08, 0.08, (p - prev).Magnitude), CFrame.lookAt(mid, p), C.Soot, Enum.Material.Metal, "Wire")
+		seg.CanCollide = false
+		seg.CastShadow = false
+		prev = p
+	end
+	for i = 1, bulbs do
+		local t = i / (bulbs + 1)
+		local p = a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * sag + 0.4, 0)
+		local bulb = ball(parent, 0.5, CFrame.new(p), if i % 3 == 0 then Color3.fromRGB(255, 140, 110) else C.WarmLight, Enum.Material.Neon, "Bulb")
+		bulb.CanCollide = false
+		bulb.CastShadow = false
+		if i % 3 == 1 then
+			light(bulb, 10, 0.6)
+		end
+	end
 end
 
 ----------------------------------------------------------------------
@@ -265,8 +502,10 @@ local function setupLighting()
 	Lighting.Brightness = 2.2
 	Lighting.Ambient = Color3.fromRGB(90, 70, 55)
 	Lighting.OutdoorAmbient = Color3.fromRGB(150, 120, 90)
-	Lighting.EnvironmentDiffuseScale = 0.5
-	Lighting.EnvironmentSpecularScale = 0.6
+	Lighting.EnvironmentDiffuseScale = 1
+	Lighting.EnvironmentSpecularScale = 1
+	Lighting.ShadowSoftness = 0.15
+	Lighting.ExposureCompensation = 0.1
 	Lighting.GlobalShadows = true
 	for _, c in Lighting:GetChildren() do
 		if c:IsA("PostEffect") or c:IsA("Atmosphere") or c:IsA("Sky") then
@@ -293,9 +532,28 @@ local function setupLighting()
 	bloom.Threshold = 1.6
 	bloom.Parent = Lighting
 	local rays = Instance.new("SunRaysEffect")
-	rays.Intensity = 0.06
-	rays.Spread = 0.6
+	rays.Intensity = 0.08
+	rays.Spread = 0.7
 	rays.Parent = Lighting
+	local dof = Instance.new("DepthOfFieldEffect")
+	dof.FarIntensity = 0.18
+	dof.FocusDistance = 40
+	dof.InFocusRadius = 60
+	dof.NearIntensity = 0
+	dof.Parent = Lighting
+	-- облака над городом
+	local terrain = workspace:FindFirstChildOfClass("Terrain")
+	if terrain then
+		local old = terrain:FindFirstChildOfClass("Clouds")
+		if old then
+			old:Destroy()
+		end
+		local clouds = Instance.new("Clouds")
+		clouds.Cover = 0.55
+		clouds.Density = 0.6
+		clouds.Color = Color3.fromRGB(255, 214, 170)
+		clouds.Parent = terrain
+	end
 end
 
 ----------------------------------------------------------------------
@@ -568,11 +826,28 @@ local function buildLowtown()
 	-- фонари вдоль улицы
 	for z = 120, 230, 22 do
 		for _, x in { -16, 16 } do
-			cyl(L, 0.5, 10, CFrame.new(x, 5, z), C.IronDark, Enum.Material.Metal, "LampPost")
-			local lamp = ball(L, 1.3, CFrame.new(x, 10.5, z), C.WarmLight, Enum.Material.Neon, "Lamp")
-			light(lamp, 22, 1.2)
+			streetLamp(L, Vector3.new(x, 0.4, z), if x < 0 then -90 else 90)
 		end
 	end
+	-- гирлянды-провода через улицу
+	for _, z in { 125, 135, 215, 222, 229 } do
+		wireWithBulbs(L, Vector3.new(-27, 14, z), Vector3.new(27, 14.5, z), 7)
+	end
+	for _, z in { 164, 186, 208 } do
+		wireWithBulbs(L, Vector3.new(-16, 11.5, z), Vector3.new(16, 11.5, z + 0.1), 5)
+	end
+	-- уличный хлам
+	for _, bp in { Vector3.new(-22, 0.4, 145), Vector3.new(-23, 0.4, 148), Vector3.new(22, 0.4, 200), Vector3.new(24, 0.4, 204), Vector3.new(-40, 0.4, 170), Vector3.new(45, 0.4, 150) } do
+		barrel(L, bp)
+	end
+	for _, cp in { Vector3.new(21, 0.4, 150), Vector3.new(22, 0.4, 153), Vector3.new(-21, 0.4, 190), Vector3.new(-50, 0.4, 150), Vector3.new(70, 0.4, 168) } do
+		crate(L, cp)
+	end
+	for _, pp in { Vector3.new(-6, 0, 150), Vector3.new(8, 0, 195), Vector3.new(-30, 0, 162), Vector3.new(40, 0, 158) } do
+		puddle(L, pp, rng:NextNumber(3, 6))
+	end
+	manhole(L, Vector3.new(4, 0, 176))
+	manhole(L, Vector3.new(-60, 0, 160 - 12))
 
 	-- арест-зона сразу за воротами
 	local arrest = box(L, Vector3.new(30, 12, 8), Vector3.new(0, 6, 226), C.Brass, Enum.Material.Neon, "ArrestZone")
@@ -757,6 +1032,22 @@ local function buildCanal()
 	end
 	-- паяльная мастерская у моста (декор) и факты
 	house(K, Vector3.new(-50, 0, 80), 16, 12, 12, 0, { name = "SolderingWorks" })
+	-- искры сварки у мастерской
+	local weld = box(K, Vector3.new(1.2, 1.2, 1.2), Vector3.new(-44, 1.2, 72.5), C.IronDark, Enum.Material.Metal, "Anvil")
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparks.Rate = 25
+	sparks.Lifetime = NumberRange.new(0.3, 0.7)
+	sparks.Speed = NumberRange.new(6, 12)
+	sparks.SpreadAngle = Vector2.new(60, 60)
+	sparks.Acceleration = Vector3.new(0, -40, 0)
+	sparks.Size = NumberSequence.new(0.25, 0)
+	sparks.LightEmission = 1
+	sparks.Color = ColorSequence.new(Color3.fromRGB(255, 220, 120), Color3.fromRGB(255, 120, 40))
+	sparks.EmissionDirection = Enum.NormalId.Top
+	sparks.Parent = weld
+	local flash = light(weld, 12, 2, Color3.fromRGB(150, 200, 255))
+	flash.Shadows = true
 	factTerminal("f21", Vector3.new(18, 0.4, 88), 180)
 	-- мостик-прыжки через канал (паркур)
 	for i = 0, 3 do
@@ -955,9 +1246,19 @@ local function buildSquare()
 	for i = 0, 7 do
 		local a = i / 8 * math.pi * 2
 		local p = fc + Vector3.new(math.cos(a) * 30, 0, math.sin(a) * 30)
-		cyl(S, 0.5, 11, CFrame.new(p + Vector3.new(0, 5.5, 0)), C.IronDark, Enum.Material.Metal, "LampPost")
-		local lamp = ball(S, 1.4, CFrame.new(p + Vector3.new(0, 11.5, 0)), C.WarmLight, Enum.Material.Neon, "Lamp")
-		light(lamp, 24, 1.1)
+		streetLamp(S, p + Vector3.new(0, 0.4, 0), math.deg(math.atan2(math.cos(a), math.sin(a))))
+	end
+	-- детали площади
+	for _, pp in { Vector3.new(-18, 0, 70), Vector3.new(25, 0, 5), Vector3.new(-40, 0, 20), Vector3.new(50, 0, 60) } do
+		puddle(S, pp, rng:NextNumber(3, 7))
+	end
+	manhole(S, Vector3.new(-12, 0, 78))
+	manhole(S, Vector3.new(40, 0, 10))
+	for _, bp in { Vector3.new(78, 0.4, 20), Vector3.new(78, 0.4, 24), Vector3.new(80, 0.4, 42), Vector3.new(-78, 0.4, 62) } do
+		barrel(S, bp)
+	end
+	for _, cp in { Vector3.new(82, 0.4, 52), Vector3.new(84, 0.4, 55), Vector3.new(-70, 0.4, 8) } do
+		crate(S, cp)
 	end
 	for i = 0, 11 do
 		local a = i / 12 * math.pi * 2 + 0.2
@@ -1046,6 +1347,24 @@ local function buildGreenhouse()
 			ball(G, 0.8, CFrame.new(p + Vector3.new(0, h + 1, 0)), C.BertaPink, Enum.Material.SmoothPlastic, "Flower").CanCollide = false
 		end
 	end
+	-- светлячки в теплице
+	local glowHolder = box(G, Vector3.new(30, 8, 30), gc + Vector3.new(0, 5, 0), C.Moss, Enum.Material.Grass, "FireflyVolume")
+	glowHolder.Transparency = 1
+	glowHolder.CanCollide = false
+	glowHolder.CanQuery = false
+	glowHolder.CanTouch = false
+	local flies = Instance.new("ParticleEmitter")
+	flies.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	flies.Rate = 6
+	flies.Lifetime = NumberRange.new(4, 7)
+	flies.Speed = NumberRange.new(0.3, 1)
+	flies.SpreadAngle = Vector2.new(180, 180)
+	flies.Size = NumberSequence.new(0.35)
+	flies.LightEmission = 1
+	flies.Color = ColorSequence.new(Color3.fromRGB(220, 255, 140))
+	flies.Shape = Enum.ParticleEmitterShape.Box
+	flies.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	flies.Parent = glowHolder
 	-- цветок для Берты (особый, светящийся)
 	local fl = ball(G, 1.4, CFrame.new(gc + Vector3.new(-8, 4, 0)), Color3.fromRGB(255, 150, 190), Enum.Material.Neon, "BertaFlower")
 	cyl(G, 0.3, 4, CFrame.new(gc + Vector3.new(-8, 2, 0)), C.Moss, Enum.Material.Grass)

@@ -1,7 +1,7 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 <Item class="Workspace" referent="RBX00000002"><Properties><string name="Name">Workspace</string><bool name="StreamingEnabled">false</bool><float name="Gravity">196.2</float></Properties><Item class="Terrain" referent="RBX00000001"><Properties><string name="Name">Terrain</string></Properties></Item>
 </Item>
-<Item class="Lighting" referent="RBX00000015"><Properties><string name="Name">Lighting</string><float name="ClockTime">17.4</float></Properties></Item>
+<Item class="Lighting" referent="RBX00000016"><Properties><string name="Name">Lighting</string><float name="ClockTime">17.4</float><token name="Technology">4</token><bool name="GlobalShadows">true</bool></Properties></Item>
 <Item class="ReplicatedStorage" referent="RBX00000006"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX00000005"><Properties><string name="Name">Machinarium</string></Properties><Item class="ModuleScript" referent="RBX00000003"><Properties><string name="Name">Art</string><ProtectedString name="Source"><![CDATA[--!nonstrict
 -- Art: построение персонажей Machinarium из обычных деталей Roblox.
 -- Все модели строятся «от ног»: точка (0,0,0) — пол под персонажем,
@@ -56,16 +56,25 @@ function Art.part(parent: Instance, shape: string, size: Vector3, cf: CFrame, co
 end
 
 -- Глаза в стиле Машинариума: белые диски с чёрными зрачками.
-function Art.eyes(parent: Instance, origin: CFrame, opt: { size: number?, gap: number?, y: number?, z: number?, angry: boolean?, sleepy: boolean? })
+function Art.eyes(parent: Instance, origin: CFrame, opt: { size: number?, gap: number?, y: number?, z: number?, angry: boolean?, sleepy: boolean?, lid: Color3?, rim: Color3? })
 	local size = opt.size or 0.6
 	local gap = opt.gap or 0.34
 	local y = opt.y or 0
 	local z = opt.z or -0.7
 	for _, sx in { -1, 1 } do
 		local base = origin * CFrame.new(sx * gap, y, z)
+		-- металлическая оправа глаза
+		Art.part(parent, "CylZ", Vector3.new(size * 1.18, size * 1.18, 0.1), base * CFrame.new(0, 0, 0.04), opt.rim or Color3.fromRGB(70, 56, 44), Enum.Material.Metal, "EyeRim")
 		Art.part(parent, "CylZ", Vector3.new(size, size, 0.12), base, Color3.fromRGB(245, 240, 225), Enum.Material.SmoothPlastic, "Eye")
 		local pupil = size * 0.42
-		Art.part(parent, "Ball", Vector3.new(pupil, pupil, pupil), base * CFrame.new(sx * -0.03, opt.sleepy and -size * 0.12 or 0, -0.06), C.Soot, Enum.Material.SmoothPlastic, "Pupil")
+		local pcf = base * CFrame.new(sx * -0.03, opt.sleepy and -size * 0.12 or 0, -0.06)
+		Art.part(parent, "Ball", Vector3.new(pupil, pupil, pupil), pcf, C.Soot, Enum.Material.SmoothPlastic, "Pupil")
+		-- блик в зрачке — глаза «живые»
+		Art.part(parent, "Ball", Vector3.new(pupil * 0.32, pupil * 0.32, pupil * 0.32), pcf * CFrame.new(pupil * 0.18, pupil * 0.18, -pupil * 0.4), Color3.fromRGB(255, 255, 255), Enum.Material.Neon, "Glint")
+		-- тяжёлое металлическое веко (как у Йозефа)
+		if opt.lid then
+			Art.part(parent, "CylZ", Vector3.new(size * 1.08, size * 1.08, 0.08), base * CFrame.new(0, size * 0.5, -0.1), opt.lid, Enum.Material.Metal, "Lid")
+		end
 		if opt.angry then
 			Art.part(parent, "Block", Vector3.new(size * 1.1, 0.12, 0.1), base * CFrame.new(0, size * 0.55, -0.05) * CFrame.Angles(0, 0, sx * math.rad(-22)), C.Soot, nil, "Brow")
 		end
@@ -141,19 +150,42 @@ function Art.robot(name: string, opt: any): (Model, any)
 	root.CanCollide = false
 	model.PrimaryPart = root
 
-	-- ноги
+	-- ноги: бедро, колено-шарнир, голень, округлая ступня
 	for _, sx in { -1, 1 } do
-		Art.part(model, "Cyl", Vector3.new(legD, legLen, legD), O * CFrame.new(sx * legGap, legLen / 2 + 0.15, 0), dark, mat, "Leg")
-		Art.part(model, "Block", Vector3.new(legD * 2.4, 0.28, legD * 3.2), O * CFrame.new(sx * legGap, 0.14, -legD * 0.5), dark, mat, "Foot")
+		local x = sx * legGap
+		Art.part(model, "Cyl", Vector3.new(legD, legLen * 0.5, legD), O * CFrame.new(x, legLen * 0.75 + 0.15, 0), color, mat, "Thigh")
+		Art.part(model, "Ball", Vector3.new(legD * 1.5, legD * 1.5, legD * 1.5), O * CFrame.new(x, legLen * 0.5 + 0.15, 0), dark, mat, "Knee")
+		Art.part(model, "Cyl", Vector3.new(legD * 0.85, legLen * 0.5, legD * 0.85), O * CFrame.new(x, legLen * 0.25 + 0.15, 0), dark, mat, "Shin")
+		Art.part(model, "Cyl", Vector3.new(legD * 2.6, 0.26, legD * 2.6), O * CFrame.new(x, 0.13, -legD * 0.2), dark, mat, "Heel")
+		Art.part(model, "Block", Vector3.new(legD * 2.4, 0.26, legD * 2.2), O * CFrame.new(x, 0.13, -legD * 1.3), dark, mat, "Toe")
 	end
 
 	-- тело
 	local bodyY = legLen + body.size.Y / 2 + 0.1
 	local bodyCF = O * CFrame.new(0, bodyY, 0)
 	Art.part(model, body.shape, body.size, bodyCF, color, mat, "Body")
-	-- заклёпки
-	for i = -1, 1 do
-		Art.part(model, "Ball", Vector3.new(0.16, 0.16, 0.16), bodyCF * CFrame.new(i * body.size.X * 0.25, body.size.Y * 0.3, -body.size.Z / 2 + 0.02), C.Brass, Enum.Material.Metal, "Rivet")
+	if body.shape == "Cyl" then
+		-- фаски-обручи сверху и снизу корпуса
+		for _, k in { -1, 1 } do
+			Art.part(model, "Cyl", Vector3.new(body.size.X + 0.12, 0.16, body.size.Z + 0.12), bodyCF * CFrame.new(0, k * (body.size.Y / 2 - 0.08), 0), dark, Enum.Material.Metal, "Band")
+		end
+		-- кольцо заклёпок
+		for i = 0, 9 do
+			local a = i / 10 * math.pi * 2
+			Art.part(model, "Ball", Vector3.new(0.13, 0.13, 0.13), bodyCF * CFrame.new(math.sin(a) * body.size.X / 2, body.size.Y / 2 - 0.26, math.cos(a) * body.size.Z / 2), C.Brass, Enum.Material.Metal, "Rivet")
+		end
+	elseif body.shape == "Block" then
+		-- панель-пластина с болтами по углам
+		Art.part(model, "Block", Vector3.new(body.size.X * 0.7, body.size.Y * 0.55, 0.08), bodyCF * CFrame.new(0, 0, -body.size.Z / 2 - 0.04), dark, Enum.Material.DiamondPlate, "Panel")
+		for _, cx in { -1, 1 } do
+			for _, cy in { -1, 1 } do
+				Art.part(model, "Ball", Vector3.new(0.14, 0.14, 0.14), bodyCF * CFrame.new(cx * body.size.X * 0.3, cy * body.size.Y * 0.22, -body.size.Z / 2 - 0.09), C.Brass, Enum.Material.Metal, "Rivet")
+			end
+		end
+	else
+		for i = -1, 1 do
+			Art.part(model, "Ball", Vector3.new(0.16, 0.16, 0.16), bodyCF * CFrame.new(i * body.size.X * 0.25, body.size.Y * 0.3, -body.size.Z / 2 + 0.05), C.Brass, Enum.Material.Metal, "Rivet")
+		end
 	end
 
 	-- руки
@@ -162,16 +194,27 @@ function Art.robot(name: string, opt: any): (Model, any)
 		local sh = bodyY + body.size.Y * 0.3
 		for _, sx in { -1, 1 } do
 			local x = sx * (body.size.X / 2 + 0.15)
-			Art.part(model, "Ball", Vector3.new(0.45, 0.45, 0.45), O * CFrame.new(x, sh, 0), dark, mat, "Shoulder")
-			Art.part(model, "Cyl", Vector3.new(0.24, armLen, 0.24), O * CFrame.new(x + sx * 0.1, sh - armLen / 2, 0) * CFrame.Angles(0, 0, sx * math.rad(8)), dark, mat, "Arm")
-			Art.part(model, "Ball", Vector3.new(0.4, 0.4, 0.4), O * CFrame.new(x + sx * 0.2, sh - armLen, 0), dark, mat, "Hand")
+			local tilt = CFrame.Angles(0, 0, sx * math.rad(8))
+			Art.part(model, "Ball", Vector3.new(0.5, 0.5, 0.5), O * CFrame.new(x, sh, 0), dark, mat, "Shoulder")
+			Art.part(model, "Cyl", Vector3.new(0.24, armLen * 0.5, 0.24), O * CFrame.new(x + sx * 0.04, sh - armLen * 0.25, 0) * tilt, color, mat, "UpperArm")
+			Art.part(model, "Ball", Vector3.new(0.32, 0.32, 0.32), O * CFrame.new(x + sx * 0.08, sh - armLen * 0.5, 0), dark, mat, "Elbow")
+			Art.part(model, "Cyl", Vector3.new(0.2, armLen * 0.5, 0.2), O * CFrame.new(x + sx * 0.13, sh - armLen * 0.75, 0) * tilt, dark, mat, "Forearm")
+			-- клешня из двух пальцев
+			for _, f in { -1, 1 } do
+				Art.part(model, "Block", Vector3.new(0.08, 0.34, 0.16), O * CFrame.new(x + sx * 0.18 + f * 0.08, sh - armLen - 0.1, 0) * CFrame.Angles(0, 0, f * math.rad(14)), dark, mat, "Claw")
+			end
 		end
 	end
 
 	-- шея и голова
 	local headBase = bodyY + body.size.Y / 2
 	if neck > 0 then
-		Art.part(model, "Cyl", Vector3.new(0.3, neck + 0.2, 0.3), O * CFrame.new(0, headBase + neck / 2, 0), dark, mat, "Neck")
+		-- телескопическая шея из колец
+		Art.part(model, "Cyl", Vector3.new(0.26, neck + 0.2, 0.26), O * CFrame.new(0, headBase + neck / 2, 0), dark, mat, "Neck")
+		local rings = math.max(1, math.floor(neck / 0.25))
+		for i = 1, rings do
+			Art.part(model, "Cyl", Vector3.new(0.38, 0.06, 0.38), O * CFrame.new(0, headBase + i * neck / (rings + 1), 0), color, Enum.Material.Metal, "NeckRing")
+		end
 	end
 	local hs = head.size
 	local headCF = O * CFrame.new(0, headBase + neck + hs.Y / 2, 0)
@@ -181,6 +224,13 @@ function Art.robot(name: string, opt: any): (Model, any)
 		Art.part(model, "Ball", Vector3.new(hs.X, hs.X, hs.X), headCF * CFrame.new(0, hs.Y * 0.2, 0), color, mat, "HeadTop")
 	else
 		Art.part(model, head.shape, hs, headCF, color, mat, "Head")
+	end
+	if head.shape == "Cyl" or head.shape == "Bullet" then
+		Art.part(model, "Cyl", Vector3.new(hs.X + 0.1, 0.12, hs.Z + 0.1), headCF * CFrame.new(0, -hs.Y / 2 + 0.06 + (if head.shape == "Bullet" then hs.Y * 0.0 else 0), 0), dark, Enum.Material.Metal, "HeadBand")
+	end
+	-- болты-«уши»
+	for _, sx in { -1, 1 } do
+		Art.part(model, "CylX", Vector3.new(0.12, math.min(0.34, hs.Y * 0.3), math.min(0.34, hs.Y * 0.3)), headCF * CFrame.new(sx * (hs.X / 2 + 0.03), 0, 0), C.Brass, Enum.Material.Metal, "EarBolt")
 	end
 	local eyeOpt = opt.eyes or {}
 	eyeOpt.z = eyeOpt.z or -(hs.Z / 2 + 0.02)
@@ -236,7 +286,7 @@ function Art.Josef(color: Color3?, dark: Color3?): Model
 		head = { shape = "Bullet", size = Vector3.new(1.5, 1.7, 1.5) },
 		neck = 0.35,
 		arms = 1.5,
-		eyes = { size = 0.62, gap = 0.3, y = 0.05 },
+		eyes = { size = 0.62, gap = 0.3, y = 0.05, lid = color or C.Rust },
 	})
 	-- люк в животе (инвентарь!)
 	Art.part(m, "CylZ", Vector3.new(0.8, 0.8, 0.1), a.body * CFrame.new(0, -0.1, -0.86), C.Brass, Enum.Material.Metal, "Hatch")
@@ -245,64 +295,101 @@ function Art.Josef(color: Color3?, dark: Color3?): Model
 	return m
 end
 
--- Берта: круглая голова, юбочка-колокол, цветок на макушке
+-- Берта: круглая голова с веками и ресницами, юбка-колокол, цветок на макушке
 function Art.Berta(dress: Color3?, flowerLevel: number?): Model
 	local m = Instance.new("Model")
 	m.Name = "Berta"
 	local cream = C.BertaCream
 	local dressColor = dress or cream
+	local dressDark = dressColor:Lerp(Color3.new(0, 0, 0), 0.18)
 	local dark = Color3.fromRGB(140, 120, 100)
+	local pink = C.BertaPink
 	local O = CFrame.new()
 	local root = Art.part(m, "Block", Vector3.new(1, 1, 1), O, cream, nil, "Root")
 	root.Transparency = 1
 	root.CanCollide = false
 	m.PrimaryPart = root
-	-- тонкие ножки
+	-- ножки с коленками и туфельками
 	for _, sx in { -1, 1 } do
-		Art.part(m, "Cyl", Vector3.new(0.2, 1.5, 0.2), O * CFrame.new(sx * 0.3, 0.9, 0), dark, Enum.Material.Metal, "Leg")
-		Art.part(m, "Ball", Vector3.new(0.45, 0.45, 0.45), O * CFrame.new(sx * 0.3, 0.2, -0.1), dark, Enum.Material.Metal, "Foot")
+		local x = sx * 0.3
+		Art.part(m, "Cyl", Vector3.new(0.2, 0.75, 0.2), O * CFrame.new(x, 1.28, 0), dark, Enum.Material.Metal, "Thigh")
+		Art.part(m, "Ball", Vector3.new(0.3, 0.3, 0.3), O * CFrame.new(x, 0.92, 0), cream, Enum.Material.SmoothPlastic, "Knee")
+		Art.part(m, "Cyl", Vector3.new(0.17, 0.7, 0.17), O * CFrame.new(x, 0.58, 0), dark, Enum.Material.Metal, "Shin")
+		Art.part(m, "Cyl", Vector3.new(0.5, 0.24, 0.5), O * CFrame.new(x, 0.12, -0.02), pink, Enum.Material.SmoothPlastic, "Shoe")
+		Art.part(m, "Ball", Vector3.new(0.42, 0.42, 0.42), O * CFrame.new(x, 0.18, -0.22), pink, Enum.Material.SmoothPlastic, "ShoeToe")
+		Art.part(m, "Cyl", Vector3.new(0.54, 0.05, 0.54), O * CFrame.new(x, 0.26, -0.02), dark, Enum.Material.Metal, "ShoeStrap")
 	end
-	-- юбка-колокол из колец
-	local y = 1.6
-	for i = 0, 3 do
-		local d = 2.0 - i * 0.28
-		Art.part(m, "Cyl", Vector3.new(d, 0.32, d), O * CFrame.new(0, y, 0), dressColor, Enum.Material.SmoothPlastic, "Dress")
-		y += 0.3
+	-- юбка-колокол: кольца с подолом и заклёпками
+	local y = 1.55
+	Art.part(m, "Cyl", Vector3.new(2.14, 0.12, 2.14), O * CFrame.new(0, y - 0.18, 0), dressDark, Enum.Material.Metal, "Hem")
+	for i = 0, 11 do
+		local an = i / 12 * math.pi * 2
+		Art.part(m, "Ball", Vector3.new(0.1, 0.1, 0.1), O * CFrame.new(math.sin(an) * 1.07, y - 0.18, math.cos(an) * 1.07), C.Brass, Enum.Material.Metal, "HemRivet")
 	end
-	-- талия и грудь
-	Art.part(m, "Cyl", Vector3.new(1.0, 0.8, 1.0), O * CFrame.new(0, y + 0.3, 0), cream, Enum.Material.SmoothPlastic, "Chest")
-	Art.part(m, "Cyl", Vector3.new(1.05, 0.1, 1.05), O * CFrame.new(0, y + 0.05, 0), C.BertaPink, Enum.Material.SmoothPlastic, "Belt")
-	-- ручки
+	for i = 0, 4 do
+		local d = 2.05 - i * 0.24
+		Art.part(m, "Cyl", Vector3.new(d, 0.26, d), O * CFrame.new(0, y, 0), if i % 2 == 0 then dressColor else dressDark, Enum.Material.SmoothPlastic, "Dress")
+		y += 0.24
+	end
+	-- корсаж, пояс с пряжкой, пуговки, воротничок
+	Art.part(m, "Cyl", Vector3.new(1.02, 0.12, 1.02), O * CFrame.new(0, y - 0.02, 0), pink, Enum.Material.SmoothPlastic, "Belt")
+	Art.part(m, "Block", Vector3.new(0.22, 0.16, 0.06), O * CFrame.new(0, y - 0.02, -0.52), C.Brass, Enum.Material.Metal, "Buckle")
+	Art.part(m, "Cyl", Vector3.new(0.95, 0.8, 0.95), O * CFrame.new(0, y + 0.42, 0), cream, Enum.Material.SmoothPlastic, "Chest")
+	for i = 0, 2 do
+		Art.part(m, "Ball", Vector3.new(0.1, 0.1, 0.1), O * CFrame.new(0, y + 0.2 + i * 0.2, -0.47), pink, Enum.Material.SmoothPlastic, "Button")
+	end
+	Art.part(m, "Cyl", Vector3.new(1.1, 0.1, 1.1), O * CFrame.new(0, y + 0.84, 0), pink, Enum.Material.SmoothPlastic, "Collar")
+	-- ручки с локотками
+	local sh = y + 0.72
 	for _, sx in { -1, 1 } do
-		Art.part(m, "Cyl", Vector3.new(0.16, 1.2, 0.16), O * CFrame.new(sx * 0.62, y - 0.1, 0) * CFrame.Angles(0, 0, sx * math.rad(20)), dark, Enum.Material.Metal, "Arm")
-		Art.part(m, "Ball", Vector3.new(0.3, 0.3, 0.3), O * CFrame.new(sx * 0.82, y - 0.65, 0), cream, nil, "Hand")
+		Art.part(m, "Ball", Vector3.new(0.3, 0.3, 0.3), O * CFrame.new(sx * 0.55, sh, 0), cream, Enum.Material.SmoothPlastic, "Shoulder")
+		Art.part(m, "Cyl", Vector3.new(0.14, 0.6, 0.14), O * CFrame.new(sx * 0.63, sh - 0.3, 0) * CFrame.Angles(0, 0, sx * math.rad(15)), dark, Enum.Material.Metal, "UpperArm")
+		Art.part(m, "Ball", Vector3.new(0.18, 0.18, 0.18), O * CFrame.new(sx * 0.71, sh - 0.6, 0), cream, Enum.Material.SmoothPlastic, "Elbow")
+		Art.part(m, "Cyl", Vector3.new(0.12, 0.55, 0.12), O * CFrame.new(sx * 0.76, sh - 0.87, -0.05) * CFrame.Angles(math.rad(10), 0, sx * math.rad(8)), dark, Enum.Material.Metal, "Forearm")
+		Art.part(m, "Ball", Vector3.new(0.26, 0.26, 0.26), O * CFrame.new(sx * 0.8, sh - 1.18, -0.1), cream, Enum.Material.SmoothPlastic, "Hand")
 	end
-	-- шея и большая круглая голова
-	Art.part(m, "Cyl", Vector3.new(0.22, 0.4, 0.22), O * CFrame.new(0, y + 0.9, 0), dark, Enum.Material.Metal, "Neck")
-	local headCF = O * CFrame.new(0, y + 2.1, 0)
-	Art.part(m, "Ball", Vector3.new(2.2, 2.2, 2.2), headCF, cream, Enum.Material.SmoothPlastic, "Head")
-	Art.eyes(m, headCF, { size = 0.62, gap = 0.36, y = 0.05, z = -1.0 })
-	-- реснички
+	-- шея из колечек
+	for i = 0, 2 do
+		Art.part(m, "Cyl", Vector3.new(0.3 - i * 0.02, 0.1, 0.3 - i * 0.02), O * CFrame.new(0, y + 0.92 + i * 0.12, 0), if i % 2 == 0 then dark else cream, Enum.Material.Metal, "NeckRing")
+	end
+	-- большая круглая голова
+	local headCF = O * CFrame.new(0, y + 2.05, 0)
+	Art.part(m, "Ball", Vector3.new(2.1, 2.1, 2.1), headCF, cream, Enum.Material.SmoothPlastic, "Head")
+	-- шов-обруч вокруг головы и «ушки»-диски
+	Art.part(m, "Cyl", Vector3.new(1.3, 0.06, 1.3), headCF * CFrame.new(0, -0.84, 0), dark, Enum.Material.Metal, "Seam")
+	for _, sx in { -1, 1 } do
+		Art.part(m, "CylX", Vector3.new(0.12, 0.5, 0.5), headCF * CFrame.new(sx * 1.03, 0.05, 0), pink, Enum.Material.SmoothPlastic, "Ear")
+		Art.part(m, "CylX", Vector3.new(0.14, 0.22, 0.22), headCF * CFrame.new(sx * 1.09, 0.05, 0), C.Brass, Enum.Material.Metal, "EarBolt")
+	end
+	Art.eyes(m, headCF, { size = 0.58, gap = 0.34, y = 0.08, z = -0.97, rim = Color3.fromRGB(190, 170, 140) })
+	-- реснички над веками
 	for _, sx in { -1, 1 } do
 		for k = -1, 1 do
-			Art.part(m, "Block", Vector3.new(0.05, 0.22, 0.05), headCF * CFrame.new(sx * 0.36 + k * 0.14, 0.44, -1.02) * CFrame.Angles(0, 0, k * math.rad(-25)), C.Soot, nil, "Lash")
+			Art.part(m, "Block", Vector3.new(0.05, 0.24, 0.05), headCF * CFrame.new(sx * 0.34 + k * 0.14, 0.5, -1.0) * CFrame.Angles(0, 0, k * math.rad(-25)), C.Soot, nil, "Lash")
 		end
+	end
+	-- улыбка из трёх чёрточек
+	for k = -1, 1 do
+		Art.part(m, "Block", Vector3.new(0.16, 0.05, 0.05), headCF * CFrame.new(k * 0.13, -0.42 + math.abs(k) * 0.05, -1.0) * CFrame.Angles(0, 0, k * math.rad(25)), C.Soot, nil, "Smile")
 	end
 	-- румянец
 	for _, sx in { -1, 1 } do
-		Art.part(m, "CylZ", Vector3.new(0.3, 0.3, 0.05), headCF * CFrame.new(sx * 0.7, -0.35, -0.86), C.BertaPink, nil, "Blush")
+		Art.part(m, "CylZ", Vector3.new(0.3, 0.3, 0.05), headCF * CFrame.new(sx * 0.66, -0.3, -0.82), pink, nil, "Blush")
 	end
 	-- цветок на макушке (растёт с прокачкой «Цветок любви»)
 	local lvl = flowerLevel or 0
 	local fs = 0.6 + lvl * 0.18
-	local stemTop = headCF * CFrame.new(0, 1.1 + 0.5 * fs, 0)
-	Art.part(m, "Cyl", Vector3.new(0.1, 1.0 * fs, 0.1), headCF * CFrame.new(0, 1.05 + 0.25 * fs, 0), C.Moss, nil, "Stem")
+	local stemTop = headCF * CFrame.new(0, 1.05 + 0.5 * fs, 0)
+	Art.part(m, "Cyl", Vector3.new(0.1, 1.0 * fs, 0.1), headCF * CFrame.new(0, 1.0 + 0.25 * fs, 0), C.Moss, nil, "Stem")
+	Art.part(m, "Block", Vector3.new(0.35 * fs, 0.05, 0.18 * fs), headCF * CFrame.new(0.18 * fs, 1.1 + 0.2 * fs, 0) * CFrame.Angles(0, 0, math.rad(25)), C.Moss, nil, "Leaf")
 	for i = 0, 5 do
 		local ang = i * math.pi / 3
-		Art.part(m, "Ball", Vector3.new(0.4 * fs, 0.4 * fs, 0.4 * fs), stemTop * CFrame.new(math.cos(ang) * 0.3 * fs, 0, math.sin(ang) * 0.3 * fs), C.BertaPink, nil, "Petal")
+		Art.part(m, "Ball", Vector3.new(0.4 * fs, 0.4 * fs, 0.4 * fs), stemTop * CFrame.new(math.cos(ang) * 0.3 * fs, 0, math.sin(ang) * 0.3 * fs), pink, nil, "Petal")
 	end
 	Art.part(m, "Ball", Vector3.new(0.34 * fs, 0.34 * fs, 0.34 * fs), stemTop, Color3.fromRGB(240, 200, 70), Enum.Material.Neon, "FlowerCore")
 	anchorAll(m)
+	-- ростом примерно с Йозефа
+	m:ScaleTo(0.8)
 	return m
 end
 
@@ -1022,6 +1109,7 @@ local function default()
 		wins = 0,
 		endings = 0,
 		hintBook = false,
+		gfx = "sunset",
 	}
 end
 
@@ -1195,11 +1283,24 @@ function Josef.BuildMorph(character: Model, data: any)
 
 	-- ГОЛОВА: цилиндр + купол, огромные глаза
 	attach(morph, limb("Head"), function(f, cf)
-		Art.part(f, "Cyl", Vector3.new(0.34, 0.8, 0.34), cf * CFrame.new(0, -0.65, 0), dark, darkMat, "Neck")
-		Art.part(f, "Cyl", Vector3.new(1.6, 0.14, 1.6), cf * CFrame.new(0, -0.35, 0), dark, darkMat, "HeadRing")
+		-- телескопическая шея: три вложенных колена
+		Art.part(f, "Cyl", Vector3.new(0.3, 0.8, 0.3), cf * CFrame.new(0, -0.65, 0), dark, darkMat, "Neck")
+		for i = 0, 2 do
+			Art.part(f, "Cyl", Vector3.new(0.42 - i * 0.04, 0.08, 0.42 - i * 0.04), cf * CFrame.new(0, -0.95 + i * 0.2, 0), body, Enum.Material.Metal, "NeckRing")
+		end
+		Art.part(f, "Cyl", Vector3.new(1.62, 0.14, 1.62), cf * CFrame.new(0, -0.35, 0), dark, darkMat, "HeadRing")
 		Art.part(f, "Cyl", Vector3.new(1.5, 1.15, 1.5), cf * CFrame.new(0, 0.22, 0), body, mat, "HeadCan")
+		Art.part(f, "Cyl", Vector3.new(1.54, 0.08, 1.54), cf * CFrame.new(0, 0.78, 0), dark, darkMat, "DomeSeam")
 		Art.part(f, "Ball", Vector3.new(1.5, 1.5, 1.5), cf * CFrame.new(0, 0.8, 0), body, mat, "HeadDome")
-		Art.eyes(f, cf * CFrame.new(0, 0.35, 0), { size = 0.62, gap = 0.31, z = -0.76 })
+		-- заклёпки по шву купола
+		for i = 0, 11 do
+			local a = i / 12 * math.pi * 2
+			Art.part(f, "Ball", Vector3.new(0.1, 0.1, 0.1), cf * CFrame.new(math.sin(a) * 0.77, 0.78, math.cos(a) * 0.77), C.Brass, Enum.Material.Metal, "Rivet")
+		end
+		-- огромные глаза с оправой, бликом и тяжёлыми веками — фирменный взгляд Йозефа
+		Art.eyes(f, cf * CFrame.new(0, 0.35, 0), { size = 0.62, gap = 0.31, z = -0.76, lid = body, rim = dark })
+		-- «нос»-заклёпка между глаз
+		Art.part(f, "Ball", Vector3.new(0.14, 0.14, 0.14), cf * CFrame.new(0, 0.15, -0.78), C.Brass, Enum.Material.Metal, "Nose")
 		-- «рот»-решётка
 		for i = -1, 1 do
 			Art.part(f, "Block", Vector3.new(0.08, 0.2, 0.05), cf * CFrame.new(i * 0.14, -0.12, -0.76), C.Soot, nil, "Grill")
@@ -1246,7 +1347,21 @@ function Josef.BuildMorph(character: Model, data: any)
 	-- ТЕЛО-БАНКА с люком в животе
 	attach(morph, limb("UpperTorso"), function(f, cf)
 		Art.part(f, "Cyl", Vector3.new(1.9, 1.6, 1.9), cf * CFrame.new(0, -0.15, 0), body, mat, "BodyCan")
+		-- обручи корпуса-банки
+		for _, yy in { 0.6, -0.9 } do
+			Art.part(f, "Cyl", Vector3.new(1.98, 0.12, 1.98), cf * CFrame.new(0, yy, 0), dark, darkMat, "Hoop")
+		end
 		Art.part(f, "Cyl", Vector3.new(1.4, 0.22, 1.4), cf * CFrame.new(0, 0.72, 0), dark, darkMat, "Collar")
+		-- петли люка и болты по кругу
+		for _, yy in { 0.05, -0.55 } do
+			Art.part(f, "CylZ", Vector3.new(0.12, 0.12, 0.2), cf * CFrame.new(-0.5, yy, -0.96), dark, darkMat, "Hinge")
+		end
+		for i = 0, 7 do
+			local a = i / 8 * math.pi * 2
+			Art.part(f, "Ball", Vector3.new(0.08, 0.08, 0.08), cf * CFrame.new(math.sin(a) * 0.52, -0.25 + math.cos(a) * 0.52, -1.0), dark, darkMat, "HatchBolt")
+		end
+		-- заплатка на боку
+		Art.part(f, "Block", Vector3.new(0.05, 0.45, 0.55), cf * CFrame.new(0.96, -0.3, 0.2) * CFrame.Angles(0, 0, math.rad(6)), dark:Lerp(body, 0.4), Enum.Material.DiamondPlate, "Patch")
 		Art.part(f, "CylZ", Vector3.new(0.95, 0.95, 0.12), cf * CFrame.new(0, -0.25, -0.93), C.Brass, Enum.Material.Metal, "Hatch")
 		Art.part(f, "CylZ", Vector3.new(0.72, 0.72, 0.12), cf * CFrame.new(0, -0.25, -0.98), Color3.fromRGB(50, 40, 34), Enum.Material.Metal, "HatchIn")
 		Art.part(f, "Block", Vector3.new(0.12, 0.3, 0.12), cf * CFrame.new(0.42, -0.25, -1.02), C.Brass, Enum.Material.Metal, "HatchLatch")
@@ -1265,6 +1380,9 @@ function Josef.BuildMorph(character: Model, data: any)
 	end)
 	attach(morph, limb("LowerTorso"), function(f, cf)
 		Art.part(f, "Cyl", Vector3.new(1.55, 0.55, 1.55), cf * CFrame.new(0, 0.05, 0), dark, darkMat, "Hips")
+		for _, sx in { -1, 1 } do
+			Art.part(f, "Ball", Vector3.new(0.5, 0.5, 0.5), cf * CFrame.new(sx * 0.5, -0.25, 0), dark, darkMat, "HipJoint")
+		end
 	end)
 
 	-- РУКИ-трубочки (левой нет, пока не найдена на свалке)
@@ -1272,16 +1390,20 @@ function Josef.BuildMorph(character: Model, data: any)
 		local visible = side == "Right" or parts.arm
 		if visible then
 			attach(morph, limb(side .. "UpperArm"), function(f, cf)
-				Art.part(f, "Ball", Vector3.new(0.6, 0.6, 0.6), cf * CFrame.new(0, 0.4, 0), dark, darkMat, "Shoulder")
+				Art.part(f, "Ball", Vector3.new(0.62, 0.62, 0.62), cf * CFrame.new(0, 0.4, 0), dark, darkMat, "Shoulder")
+				Art.part(f, "Cyl", Vector3.new(0.7, 0.1, 0.7), cf * CFrame.new(0, 0.35, 0), body, Enum.Material.Metal, "ShoulderRing")
 				Art.part(f, "Cyl", Vector3.new(0.34, 1.1, 0.34), cf, body, mat, "UpperArm")
+				Art.part(f, "Cyl", Vector3.new(0.4, 0.08, 0.4), cf * CFrame.new(0, -0.2, 0), dark, darkMat, "ArmRing")
 			end)
 			attach(morph, limb(side .. "LowerArm"), function(f, cf)
 				Art.part(f, "Ball", Vector3.new(0.42, 0.42, 0.42), cf * CFrame.new(0, 0.45, 0), dark, darkMat, "Elbow")
 				Art.part(f, "Cyl", Vector3.new(0.3, 1.0, 0.3), cf, body, mat, "LowerArm")
 			end)
 			attach(morph, limb(side .. "Hand"), function(f, cf)
+				Art.part(f, "Cyl", Vector3.new(0.4, 0.16, 0.4), cf * CFrame.new(0, 0.12, 0), dark, darkMat, "Wrist")
 				for _, sx in { -1, 1 } do
-					Art.part(f, "Block", Vector3.new(0.14, 0.5, 0.3), cf * CFrame.new(sx * 0.13, -0.1, 0) * CFrame.Angles(0, 0, sx * math.rad(12)), dark, darkMat, "Claw")
+					Art.part(f, "Block", Vector3.new(0.14, 0.32, 0.3), cf * CFrame.new(sx * 0.12, -0.05, 0) * CFrame.Angles(0, 0, sx * math.rad(12)), dark, darkMat, "Claw")
+					Art.part(f, "Block", Vector3.new(0.12, 0.26, 0.26), cf * CFrame.new(sx * 0.16, -0.3, 0) * CFrame.Angles(0, 0, sx * math.rad(-18)), dark, darkMat, "ClawTip")
 				end
 			end)
 		end
@@ -1293,13 +1415,18 @@ function Josef.BuildMorph(character: Model, data: any)
 		if visible then
 			attach(morph, limb(side .. "UpperLeg"), function(f, cf)
 				Art.part(f, "Cyl", Vector3.new(0.38, 1.2, 0.38), cf, body, mat, "UpperLeg")
+				Art.part(f, "Cyl", Vector3.new(0.46, 0.08, 0.46), cf * CFrame.new(0, 0.2, 0), dark, darkMat, "LegRing")
 			end)
 			attach(morph, limb(side .. "LowerLeg"), function(f, cf)
 				Art.part(f, "Ball", Vector3.new(0.5, 0.5, 0.5), cf * CFrame.new(0, 0.55, 0), dark, darkMat, "Knee")
 				Art.part(f, "Cyl", Vector3.new(0.32, 1.2, 0.32), cf, body, mat, "LowerLeg")
 			end)
 			attach(morph, limb(side .. "Foot"), function(f, cf)
-				Art.part(f, "Block", Vector3.new(0.85, 0.34, 1.25), cf * CFrame.new(0, -0.02, -0.15), dark, darkMat, "Foot")
+				-- круглая пятка + носок-«калоша»
+				Art.part(f, "Cyl", Vector3.new(0.8, 0.34, 0.8), cf * CFrame.new(0, -0.02, 0.1), dark, darkMat, "Heel")
+				Art.part(f, "Block", Vector3.new(0.78, 0.32, 0.7), cf * CFrame.new(0, -0.03, -0.35), dark, darkMat, "Foot")
+				Art.part(f, "CylX", Vector3.new(0.78, 0.32, 0.32), cf * CFrame.new(0, -0.03, -0.7), dark, darkMat, "ToeCap")
+				Art.part(f, "Cyl", Vector3.new(0.5, 0.1, 0.5), cf * CFrame.new(0, 0.18, 0.05), body, Enum.Material.Metal, "Ankle")
 			end)
 		else
 			-- временная «ходуля» вместо ноги
@@ -2426,6 +2553,14 @@ handlers.Egg = function(player, data, s, id)
 	return false
 end
 
+handlers.SetGfx = function(player, data, s, id)
+	if type(id) == "string" and #id <= 16 then
+		data.gfx = id
+		return true
+	end
+	return false
+end
+
 handlers.HintBook = function(player, data, s)
 	if not data.hintBook then
 		data.hintBook = true
@@ -2661,7 +2796,7 @@ function NPC.SpawnBerta(player: Player, data: any)
 	-- табличка с именем
 	local bb = Instance.new("BillboardGui")
 	bb.Size = UDim2.fromOffset(160, 26)
-	bb.StudsOffsetWorldSpace = Vector3.new(0, 7.2, 0)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, 6.3, 0)
 	bb.AlwaysOnTop = false
 	bb.MaxDistance = 60
 	bb.Adornee = model.PrimaryPart
@@ -2995,7 +3130,62 @@ local houseColors = {
 	Color3.fromRGB(120, 84, 56),
 }
 
--- Дом: коробка с окнами, трубами, крышей. face — направление фасада (градусы по Y).
+local function smokeOn(part: BasePart, rate: number?, color: Color3?)
+	local smoke = Instance.new("ParticleEmitter")
+	smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	smoke.Rate = rate or 2
+	smoke.Lifetime = NumberRange.new(4, 6)
+	smoke.Speed = NumberRange.new(2, 3)
+	smoke.Size = NumberSequence.new(1, 5)
+	smoke.Transparency = NumberSequence.new(0.6, 1)
+	smoke.Color = ColorSequence.new(color or Color3.fromRGB(120, 110, 100))
+	smoke.EmissionDirection = Enum.NormalId.Right
+	smoke.LightInfluence = 1
+	smoke.Parent = part
+	return smoke
+end
+
+-- Окно: рама, переплёт, подоконник, иногда ставни и ящик с цветами
+local function window(m: Instance, cf: CFrame, lit: boolean, withLight: boolean)
+	local frameC = C.RustDark
+	for _, k in { -1, 1 } do
+		box(m, Vector3.new(0.25, 3.2, 0.35), cf * CFrame.new(k * 1.2, 0, -0.1), frameC, Enum.Material.Metal, "Frame")
+		box(m, Vector3.new(2.65, 0.25, 0.35), cf * CFrame.new(0, k * 1.5, -0.1), frameC, Enum.Material.Metal, "Frame")
+	end
+	local pane = box(m, Vector3.new(2.2, 2.8, 0.12), cf, if lit then C.WarmLight else Color3.fromRGB(40, 48, 54), if lit then Enum.Material.Neon else Enum.Material.Glass, "Window")
+	pane.CanCollide = false
+	if not lit then
+		pane.Reflectance = 0.25
+	end
+	box(m, Vector3.new(0.12, 2.8, 0.2), cf * CFrame.new(0, 0, -0.08), frameC, Enum.Material.Metal, "Mullion").CanCollide = false
+	box(m, Vector3.new(2.2, 0.12, 0.2), cf * CFrame.new(0, 0.3, -0.08), frameC, Enum.Material.Metal, "Mullion").CanCollide = false
+	box(m, Vector3.new(3, 0.3, 0.6), cf * CFrame.new(0, -1.6, -0.25), C.RustDark, Enum.Material.Metal, "Sill")
+	local r = rng:NextNumber()
+	if r < 0.3 then
+		for _, k in { -1, 1 } do
+			local sh = box(m, Vector3.new(1.1, 2.9, 0.15), cf * CFrame.new(k * 1.9, 0, -0.2) * CFrame.Angles(0, k * math.rad(25), 0), Color3.fromRGB(90, 110, 100), Enum.Material.WoodPlanks, "Shutter")
+			sh.CanCollide = false
+		end
+	elseif r < 0.45 then
+		box(m, Vector3.new(2.6, 0.5, 0.6), cf * CFrame.new(0, -1.35, -0.55), C.RustLight, Enum.Material.WoodPlanks, "FlowerBox")
+		for i = -1, 1 do
+			ball(m, 0.5, cf * CFrame.new(i * 0.8, -0.95, -0.55), if i == 0 then C.BertaPink else C.Moss, Enum.Material.Grass, "Plant").CanCollide = false
+		end
+	end
+	if lit and withLight then
+		local sl = Instance.new("SurfaceLight")
+		sl.Face = Enum.NormalId.Front
+		sl.Range = 14
+		sl.Angle = 110
+		sl.Brightness = 1.2
+		sl.Color = C.WarmLight
+		sl.Shadows = true
+		sl.Parent = pane
+	end
+end
+
+-- Дом с деталями: цоколь, пояса этажей, углы, рамы окон, ставни, балконы,
+-- дверь с фонарём, водостоки, щиток, бак или скатная крыша, антенны.
 local function house(parent: Instance, pos: Vector3, w: number, d: number, h: number, face: number?, opts: any?)
 	opts = opts or {}
 	local m = Instance.new("Model")
@@ -3003,46 +3193,228 @@ local function house(parent: Instance, pos: Vector3, w: number, d: number, h: nu
 	m.Parent = parent
 	local cf = CFrame.new(pos) * CFrame.Angles(0, math.rad(face or 0), 0)
 	local col = opts.color or houseColors[rng:NextInteger(1, #houseColors)]
+	local trim = col:Lerp(Color3.new(0, 0, 0), 0.35)
 	box(m, Vector3.new(w, h, d), cf * CFrame.new(0, h / 2, 0), col, opts.material or Enum.Material.CorrodedMetal, "Walls")
-	-- карниз
-	box(m, Vector3.new(w + 1, 0.8, d + 1), cf * CFrame.new(0, h + 0.4, 0), C.RustDark, Enum.Material.Metal, "Roof")
-	-- окна на фасаде (-Z) и сзади
+	-- цоколь
+	box(m, Vector3.new(w + 0.6, 1.4, d + 0.6), cf * CFrame.new(0, 0.7, 0), Color3.fromRGB(80, 72, 64), Enum.Material.Brick, "Plinth")
+	-- угловые пилястры
+	for _, cx in { -1, 1 } do
+		for _, cz in { -1, 1 } do
+			box(m, Vector3.new(0.9, h, 0.9), cf * CFrame.new(cx * w / 2, h / 2, cz * d / 2), trim, Enum.Material.Metal, "Corner")
+		end
+	end
 	local floors = math.max(1, math.floor(h / 7))
+	local fh = h / floors
+	-- межэтажные пояса
+	for f = 1, floors - 1 do
+		box(m, Vector3.new(w + 0.4, 0.5, d + 0.4), cf * CFrame.new(0, f * fh, 0), trim, Enum.Material.Metal, "FloorBand")
+	end
+	-- карниз + парапет
+	box(m, Vector3.new(w + 1.2, 0.8, d + 1.2), cf * CFrame.new(0, h + 0.4, 0), C.RustDark, Enum.Material.Metal, "Roof")
+	for _, k in { -1, 1 } do
+		box(m, Vector3.new(w + 1.2, 1, 0.4), cf * CFrame.new(0, h + 1.3, k * (d / 2 + 0.4)), trim, Enum.Material.Metal, "Parapet")
+		box(m, Vector3.new(0.4, 1, d + 1.2), cf * CFrame.new(k * (w / 2 + 0.4), h + 1.3, 0), trim, Enum.Material.Metal, "Parapet")
+	end
+	-- окна на фасаде (-Z)
 	local cols = math.max(1, math.floor(w / 6))
+	local lightsLeft = 1
 	for f = 1, floors do
 		for cIdx = 1, cols do
 			local x = -w / 2 + (cIdx - 0.5) * (w / cols)
-			local y = (f - 0.5) * (h / floors) + 1
+			local y = (f - 0.5) * fh + 1
 			if not (f == 1 and cIdx == math.ceil(cols / 2) and opts.door ~= false) then
-				local lit = rng:NextNumber() < 0.55
-				local win = box(m, Vector3.new(2.2, 2.8, 0.2), cf * CFrame.new(x, y, -d / 2 - 0.1), if lit then C.WarmLight else Color3.fromRGB(40, 44, 48), if lit then Enum.Material.Neon else Enum.Material.Glass, "Window")
-				win.CanCollide = false
-				box(m, Vector3.new(2.8, 0.3, 0.5), cf * CFrame.new(x, y - 1.55, -d / 2 - 0.2), C.RustDark, Enum.Material.Metal, "Sill")
+				local lit = rng:NextNumber() < 0.5
+				local withLight = lit and lightsLeft > 0 and f == 1
+				if withLight then
+					lightsLeft -= 1
+				end
+				window(m, cf * CFrame.new(x, y, -d / 2 - 0.12), lit, withLight)
+			end
+		end
+		-- балкон
+		if f >= 2 and rng:NextNumber() < 0.35 then
+			local bx = -w / 2 + (rng:NextInteger(1, cols) - 0.5) * (w / cols)
+			local by = (f - 1) * fh + 0.3
+			box(m, Vector3.new(4.2, 0.4, 2), cf * CFrame.new(bx, by, -d / 2 - 1), C.IronDark, Enum.Material.DiamondPlate, "Balcony")
+			for i = 0, 6 do
+				cyl(m, 0.14, 1.4, cf * CFrame.new(bx - 2 + i * 0.66, by + 0.9, -d / 2 - 1.9), C.IronDark, Enum.Material.Metal, "Baluster").CanCollide = false
+			end
+			box(m, Vector3.new(4.2, 0.16, 0.16), cf * CFrame.new(bx, by + 1.6, -d / 2 - 1.95), C.Brass, Enum.Material.Metal, "Rail")
+			for _, k in { -1, 1 } do
+				wedge(m, Vector3.new(0.3, 0.8, 1.6), cf * CFrame.new(bx + k * 1.8, by - 0.6, -d / 2 - 0.8) * CFrame.Angles(0, math.pi, 0), C.IronDark, Enum.Material.Metal)
 			end
 		end
 	end
 	if opts.door ~= false then
-		box(m, Vector3.new(3, 5, 0.3), cf * CFrame.new(0, 2.5, -d / 2 - 0.15), C.RustDark, Enum.Material.Wood, "FrontDoor")
+		local dcf = cf * CFrame.new(0, 0, -d / 2)
+		box(m, Vector3.new(4, 6, 0.4), dcf * CFrame.new(0, 3, -0.1), trim, Enum.Material.Metal, "DoorFrame")
+		box(m, Vector3.new(3, 5, 0.3), dcf * CFrame.new(0, 2.6, -0.3), C.RustDark, Enum.Material.WoodPlanks, "FrontDoor")
+		for _, yy in { 1.6, 3.6 } do
+			box(m, Vector3.new(2.2, 1.4, 0.1), dcf * CFrame.new(0, yy, -0.48), C.RustDark:Lerp(Color3.new(0, 0, 0), 0.25), Enum.Material.Wood, "DoorPanel")
+		end
+		ball(m, 0.3, dcf * CFrame.new(1, 2.6, -0.55), C.Brass, Enum.Material.Metal, "Knob")
+		box(m, Vector3.new(4.4, 0.4, 1.6), dcf * CFrame.new(0, 0.2, -0.9), Color3.fromRGB(90, 84, 76), Enum.Material.Concrete, "Step")
+		-- козырёк и фонарь над дверью
+		wedge(m, Vector3.new(4.6, 0.8, 1.4), dcf * CFrame.new(0, 6.4, -0.8) * CFrame.Angles(0, math.pi, 0), C.Rust, Enum.Material.CorrodedMetal)
+		local lamp = ball(m, 0.6, dcf * CFrame.new(1.8, 5.2, -0.5), C.WarmLight, Enum.Material.Neon, "DoorLamp")
+		lamp.CanCollide = false
+		local pl = light(lamp, 16, 1.1)
+		pl.Shadows = true
 	end
-	-- трубы и дымоходы
+	-- дымоход с дымом
 	if opts.chimney ~= false then
 		local chim = cyl(m, 1.4, 4, cf * CFrame.new(w * 0.3, h + 2.5, d * 0.2), C.IronDark, Enum.Material.Metal, "Chimney")
+		cyl(m, 1.8, 0.4, cf * CFrame.new(w * 0.3, h + 4.6, d * 0.2), C.RustDark, Enum.Material.Metal, "ChimneyCap")
 		if rng:NextNumber() < 0.5 then
-			local smoke = Instance.new("ParticleEmitter")
-			smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
-			smoke.Rate = 2
-			smoke.Lifetime = NumberRange.new(4, 6)
-			smoke.Speed = NumberRange.new(2, 3)
-			smoke.Size = NumberSequence.new(1, 5)
-			smoke.Transparency = NumberSequence.new(0.6, 1)
-			smoke.Color = ColorSequence.new(Color3.fromRGB(120, 110, 100))
-			smoke.EmissionDirection = Enum.NormalId.Right
-			smoke.Parent = chim
+			smokeOn(chim)
 		end
 	end
-	-- водосточная труба сбоку
-	cyl(m, 0.6, h, cf * CFrame.new(w / 2 + 0.4, h / 2, -d / 2 + 1), C.Iron, Enum.Material.Metal, "Pipe")
+	-- крыша: бак с водой или скатная кровля
+	local roofKind = opts.roof or (if rng:NextNumber() < 0.5 then "tank" else "pitched")
+	if roofKind == "tank" and w > 12 then
+		local tp = cf * CFrame.new(-w * 0.25, h + 0.8, -d * 0.1)
+		for _, cx in { -1, 1 } do
+			for _, cz in { -1, 1 } do
+				cyl(m, 0.3, 3, tp * CFrame.new(cx * 1.4, 1.5, cz * 1.4), C.IronDark, Enum.Material.Metal, "TankLeg")
+			end
+		end
+		cyl(m, 4, 3.5, tp * CFrame.new(0, 4.6, 0), Color3.fromRGB(120, 90, 60), Enum.Material.WoodPlanks, "RoofTank")
+		for _, yy in { 3.3, 5.9 } do
+			cyl(m, 4.1, 0.15, tp * CFrame.new(0, yy, 0), C.IronDark, Enum.Material.Metal, "TankHoop")
+		end
+		wedge(m, Vector3.new(4, 1, 2), tp * CFrame.new(0, 6.85, -1), C.RustDark, Enum.Material.CorrodedMetal)
+		wedge(m, Vector3.new(4, 1, 2), tp * CFrame.new(0, 6.85, 1) * CFrame.Angles(0, math.pi, 0), C.RustDark, Enum.Material.CorrodedMetal)
+	elseif roofKind == "pitched" then
+		local rh = math.min(6, d * 0.35)
+		for _, k in { -1, 1 } do
+			wedge(m, Vector3.new(w + 1, rh, d / 2 + 0.6), cf * CFrame.new(0, h + 0.8 + rh / 2, k * (d / 4 + 0.3)) * CFrame.Angles(0, if k < 0 then math.pi else 0, 0), C.Rust:Lerp(col, 0.3), Enum.Material.CorrodedMetal)
+		end
+		-- слуховое окошко
+		local dw = cf * CFrame.new(0, h + 0.8 + rh * 0.35, -d / 4)
+		box(m, Vector3.new(2.4, 2, 1.5), dw, col, Enum.Material.CorrodedMetal, "Dormer")
+		box(m, Vector3.new(1.4, 1.2, 0.1), dw * CFrame.new(0, 0, -0.78), C.WarmLight, Enum.Material.Neon, "DormerWindow")
+	end
+	-- антенна
+	if rng:NextNumber() < 0.5 then
+		local ap = cf * CFrame.new(w * 0.35, h + 0.8, -d * 0.3)
+		cyl(m, 0.16, 5, ap * CFrame.new(0, 2.5, 0), C.IronDark, Enum.Material.Metal, "Antenna")
+		for i = 1, 3 do
+			box(m, Vector3.new(2.4 - i * 0.5, 0.1, 0.1), ap * CFrame.new(0, 2.5 + i * 0.8, 0), C.IronDark, Enum.Material.Metal, "AntennaBar")
+		end
+	end
+	-- водосток с хомутами и воронкой
+	local px = w / 2 + 0.5
+	cyl(m, 0.6, h, cf * CFrame.new(px, h / 2, -d / 2 + 1), C.Iron, Enum.Material.Metal, "Pipe")
+	cyl(m, 1.1, 0.8, cf * CFrame.new(px, h - 0.3, -d / 2 + 1), C.Iron, Enum.Material.Metal, "Funnel")
+	for yy = 3, h - 2, 4 do
+		cyl(m, 0.8, 0.2, cf * CFrame.new(px, yy, -d / 2 + 1), C.IronDark, Enum.Material.Metal, "Bracket")
+	end
+	-- электрощиток и труба с вентилем
+	if rng:NextNumber() < 0.6 then
+		local fb = box(m, Vector3.new(1.6, 2, 0.5), cf * CFrame.new(-w / 2 + 2, 4, -d / 2 - 0.3), Color3.fromRGB(90, 100, 96), Enum.Material.Metal, "FuseBox")
+		local _ = fb
+		ball(m, 0.25, cf * CFrame.new(-w / 2 + 2.4, 4.6, -d / 2 - 0.6), Color3.fromRGB(255, 80, 60), Enum.Material.Neon, "FuseLamp").CanCollide = false
+	end
+	if rng:NextNumber() < 0.5 then
+		local py = rng:NextNumber(2.5, math.max(3, h - 4))
+		Art.part(m, "CylX", Vector3.new(w, 0.5, 0.5), cf * CFrame.new(0, py, -d / 2 - 0.5), C.Iron, Enum.Material.Metal, "WallPipe").Anchored = true
+		local vcf = cf * CFrame.new(w * 0.2, py, -d / 2 - 0.9)
+		Art.part(m, "CylZ", Vector3.new(1.1, 1.1, 0.12), vcf, Color3.fromRGB(180, 50, 40), Enum.Material.Metal, "Valve").Anchored = true
+		cyl(m, 0.3, 0.6, vcf * CFrame.Angles(math.rad(90), 0, 0) * CFrame.new(0, 0.2, 0), C.IronDark, Enum.Material.Metal, "ValveStem")
+	end
 	return m, cf
+end
+
+-- Уличный фонарь: основание, столб с кольцами, кронштейн, фонарь со стеклом и тенями
+local function streetLamp(parent: Instance, pos: Vector3, faceDir: number?)
+	local cf = CFrame.new(pos) * CFrame.Angles(0, math.rad(faceDir or 0), 0)
+	cyl(parent, 1.4, 0.8, cf * CFrame.new(0, 0.4, 0), C.IronDark, Enum.Material.Metal, "LampBase")
+	cyl(parent, 1.0, 0.6, cf * CFrame.new(0, 1.1, 0), C.IronDark, Enum.Material.Metal, "LampBase")
+	cyl(parent, 0.45, 11, cf * CFrame.new(0, 6, 0), C.IronDark, Enum.Material.Metal, "LampPost")
+	for _, yy in { 3, 7, 10.5 } do
+		cyl(parent, 0.7, 0.25, cf * CFrame.new(0, yy, 0), C.Brass, Enum.Material.Metal, "PostRing")
+	end
+	box(parent, Vector3.new(0.3, 0.3, 2.6), cf * CFrame.new(0, 11.2, -1.2), C.IronDark, Enum.Material.Metal, "Arm")
+	wedge(parent, Vector3.new(0.25, 1.2, 1.2), cf * CFrame.new(0, 10.4, -0.7) * CFrame.Angles(0, math.pi, math.pi), C.IronDark, Enum.Material.Metal)
+	local head = cf * CFrame.new(0, 10.4, -2.4)
+	cyl(parent, 1.6, 0.3, head * CFrame.new(0, 0.95, 0), C.IronDark, Enum.Material.Metal, "LampCap")
+	ball(parent, 0.5, head * CFrame.new(0, 1.3, 0), C.Brass, Enum.Material.Metal, "LampFinial")
+	local glass = cyl(parent, 1.2, 1.5, head, Color3.fromRGB(255, 230, 180), Enum.Material.Glass, "LampGlass")
+	glass.Transparency = 0.5
+	glass.CanCollide = false
+	local bulb = ball(parent, 0.7, head, C.WarmLight, Enum.Material.Neon, "Lamp")
+	bulb.CanCollide = false
+	local pl = light(bulb, 26, 1.4)
+	pl.Shadows = true
+	return bulb
+end
+
+-- Уличный хлам: бочки, ящики, люки, лужи, провода с лампочками
+local function barrel(parent: Instance, pos: Vector3)
+	local c = if rng:NextNumber() < 0.5 then Color3.fromRGB(120, 60, 40) else Color3.fromRGB(70, 90, 80)
+	cyl(parent, 2, 2.8, CFrame.new(pos + Vector3.new(0, 1.4, 0)), c, Enum.Material.CorrodedMetal, "Barrel")
+	for _, yy in { 0.5, 1.4, 2.3 } do
+		cyl(parent, 2.08, 0.14, CFrame.new(pos + Vector3.new(0, yy, 0)), C.IronDark, Enum.Material.Metal, "BarrelHoop")
+	end
+end
+
+local function crate(parent: Instance, pos: Vector3, size: number?)
+	local sz = size or 2.4
+	local cf = CFrame.new(pos + Vector3.new(0, sz / 2, 0)) * CFrame.Angles(0, rng:NextNumber(0, 1.5), 0)
+	box(parent, Vector3.new(sz, sz, sz), cf, Color3.fromRGB(150, 110, 70), Enum.Material.WoodPlanks, "Crate")
+	for _, k in { -1, 1 } do
+		box(parent, Vector3.new(sz + 0.1, 0.25, 0.25), cf * CFrame.new(0, k * (sz / 2 - 0.12), -sz / 2), Color3.fromRGB(110, 78, 48), Enum.Material.Wood, "CrateEdge")
+	end
+	box(parent, Vector3.new(0.25, sz * 1.3, 0.1), cf * CFrame.new(0, 0, -sz / 2 - 0.02) * CFrame.Angles(0, 0, math.rad(45)), Color3.fromRGB(110, 78, 48), Enum.Material.Wood, "CrateBrace")
+end
+
+local function puddle(parent: Instance, pos: Vector3, d: number)
+	local p = cyl(parent, d, 0.06, CFrame.new(pos + Vector3.new(0, 0.44, 0)), Color3.fromRGB(40, 44, 42), Enum.Material.Glass, "Puddle")
+	p.Reflectance = 0.45
+	p.Transparency = 0.15
+	p.CanCollide = false
+end
+
+local function manhole(parent: Instance, pos: Vector3)
+	cyl(parent, 3, 0.1, CFrame.new(pos + Vector3.new(0, 0.44, 0)), C.IronDark, Enum.Material.DiamondPlate, "Manhole")
+	local grate = box(parent, Vector3.new(2, 0.05, 2), CFrame.new(pos + Vector3.new(0, 0.5, 0)), C.Soot, Enum.Material.Metal, "Grate")
+	grate.CanCollide = false
+	local steam = Instance.new("ParticleEmitter")
+	steam.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	steam.Rate = 4
+	steam.Lifetime = NumberRange.new(2, 3.5)
+	steam.Speed = NumberRange.new(2, 4)
+	steam.Size = NumberSequence.new(1, 4)
+	steam.Transparency = NumberSequence.new(0.55, 1)
+	steam.Color = ColorSequence.new(Color3.fromRGB(230, 220, 205))
+	steam.EmissionDirection = Enum.NormalId.Top
+	steam.Parent = grate
+end
+
+-- провод с лампочками между двумя точками (провисает)
+local function wireWithBulbs(parent: Instance, a: Vector3, b: Vector3, bulbs: number)
+	local segs = 10
+	local sag = (b - a).Magnitude * 0.08
+	local prev = a
+	for i = 1, segs do
+		local t = i / segs
+		local p = a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * sag, 0)
+		local mid = (prev + p) / 2
+		local seg = box(parent, Vector3.new(0.08, 0.08, (p - prev).Magnitude), CFrame.lookAt(mid, p), C.Soot, Enum.Material.Metal, "Wire")
+		seg.CanCollide = false
+		seg.CastShadow = false
+		prev = p
+	end
+	for i = 1, bulbs do
+		local t = i / (bulbs + 1)
+		local p = a:Lerp(b, t) - Vector3.new(0, math.sin(t * math.pi) * sag + 0.4, 0)
+		local bulb = ball(parent, 0.5, CFrame.new(p), if i % 3 == 0 then Color3.fromRGB(255, 140, 110) else C.WarmLight, Enum.Material.Neon, "Bulb")
+		bulb.CanCollide = false
+		bulb.CastShadow = false
+		if i % 3 == 1 then
+			light(bulb, 10, 0.6)
+		end
+	end
 end
 
 ----------------------------------------------------------------------
@@ -3054,8 +3426,10 @@ local function setupLighting()
 	Lighting.Brightness = 2.2
 	Lighting.Ambient = Color3.fromRGB(90, 70, 55)
 	Lighting.OutdoorAmbient = Color3.fromRGB(150, 120, 90)
-	Lighting.EnvironmentDiffuseScale = 0.5
-	Lighting.EnvironmentSpecularScale = 0.6
+	Lighting.EnvironmentDiffuseScale = 1
+	Lighting.EnvironmentSpecularScale = 1
+	Lighting.ShadowSoftness = 0.15
+	Lighting.ExposureCompensation = 0.1
 	Lighting.GlobalShadows = true
 	for _, c in Lighting:GetChildren() do
 		if c:IsA("PostEffect") or c:IsA("Atmosphere") or c:IsA("Sky") then
@@ -3082,9 +3456,28 @@ local function setupLighting()
 	bloom.Threshold = 1.6
 	bloom.Parent = Lighting
 	local rays = Instance.new("SunRaysEffect")
-	rays.Intensity = 0.06
-	rays.Spread = 0.6
+	rays.Intensity = 0.08
+	rays.Spread = 0.7
 	rays.Parent = Lighting
+	local dof = Instance.new("DepthOfFieldEffect")
+	dof.FarIntensity = 0.18
+	dof.FocusDistance = 40
+	dof.InFocusRadius = 60
+	dof.NearIntensity = 0
+	dof.Parent = Lighting
+	-- облака над городом
+	local terrain = workspace:FindFirstChildOfClass("Terrain")
+	if terrain then
+		local old = terrain:FindFirstChildOfClass("Clouds")
+		if old then
+			old:Destroy()
+		end
+		local clouds = Instance.new("Clouds")
+		clouds.Cover = 0.55
+		clouds.Density = 0.6
+		clouds.Color = Color3.fromRGB(255, 214, 170)
+		clouds.Parent = terrain
+	end
 end
 
 ----------------------------------------------------------------------
@@ -3357,11 +3750,28 @@ local function buildLowtown()
 	-- фонари вдоль улицы
 	for z = 120, 230, 22 do
 		for _, x in { -16, 16 } do
-			cyl(L, 0.5, 10, CFrame.new(x, 5, z), C.IronDark, Enum.Material.Metal, "LampPost")
-			local lamp = ball(L, 1.3, CFrame.new(x, 10.5, z), C.WarmLight, Enum.Material.Neon, "Lamp")
-			light(lamp, 22, 1.2)
+			streetLamp(L, Vector3.new(x, 0.4, z), if x < 0 then -90 else 90)
 		end
 	end
+	-- гирлянды-провода через улицу
+	for _, z in { 125, 135, 215, 222, 229 } do
+		wireWithBulbs(L, Vector3.new(-27, 14, z), Vector3.new(27, 14.5, z), 7)
+	end
+	for _, z in { 164, 186, 208 } do
+		wireWithBulbs(L, Vector3.new(-16, 11.5, z), Vector3.new(16, 11.5, z + 0.1), 5)
+	end
+	-- уличный хлам
+	for _, bp in { Vector3.new(-22, 0.4, 145), Vector3.new(-23, 0.4, 148), Vector3.new(22, 0.4, 200), Vector3.new(24, 0.4, 204), Vector3.new(-40, 0.4, 170), Vector3.new(45, 0.4, 150) } do
+		barrel(L, bp)
+	end
+	for _, cp in { Vector3.new(21, 0.4, 150), Vector3.new(22, 0.4, 153), Vector3.new(-21, 0.4, 190), Vector3.new(-50, 0.4, 150), Vector3.new(70, 0.4, 168) } do
+		crate(L, cp)
+	end
+	for _, pp in { Vector3.new(-6, 0, 150), Vector3.new(8, 0, 195), Vector3.new(-30, 0, 162), Vector3.new(40, 0, 158) } do
+		puddle(L, pp, rng:NextNumber(3, 6))
+	end
+	manhole(L, Vector3.new(4, 0, 176))
+	manhole(L, Vector3.new(-60, 0, 160 - 12))
 
 	-- арест-зона сразу за воротами
 	local arrest = box(L, Vector3.new(30, 12, 8), Vector3.new(0, 6, 226), C.Brass, Enum.Material.Neon, "ArrestZone")
@@ -3546,6 +3956,22 @@ local function buildCanal()
 	end
 	-- паяльная мастерская у моста (декор) и факты
 	house(K, Vector3.new(-50, 0, 80), 16, 12, 12, 0, { name = "SolderingWorks" })
+	-- искры сварки у мастерской
+	local weld = box(K, Vector3.new(1.2, 1.2, 1.2), Vector3.new(-44, 1.2, 72.5), C.IronDark, Enum.Material.Metal, "Anvil")
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparks.Rate = 25
+	sparks.Lifetime = NumberRange.new(0.3, 0.7)
+	sparks.Speed = NumberRange.new(6, 12)
+	sparks.SpreadAngle = Vector2.new(60, 60)
+	sparks.Acceleration = Vector3.new(0, -40, 0)
+	sparks.Size = NumberSequence.new(0.25, 0)
+	sparks.LightEmission = 1
+	sparks.Color = ColorSequence.new(Color3.fromRGB(255, 220, 120), Color3.fromRGB(255, 120, 40))
+	sparks.EmissionDirection = Enum.NormalId.Top
+	sparks.Parent = weld
+	local flash = light(weld, 12, 2, Color3.fromRGB(150, 200, 255))
+	flash.Shadows = true
 	factTerminal("f21", Vector3.new(18, 0.4, 88), 180)
 	-- мостик-прыжки через канал (паркур)
 	for i = 0, 3 do
@@ -3744,9 +4170,19 @@ local function buildSquare()
 	for i = 0, 7 do
 		local a = i / 8 * math.pi * 2
 		local p = fc + Vector3.new(math.cos(a) * 30, 0, math.sin(a) * 30)
-		cyl(S, 0.5, 11, CFrame.new(p + Vector3.new(0, 5.5, 0)), C.IronDark, Enum.Material.Metal, "LampPost")
-		local lamp = ball(S, 1.4, CFrame.new(p + Vector3.new(0, 11.5, 0)), C.WarmLight, Enum.Material.Neon, "Lamp")
-		light(lamp, 24, 1.1)
+		streetLamp(S, p + Vector3.new(0, 0.4, 0), math.deg(math.atan2(math.cos(a), math.sin(a))))
+	end
+	-- детали площади
+	for _, pp in { Vector3.new(-18, 0, 70), Vector3.new(25, 0, 5), Vector3.new(-40, 0, 20), Vector3.new(50, 0, 60) } do
+		puddle(S, pp, rng:NextNumber(3, 7))
+	end
+	manhole(S, Vector3.new(-12, 0, 78))
+	manhole(S, Vector3.new(40, 0, 10))
+	for _, bp in { Vector3.new(78, 0.4, 20), Vector3.new(78, 0.4, 24), Vector3.new(80, 0.4, 42), Vector3.new(-78, 0.4, 62) } do
+		barrel(S, bp)
+	end
+	for _, cp in { Vector3.new(82, 0.4, 52), Vector3.new(84, 0.4, 55), Vector3.new(-70, 0.4, 8) } do
+		crate(S, cp)
 	end
 	for i = 0, 11 do
 		local a = i / 12 * math.pi * 2 + 0.2
@@ -3835,6 +4271,24 @@ local function buildGreenhouse()
 			ball(G, 0.8, CFrame.new(p + Vector3.new(0, h + 1, 0)), C.BertaPink, Enum.Material.SmoothPlastic, "Flower").CanCollide = false
 		end
 	end
+	-- светлячки в теплице
+	local glowHolder = box(G, Vector3.new(30, 8, 30), gc + Vector3.new(0, 5, 0), C.Moss, Enum.Material.Grass, "FireflyVolume")
+	glowHolder.Transparency = 1
+	glowHolder.CanCollide = false
+	glowHolder.CanQuery = false
+	glowHolder.CanTouch = false
+	local flies = Instance.new("ParticleEmitter")
+	flies.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	flies.Rate = 6
+	flies.Lifetime = NumberRange.new(4, 7)
+	flies.Speed = NumberRange.new(0.3, 1)
+	flies.SpreadAngle = Vector2.new(180, 180)
+	flies.Size = NumberSequence.new(0.35)
+	flies.LightEmission = 1
+	flies.Color = ColorSequence.new(Color3.fromRGB(220, 255, 140))
+	flies.Shape = Enum.ParticleEmitterShape.Box
+	flies.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	flies.Parent = glowHolder
 	-- цветок для Берты (особый, светящийся)
 	local fl = ball(G, 1.4, CFrame.new(gc + Vector3.new(-8, 4, 0)), Color3.fromRGB(255, 150, 190), Enum.Material.Neon, "BertaFlower")
 	cyl(G, 0.3, 4, CFrame.new(gc + Vector3.new(-8, 2, 0)), C.Moss, Enum.Material.Grass)
@@ -4212,7 +4666,7 @@ return World
 ]]></ProtectedString></Properties></Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="RBX00000014"><Properties><string name="Name">StarterPlayer</string><bool name="LoadCharacterAppearance">false</bool><bool name="CharacterUseJumpPower">true</bool><float name="CharacterJumpPower">50</float><float name="CameraMaxZoomDistance">60</float><token name="GameSettingsAvatar">1</token></Properties><Item class="StarterPlayerScripts" referent="RBX00000013"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="Folder" referent="RBX00000012"><Properties><string name="Name">MachinariumClient</string></Properties><Item class="LocalScript" referent="RBX0000000E"><Properties><string name="Name">Client</string><ProtectedString name="Source"><![CDATA[--!nonstrict
+<Item class="StarterPlayer" referent="RBX00000015"><Properties><string name="Name">StarterPlayer</string><bool name="LoadCharacterAppearance">false</bool><bool name="CharacterUseJumpPower">true</bool><float name="CharacterJumpPower">50</float><float name="CameraMaxZoomDistance">60</float><token name="GameSettingsAvatar">1</token></Properties><Item class="StarterPlayerScripts" referent="RBX00000014"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="Folder" referent="RBX00000013"><Properties><string name="Name">MachinariumClient</string></Properties><Item class="LocalScript" referent="RBX0000000E"><Properties><string name="Name">Client</string><ProtectedString name="Source"><![CDATA[--!nonstrict
 -- Machinarium для Roblox — клиент: HUD, магазины прокачки, энциклопедия,
 -- книга подсказок, телепорты, управление размером Йозефа.
 
@@ -4231,6 +4685,7 @@ local Request: RemoteFunction = Remotes:WaitForChild("Request")
 local UI = require(script.Parent:WaitForChild("UI"))
 local Effects = require(script.Parent:WaitForChild("Effects"))
 local Minigames = require(script.Parent:WaitForChild("Minigames"))
+local Graphics = require(script.Parent:WaitForChild("Graphics"))
 local C = Config.Colors
 
 local data = nil
@@ -4238,6 +4693,8 @@ local session = { dev = false }
 
 UI.Init()
 Effects.Init()
+Graphics.Init()
+local gfxApplied = false
 
 local function req(...)
 	local ok, a, b = pcall(Request.InvokeServer, Request, ...)
@@ -4303,13 +4760,13 @@ local barList = UI.list(bar, 8, true)
 barList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function barButton(text: string, color: Color3, order: number, fn)
-	local b = UI.button(bar, text, UDim2.fromOffset(118, 50), nil, color, fn)
+	local b = UI.button(bar, text, UDim2.fromOffset(108, 50), nil, color, fn)
 	b.TextSize = 17
 	b.LayoutOrder = order
 	return b
 end
 
-local openJosef, openBerta, openBook, openEncyclopedia, openTeleport, openDev
+local openJosef, openBerta, openBook, openEncyclopedia, openTeleport, openDev, openGraphics
 
 -- вытянуться / сжаться (повторное нажатие — вернуть обычный рост)
 local function toggleSize(want: string)
@@ -4344,7 +4801,10 @@ end)
 barButton("🗺️ Телепорт", Color3.fromRGB(90, 100, 130), 7, function()
 	openTeleport()
 end)
-local devBtn = barButton("🛠️ rebol", Color3.fromRGB(60, 60, 60), 8, function()
+barButton("🎨 Графика", Color3.fromRGB(130, 90, 130), 8, function()
+	openGraphics()
+end)
+local devBtn = barButton("🛠️ rebol", Color3.fromRGB(60, 60, 60), 9, function()
 	openDev()
 end)
 devBtn.Visible = false
@@ -4419,6 +4879,12 @@ local function onState(newData, newSession)
 	data = newData
 	session = newSession or session
 	if data then
+		if not gfxApplied then
+			gfxApplied = true
+			if data.gfx and data.gfx ~= "sunset" then
+				Graphics.Apply(data.gfx)
+			end
+		end
 		data.bolts = data.bolts or 0
 		setBolts(data.bolts)
 		updateQuest()
@@ -4656,6 +5122,29 @@ function openTeleport()
 		UI.closeWindow()
 	end)
 	r.LayoutOrder = 100
+end
+
+----------------------------------------------------------------------
+-- Окно: графика («шейдеры»)
+----------------------------------------------------------------------
+function openGraphics()
+	local _, content = UI.window("🎨 Графика и шейдеры", 560, 600)
+	local sc = UI.scroll(content, UDim2.fromScale(1, 1))
+	UI.list(sc, 8)
+	local h = UI.label(sc, "Выбери стиль картинки. Для самого красивого света в Studio включи <b>Lighting → Technology → Future</b> (в файле игры он уже включён).", UDim2.new(1, -10, 0, 52), nil, 16)
+	h.LayoutOrder = 0
+	for i, p in Graphics.Presets do
+		local active = Graphics.Current() == p.id
+		local row = UI.panel(sc, UDim2.new(1, -10, 0, 70), nil, if active then Color3.fromRGB(255, 226, 170) else Color3.fromRGB(245, 234, 208))
+		row.LayoutOrder = i
+		UI.label(row, "<b>" .. p.name .. "</b>" .. (if active then "  ✓" else ""), UDim2.new(1, -150, 0, 28), UDim2.fromOffset(12, 6), 20)
+		UI.label(row, p.desc, UDim2.new(1, -150, 0, 34), UDim2.fromOffset(12, 32), 15, Color3.fromRGB(110, 80, 60))
+		UI.button(row, if active then "Включено" else "Включить", UDim2.fromOffset(120, 44), UDim2.new(1, -130, 0, 13), if active then Color3.fromRGB(120, 120, 110) else Color3.fromRGB(130, 90, 130), function()
+			Graphics.Apply(p.id)
+			req("SetGfx", p.id)
+			openGraphics()
+		end)
+	end
 end
 
 ----------------------------------------------------------------------
@@ -5462,7 +5951,330 @@ end
 
 return Effects
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX00000010"><Properties><string name="Name">Minigames</string><ProtectedString name="Source"><![CDATA[--!nonstrict
+<Item class="ModuleScript" referent="RBX00000010"><Properties><string name="Name">Graphics</string><ProtectedString name="Source"><![CDATA[--!nonstrict
+-- Graphics: «шейдеры» Машинариума — пресеты пост-обработки Roblox
+-- (цветокоррекция, bloom, лучи солнца, глубина резкости, атмосфера, облака)
+-- плюс экранные эффекты: виньетка, кинополосы, мерцание плёнки, пыль в воздухе.
+-- Всё меняется только у этого игрока (локально).
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local Graphics = {}
+local player = Players.LocalPlayer
+
+export type Preset = {
+	id: string,
+	name: string,
+	desc: string,
+	clock: number,
+	brightness: number,
+	exposure: number,
+	ambient: Color3,
+	outdoor: Color3,
+	atmDensity: number,
+	atmHaze: number,
+	atmColor: Color3,
+	atmDecay: Color3,
+	tint: Color3,
+	saturation: number,
+	contrast: number,
+	ccBrightness: number,
+	bloom: number,
+	bloomSize: number,
+	bloomThreshold: number,
+	rays: number,
+	dofFar: number,
+	dofRadius: number,
+	clouds: number,
+	vignette: number,
+	letterbox: boolean,
+	flicker: boolean,
+	dust: boolean,
+	shadows: boolean,
+}
+
+Graphics.Presets = {
+	{
+		id = "sunset",
+		name = "🌅 Ржавый закат",
+		desc = "Тёплый вечер, лучи солнца, мягкая дымка — как на картинах из игры.",
+		clock = 17.4, brightness = 2.2, exposure = 0.1,
+		ambient = Color3.fromRGB(90, 70, 55), outdoor = Color3.fromRGB(150, 120, 90),
+		atmDensity = 0.36, atmHaze = 1.6, atmColor = Color3.fromRGB(210, 170, 120), atmDecay = Color3.fromRGB(120, 80, 50),
+		tint = Color3.fromRGB(255, 236, 205), saturation = -0.12, contrast = 0.1, ccBrightness = 0.02,
+		bloom = 0.7, bloomSize = 30, bloomThreshold = 1.4, rays = 0.1, dofFar = 0.2, dofRadius = 60,
+		clouds = 0.55, vignette = 0.35, letterbox = false, flicker = false, dust = true, shadows = true,
+	},
+	{
+		id = "cinema",
+		name = "🎬 Кино",
+		desc = "Контраст, сильная глубина резкости, кинополосы и виньетка.",
+		clock = 17.8, brightness = 2.4, exposure = 0,
+		ambient = Color3.fromRGB(70, 60, 55), outdoor = Color3.fromRGB(130, 110, 95),
+		atmDensity = 0.3, atmHaze = 1.2, atmColor = Color3.fromRGB(200, 160, 120), atmDecay = Color3.fromRGB(90, 60, 45),
+		tint = Color3.fromRGB(255, 232, 210), saturation = -0.05, contrast = 0.28, ccBrightness = -0.02,
+		bloom = 1.0, bloomSize = 40, bloomThreshold = 1.2, rays = 0.14, dofFar = 0.5, dofRadius = 30,
+		clouds = 0.5, vignette = 0.6, letterbox = true, flicker = false, dust = true, shadows = true,
+	},
+	{
+		id = "night",
+		name = "🌙 Ночной город",
+		desc = "Темно, горят фонари, окна и гирлянды. Лучше всего с освещением Future.",
+		clock = 21.3, brightness = 0.6, exposure = 0.35,
+		ambient = Color3.fromRGB(30, 34, 50), outdoor = Color3.fromRGB(50, 56, 80),
+		atmDensity = 0.42, atmHaze = 1.4, atmColor = Color3.fromRGB(70, 80, 110), atmDecay = Color3.fromRGB(40, 40, 60),
+		tint = Color3.fromRGB(215, 225, 255), saturation = -0.1, contrast = 0.15, ccBrightness = 0.03,
+		bloom = 1.4, bloomSize = 36, bloomThreshold = 0.9, rays = 0, dofFar = 0.15, dofRadius = 70,
+		clouds = 0.4, vignette = 0.45, letterbox = false, flicker = false, dust = true, shadows = true,
+	},
+	{
+		id = "fog",
+		name = "🌫️ Туман над свалкой",
+		desc = "Густая дымка, приглушённые цвета, дальние башни тонут в тумане.",
+		clock = 16.2, brightness = 1.6, exposure = 0.15,
+		ambient = Color3.fromRGB(100, 96, 90), outdoor = Color3.fromRGB(150, 145, 135),
+		atmDensity = 0.58, atmHaze = 3.2, atmColor = Color3.fromRGB(190, 185, 170), atmDecay = Color3.fromRGB(130, 120, 105),
+		tint = Color3.fromRGB(240, 238, 228), saturation = -0.35, contrast = 0.05, ccBrightness = 0.02,
+		bloom = 0.5, bloomSize = 44, bloomThreshold = 1.5, rays = 0.04, dofFar = 0.3, dofRadius = 45,
+		clouds = 0.85, vignette = 0.3, letterbox = false, flicker = false, dust = true, shadows = true,
+	},
+	{
+		id = "film",
+		name = "📽️ Старая плёнка",
+		desc = "Сепия, мерцание кадра и тёмные края — как старая кинохроника.",
+		clock = 15, brightness = 2, exposure = 0.05,
+		ambient = Color3.fromRGB(100, 90, 75), outdoor = Color3.fromRGB(150, 135, 110),
+		atmDensity = 0.3, atmHaze = 1.5, atmColor = Color3.fromRGB(200, 180, 150), atmDecay = Color3.fromRGB(110, 90, 70),
+		tint = Color3.fromRGB(255, 225, 175), saturation = -0.85, contrast = 0.3, ccBrightness = 0,
+		bloom = 0.6, bloomSize = 24, bloomThreshold = 1.4, rays = 0.05, dofFar = 0.25, dofRadius = 50,
+		clouds = 0.5, vignette = 0.8, letterbox = false, flicker = true, dust = true, shadows = true,
+	},
+	{
+		id = "vivid",
+		name = "🌈 Яркий день",
+		desc = "Сочные цвета, ясное небо, чёткие тени.",
+		clock = 13.5, brightness = 3, exposure = 0,
+		ambient = Color3.fromRGB(110, 100, 90), outdoor = Color3.fromRGB(170, 160, 150),
+		atmDensity = 0.22, atmHaze = 0.8, atmColor = Color3.fromRGB(200, 210, 230), atmDecay = Color3.fromRGB(100, 120, 150),
+		tint = Color3.fromRGB(255, 250, 240), saturation = 0.25, contrast = 0.12, ccBrightness = 0.03,
+		bloom = 0.4, bloomSize = 24, bloomThreshold = 1.8, rays = 0.06, dofFar = 0.08, dofRadius = 80,
+		clouds = 0.35, vignette = 0.15, letterbox = false, flicker = false, dust = false, shadows = true,
+	},
+	{
+		id = "low",
+		name = "⚡ Слабое устройство",
+		desc = "Почти всё выключено: максимум FPS на старых телефонах.",
+		clock = 17.4, brightness = 2.2, exposure = 0,
+		ambient = Color3.fromRGB(120, 100, 85), outdoor = Color3.fromRGB(160, 135, 110),
+		atmDensity = 0.25, atmHaze = 0.5, atmColor = Color3.fromRGB(210, 170, 120), atmDecay = Color3.fromRGB(120, 80, 50),
+		tint = Color3.fromRGB(255, 240, 220), saturation = -0.1, contrast = 0.05, ccBrightness = 0,
+		bloom = 0, bloomSize = 10, bloomThreshold = 3, rays = 0, dofFar = 0, dofRadius = 100,
+		clouds = 0, vignette = 0, letterbox = false, flicker = false, dust = false, shadows = false,
+	},
+}
+
+local current: any = nil
+local fx: { [string]: Instance } = {}
+local overlay: ScreenGui
+local vignetteFrames: { Frame } = {}
+local bars: { Frame } = {}
+local dustPart: BasePart? = nil
+
+local function effect(className: string): any
+	local e = fx[className]
+	if e and e.Parent then
+		return e
+	end
+	-- берём эффект, созданный сервером, или создаём свой
+	for _, c in Lighting:GetChildren() do
+		if c.ClassName == className then
+			fx[className] = c
+			return c
+		end
+	end
+	local ok, inst = pcall(Instance.new, className)
+	if ok and inst then
+		inst.Parent = Lighting
+		fx[className] = inst
+		return inst
+	end
+	return nil
+end
+
+local function buildOverlay()
+	overlay = Instance.new("ScreenGui")
+	overlay.Name = "GfxOverlay"
+	overlay.IgnoreGuiInset = true
+	overlay.ResetOnSpawn = false
+	overlay.DisplayOrder = -10
+	overlay.Parent = player:WaitForChild("PlayerGui")
+	-- виньетка из четырёх градиентных краёв
+	local edges = {
+		{ UDim2.new(1, 0, 0.35, 0), UDim2.new(0, 0, 0, 0), 90 },
+		{ UDim2.new(1, 0, 0.35, 0), UDim2.new(0, 0, 0.65, 0), -90 },
+		{ UDim2.new(0.3, 0, 1, 0), UDim2.new(0, 0, 0, 0), 0 },
+		{ UDim2.new(0.3, 0, 1, 0), UDim2.new(0.7, 0, 0, 0), 180 },
+	}
+	for _, e in edges do
+		local f = Instance.new("Frame")
+		f.Size = e[1]
+		f.Position = e[2]
+		f.BackgroundColor3 = Color3.fromRGB(20, 12, 6)
+		f.BorderSizePixel = 0
+		f.BackgroundTransparency = 0
+		local g = Instance.new("UIGradient")
+		g.Rotation = e[3]
+		g.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.3),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		g.Parent = f
+		f.Parent = overlay
+		table.insert(vignetteFrames, f)
+	end
+	-- кинополосы
+	for i, pos in { UDim2.new(0, 0, 0, 0), UDim2.new(0, 0, 1, 0) } do
+		local b = Instance.new("Frame")
+		b.Size = UDim2.new(1, 0, 0, 0)
+		b.Position = pos
+		b.AnchorPoint = Vector2.new(0, if i == 1 then 0 else 1)
+		b.BackgroundColor3 = Color3.new(0, 0, 0)
+		b.BorderSizePixel = 0
+		b.Parent = overlay
+		table.insert(bars, b)
+	end
+end
+
+local function buildDust()
+	local p = Instance.new("Part")
+	p.Name = "GfxDust"
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Transparency = 1
+	p.Size = Vector3.new(40, 20, 40)
+	p.Parent = workspace.CurrentCamera
+	local e = Instance.new("ParticleEmitter")
+	e.Name = "Motes"
+	e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	e.Rate = 14
+	e.Lifetime = NumberRange.new(5, 9)
+	e.Speed = NumberRange.new(0.2, 0.8)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Size = NumberSequence.new(0.12)
+	e.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.3, 0.55),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	e.LightInfluence = 1
+	e.Color = ColorSequence.new(Color3.fromRGB(255, 230, 190))
+	e.Shape = Enum.ParticleEmitterShape.Box
+	e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	e.Parent = p
+	dustPart = p
+end
+
+function Graphics.Apply(id: string)
+	local preset = Graphics.Presets[1]
+	for _, p in Graphics.Presets do
+		if p.id == id then
+			preset = p
+		end
+	end
+	current = preset
+	local t = TweenInfo.new(1.2, Enum.EasingStyle.Sine)
+
+	TweenService:Create(Lighting, t, {
+		ClockTime = preset.clock,
+		Brightness = preset.brightness,
+		ExposureCompensation = preset.exposure,
+		Ambient = preset.ambient,
+		OutdoorAmbient = preset.outdoor,
+	}):Play()
+	Lighting.GlobalShadows = preset.shadows
+
+	local atm = effect("Atmosphere")
+	if atm then
+		TweenService:Create(atm, t, { Density = preset.atmDensity, Haze = preset.atmHaze, Color = preset.atmColor, Decay = preset.atmDecay }):Play()
+	end
+	local cc = effect("ColorCorrectionEffect")
+	if cc then
+		TweenService:Create(cc, t, { TintColor = preset.tint, Saturation = preset.saturation, Contrast = preset.contrast, Brightness = preset.ccBrightness }):Play()
+	end
+	local bloom = effect("BloomEffect")
+	if bloom then
+		bloom.Enabled = preset.bloom > 0
+		TweenService:Create(bloom, t, { Intensity = preset.bloom, Size = preset.bloomSize, Threshold = preset.bloomThreshold }):Play()
+	end
+	local rays = effect("SunRaysEffect")
+	if rays then
+		rays.Enabled = preset.rays > 0
+		TweenService:Create(rays, t, { Intensity = preset.rays }):Play()
+	end
+	local dof = effect("DepthOfFieldEffect")
+	if dof then
+		dof.Enabled = preset.dofFar > 0
+		TweenService:Create(dof, t, { FarIntensity = preset.dofFar, InFocusRadius = preset.dofRadius }):Play()
+	end
+	local terrain = workspace:FindFirstChildOfClass("Terrain")
+	local clouds = terrain and terrain:FindFirstChildOfClass("Clouds")
+	if clouds then
+		clouds.Enabled = preset.clouds > 0
+		TweenService:Create(clouds, t, { Cover = preset.clouds }):Play()
+	end
+
+	for _, f in vignetteFrames do
+		TweenService:Create(f, t, { BackgroundTransparency = 1 - preset.vignette }):Play()
+	end
+	for _, b in bars do
+		TweenService:Create(b, t, { Size = UDim2.new(1, 0, if preset.letterbox then 0.09 else 0, 0) }):Play()
+	end
+	if dustPart then
+		local m = dustPart:FindFirstChild("Motes") :: ParticleEmitter
+		if m then
+			m.Enabled = preset.dust
+		end
+	end
+end
+
+function Graphics.Current(): string
+	return current and current.id or "sunset"
+end
+
+function Graphics.Init()
+	buildOverlay()
+	buildDust()
+	-- автофокус глубины резкости на Йозефе, пыль вокруг камеры, мерцание плёнки
+	RunService.RenderStepped:Connect(function()
+		local cam = workspace.CurrentCamera
+		if not cam then
+			return
+		end
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		local dof = fx["DepthOfFieldEffect"]
+		if dof and hrp then
+			(dof :: any).FocusDistance = math.clamp((cam.CFrame.Position - hrp.Position).Magnitude, 4, 200)
+		end
+		if dustPart then
+			dustPart.CFrame = CFrame.new(cam.CFrame.Position + cam.CFrame.LookVector * 12)
+		end
+		local cc = fx["ColorCorrectionEffect"]
+		if current and current.flicker and cc then
+			(cc :: any).Brightness = current.ccBrightness + (math.random() - 0.5) * 0.05
+		end
+	end)
+	Graphics.Apply("sunset")
+end
+
+return Graphics
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX00000011"><Properties><string name="Name">Minigames</string><ProtectedString name="Source"><![CDATA[--!nonstrict
 -- Мини-игры: «Пять в ряд», вопросы Вентилятора, бомба, пауки из книги подсказок.
 
 local RunService = game:GetService("RunService")
@@ -5952,7 +6764,7 @@ end
 
 return Minigames
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX00000011"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[--!nonstrict
+<Item class="ModuleScript" referent="RBX00000012"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[--!nonstrict
 -- UI: интерфейс в стиле старой бумаги и ржавого металла.
 
 local Players = game:GetService("Players")

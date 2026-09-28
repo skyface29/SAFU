@@ -52,16 +52,25 @@ function Art.part(parent: Instance, shape: string, size: Vector3, cf: CFrame, co
 end
 
 -- Глаза в стиле Машинариума: белые диски с чёрными зрачками.
-function Art.eyes(parent: Instance, origin: CFrame, opt: { size: number?, gap: number?, y: number?, z: number?, angry: boolean?, sleepy: boolean? })
+function Art.eyes(parent: Instance, origin: CFrame, opt: { size: number?, gap: number?, y: number?, z: number?, angry: boolean?, sleepy: boolean?, lid: Color3?, rim: Color3? })
 	local size = opt.size or 0.6
 	local gap = opt.gap or 0.34
 	local y = opt.y or 0
 	local z = opt.z or -0.7
 	for _, sx in { -1, 1 } do
 		local base = origin * CFrame.new(sx * gap, y, z)
+		-- металлическая оправа глаза
+		Art.part(parent, "CylZ", Vector3.new(size * 1.18, size * 1.18, 0.1), base * CFrame.new(0, 0, 0.04), opt.rim or Color3.fromRGB(70, 56, 44), Enum.Material.Metal, "EyeRim")
 		Art.part(parent, "CylZ", Vector3.new(size, size, 0.12), base, Color3.fromRGB(245, 240, 225), Enum.Material.SmoothPlastic, "Eye")
 		local pupil = size * 0.42
-		Art.part(parent, "Ball", Vector3.new(pupil, pupil, pupil), base * CFrame.new(sx * -0.03, opt.sleepy and -size * 0.12 or 0, -0.06), C.Soot, Enum.Material.SmoothPlastic, "Pupil")
+		local pcf = base * CFrame.new(sx * -0.03, opt.sleepy and -size * 0.12 or 0, -0.06)
+		Art.part(parent, "Ball", Vector3.new(pupil, pupil, pupil), pcf, C.Soot, Enum.Material.SmoothPlastic, "Pupil")
+		-- блик в зрачке — глаза «живые»
+		Art.part(parent, "Ball", Vector3.new(pupil * 0.32, pupil * 0.32, pupil * 0.32), pcf * CFrame.new(pupil * 0.18, pupil * 0.18, -pupil * 0.4), Color3.fromRGB(255, 255, 255), Enum.Material.Neon, "Glint")
+		-- тяжёлое металлическое веко (как у Йозефа)
+		if opt.lid then
+			Art.part(parent, "CylZ", Vector3.new(size * 1.08, size * 1.08, 0.08), base * CFrame.new(0, size * 0.5, -0.1), opt.lid, Enum.Material.Metal, "Lid")
+		end
 		if opt.angry then
 			Art.part(parent, "Block", Vector3.new(size * 1.1, 0.12, 0.1), base * CFrame.new(0, size * 0.55, -0.05) * CFrame.Angles(0, 0, sx * math.rad(-22)), C.Soot, nil, "Brow")
 		end
@@ -137,19 +146,42 @@ function Art.robot(name: string, opt: any): (Model, any)
 	root.CanCollide = false
 	model.PrimaryPart = root
 
-	-- ноги
+	-- ноги: бедро, колено-шарнир, голень, округлая ступня
 	for _, sx in { -1, 1 } do
-		Art.part(model, "Cyl", Vector3.new(legD, legLen, legD), O * CFrame.new(sx * legGap, legLen / 2 + 0.15, 0), dark, mat, "Leg")
-		Art.part(model, "Block", Vector3.new(legD * 2.4, 0.28, legD * 3.2), O * CFrame.new(sx * legGap, 0.14, -legD * 0.5), dark, mat, "Foot")
+		local x = sx * legGap
+		Art.part(model, "Cyl", Vector3.new(legD, legLen * 0.5, legD), O * CFrame.new(x, legLen * 0.75 + 0.15, 0), color, mat, "Thigh")
+		Art.part(model, "Ball", Vector3.new(legD * 1.5, legD * 1.5, legD * 1.5), O * CFrame.new(x, legLen * 0.5 + 0.15, 0), dark, mat, "Knee")
+		Art.part(model, "Cyl", Vector3.new(legD * 0.85, legLen * 0.5, legD * 0.85), O * CFrame.new(x, legLen * 0.25 + 0.15, 0), dark, mat, "Shin")
+		Art.part(model, "Cyl", Vector3.new(legD * 2.6, 0.26, legD * 2.6), O * CFrame.new(x, 0.13, -legD * 0.2), dark, mat, "Heel")
+		Art.part(model, "Block", Vector3.new(legD * 2.4, 0.26, legD * 2.2), O * CFrame.new(x, 0.13, -legD * 1.3), dark, mat, "Toe")
 	end
 
 	-- тело
 	local bodyY = legLen + body.size.Y / 2 + 0.1
 	local bodyCF = O * CFrame.new(0, bodyY, 0)
 	Art.part(model, body.shape, body.size, bodyCF, color, mat, "Body")
-	-- заклёпки
-	for i = -1, 1 do
-		Art.part(model, "Ball", Vector3.new(0.16, 0.16, 0.16), bodyCF * CFrame.new(i * body.size.X * 0.25, body.size.Y * 0.3, -body.size.Z / 2 + 0.02), C.Brass, Enum.Material.Metal, "Rivet")
+	if body.shape == "Cyl" then
+		-- фаски-обручи сверху и снизу корпуса
+		for _, k in { -1, 1 } do
+			Art.part(model, "Cyl", Vector3.new(body.size.X + 0.12, 0.16, body.size.Z + 0.12), bodyCF * CFrame.new(0, k * (body.size.Y / 2 - 0.08), 0), dark, Enum.Material.Metal, "Band")
+		end
+		-- кольцо заклёпок
+		for i = 0, 9 do
+			local a = i / 10 * math.pi * 2
+			Art.part(model, "Ball", Vector3.new(0.13, 0.13, 0.13), bodyCF * CFrame.new(math.sin(a) * body.size.X / 2, body.size.Y / 2 - 0.26, math.cos(a) * body.size.Z / 2), C.Brass, Enum.Material.Metal, "Rivet")
+		end
+	elseif body.shape == "Block" then
+		-- панель-пластина с болтами по углам
+		Art.part(model, "Block", Vector3.new(body.size.X * 0.7, body.size.Y * 0.55, 0.08), bodyCF * CFrame.new(0, 0, -body.size.Z / 2 - 0.04), dark, Enum.Material.DiamondPlate, "Panel")
+		for _, cx in { -1, 1 } do
+			for _, cy in { -1, 1 } do
+				Art.part(model, "Ball", Vector3.new(0.14, 0.14, 0.14), bodyCF * CFrame.new(cx * body.size.X * 0.3, cy * body.size.Y * 0.22, -body.size.Z / 2 - 0.09), C.Brass, Enum.Material.Metal, "Rivet")
+			end
+		end
+	else
+		for i = -1, 1 do
+			Art.part(model, "Ball", Vector3.new(0.16, 0.16, 0.16), bodyCF * CFrame.new(i * body.size.X * 0.25, body.size.Y * 0.3, -body.size.Z / 2 + 0.05), C.Brass, Enum.Material.Metal, "Rivet")
+		end
 	end
 
 	-- руки
@@ -158,16 +190,27 @@ function Art.robot(name: string, opt: any): (Model, any)
 		local sh = bodyY + body.size.Y * 0.3
 		for _, sx in { -1, 1 } do
 			local x = sx * (body.size.X / 2 + 0.15)
-			Art.part(model, "Ball", Vector3.new(0.45, 0.45, 0.45), O * CFrame.new(x, sh, 0), dark, mat, "Shoulder")
-			Art.part(model, "Cyl", Vector3.new(0.24, armLen, 0.24), O * CFrame.new(x + sx * 0.1, sh - armLen / 2, 0) * CFrame.Angles(0, 0, sx * math.rad(8)), dark, mat, "Arm")
-			Art.part(model, "Ball", Vector3.new(0.4, 0.4, 0.4), O * CFrame.new(x + sx * 0.2, sh - armLen, 0), dark, mat, "Hand")
+			local tilt = CFrame.Angles(0, 0, sx * math.rad(8))
+			Art.part(model, "Ball", Vector3.new(0.5, 0.5, 0.5), O * CFrame.new(x, sh, 0), dark, mat, "Shoulder")
+			Art.part(model, "Cyl", Vector3.new(0.24, armLen * 0.5, 0.24), O * CFrame.new(x + sx * 0.04, sh - armLen * 0.25, 0) * tilt, color, mat, "UpperArm")
+			Art.part(model, "Ball", Vector3.new(0.32, 0.32, 0.32), O * CFrame.new(x + sx * 0.08, sh - armLen * 0.5, 0), dark, mat, "Elbow")
+			Art.part(model, "Cyl", Vector3.new(0.2, armLen * 0.5, 0.2), O * CFrame.new(x + sx * 0.13, sh - armLen * 0.75, 0) * tilt, dark, mat, "Forearm")
+			-- клешня из двух пальцев
+			for _, f in { -1, 1 } do
+				Art.part(model, "Block", Vector3.new(0.08, 0.34, 0.16), O * CFrame.new(x + sx * 0.18 + f * 0.08, sh - armLen - 0.1, 0) * CFrame.Angles(0, 0, f * math.rad(14)), dark, mat, "Claw")
+			end
 		end
 	end
 
 	-- шея и голова
 	local headBase = bodyY + body.size.Y / 2
 	if neck > 0 then
-		Art.part(model, "Cyl", Vector3.new(0.3, neck + 0.2, 0.3), O * CFrame.new(0, headBase + neck / 2, 0), dark, mat, "Neck")
+		-- телескопическая шея из колец
+		Art.part(model, "Cyl", Vector3.new(0.26, neck + 0.2, 0.26), O * CFrame.new(0, headBase + neck / 2, 0), dark, mat, "Neck")
+		local rings = math.max(1, math.floor(neck / 0.25))
+		for i = 1, rings do
+			Art.part(model, "Cyl", Vector3.new(0.38, 0.06, 0.38), O * CFrame.new(0, headBase + i * neck / (rings + 1), 0), color, Enum.Material.Metal, "NeckRing")
+		end
 	end
 	local hs = head.size
 	local headCF = O * CFrame.new(0, headBase + neck + hs.Y / 2, 0)
@@ -177,6 +220,13 @@ function Art.robot(name: string, opt: any): (Model, any)
 		Art.part(model, "Ball", Vector3.new(hs.X, hs.X, hs.X), headCF * CFrame.new(0, hs.Y * 0.2, 0), color, mat, "HeadTop")
 	else
 		Art.part(model, head.shape, hs, headCF, color, mat, "Head")
+	end
+	if head.shape == "Cyl" or head.shape == "Bullet" then
+		Art.part(model, "Cyl", Vector3.new(hs.X + 0.1, 0.12, hs.Z + 0.1), headCF * CFrame.new(0, -hs.Y / 2 + 0.06 + (if head.shape == "Bullet" then hs.Y * 0.0 else 0), 0), dark, Enum.Material.Metal, "HeadBand")
+	end
+	-- болты-«уши»
+	for _, sx in { -1, 1 } do
+		Art.part(model, "CylX", Vector3.new(0.12, math.min(0.34, hs.Y * 0.3), math.min(0.34, hs.Y * 0.3)), headCF * CFrame.new(sx * (hs.X / 2 + 0.03), 0, 0), C.Brass, Enum.Material.Metal, "EarBolt")
 	end
 	local eyeOpt = opt.eyes or {}
 	eyeOpt.z = eyeOpt.z or -(hs.Z / 2 + 0.02)
@@ -232,7 +282,7 @@ function Art.Josef(color: Color3?, dark: Color3?): Model
 		head = { shape = "Bullet", size = Vector3.new(1.5, 1.7, 1.5) },
 		neck = 0.35,
 		arms = 1.5,
-		eyes = { size = 0.62, gap = 0.3, y = 0.05 },
+		eyes = { size = 0.62, gap = 0.3, y = 0.05, lid = color or C.Rust },
 	})
 	-- люк в животе (инвентарь!)
 	Art.part(m, "CylZ", Vector3.new(0.8, 0.8, 0.1), a.body * CFrame.new(0, -0.1, -0.86), C.Brass, Enum.Material.Metal, "Hatch")
@@ -241,64 +291,101 @@ function Art.Josef(color: Color3?, dark: Color3?): Model
 	return m
 end
 
--- Берта: круглая голова, юбочка-колокол, цветок на макушке
+-- Берта: круглая голова с веками и ресницами, юбка-колокол, цветок на макушке
 function Art.Berta(dress: Color3?, flowerLevel: number?): Model
 	local m = Instance.new("Model")
 	m.Name = "Berta"
 	local cream = C.BertaCream
 	local dressColor = dress or cream
+	local dressDark = dressColor:Lerp(Color3.new(0, 0, 0), 0.18)
 	local dark = Color3.fromRGB(140, 120, 100)
+	local pink = C.BertaPink
 	local O = CFrame.new()
 	local root = Art.part(m, "Block", Vector3.new(1, 1, 1), O, cream, nil, "Root")
 	root.Transparency = 1
 	root.CanCollide = false
 	m.PrimaryPart = root
-	-- тонкие ножки
+	-- ножки с коленками и туфельками
 	for _, sx in { -1, 1 } do
-		Art.part(m, "Cyl", Vector3.new(0.2, 1.5, 0.2), O * CFrame.new(sx * 0.3, 0.9, 0), dark, Enum.Material.Metal, "Leg")
-		Art.part(m, "Ball", Vector3.new(0.45, 0.45, 0.45), O * CFrame.new(sx * 0.3, 0.2, -0.1), dark, Enum.Material.Metal, "Foot")
+		local x = sx * 0.3
+		Art.part(m, "Cyl", Vector3.new(0.2, 0.75, 0.2), O * CFrame.new(x, 1.28, 0), dark, Enum.Material.Metal, "Thigh")
+		Art.part(m, "Ball", Vector3.new(0.3, 0.3, 0.3), O * CFrame.new(x, 0.92, 0), cream, Enum.Material.SmoothPlastic, "Knee")
+		Art.part(m, "Cyl", Vector3.new(0.17, 0.7, 0.17), O * CFrame.new(x, 0.58, 0), dark, Enum.Material.Metal, "Shin")
+		Art.part(m, "Cyl", Vector3.new(0.5, 0.24, 0.5), O * CFrame.new(x, 0.12, -0.02), pink, Enum.Material.SmoothPlastic, "Shoe")
+		Art.part(m, "Ball", Vector3.new(0.42, 0.42, 0.42), O * CFrame.new(x, 0.18, -0.22), pink, Enum.Material.SmoothPlastic, "ShoeToe")
+		Art.part(m, "Cyl", Vector3.new(0.54, 0.05, 0.54), O * CFrame.new(x, 0.26, -0.02), dark, Enum.Material.Metal, "ShoeStrap")
 	end
-	-- юбка-колокол из колец
-	local y = 1.6
-	for i = 0, 3 do
-		local d = 2.0 - i * 0.28
-		Art.part(m, "Cyl", Vector3.new(d, 0.32, d), O * CFrame.new(0, y, 0), dressColor, Enum.Material.SmoothPlastic, "Dress")
-		y += 0.3
+	-- юбка-колокол: кольца с подолом и заклёпками
+	local y = 1.55
+	Art.part(m, "Cyl", Vector3.new(2.14, 0.12, 2.14), O * CFrame.new(0, y - 0.18, 0), dressDark, Enum.Material.Metal, "Hem")
+	for i = 0, 11 do
+		local an = i / 12 * math.pi * 2
+		Art.part(m, "Ball", Vector3.new(0.1, 0.1, 0.1), O * CFrame.new(math.sin(an) * 1.07, y - 0.18, math.cos(an) * 1.07), C.Brass, Enum.Material.Metal, "HemRivet")
 	end
-	-- талия и грудь
-	Art.part(m, "Cyl", Vector3.new(1.0, 0.8, 1.0), O * CFrame.new(0, y + 0.3, 0), cream, Enum.Material.SmoothPlastic, "Chest")
-	Art.part(m, "Cyl", Vector3.new(1.05, 0.1, 1.05), O * CFrame.new(0, y + 0.05, 0), C.BertaPink, Enum.Material.SmoothPlastic, "Belt")
-	-- ручки
+	for i = 0, 4 do
+		local d = 2.05 - i * 0.24
+		Art.part(m, "Cyl", Vector3.new(d, 0.26, d), O * CFrame.new(0, y, 0), if i % 2 == 0 then dressColor else dressDark, Enum.Material.SmoothPlastic, "Dress")
+		y += 0.24
+	end
+	-- корсаж, пояс с пряжкой, пуговки, воротничок
+	Art.part(m, "Cyl", Vector3.new(1.02, 0.12, 1.02), O * CFrame.new(0, y - 0.02, 0), pink, Enum.Material.SmoothPlastic, "Belt")
+	Art.part(m, "Block", Vector3.new(0.22, 0.16, 0.06), O * CFrame.new(0, y - 0.02, -0.52), C.Brass, Enum.Material.Metal, "Buckle")
+	Art.part(m, "Cyl", Vector3.new(0.95, 0.8, 0.95), O * CFrame.new(0, y + 0.42, 0), cream, Enum.Material.SmoothPlastic, "Chest")
+	for i = 0, 2 do
+		Art.part(m, "Ball", Vector3.new(0.1, 0.1, 0.1), O * CFrame.new(0, y + 0.2 + i * 0.2, -0.47), pink, Enum.Material.SmoothPlastic, "Button")
+	end
+	Art.part(m, "Cyl", Vector3.new(1.1, 0.1, 1.1), O * CFrame.new(0, y + 0.84, 0), pink, Enum.Material.SmoothPlastic, "Collar")
+	-- ручки с локотками
+	local sh = y + 0.72
 	for _, sx in { -1, 1 } do
-		Art.part(m, "Cyl", Vector3.new(0.16, 1.2, 0.16), O * CFrame.new(sx * 0.62, y - 0.1, 0) * CFrame.Angles(0, 0, sx * math.rad(20)), dark, Enum.Material.Metal, "Arm")
-		Art.part(m, "Ball", Vector3.new(0.3, 0.3, 0.3), O * CFrame.new(sx * 0.82, y - 0.65, 0), cream, nil, "Hand")
+		Art.part(m, "Ball", Vector3.new(0.3, 0.3, 0.3), O * CFrame.new(sx * 0.55, sh, 0), cream, Enum.Material.SmoothPlastic, "Shoulder")
+		Art.part(m, "Cyl", Vector3.new(0.14, 0.6, 0.14), O * CFrame.new(sx * 0.63, sh - 0.3, 0) * CFrame.Angles(0, 0, sx * math.rad(15)), dark, Enum.Material.Metal, "UpperArm")
+		Art.part(m, "Ball", Vector3.new(0.18, 0.18, 0.18), O * CFrame.new(sx * 0.71, sh - 0.6, 0), cream, Enum.Material.SmoothPlastic, "Elbow")
+		Art.part(m, "Cyl", Vector3.new(0.12, 0.55, 0.12), O * CFrame.new(sx * 0.76, sh - 0.87, -0.05) * CFrame.Angles(math.rad(10), 0, sx * math.rad(8)), dark, Enum.Material.Metal, "Forearm")
+		Art.part(m, "Ball", Vector3.new(0.26, 0.26, 0.26), O * CFrame.new(sx * 0.8, sh - 1.18, -0.1), cream, Enum.Material.SmoothPlastic, "Hand")
 	end
-	-- шея и большая круглая голова
-	Art.part(m, "Cyl", Vector3.new(0.22, 0.4, 0.22), O * CFrame.new(0, y + 0.9, 0), dark, Enum.Material.Metal, "Neck")
-	local headCF = O * CFrame.new(0, y + 2.1, 0)
-	Art.part(m, "Ball", Vector3.new(2.2, 2.2, 2.2), headCF, cream, Enum.Material.SmoothPlastic, "Head")
-	Art.eyes(m, headCF, { size = 0.62, gap = 0.36, y = 0.05, z = -1.0 })
-	-- реснички
+	-- шея из колечек
+	for i = 0, 2 do
+		Art.part(m, "Cyl", Vector3.new(0.3 - i * 0.02, 0.1, 0.3 - i * 0.02), O * CFrame.new(0, y + 0.92 + i * 0.12, 0), if i % 2 == 0 then dark else cream, Enum.Material.Metal, "NeckRing")
+	end
+	-- большая круглая голова
+	local headCF = O * CFrame.new(0, y + 2.05, 0)
+	Art.part(m, "Ball", Vector3.new(2.1, 2.1, 2.1), headCF, cream, Enum.Material.SmoothPlastic, "Head")
+	-- шов-обруч вокруг головы и «ушки»-диски
+	Art.part(m, "Cyl", Vector3.new(1.3, 0.06, 1.3), headCF * CFrame.new(0, -0.84, 0), dark, Enum.Material.Metal, "Seam")
+	for _, sx in { -1, 1 } do
+		Art.part(m, "CylX", Vector3.new(0.12, 0.5, 0.5), headCF * CFrame.new(sx * 1.03, 0.05, 0), pink, Enum.Material.SmoothPlastic, "Ear")
+		Art.part(m, "CylX", Vector3.new(0.14, 0.22, 0.22), headCF * CFrame.new(sx * 1.09, 0.05, 0), C.Brass, Enum.Material.Metal, "EarBolt")
+	end
+	Art.eyes(m, headCF, { size = 0.58, gap = 0.34, y = 0.08, z = -0.97, rim = Color3.fromRGB(190, 170, 140) })
+	-- реснички над веками
 	for _, sx in { -1, 1 } do
 		for k = -1, 1 do
-			Art.part(m, "Block", Vector3.new(0.05, 0.22, 0.05), headCF * CFrame.new(sx * 0.36 + k * 0.14, 0.44, -1.02) * CFrame.Angles(0, 0, k * math.rad(-25)), C.Soot, nil, "Lash")
+			Art.part(m, "Block", Vector3.new(0.05, 0.24, 0.05), headCF * CFrame.new(sx * 0.34 + k * 0.14, 0.5, -1.0) * CFrame.Angles(0, 0, k * math.rad(-25)), C.Soot, nil, "Lash")
 		end
+	end
+	-- улыбка из трёх чёрточек
+	for k = -1, 1 do
+		Art.part(m, "Block", Vector3.new(0.16, 0.05, 0.05), headCF * CFrame.new(k * 0.13, -0.42 + math.abs(k) * 0.05, -1.0) * CFrame.Angles(0, 0, k * math.rad(25)), C.Soot, nil, "Smile")
 	end
 	-- румянец
 	for _, sx in { -1, 1 } do
-		Art.part(m, "CylZ", Vector3.new(0.3, 0.3, 0.05), headCF * CFrame.new(sx * 0.7, -0.35, -0.86), C.BertaPink, nil, "Blush")
+		Art.part(m, "CylZ", Vector3.new(0.3, 0.3, 0.05), headCF * CFrame.new(sx * 0.66, -0.3, -0.82), pink, nil, "Blush")
 	end
 	-- цветок на макушке (растёт с прокачкой «Цветок любви»)
 	local lvl = flowerLevel or 0
 	local fs = 0.6 + lvl * 0.18
-	local stemTop = headCF * CFrame.new(0, 1.1 + 0.5 * fs, 0)
-	Art.part(m, "Cyl", Vector3.new(0.1, 1.0 * fs, 0.1), headCF * CFrame.new(0, 1.05 + 0.25 * fs, 0), C.Moss, nil, "Stem")
+	local stemTop = headCF * CFrame.new(0, 1.05 + 0.5 * fs, 0)
+	Art.part(m, "Cyl", Vector3.new(0.1, 1.0 * fs, 0.1), headCF * CFrame.new(0, 1.0 + 0.25 * fs, 0), C.Moss, nil, "Stem")
+	Art.part(m, "Block", Vector3.new(0.35 * fs, 0.05, 0.18 * fs), headCF * CFrame.new(0.18 * fs, 1.1 + 0.2 * fs, 0) * CFrame.Angles(0, 0, math.rad(25)), C.Moss, nil, "Leaf")
 	for i = 0, 5 do
 		local ang = i * math.pi / 3
-		Art.part(m, "Ball", Vector3.new(0.4 * fs, 0.4 * fs, 0.4 * fs), stemTop * CFrame.new(math.cos(ang) * 0.3 * fs, 0, math.sin(ang) * 0.3 * fs), C.BertaPink, nil, "Petal")
+		Art.part(m, "Ball", Vector3.new(0.4 * fs, 0.4 * fs, 0.4 * fs), stemTop * CFrame.new(math.cos(ang) * 0.3 * fs, 0, math.sin(ang) * 0.3 * fs), pink, nil, "Petal")
 	end
 	Art.part(m, "Ball", Vector3.new(0.34 * fs, 0.34 * fs, 0.34 * fs), stemTop, Color3.fromRGB(240, 200, 70), Enum.Material.Neon, "FlowerCore")
 	anchorAll(m)
+	-- ростом примерно с Йозефа
+	m:ScaleTo(0.8)
 	return m
 end
 

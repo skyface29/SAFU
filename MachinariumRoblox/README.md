@@ -8,15 +8,28 @@
 
 ## Как выглядит
 
-Рендеры настоящей геометрии игры (детали выгружены из постройки мира и отрисованы
-three.js — это не скриншоты из Roblox, освещение там будет своё):
+Рендеры настоящей геометрии игры: детали выгружены из постройки мира и отрисованы
+three.js с bloom и затенением (AO). Это не скриншоты из Roblox: в Roblox с освещением
+Future картинка будет своя.
 
 | | |
 |---|---|
-| ![Город](screenshots/01_city.png) | ![Йозеф и Берта](screenshots/02_josef_berta.png) |
-| ![Братство Чёрной Шляпы](screenshots/10_blackcaps.png) | ![Башня](screenshots/04_tower.png) |
-| ![Вершина Башни](screenshots/05_tower_top.png) | ![Свалка](screenshots/06_junkyard.png) |
-| ![Теплица и вентилятор](screenshots/12_greenhouse.png) | ![Нижний город](screenshots/11_prison_band.png) |
+| ![Йозеф и Берта](screenshots/02_josef_berta.png) | ![Братство Чёрной Шляпы](screenshots/03_blackcaps.png) |
+| ![Нижний город](screenshots/04_lowtown.png) | ![Нижний город ночью](screenshots/05_lowtown_night.png) |
+| ![Улица](screenshots/09_street_close.png) | ![Город](screenshots/01_city.png) |
+| ![Башня](screenshots/07_tower.png) | ![Теплица](screenshots/08_greenhouse.png) |
+
+## Графика
+
+- **Освещение Future** уже включено в `Machinarium.rbxlx`: свет и тени от каждого фонаря,
+  окна и гирлянд. Скрипт не может его включить (так устроен Roblox), поэтому если
+  собираешь через Rojo, проверь *Lighting → Technology → Future*.
+- **7 пресетов «шейдеров»** (кнопка 🎨 Графика): Ржавый закат, Кино (кинополосы и сильная
+  глубина резкости), Ночной город, Туман над свалкой, Старая плёнка (сепия и мерцание),
+  Яркий день, Слабое устройство. Выбор сохраняется.
+- Эффекты: цветокоррекция, bloom, лучи солнца, глубина резкости с автофокусом на Йозефе,
+  атмосфера, облака, виньетка, пыль в воздухе, искры сварки, светлячки, пар из люков, дым.
+- Свои GLSL-шейдеры и трассировку лучей Roblox не поддерживает. Future — самое близкое к ним.
 
 ## Как запустить (самый простой способ)
 
@@ -98,7 +111,7 @@ MachinariumRoblox/
   default.project.json    проект Rojo
   src/shared/             Config (сюжет, факты, прокачка), Art (модели персонажей)
   src/server/             Main, World (постройка города), Josef, NPC, Data (сохранения)
-  src/client/             Client (HUD и окна), UI, Minigames, Effects
+  src/client/             Client (HUD и окна), UI, Minigames, Effects, Graphics (шейдеры)
   tools/                  сборка .rbxlx и sourcemap.json
   tests/                  эмулятор Roblox API и прогон всей игры
 ```

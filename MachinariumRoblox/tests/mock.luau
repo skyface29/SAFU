@@ -340,6 +340,7 @@ M.UDim2 = {
 
 M.NumberRange = { new = valueType("NumberRange", { "Min", "Max" }) }
 M.NumberSequence = { new = valueType("NumberSequence", { "a", "b" }) }
+M.NumberSequenceKeypoint = { new = valueType("NumberSequenceKeypoint", { "Time", "Value" }) }
 M.ColorSequence = { new = valueType("ColorSequence", { "a", "b" }) }
 M.PhysicalProperties = { new = valueType("PhysicalProperties", { "Density", "Friction", "Elasticity", "FW", "EW" }) }
 M.TweenInfo = { new = valueType("TweenInfo", { "Time", "Style", "Dir" }) }
@@ -1252,6 +1253,7 @@ function M.makeEnv(scriptInst, requireFn)
 		UDim2 = M.UDim2,
 		NumberRange = M.NumberRange,
 		NumberSequence = M.NumberSequence,
+		NumberSequenceKeypoint = M.NumberSequenceKeypoint,
 		ColorSequence = M.ColorSequence,
 		PhysicalProperties = M.PhysicalProperties,
 		TweenInfo = M.TweenInfo,

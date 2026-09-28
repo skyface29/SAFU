@@ -17,6 +17,7 @@ local Request: RemoteFunction = Remotes:WaitForChild("Request")
 local UI = require(script.Parent:WaitForChild("UI"))
 local Effects = require(script.Parent:WaitForChild("Effects"))
 local Minigames = require(script.Parent:WaitForChild("Minigames"))
+local Graphics = require(script.Parent:WaitForChild("Graphics"))
 local C = Config.Colors
 
 local data = nil
@@ -24,6 +25,8 @@ local session = { dev = false }
 
 UI.Init()
 Effects.Init()
+Graphics.Init()
+local gfxApplied = false
 
 local function req(...)
 	local ok, a, b = pcall(Request.InvokeServer, Request, ...)
@@ -89,13 +92,13 @@ local barList = UI.list(bar, 8, true)
 barList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function barButton(text: string, color: Color3, order: number, fn)
-	local b = UI.button(bar, text, UDim2.fromOffset(118, 50), nil, color, fn)
+	local b = UI.button(bar, text, UDim2.fromOffset(108, 50), nil, color, fn)
 	b.TextSize = 17
 	b.LayoutOrder = order
 	return b
 end
 
-local openJosef, openBerta, openBook, openEncyclopedia, openTeleport, openDev
+local openJosef, openBerta, openBook, openEncyclopedia, openTeleport, openDev, openGraphics
 
 -- вытянуться / сжаться (повторное нажатие — вернуть обычный рост)
 local function toggleSize(want: string)
@@ -130,7 +133,10 @@ end)
 barButton("🗺️ Телепорт", Color3.fromRGB(90, 100, 130), 7, function()
 	openTeleport()
 end)
-local devBtn = barButton("🛠️ rebol", Color3.fromRGB(60, 60, 60), 8, function()
+barButton("🎨 Графика", Color3.fromRGB(130, 90, 130), 8, function()
+	openGraphics()
+end)
+local devBtn = barButton("🛠️ rebol", Color3.fromRGB(60, 60, 60), 9, function()
 	openDev()
 end)
 devBtn.Visible = false
@@ -205,6 +211,12 @@ local function onState(newData, newSession)
 	data = newData
 	session = newSession or session
 	if data then
+		if not gfxApplied then
+			gfxApplied = true
+			if data.gfx and data.gfx ~= "sunset" then
+				Graphics.Apply(data.gfx)
+			end
+		end
 		data.bolts = data.bolts or 0
 		setBolts(data.bolts)
 		updateQuest()
@@ -442,6 +454,29 @@ function openTeleport()
 		UI.closeWindow()
 	end)
 	r.LayoutOrder = 100
+end
+
+----------------------------------------------------------------------
+-- Окно: графика («шейдеры»)
+----------------------------------------------------------------------
+function openGraphics()
+	local _, content = UI.window("🎨 Графика и шейдеры", 560, 600)
+	local sc = UI.scroll(content, UDim2.fromScale(1, 1))
+	UI.list(sc, 8)
+	local h = UI.label(sc, "Выбери стиль картинки. Для самого красивого света в Studio включи <b>Lighting → Technology → Future</b> (в файле игры он уже включён).", UDim2.new(1, -10, 0, 52), nil, 16)
+	h.LayoutOrder = 0
+	for i, p in Graphics.Presets do
+		local active = Graphics.Current() == p.id
+		local row = UI.panel(sc, UDim2.new(1, -10, 0, 70), nil, if active then Color3.fromRGB(255, 226, 170) else Color3.fromRGB(245, 234, 208))
+		row.LayoutOrder = i
+		UI.label(row, "<b>" .. p.name .. "</b>" .. (if active then "  ✓" else ""), UDim2.new(1, -150, 0, 28), UDim2.fromOffset(12, 6), 20)
+		UI.label(row, p.desc, UDim2.new(1, -150, 0, 34), UDim2.fromOffset(12, 32), 15, Color3.fromRGB(110, 80, 60))
+		UI.button(row, if active then "Включено" else "Включить", UDim2.fromOffset(120, 44), UDim2.new(1, -130, 0, 13), if active then Color3.fromRGB(120, 120, 110) else Color3.fromRGB(130, 90, 130), function()
+			Graphics.Apply(p.id)
+			req("SetGfx", p.id)
+			openGraphics()
+		end)
+	end
 end
 
 ----------------------------------------------------------------------

@@ -31,7 +31,11 @@
       }
     },
     "Lighting": {
-      "$className": "Lighting"
+      "$className": "Lighting",
+      "$properties": {
+        "Technology": "Future",
+        "ClockTime": 17.4
+      }
     },
     "Workspace": {
       "$className": "Workspace",
