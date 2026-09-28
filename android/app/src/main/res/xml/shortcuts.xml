@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="schedule"
+        android:enabled="true"
+        android:icon="@drawable/sc_schedule"
+        android:shortcutShortLabel="@string/sc_schedule"
+        android:shortcutLongLabel="@string/sc_schedule_long">
+        <intent android:action="android.intent.action.VIEW" android:data="safu://schedule"
+            android:targetPackage="ru.student.safuhub" android:targetClass="ru.student.safuhub.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="board"
+        android:enabled="true"
+        android:icon="@drawable/sc_board"
+        android:shortcutShortLabel="@string/sc_board"
+        android:shortcutLongLabel="@string/sc_board_long">
+        <intent android:action="android.intent.action.VIEW" android:data="safu://board"
+            android:targetPackage="ru.student.safuhub" android:targetClass="ru.student.safuhub.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="tasks"
+        android:enabled="true"
+        android:icon="@drawable/sc_tasks"
+        android:shortcutShortLabel="@string/sc_tasks"
+        android:shortcutLongLabel="@string/sc_tasks_long">
+        <intent android:action="android.intent.action.VIEW" android:data="safu://tasks"
+            android:targetPackage="ru.student.safuhub" android:targetClass="ru.student.safuhub.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="files"
+        android:enabled="true"
+        android:icon="@drawable/sc_files"
+        android:shortcutShortLabel="@string/sc_files"
+        android:shortcutLongLabel="@string/sc_files_long">
+        <intent android:action="android.intent.action.VIEW" android:data="safu://files"
+            android:targetPackage="ru.student.safuhub" android:targetClass="ru.student.safuhub.MainActivity" />
+    </shortcut>
+</shortcuts>

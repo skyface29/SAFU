@@ -219,14 +219,14 @@ object SchoolTimetable {
         if (!f.exists()) return
         try {
             val b = AppJson.decodeFromString(Blob.serializer(), f.readText())
-            setEvents(b.events)
+            replaceEvents(b.events)
             institution = b.institution
             scannedAt = b.at
             failedGroups = b.failed
         } catch (_: Throwable) {}
     }
 
-    private fun setEvents(list: List<SchoolEvent>) {
+    private fun replaceEvents(list: List<SchoolEvent>) {
         events = list
         teacherCache = null
     }
@@ -271,7 +271,7 @@ object SchoolTimetable {
                 report?.invoke(start, plan.size)
                 if (!shownHome && start >= homeCount && found.isNotEmpty()) {
                     shownHome = true
-                    setEvents(found.toList())
+                    replaceEvents(found.toList())
                     institution = inst
                 }
             }
@@ -279,7 +279,7 @@ object SchoolTimetable {
                 error = "РУЗ не ответил — попробуй позже"
                 return
             }
-            setEvents(found)
+            replaceEvents(found)
             institution = inst
             scannedAt = Instant.now()
             failedGroups = failed

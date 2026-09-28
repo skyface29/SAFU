@@ -88,10 +88,10 @@ object ResourceStore {
             list = list + Resource(title = "Личный кабинет", subtitle = "Зачётная книжка", url = "https://lk.narfu.ru",
                 icon = "person.text.rectangle.fill", category = "Университет")
         }
-        setItems(list)
+        replaceItems(list)
     }
 
-    fun setItems(list: List<Resource>) {
+    fun replaceItems(list: List<Resource>) {
         items = list
         Defaults.encode(itemsKey, list)
     }
@@ -113,7 +113,7 @@ object ResourceStore {
     }
 
     fun togglePin(r: Resource) {
-        setItems(items.map { if (it.id == r.id) it.copy(pinned = !it.pinned) else it })
+        replaceItems(items.map { if (it.id == r.id) it.copy(pinned = !it.pinned) else it })
     }
 
     val recents: List<Resource> get() = recentIDs.mapNotNull { id -> items.firstOrNull { it.id == id } }
@@ -167,17 +167,17 @@ object ResourceStore {
     // MARK: редактирование
 
     fun upsert(r: Resource) {
-        setItems(if (items.any { it.id == r.id }) items.map { if (it.id == r.id) r else it } else items + r)
+        replaceItems(if (items.any { it.id == r.id }) items.map { if (it.id == r.id) r else it } else items + r)
     }
 
     fun delete(r: Resource) {
-        setItems(items.filter { it.id != r.id })
+        replaceItems(items.filter { it.id != r.id })
         recentIDs = recentIDs.filter { it != r.id }
         Defaults.set(recentsKey, recentIDs)
     }
 
     fun resetToDefaults() {
-        setItems(Resource.defaults)
+        replaceItems(Resource.defaults)
         clearMemory()
     }
 

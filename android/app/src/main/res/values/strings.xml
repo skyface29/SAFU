@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">САФУ</string>
+    <string name="sc_schedule">Пары</string>
+    <string name="sc_schedule_long">Расписание пар</string>
+    <string name="sc_board">Фото доски</string>
+    <string name="sc_board_long">Сфотографировать доску</string>
+    <string name="sc_tasks">Задачи</string>
+    <string name="sc_tasks_long">Задачи и дедлайны</string>
+    <string name="sc_files">Файлы</string>
+    <string name="sc_files_long">Мои файлы</string>
+    <string name="widget_desc">Пары, дедлайны и погода</string>
+</resources>
