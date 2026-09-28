@@ -6,6 +6,18 @@
 
 > Это неофициальный фан-проект. Machinarium и его персонажи принадлежат Amanita Design.
 
+## Как выглядит
+
+Рендеры настоящей геометрии игры (детали выгружены из постройки мира и отрисованы
+three.js — это не скриншоты из Roblox, освещение там будет своё):
+
+| | |
+|---|---|
+| ![Город](screenshots/01_city.png) | ![Йозеф и Берта](screenshots/02_josef_berta.png) |
+| ![Братство Чёрной Шляпы](screenshots/10_blackcaps.png) | ![Башня](screenshots/04_tower.png) |
+| ![Вершина Башни](screenshots/05_tower_top.png) | ![Свалка](screenshots/06_junkyard.png) |
+| ![Теплица и вентилятор](screenshots/12_greenhouse.png) | ![Нижний город](screenshots/11_prison_band.png) |
+
 ## Как запустить (самый простой способ)
 
 1. Скачай файл **`Machinarium.rbxlx`** из этой папки.

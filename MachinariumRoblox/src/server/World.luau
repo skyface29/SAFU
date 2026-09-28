@@ -303,7 +303,7 @@ end
 ----------------------------------------------------------------------
 local function buildGround()
 	local g = root.Ground
-	box(g, Vector3.new(760, 4, 900), Vector3.new(0, -2, 20), Color3.fromRGB(96, 84, 70), Enum.Material.Concrete, "Baseplate")
+	box(g, Vector3.new(1200, 4, 1200), Vector3.new(0, -2, 20), Color3.fromRGB(96, 84, 70), Enum.Material.Concrete, "Baseplate")
 	-- брусчатка площади
 	box(g, Vector3.new(170, 0.4, 130), Vector3.new(0, 0.2, 30), Color3.fromRGB(128, 112, 92), Enum.Material.Cobblestone, "SquareFloor")
 	-- улица Нижнего города
@@ -349,7 +349,7 @@ local function buildGround()
 	-- силуэты дальнего города за стенами
 	for i = 1, 70 do
 		local ang = (i / 70) * math.pi * 2
-		local r = rng:NextNumber(330, 420)
+		local r = rng:NextNumber(470, 560)
 		local h = rng:NextNumber(60, 170)
 		local pos = Vector3.new(math.cos(ang) * r, h / 2, math.sin(ang) * r + 20)
 		local w = rng:NextNumber(20, 45)
