@@ -52,6 +52,22 @@ class MainActivity : FragmentActivity(), SensorEventListener {
             DeepLinks.pending.value = data.toString()
             return
         }
+        // «Открыть с помощью» резервную копию
+        if (intent.action == Intent.ACTION_VIEW && data != null && (data.scheme == "content" || data.scheme == "file")) {
+            DeepLinks.backup.value = data
+            return
+        }
+        // «Поделиться» файлами
+        if (intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            val uris = mutableListOf<android.net.Uri>()
+            @Suppress("DEPRECATION")
+            if (intent.action == Intent.ACTION_SEND) (intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM))?.let { uris.add(it) }
+            else intent.getParcelableArrayListExtra<android.net.Uri>(Intent.EXTRA_STREAM)?.let { uris.addAll(it) }
+            val backup = uris.firstOrNull { it.lastPathSegment?.endsWith(".safubackup") == true }
+            if (backup != null) DeepLinks.backup.value = backup
+            else if (uris.isNotEmpty()) DeepLinks.shared.value = uris
+            return
+        }
         if (intent.action == "ru.student.safuhub.OPEN_NOTIFICATION") {
             val extras = intent.extras ?: return
             DeepLinks.notification.value = extras.keySet().mapNotNull { k -> extras.getString(k)?.let { k to it } }.toMap()

@@ -252,6 +252,9 @@ object LiveLesson {
         try { NotificationManagerCompat.from(ctx).notify(NOTIF_ID, b.build()) } catch (_: SecurityException) {}
     }
 
+    /** Для превью в настройках: та же плашка, что в уведомлении */
+    fun previewViews(ctx: Context, s: LiveState): RemoteViews = views(ctx, s, LiveTheme.of(s.theme), LiveLayout.of(s.layout), isDark(ctx))
+
     private fun views(ctx: Context, s: LiveState, theme: LiveTheme, layout: LiveLayout, dark: Boolean): RemoteViews {
         val res = when (layout) {
             LiveLayout.FULL -> R.layout.notif_lesson_full

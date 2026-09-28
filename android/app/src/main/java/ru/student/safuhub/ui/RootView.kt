@@ -2,6 +2,10 @@ package ru.student.safuhub.ui
 
 import android.app.Activity
 import android.os.Build
+import ru.student.safuhub.feature.backup.BackupManager
+import ru.student.safuhub.ui.kit.AlertAction
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -118,6 +122,10 @@ import java.time.Instant
 object DeepLinks {
     val pending = mutableStateOf<String?>(null)
     val notification = mutableStateOf<Map<String, String>?>(null)
+    /** «Открыть с помощью» копию .safubackup */
+    val backup = mutableStateOf<android.net.Uri?>(null)
+    /** «Поделиться» файлами в САФУ */
+    val shared = mutableStateOf<List<android.net.Uri>?>(null)
 }
 
 /** Переключить вкладку из любого места (как запись в memory.tabID) */
@@ -256,6 +264,42 @@ fun RootView() {
                     Haptics.tap()
                 }
             }
+        }
+    }
+
+    // открыли копию .safubackup — предлагаем восстановить
+    val incomingBackup = DeepLinks.backup.value
+    LaunchedEffect(incomingBackup) {
+        val uri = incomingBackup ?: return@LaunchedEffect
+        DeepLinks.backup.value = null
+        Dialogs.alert("Восстановить из копии?", "Настройки и данные на этом телефоне заменятся данными из копии. Приложение перезапустится.",
+            AlertAction("Отмена", AlertAction.Role.CANCEL),
+            AlertAction("Восстановить", AlertAction.Role.DESTRUCTIVE) {
+                AppScope.launch {
+                    Dialogs.showToast("Восстанавливаю…", "arrow.uturn.backward.circle.fill")
+                    val r = withContext(Dispatchers.IO) {
+                        runCatching {
+                            val f = BackupManager.copyToTemp(uri) ?: error("Не удалось открыть файл")
+                            try { BackupManager.restore(f) } finally { f.delete() }
+                        }
+                    }
+                    r.onSuccess { n ->
+                        Dialogs.alert("Готово", "Настройки восстановлены, файлов: $n.",
+                            AlertAction("Перезапустить", AlertAction.Role.BOLD) { BackupManager.restartApp(App.ctx) })
+                    }.onFailure { e -> Dialogs.alert("Не получилось", e.message ?: "Это не резервная копия САФУ") }
+                }
+            })
+    }
+
+    // поделились файлами — кладём во «Входящие» и открываем «Файлы»
+    val incomingFiles = DeepLinks.shared.value
+    LaunchedEffect(incomingFiles) {
+        val list = incomingFiles ?: return@LaunchedEffect
+        DeepLinks.shared.value = null
+        val n = withContext(Dispatchers.IO) { ru.student.safuhub.data.FileService.importShared(list) }
+        if (n > 0) {
+            Dialogs.showToast("Сохранено во «Входящие»: $n", "tray.fill")
+            DeepLinks.pending.value = "safu://files"
         }
     }
 

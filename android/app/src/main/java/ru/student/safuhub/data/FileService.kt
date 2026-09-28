@@ -78,6 +78,12 @@ object FileService {
     }
 
     /** Скопировать выбранный файл внутрь приложения */
+    /** Файлы, которыми поделились из других приложений, — в папку «Входящие» */
+    fun importShared(uris: List<Uri>): Int {
+        val dir = File(root, "Входящие").apply { mkdirs() }
+        return uris.count { importFile(App.ctx, it, dir) != null }
+    }
+
     fun importFile(ctx: Context, src: Uri, dir: File, nameHint: String? = null): File? = try {
         dir.mkdirs()
         val target = uniqueFile(dir, sanitize(nameHint ?: displayName(ctx, src)).ifEmpty { "Файл" })
