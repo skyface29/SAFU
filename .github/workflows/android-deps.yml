@@ -1,0 +1,49 @@
+# Временная служебная сборка: собирает кэш зависимостей Gradle для офлайн-сборки.
+name: Android deps cache
+on:
+  push:
+    branches: [ 'claude/**' ]
+    paths:
+      - 'android/**/*.gradle.kts'
+      - 'android/gradle/**'
+      - '.github/workflows/android-deps.yml'
+permissions:
+  contents: write
+jobs:
+  deps:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build to warm cache
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest || true
+      - name: Versions info
+        run: |
+          for a in androidx/compose/compose-bom androidx/compose/material3/material3 androidx/glance/glance-appwidget com/google/android/gms/play-services-mlkit-document-scanner com/google/mlkit/text-recognition com/android/tools/build/gradle; do
+            echo "== $a"; curl -s https://dl.google.com/dl/android/maven2/$a/maven-metadata.xml | grep -o '<version>[^<]*</version>' | tail -12 | tr '\n' ' '; echo
+          done
+          ls $ANDROID_HOME/platforms $ANDROID_HOME/build-tools || true
+          ls -la $ANDROID_HOME/build-tools/36.0.0 || true
+      - name: Pack
+        run: |
+          cd ~/.gradle/caches
+          du -sh modules-2
+          tar -czf $GITHUB_WORKSPACE/gradle-deps.tar.gz modules-2
+          cd $ANDROID_HOME
+          tar -czf $GITHUB_WORKSPACE/sdk-extra.tar.gz build-tools/36.0.0/core-lambda-stubs.jar build-tools/36.0.0/source.properties build-tools/36.0.0/package.xml platforms/android-36/source.properties platforms/android-36/package.xml platforms/android-36/core-for-system-modules.jar platforms/android-36/optional || true
+          ls -la $GITHUB_WORKSPACE/*.tar.gz
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-build-deps
+          name: android-build-deps (служебный, будет удалён)
+          prerelease: true
+          make_latest: false
+          files: |
+            gradle-deps.tar.gz
+            sdk-extra.tar.gz
