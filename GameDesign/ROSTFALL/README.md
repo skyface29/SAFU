@@ -6,6 +6,7 @@
 
 | Файл | Что внутри |
 |---|---|
+| [`Prototype/rostfall.html`](Prototype/rostfall.html) | Играбельный 3D-прототип акта II миссии 07 (Three.js, один HTML-файл): стелс за сценой под синтезированный концерт, маскировка шагов битом, добивания в долю с тем же beat-warp, что и в C++-коде |
 | [`GDD.md`](GDD.md) | Game Design Document: логлайн, лор, арт-дирекшен, Rammstein в лоре, core-геймплей, миссия на концерте по актам, эндгейм, сетевая архитектура мультивселенной, стек UE5, адаптивный звук, риски |
 | [`Source/Rostfall/Audio/ConcertAudioTypes.h`](Source/Rostfall/Audio/ConcertAudioTypes.h) | Типы: музыкальные состояния, снапшоты микса, песня сет-листа, решатель beat-warp |
 | [`Source/Rostfall/Audio/ConcertAudioDirector.h`](Source/Rostfall/Audio/ConcertAudioDirector.h) / [`.cpp`](Source/Rostfall/Audio/ConcertAudioDirector.cpp) | Менеджер динамического аудио на MetaSound + Quartz |
