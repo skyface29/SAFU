@@ -7,6 +7,7 @@ object Celebrations {
     fun scheduleNotifications(d: ScheduleData) {}
     fun nextFinish(d: ScheduleData): java.time.Instant? = null
     fun taskDone(title: String, left: Int) {}
+    fun examPassed(subject: String, grade: String) {}
 }
 @Composable fun CelebrationOverlay() {}
 @Composable fun CelebrationSettingsScreen() { ru.student.safuhub.ui.kit.FormScreen("Праздники") {} }
