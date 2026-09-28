@@ -209,10 +209,11 @@ fun IosSwitch(checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = 
 // MARK: - Сегменты
 
 @Composable
-fun <T> Segmented(options: List<Pair<T, String>>, selection: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
+fun <T> Segmented(options: List<Pair<T, String>>, selection: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val dark = LocalDark.current
     Row(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp)).background(Ios.tertiaryFill).padding(2.dp),
+        modifier.fillMaxWidth().graphicsLayer { alpha = if (enabled) 1f else 0.5f }
+            .clip(RoundedCornerShape(9.dp)).background(Ios.tertiaryFill).padding(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         for ((value, title) in options) {
@@ -220,7 +221,7 @@ fun <T> Segmented(options: List<Pair<T, String>>, selection: T, onSelect: (T) ->
             Box(
                 Modifier.weight(1f).height(28.dp).clip(RoundedCornerShape(7.dp))
                     .background(if (sel) (if (dark) Color(0xFF636366) else Color.White) else Color.Transparent)
-                    .clickable(remember { MutableInteractionSource() }, null) { if (!sel) { Haptics.tap(); onSelect(value) } },
+                    .clickable(remember { MutableInteractionSource() }, null, enabled = enabled) { if (!sel) { Haptics.tap(); onSelect(value) } },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(title, style = ft(13f, if (sel) FontWeight.SemiBold else FontWeight.Medium), color = Ios.label, maxLines = 1,

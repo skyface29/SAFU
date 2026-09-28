@@ -180,7 +180,7 @@ object Notify {
 
     /** Показать сразу */
     fun show(ctx: Context, id: String, title: String, body: String, channel: String = CH_GENERAL,
-             extras: Map<String, String> = emptyMap(), sound: Boolean = true) {
+             extras: Map<String, String> = emptyMap(), sound: Boolean = true, number: Int = 0) {
         if (!permitted) return
         val open = Intent(ctx, MainActivity::class.java).apply {
             action = "ru.student.safuhub.OPEN_NOTIFICATION"
@@ -199,6 +199,8 @@ object Notify {
             .setColor(0xFF2873FA.toInt())
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .apply { if (!sound) setSilent(true) }
+            // цифра на значке приложения (там, где лаунчер её показывает)
+            .apply { if (number > 0) setNumber(number) }
             .build()
         try { NotificationManagerCompat.from(ctx).notify(id, 0, n) } catch (_: SecurityException) {}
     }
