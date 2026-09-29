@@ -14,8 +14,8 @@ android {
         applicationId = "ru.student.safuhub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 96
-        versionName = "12.5"
+        versionCode = 97
+        versionName = "12.6"
         val yandexKey = (project.findProperty("YANDEX_MAPKIT_KEY") as String?)
             ?: System.getenv("YANDEX_MAPKIT_KEY") ?: ""
         resValue("string", "yandex_mapkit_key", yandexKey)

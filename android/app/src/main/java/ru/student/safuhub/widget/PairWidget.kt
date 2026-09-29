@@ -513,40 +513,56 @@ private class WidgetView(val entry: PairEntry, val style: WidgetStyle) {
     }
 
     // MARK: большой — весь день
+    // Пары растягиваются на всю высоту виджета. Нажал на пару — открывается её предмет:
+    // закреплённые материалы, файлы, заметки. Камера справа — фото доски сразу в папку этого предмета.
+
+    @Composable
+    fun open(kind: String, r: LessonSlot): androidx.glance.action.Action {
+        val ctx = LocalContext.current
+        val uri = Uri.Builder().scheme("safu").authority(kind)
+            .appendQueryParameter("subject", r.lesson.subject)
+            .appendQueryParameter("start", r.start.epochSecond.toString())
+            .build()
+        return actionStartActivity(Intent(Intent.ACTION_VIEW, uri, ctx, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+    }
 
     @Composable
     fun Large() {
         if (entry.daySlots.isEmpty() && slot == null) return Empty()
+        val rows = entry.daySlots.take(6)
+        val roomy = rows.size <= 4
+        val upcoming = entry.daySlots.firstOrNull { it.start > entry.date }
+        val cur = entry.current?.takeIf { c -> entry.daySlots.any { it.key == c.key } }
         Column(GlanceModifier.fillMaxSize()) {
-            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(GlanceModifier.fillMaxWidth()) {
                 Column(GlanceModifier.defaultWeight()) {
-                    Text(entry.dayTitle, style = ts(18.sp, FontWeight.Bold), maxLines = 1)
-                    Text("Группа ${entry.group} · ${entry.daySlots.size} ${WidgetData.pairsWord(entry.daySlots.size)}",
-                        style = ts(11.sp, FontWeight.Medium, ink.copy(alpha = 0.65f)), maxLines = 1)
+                    Text(entry.dayTitle, style = ts(19.sp, FontWeight.Bold), maxLines = 1)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val sub = ts(11.sp, FontWeight.Medium, ink.copy(alpha = 0.65f))
+                        Text("${entry.group} · ${entry.daySlots.size} ${WidgetData.pairsWord(entry.daySlots.size)}", style = sub, maxLines = 1)
+                        if (cur != null) {
+                            Text(" · идёт ${cur.lesson.pair}-я, конец в ${hm(cur.end)}", style = sub, maxLines = 1)
+                        } else if (upcoming != null) {
+                            Text(" · первая через ", style = sub, maxLines = 1)
+                            Countdown(upcoming.start, ink.copy(alpha = 0.65f))
+                        }
+                    }
                 }
+                Spacer(GlanceModifier.width(6.dp))
                 RefreshButton()
             }
-            Spacer(GlanceModifier.height(8.dp))
-            val s = slot
-            if (s != null && isNow) {
-                Column(GlanceModifier.fillMaxWidth().background(ImageProvider(if (lightInk) R.drawable.widget_card_w else R.drawable.widget_card_d))
-                    .padding(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Header("СЕЙЧАС", widgetSubjectColor(s.lesson.subject))
-                        Spacer(GlanceModifier.width(6.dp))
-                        KindBadge(s.lesson.kind)
-                    }
-                    Spacer(GlanceModifier.height(4.dp))
-                    Text(s.lesson.subject, style = ts(15.sp, FontWeight.Bold), maxLines = 1)
-                    if (s.lesson.room.isNotEmpty() || s.address.isNotEmpty()) PlaceBlock(s, addressLines = 1)
-                    TimeInfo(s)
+            Spacer(GlanceModifier.height(6.dp))
+            // в строке или столбце виджета не больше 10 элементов — пар не больше 6
+            Column(GlanceModifier.fillMaxWidth().defaultWeight()) {
+                for (r in rows) {
+                    val m = if (roomy && rows.size <= 3) GlanceModifier.fillMaxWidth().height(92.dp) else GlanceModifier.fillMaxWidth().defaultWeight()
+                    Box(m.padding(bottom = 4.dp)) { LargeRow(r, roomy) }
                 }
-                Spacer(GlanceModifier.height(8.dp))
+                if (entry.daySlots.size > rows.size) {
+                    Text("+ ещё ${entry.daySlots.size - rows.size} — в приложении", style = ts(10.sp, FontWeight.Medium, ink.copy(alpha = 0.6f)))
+                }
             }
-            Column(GlanceModifier.fillMaxWidth()) {
-                for (r in entry.daySlots.take(if (s != null && isNow) 5 else 7)) LargeRow(r)
-            }
-            Spacer(GlanceModifier.defaultWeight())
             Row(GlanceModifier.fillMaxWidth()) {
                 Text(entry.tomorrowInfo.capitalizedFirstLetter(), style = ts(10.sp, FontWeight.Medium, ink.copy(alpha = 0.55f)), maxLines = 1,
                     modifier = GlanceModifier.defaultWeight())
@@ -556,34 +572,63 @@ private class WidgetView(val entry: PairEntry, val style: WidgetStyle) {
     }
 
     @Composable
-    fun LargeRow(r: LessonSlot) {
+    fun LargeRow(r: LessonSlot, roomy: Boolean) {
         val active = r.start <= entry.date && entry.date < r.end
-        val past = r.end <= entry.date
-        val a = if (past) 0.45f else 1f
+        val a = if (r.end <= entry.date) 0.5f else 1f
         val k = KindStyle.of(r.lesson.kind)
-        // отступ снаружи, подсветка текущей пары — внутри
-        Box(GlanceModifier.fillMaxWidth().padding(bottom = 5.dp)) {
-            var m = GlanceModifier.fillMaxWidth()
-            if (active) m = m.background(ImageProvider(if (lightInk) R.drawable.widget_row_w else R.drawable.widget_row_d))
-            Row(m.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(GlanceModifier.width(34.dp), horizontalAlignment = Alignment.End) {
-                    Text(hm(r.start), style = ts(11.sp, FontWeight.Bold, ink.copy(alpha = a)), maxLines = 1)
-                    Text(hm(r.end), style = ts(9.sp, c = ink.copy(alpha = 0.6f * a)), maxLines = 1)
+        val place = listOf(if (r.lesson.room.isEmpty()) "" else "ауд. ${r.lesson.room}", AddressFormat.full(r.address))
+            .filter { it.isNotEmpty() }.joinToString(" · ")
+        // подложки полупрозрачные — готовыми картинками: до Android 12 Glance красит их неверно
+        val tile = when {
+            lightInk && active -> R.drawable.widget_tile_w_on
+            lightInk -> R.drawable.widget_tile_w
+            active -> R.drawable.widget_tile_d_on
+            else -> R.drawable.widget_tile_d
+        }
+        Row(GlanceModifier.fillMaxSize().background(ImageProvider(tile)).padding(horizontal = 8.dp, vertical = if (roomy) 4.dp else 3.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Row(GlanceModifier.defaultWeight().fillMaxHeight().clickable(open("pair", r)), verticalAlignment = Alignment.CenterVertically) {
+                Column(GlanceModifier.width(38.dp), horizontalAlignment = Alignment.End) {
+                    Text(hm(r.start), style = ts(if (roomy) 14.sp else 12.sp, FontWeight.Bold, ink.copy(alpha = a)), maxLines = 1)
+                    Text(hm(r.end), style = ts(if (roomy) 10.sp else 9.sp, c = ink.copy(alpha = 0.6f * a)), maxLines = 1)
                 }
                 Spacer(GlanceModifier.width(8.dp))
-                Box(GlanceModifier.width(4.dp).height(30.dp).background(k.color.copy(alpha = a))) {}
+                Box(GlanceModifier.width(4.dp).fillMaxHeight().background(k.color.copy(alpha = a))) {}
                 Spacer(GlanceModifier.width(8.dp))
                 Column(GlanceModifier.defaultWeight()) {
-                    Text(r.lesson.subject, style = ts(12.sp, FontWeight.Bold, ink.copy(alpha = a)), maxLines = 1)
-                    Text(listOf(if (r.lesson.room.isEmpty()) "" else "ауд. ${r.lesson.room}", AddressFormat.full(r.address), r.lesson.teacher)
-                        .filter { it.isNotEmpty() }.joinToString(" · "),
-                        style = ts(10.sp, FontWeight.Medium, ink.copy(alpha = 0.75f * a)), maxLines = 1)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        KindBadge(r.lesson.kind, 8)
+                        if (active) {
+                            Spacer(GlanceModifier.width(4.dp))
+                            Box(GlanceModifier.background(ImageProvider(R.drawable.pill), ContentScale.FillBounds, ColorFilter.tint(color(rgb(0.20, 0.78, 0.35))))
+                                .padding(horizontal = 5.dp, vertical = 1.dp)) {
+                                Text("СЕЙЧАС", style = ts(8.sp, FontWeight.Bold, Color.White), maxLines = 1)
+                            }
+                        }
+                    }
+                    Text(r.lesson.subject, style = ts(if (roomy) 14.sp else 12.sp, FontWeight.Bold, ink.copy(alpha = a)), maxLines = if (roomy) 2 else 1)
+                    if (place.isNotEmpty()) Text(place, style = ts(10.sp, FontWeight.Medium, ink.copy(alpha = 0.75f * a)), maxLines = 1)
+                    if (roomy && r.lesson.teacher.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(R.drawable.widget_ic_person, ink.copy(alpha = 0.6f * a), 10)
+                            Spacer(GlanceModifier.width(3.dp))
+                            Text(r.lesson.teacher, style = ts(10.sp, FontWeight.Medium, ink.copy(alpha = 0.6f * a)), maxLines = 1)
+                        }
+                    }
+                    if (active) {
+                        val total = maxOf(60L, r.end.epochSecond - r.start.epochSecond).toFloat()
+                        val done = ((entry.date.epochSecond - r.start.epochSecond) / total).coerceIn(0f, 1f)
+                        Spacer(GlanceModifier.height(3.dp))
+                        LinearProgressIndicator(done, GlanceModifier.fillMaxWidth().height(3.dp),
+                            color = color(k.color), backgroundColor = color(ink.copy(alpha = 0.2f)))
+                    }
                 }
-                if (active) {
-                    Spacer(GlanceModifier.width(6.dp))
-                    Box(GlanceModifier.size(7.dp).background(ImageProvider(R.drawable.widget_dot), ContentScale.FillBounds,
-                        ColorFilter.tint(color(widgetSubjectColor(r.lesson.subject))))) {}
-                }
+            }
+            Spacer(GlanceModifier.width(6.dp))
+            // фото доски — сразу в папку этого предмета
+            Box(GlanceModifier.size(30.dp).background(ImageProvider(if (lightInk) R.drawable.widget_circle_w else R.drawable.widget_circle_d))
+                .clickable(open("photo", r)), contentAlignment = Alignment.Center) {
+                Icon(R.drawable.widget_ic_camera, ink.copy(alpha = a), 14)
             }
         }
     }

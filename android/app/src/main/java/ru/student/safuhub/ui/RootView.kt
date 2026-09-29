@@ -251,6 +251,12 @@ fun RootView() {
                 if (LessonPhotos.currentSlot(ScheduleStore.data) != null) BoardRouter.camera = true else showBoards.value = true
             }
             target == "boards" -> showBoards.value = true
+            // из виджета: safu://pair?subject=… — предмет с материалами, safu://photo?subject=… — фото доски в его папку
+            target == "pair" && !uri.getQueryParameter("subject").isNullOrEmpty() -> BoardRouter.subject = uri.getQueryParameter("subject")
+            target == "photo" && !uri.getQueryParameter("subject").isNullOrEmpty() -> {
+                BoardRouter.cameraSubject = uri.getQueryParameter("subject")
+                BoardRouter.camera = true
+            }
             else -> {
                 val dest = when {
                     target.startsWith("schedule") -> AppTab.SCHEDULE
@@ -321,8 +327,10 @@ fun RootView() {
 
     val camera = rememberCamera { file ->
         BoardRouter.camera = false
-        val slot = LessonPhotos.currentSlot(ScheduleStore.data)
-        if (file != null && slot != null && BoardPhoto.save(file, slot.lesson.subject) != null) Haptics.success()
+        val chosen = BoardRouter.cameraSubject
+        BoardRouter.cameraSubject = null
+        val subject = chosen ?: LessonPhotos.currentSlot(ScheduleStore.data)?.lesson?.subject
+        if (file != null && subject != null && BoardPhoto.save(file, subject) != null) Haptics.success()
         file?.delete()
     }
     LaunchedEffect(BoardRouter.camera) {
@@ -343,6 +351,10 @@ fun RootView() {
         LaunchedEffect(boardTarget.value) { if (boardTarget.value == null) BoardRouter.target = null }
         SheetItem(boardTarget) { t -> DoneSheet { BoardBatchScreen(LessonPhotos.batchFor(t, ScheduleStore.data)) } }
         SheetBinding(showBoards) { DoneSheet { BoardBatchesListScreen(null) } }
+        val widgetSubject = remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(BoardRouter.subject) { widgetSubject.value = BoardRouter.subject }
+        LaunchedEffect(widgetSubject.value) { if (widgetSubject.value == null) BoardRouter.subject = null }
+        SheetItem(widgetSubject) { s -> ru.student.safuhub.screens.subjects.SubjectSheet(s) }
         SheetItem(ru.student.safuhub.feature.web.WebLauncher.opened, full = true) { r -> ru.student.safuhub.feature.web.WebScreen(r) }
         // запись лекции — поверх всего приложения, возвращается и после пересоздания экрана
         SheetBinding(ru.student.safuhub.feature.lectures.LectureRecorder.screen, full = true) { ru.student.safuhub.feature.lectures.RecorderScreen() }

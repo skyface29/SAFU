@@ -296,6 +296,10 @@ object BoardRouter {
     var target by mutableStateOf<Target?>(null)
     /** Открыть камеру для текущей пары */
     var camera by mutableStateOf(false)
+    /** Для какого предмета снимаем (из виджета); null — текущая пара */
+    var cameraSubject: String? = null
+    /** Предмет из виджета: закреплённые материалы, файлы, заметки */
+    var subject by mutableStateOf<String?>(null)
 }
 
 // MARK: - Доска → текст (поиск по словам с доски)
