@@ -344,6 +344,8 @@ fun RootView() {
         SheetItem(boardTarget) { t -> DoneSheet { BoardBatchScreen(LessonPhotos.batchFor(t, ScheduleStore.data)) } }
         SheetBinding(showBoards) { DoneSheet { BoardBatchesListScreen(null) } }
         SheetItem(ru.student.safuhub.feature.web.WebLauncher.opened, full = true) { r -> ru.student.safuhub.feature.web.WebScreen(r) }
+        // запись лекции — поверх всего приложения, возвращается и после пересоздания экрана
+        SheetBinding(ru.student.safuhub.feature.lectures.LectureRecorder.screen, full = true) { ru.student.safuhub.feature.lectures.RecorderScreen() }
         val registration = remember { mutableStateOf(false) }
         val regWanted = !showSplash && (registering || onboardingAgain)
         LaunchedEffect(regWanted) { registration.value = regWanted }

@@ -36,6 +36,7 @@ object Notify {
     const val CH_BUS = "bus"
     const val CH_ALARM = "alarm"
     const val CH_FUN = "fun"
+    const val CH_LECTURE = "lecture"
 
     private const val storeKey = "notify.pending.v1"
 
@@ -68,6 +69,7 @@ object Notify {
         ch(CH_BUS, "Автобус на экране блокировки", NotificationManager.IMPORTANCE_LOW, silent = true)
         ch(CH_ALARM, "Будильник к паре", NotificationManager.IMPORTANCE_HIGH)
         ch(CH_FUN, "Праздники и пасхалки", NotificationManager.IMPORTANCE_DEFAULT)
+        ch(CH_LECTURE, "Запись и распознавание лекций", NotificationManager.IMPORTANCE_LOW, silent = true)
     }
 
     val permitted: Boolean

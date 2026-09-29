@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Промежуточный сертификат Минцифры для GigaChat: подлинность проверяется подписью корня,
+         поэтому его можно скачать и без https -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">gu-st.ru</domain>
+    </domain-config>
+</network-security-config>
