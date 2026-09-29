@@ -9,5 +9,20 @@
     <string name="sc_tasks_long">Задачи и дедлайны</string>
     <string name="sc_files">Файлы</string>
     <string name="sc_files_long">Мои файлы</string>
-    <string name="widget_desc">Пары, дедлайны и погода</string>
+    <string name="widget_label_night">Пары САФУ</string>
+    <string name="widget_desc_night">Текущая и следующая пара, аудитория, адрес и весь день. Данные из РУЗ.</string>
+    <string name="widget_label_aurora">Пары · Сияние</string>
+    <string name="widget_desc_aurora">Текущая и следующая пара, аудитория и весь день — в стиле «Сияние».</string>
+    <string name="widget_label_graphite">Пары · Графит</string>
+    <string name="widget_desc_graphite">Текущая и следующая пара, аудитория и весь день — в стиле «Графит».</string>
+    <string name="widget_label_bordeaux">Пары · Бордо</string>
+    <string name="widget_desc_bordeaux">Текущая и следующая пара, аудитория и весь день — в стиле «Бордо».</string>
+    <string name="widget_label_forest">Пары · Хвоя</string>
+    <string name="widget_desc_forest">Текущая и следующая пара, аудитория и весь день — в стиле «Хвоя».</string>
+    <string name="widget_label_sunset">Пары · Закат</string>
+    <string name="widget_desc_sunset">Текущая и следующая пара, аудитория и весь день — в стиле «Закат».</string>
+    <string name="widget_label_light">Пары · Светлый</string>
+    <string name="widget_desc_light">Текущая и следующая пара, аудитория и весь день — в стиле «Светлый».</string>
+    <string name="widget_label_clear">Пары · Прозрачный</string>
+    <string name="widget_desc_clear">Без фона — сквозь виджет видны обои. Точный кусок обоев: Профиль → Виджет → «Прозрачный виджет».</string>
 </resources>

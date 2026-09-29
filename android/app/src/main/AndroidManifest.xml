@@ -411,6 +411,79 @@
             android:exported="false"
             android:foregroundServiceType="microphone|dataSync|mediaProcessing" />
         <receiver android:name=".feature.lectures.LectureActionReceiver" android:exported="false" />
+        <receiver
+            android:name=".widget.PairWidgetNightReceiver"
+            android:exported="true"
+            android:label="@string/widget_label_night">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_pair_night" />
+        </receiver>
+        <receiver
+            android:name=".widget.PairWidgetAuroraReceiver"
+            android:exported="true"
+            android:label="@string/widget_label_aurora">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_pair_aurora" />
+        </receiver>
+        <receiver
+            android:name=".widget.PairWidgetGraphiteReceiver"
+            android:exported="true"
+            android:label="@string/widget_label_graphite">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_pair_graphite" />
+        </receiver>
+        <receiver
+            android:name=".widget.PairWidgetBordeauxReceiver"
+            android:exported="true"
+            android:label="@string/widget_label_bordeaux">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_pair_bordeaux" />
+        </receiver>
+        <receiver
+            android:name=".widget.PairWidgetForestReceiver"
+            android:exported="true"
+            android:label="@string/widget_label_forest">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_pair_forest" />
+        </receiver>
+        <receiver
+            android:name=".widget.PairWidgetSunsetReceiver"
+            android:exported="true"
+            android:label="@string/widget_label_sunset">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_pair_sunset" />
+        </receiver>
+        <receiver
+            android:name=".widget.PairWidgetLightReceiver"
+            android:exported="true"
+            android:label="@string/widget_label_light">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_pair_light" />
+        </receiver>
+        <receiver
+            android:name=".widget.PairWidgetClearReceiver"
+            android:exported="true"
+            android:label="@string/widget_label_clear">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_pair_clear" />
+        </receiver>
+        <receiver android:name=".widget.WidgetTickReceiver" android:exported="false" />
         <receiver android:name=".system.NotifyReceiver" android:exported="false" />
         <receiver android:name=".system.LiveReceiver" android:exported="false" />
         <receiver android:name=".system.WakeAlarmReceiver" android:exported="false" />
