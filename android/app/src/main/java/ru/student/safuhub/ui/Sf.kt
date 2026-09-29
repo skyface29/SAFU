@@ -288,6 +288,15 @@ object Sf {
         "xmark" -> Icons.Rounded.Close
         "xmark.circle", "xmark.circle.fill" -> Icons.Rounded.Cancel
         "chart.pie.fill" -> Icons.Rounded.PieChart
+        "exclamationmark" -> Icons.Rounded.PriorityHigh
+        "questionmark" -> Icons.Rounded.QuestionMark
+        "laptopcomputer" -> Icons.Rounded.Laptop
+        "desktopcomputer" -> Icons.Rounded.Computer
+        "stairs" -> Icons.Rounded.Stairs
+        "minus.circle.fill", "minus.circle" -> Icons.Rounded.RemoveCircle
+        "network" -> Icons.Rounded.Hub
+        "sum" -> Icons.Rounded.Functions
+        "triangle" -> Icons.Rounded.ChangeHistory
         "trending", "chart.xyaxis.line" -> Icons.AutoMirrored.Rounded.TrendingUp
         else -> fallback(name)
     }
