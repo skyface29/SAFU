@@ -74,10 +74,6 @@ jobs:
           unzip -l dist/SAFU.apk | grep -E "AndroidManifest.xml|classes.dex|lib/arm64" | head -5
           ls -la dist
           echo "APP_VERSION=$V" >> "$GITHUB_ENV"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: SAFU-android-${{ github.run_number }}
-          path: dist/*.apk
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: android-${{ github.run_number }}
@@ -88,7 +84,15 @@ jobs:
 
             Установка: скачай APK на телефон → открой → разреши установку из этого источника → «Установить». Обновление ставится поверх, данные сохраняются.
           files: dist/*.apk
-          make_latest: false
+          # черновик: APK видят и скачивают только владелец и соавторы репозитория
+          draft: true
+      - name: Опубликованные релизы Android — обратно в черновики
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list -R "${{ github.repository }}" --limit 100 --json tagName,isDraft \
+            --jq '.[] | select(.tagName | startswith("android-")) | select(.isDraft | not) | .tagName' |
+            xargs -r -n1 gh release edit --draft=true -R "${{ github.repository }}"
       - name: Удаление служебного релиза зависимостей
         env:
           GH_TOKEN: ${{ github.token }}
