@@ -57,6 +57,26 @@ class ShotTest {
         Defaults.set("memory.tabID", "home")
     }
 
+    @Test fun tasks() = shot("tasks") {
+        sample()
+        Defaults.set("memory.tabID", "tasks")
+    }
+
+    @Test fun files() = shot("files") {
+        Defaults.set("memory.tabID", "files")
+    }
+
+    @Test fun profile() = shot("profile") {
+        sample()
+        Defaults.set("memory.tabID", "profile")
+    }
+
+    @Test fun scheduleLight() = shot("schedule_light") {
+        sample()
+        Defaults.set("memory.tabID", "schedule")
+        Defaults.set("ui.scheme", 1)
+    }
+
     @Test fun home() = shot("home") {
         Defaults.set("memory.tabID", "home")
     }
