@@ -21,10 +21,31 @@ android {
         resValue("string", "yandex_mapkit_key", yandexKey)
     }
 
+    signingConfigs {
+        // Своя подпись — из секретов GitHub (SAFU_KEYSTORE и пароли). Без них — открытый ключ сборки из репозитория:
+        // обновления ставятся поверх, но подписать APK этим ключом может любой.
+        create("release") {
+            storeFile = file(System.getenv("SAFU_KEYSTORE") ?: "safu-ci.jks")
+            storePassword = System.getenv("SAFU_KEYSTORE_PASSWORD") ?: "safu-ci-public"
+            keyAlias = System.getenv("SAFU_KEY_ALIAS") ?: "safu"
+            keyPassword = System.getenv("SAFU_KEY_PASSWORD") ?: "safu-ci-public"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+
+    // Отдельный APK под процессор: карты, распознавание речи и текста весят много под каждую архитектуру
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = false
         }
     }
     compileOptions {
