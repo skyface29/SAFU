@@ -1,0 +1,62 @@
+{
+  "name": "safu-desktop",
+  "productName": "САФУ",
+  "version": "17.0.0",
+  "description": "САФУ для Windows — расписание, ДЗ, файлы, почта и сайты университета",
+  "author": "САФУ (студент группы 151621)",
+  "license": "MIT",
+  "private": true,
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "node scripts/build-electron.mjs && concurrently -k \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV=1 electron .\"",
+    "build:renderer": "vite build",
+    "build:electron": "node scripts/build-electron.mjs",
+    "build": "tsc --noEmit -p tsconfig.json && npm run build:renderer && npm run build:electron",
+    "start": "electron .",
+    "dist": "npm run build && electron-builder --win --x64",
+    "test": "node --test --experimental-strip-types tests/"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "4.3.4",
+    "concurrently": "9.1.0",
+    "cross-env": "7.0.3",
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8",
+    "esbuild": "0.24.0",
+    "framer-motion": "11.15.0",
+    "lucide-react": "0.468.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.7.2",
+    "vite": "5.4.11",
+    "wait-on": "8.0.1",
+    "zustand": "5.0.2"
+  },
+  "build": {
+    "appId": "ru.student.safuhub",
+    "productName": "САФУ",
+    "artifactName": "SAFU-${version}-${arch}.${ext}",
+    "directories": { "output": "release", "buildResources": "build" },
+    "files": ["dist/**", "dist-electron/**", "package.json"],
+    "asar": true,
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }, { "target": "portable", "arch": ["x64"] }],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "САФУ",
+      "artifactName": "SAFU-Setup-${version}.${ext}"
+    },
+    "portable": { "artifactName": "SAFU-Portable-${version}.${ext}" },
+    "protocols": [{ "name": "САФУ", "schemes": ["safu"] }]
+  }
+}
