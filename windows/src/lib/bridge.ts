@@ -61,9 +61,10 @@ function browserFallback(): SafuAPI {
   return api as SafuAPI
 }
 
-export const safu: SafuAPI = window.safu ?? browserFallback()
-export const isDesktop = !!window.safu
-export const isWidget = location.hash === '#widget'
+const w: any = typeof window !== 'undefined' ? window : {}
+export const safu: SafuAPI = w.safu ?? browserFallback()
+export const isDesktop = !!w.safu
+export const isWidget = typeof location !== 'undefined' && location.hash === '#widget'
 
 export type FileInfo = { name: string; rel: string; dir: boolean; size: number; mtime: number; ext: string }
 export type FetchResult = { ok: boolean; status: number; text: string; url: string; headers: Record<string, string>; error?: string }

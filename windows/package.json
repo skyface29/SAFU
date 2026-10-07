@@ -14,7 +14,7 @@
     "build": "tsc --noEmit -p tsconfig.json && npm run build:renderer && npm run build:electron",
     "start": "electron .",
     "dist": "npm run build && electron-builder --win --x64",
-    "test": "node --test --experimental-strip-types tests/"
+    "test": "node scripts/test.mjs"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.132.0",
@@ -48,6 +48,7 @@
     "files": [
       "dist/**",
       "dist-electron/**",
+      "build/icon.png",
       "package.json"
     ],
     "asar": true,

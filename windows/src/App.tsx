@@ -117,7 +117,7 @@ export default function App() {
 
   return (
     <DialogHost>
-      <Ambient dark={dark} c1={dark && accent.c1d ? accent.c1d : accent.c1} c2={dark && accent.c2d ? accent.c2d : accent.c2} />
+      {!(mica && isDesktop) && <Ambient dark={dark} c1={dark && accent.c1d ? accent.c1d : accent.c1} c2={dark && accent.c2d ? accent.c2d : accent.c2} />}
       <motion.div className="shell"
         animate={backdrop ? { scale: 0.94, opacity: 0.7, filter: 'blur(2px)', borderRadius: 24 } : { scale: 1, opacity: 1, filter: 'blur(0px)', borderRadius: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 30 }} style={{ transformOrigin: '50% 30%' }}>

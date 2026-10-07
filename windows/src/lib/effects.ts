@@ -122,6 +122,7 @@ export function trayLine(d: ScheduleData): { tooltip: string; line: string } {
 }
 
 let tickTimer: number | undefined
+let tickerWired = false
 export function startTicker() {
   const tick = () => {
     const d = scheduleStore.data
@@ -131,10 +132,13 @@ export function startTicker() {
   tick()
   window.clearInterval(tickTimer)
   tickTimer = window.setInterval(tick, 20_000)
-  safu.app.on('widget:wants', tick)
+  if (!tickerWired) { tickerWired = true; safu.app.on('widget:wants', tick) }
 }
 
+let effectsInstalled = false
 export function installEffects() {
+  if (effectsInstalled) return
+  effectsInstalled = true
   onScheduleChanged(d => {
     pairReminders(d)
     weeklyDigest(d)

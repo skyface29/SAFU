@@ -13,11 +13,14 @@ export async function hashPin(pin: string) {
 
 const useLock = create<{ locked: boolean }>(() => ({ locked: false }))
 let hiddenAt = 0
+let lockWired = false
 
 export const appLock = {
   enabled: () => kv.get('lock.enabled', false) && !!kv.get('lock.pin', ''),
   lockOnStart() {
     if (appLock.enabled()) useLock.setState({ locked: true })
+    if (lockWired) return
+    lockWired = true
     safu.app.on('app:visible', (v: boolean) => {
       if (!v) hiddenAt = Date.now()
       else if (appLock.enabled() && hiddenAt && Date.now() - hiddenAt > kv.get('lock.after', 1) * 60_000) useLock.setState({ locked: true })

@@ -85,6 +85,7 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
   const credList = useCreds(s => s.list)
   const [zoom, setZoom] = useState(1)
   const [dark, setDark] = useState(false)
+  const [failed, setFailed] = useState<string | null>(null)
   const ref = useRef<any>(null)
   const res = tab.resourceId ? resourcesStore.get().find(r => r.id === tab.resourceId) : undefined
 
@@ -100,7 +101,7 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
       if (res) resources.saveLastURL(url, res)
     }
     const onTitle = (e: any) => sites.update(tab.id, { pageTitle: e.title })
-    const onStart = () => sites.update(tab.id, { loading: true })
+    const onStart = () => { sites.update(tab.id, { loading: true }); setFailed(null) }
     const onStop = () => { sites.update(tab.id, { loading: false }); nav() }
     const onMsg = (e: any) => {
       const [p] = e.args || []
@@ -115,7 +116,11 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
         if (!c || c.pass !== p.pass || (p.user && c.user !== p.user)) setOffer(p)
       }
     }
-    const onFail = (e: any) => { if (e.errorCode !== -3) sites.update(tab.id, { loading: false }) }
+    const onFail = (e: any) => {
+      if (e.errorCode === -3 || !e.isMainFrame) return
+      sites.update(tab.id, { loading: false })
+      setFailed(e.errorCode === -106 ? 'Нет интернета' : e.errorCode === -105 || e.errorCode === -102 || e.errorCode === -118 ? 'Сайт не отвечает — возможно, он на обслуживании' : `Не удалось открыть страницу (${e.errorDescription || e.errorCode})`)
+    }
     wv.addEventListener('page-title-updated', onTitle)
     wv.addEventListener('did-start-loading', onStart)
     wv.addEventListener('did-stop-loading', onStop)
@@ -243,6 +248,18 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
           <webview ref={ref} src={tab.url} partition="persist:sites" preload={preload || undefined} allowpopups={"true" as any}
             webpreferences="contextIsolation=yes, spellcheck=yes" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
         ) : <FileView tab={tab} />}
+        <AnimatePresence>
+          {failed && tab.kind === 'site' && (
+            <motion.div className="center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'var(--bg)' }}>
+              <div className="col" style={{ alignItems: 'center', gap: 12, textAlign: 'center' }}>
+                <motion.div style={{ fontSize: '3.5rem' }} animate={{ rotate: [0, -8, 8, 0] }} transition={{ duration: 2, repeat: Infinity }}>🔌</motion.div>
+                <div className="h-card">{failed}</div>
+                <div className="sub">{host}</div>
+                <div className="row"><button className="btn primary" onClick={() => { setFailed(null); ref.current?.reload() }}><RotateCw size={15} /> Ещё раз</button><button className="btn" onClick={() => safu.shell.open(tab.currentURL || tab.url)}><ExternalLink size={15} /> В браузере</button></div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   )

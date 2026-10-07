@@ -17,7 +17,8 @@ const isDev = !!process.env.VITE_DEV
 const APP_ID = 'ru.student.safuhub'
 
 app.setAppUserModelId(APP_ID)
-if (process.platform === 'win32') app.setName('САФУ')
+app.setName('САФУ')
+app.setPath('userData', path.join(app.getPath('appData'), 'САФУ'))
 
 // ---------- один экземпляр и ссылки safu:// ----------
 
@@ -138,7 +139,7 @@ function appIcon() {
 
 function createWindow() {
   const bounds = (kv['win.bounds'] as Electron.Rectangle | undefined) || { width: 1280, height: 820 }
-  const mica = kv['ui.mica'] !== false
+  const mica = kv['ui.mica'] === true
   win = new BrowserWindow({
     ...bounds,
     minWidth: 920,
