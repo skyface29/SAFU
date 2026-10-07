@@ -10,11 +10,11 @@ import { installEffects, startTicker } from './lib/effects'
 import { hw, homeworkStore } from './lib/homework'
 import { creds } from './lib/creds'
 import { mailWatch } from './lib/mail'
-import { Ambient } from './fx/Ambient'
+import { Ambient, setAmbientPaused } from './fx/Ambient'
 import { Titlebar, Sidebar, Splash, CommandPalette } from './ui/Shell'
 import { DialogHost, ToastHost, MenuHost } from './ui/kit'
 import { SiteLayer, useSiteBackdrop } from './sites/SiteLayer'
-import { openSiteByKey } from './sites/sites'
+import { openSiteByKey, useSites } from './sites/sites'
 import { PAGES } from './pages'
 import { Registration } from './pages/Registration'
 import { SubjectSheet } from './pages/Subjects'
@@ -44,6 +44,8 @@ export default function App() {
   const [again, setAgain] = usePref('onboarding.again', false)
   const [mica] = usePref('ui.mica', false)
   const backdrop = useSiteBackdrop()
+  const sitesOpen = useSites(s => s.mode !== 'closed')
+  useEffect(() => setAmbientPaused(sitesOpen), [sitesOpen])
   const modals = useModals()
 
   // тема пересчитывается при любом изменении оформления
@@ -56,7 +58,7 @@ export default function App() {
       force(x => x + 1)
     }
     apply()
-    const keys = ['theme', 'theme.seasonal', 'ui.font', 'ui.radius', 'ui.textSize', 'cardStyle', 'look.pack', 'ui.reduceMotion', 'ui.gradTitle', 'bg.style']
+    const keys = ['theme', 'theme.seasonal', 'ui.font', 'ui.radius', 'ui.textSize', 'cardStyle', 'look.pack', 'ui.reduceMotion', 'ui.gradTitle', 'bg.style', 'ui.blur']
     const offs = keys.map(k => kv.subscribe(k, apply))
     return () => offs.forEach(f => f())
   }, [dark])
@@ -119,7 +121,7 @@ export default function App() {
     <DialogHost>
       {!(mica && isDesktop) && <Ambient dark={dark} c1={dark && accent.c1d ? accent.c1d : accent.c1} c2={dark && accent.c2d ? accent.c2d : accent.c2} />}
       <motion.div className="shell"
-        animate={backdrop ? { scale: 0.94, opacity: 0.7, filter: 'blur(2px)', borderRadius: 24 } : { scale: 1, opacity: 1, filter: 'blur(0px)', borderRadius: 0 }}
+        animate={backdrop ? { scale: 0.95, opacity: 0.6 } : { scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 30 }} style={{ transformOrigin: '50% 30%' }}>
         <Titlebar />
         <Sidebar />
@@ -127,10 +129,10 @@ export default function App() {
           <AnimatePresence mode="popLayout" initial={false} custom={dir}>
             <motion.div key={page + JSON.stringify(params)} className="page-scroll"
               custom={dir}
-              initial={{ opacity: 0, y: 24 * dir, scale: 0.985, filter: 'blur(6px)' }}
-              animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -16 * dir, scale: 0.99, filter: 'blur(4px)' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 32 }}>
+              initial={{ opacity: 0, y: 18 * dir }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 * dir }}
+              transition={{ type: 'spring', stiffness: 420, damping: 38, mass: 0.7 }}>
               <div className="page"><Page {...params} /></div>
             </motion.div>
           </AnimatePresence>

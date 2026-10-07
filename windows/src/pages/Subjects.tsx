@@ -43,7 +43,7 @@ export default function Subjects() {
           const color = subjectColor(s)
           return (
             <Card key={s} press tilt delay={Math.min(i, 16) * 0.03} onClick={() => openSubject(s)} style={{ overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', right: -20, top: -20, width: 120, height: 120, borderRadius: '50%', background: `${color}22`, filter: 'blur(10px)' }} />
+              <div style={{ position: 'absolute', right: -20, top: -20, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle, ${color}33, transparent 70%)` }} />
               <div className="row top">
                 <motion.div className="icon-tile" whileHover={{ rotate: 12, scale: 1.1 }} style={{ width: 46, height: 46, borderRadius: 14, background: `linear-gradient(135deg, ${color}, ${color}aa)` }}><SubjectGlyph subject={s} size={22} /></motion.div>
                 <div className="grow">

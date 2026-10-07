@@ -452,3 +452,17 @@ export function diffChanges(before: Map<string, Slot>, after: Map<string, Slot>)
 export function slotShareLine(s: Slot) {
   return `${hm(s.start)}–${hm(s.end)} ${s.subject} (${kindStyle(s.kind).label})${s.room ? `, ауд. ${s.room}` : ''}${s.teacher ? `, ${s.teacher}` : ''}`
 }
+
+/** Параллельные пары одного предмета в одно время (подгруппы, физкультура по выбору) — одной строкой */
+export type SlotGroup = { slot: Slot; alts: Slot[] }
+export function groupParallel(list: Slot[]): SlotGroup[] {
+  const out: SlotGroup[] = []
+  const idx = new Map<string, SlotGroup>()
+  for (const s of list) {
+    const k = `${s.start}|${s.subject.toLowerCase()}`
+    const g = idx.get(k)
+    if (g) g.alts.push(s)
+    else { const n = { slot: s, alts: [] as Slot[] }; idx.set(k, n); out.push(n) }
+  }
+  return out
+}

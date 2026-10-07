@@ -26,11 +26,37 @@ jobs:
         run: |
           npx tsc --noEmit -p tsconfig.json
           npm test
+      # Подпись .exe (убирает предупреждение SmartScreen). Работает сама, если в Settings → Secrets добавить:
+      #  • Azure Trusted Signing: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
+      #    AZURE_SIGN_ENDPOINT, AZURE_SIGN_ACCOUNT, AZURE_SIGN_PROFILE, AZURE_SIGN_PUBLISHER;
+      #  • или сертификат .pfx: WIN_CSC_LINK (base64 файла) и WIN_CSC_KEY_PASSWORD.
+      # Без секретов собирается неподписанный установщик.
       - name: Сборка установщика
+        shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           NODE_ENV: production
-        run: npm run dist -- --publish never
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZ_ENDPOINT: ${{ secrets.AZURE_SIGN_ENDPOINT }}
+          AZ_ACCOUNT: ${{ secrets.AZURE_SIGN_ACCOUNT }}
+          AZ_PROFILE: ${{ secrets.AZURE_SIGN_PROFILE }}
+          AZ_PUBLISHER: ${{ secrets.AZURE_SIGN_PUBLISHER }}
+        run: |
+          [ -z "$CSC_LINK" ] && unset CSC_LINK CSC_KEY_PASSWORD
+          if [ -n "$AZURE_CLIENT_ID" ] && [ -n "$AZ_ENDPOINT" ]; then
+            echo "Подписываю через Azure Trusted Signing"
+            npm run dist -- --publish never \
+              -c.win.azureSignOptions.endpoint="$AZ_ENDPOINT" \
+              -c.win.azureSignOptions.codeSigningAccountName="$AZ_ACCOUNT" \
+              -c.win.azureSignOptions.certificateProfileName="$AZ_PROFILE" \
+              -c.win.azureSignOptions.publisherName="$AZ_PUBLISHER"
+          else
+            npm run dist -- --publish never
+          fi
       - name: Версия
         shell: bash
         run: echo "APP_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV

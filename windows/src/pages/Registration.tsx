@@ -159,7 +159,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
 
   return (
     <motion.div style={{ position: 'fixed', inset: 0, zIndex: 700, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.04, filter: 'blur(10px)' }} transition={{ duration: 0.45 }}>
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.03 }} transition={{ duration: 0.45 }}>
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(900px 600px at 80% 0%, rgba(var(--brand-rgb), .22), transparent), radial-gradient(700px 500px at 0% 100%, rgba(var(--brand2-rgb), .15), transparent)', pointerEvents: 'none' }} />
       {step === 0 && <Flakes />}
       <div style={{ height: 'var(--titlebar)', WebkitAppRegion: 'drag' } as any} />
@@ -179,7 +179,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <AnimatePresence mode="wait" custom={dir}>
           <motion.div key={step} custom={dir} style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 32px 40px' }}
-            initial={{ opacity: 0, x: 80 * dir, filter: 'blur(6px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, x: -80 * dir, filter: 'blur(6px)' }}
+            initial={{ opacity: 0, x: 60 * dir }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 * dir }}
             transition={{ type: 'spring', stiffness: 280, damping: 30 }}>
             <div style={{ maxWidth: 760, margin: '0 auto' }}>
               {step === 0 && (

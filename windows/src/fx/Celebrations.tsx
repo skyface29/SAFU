@@ -128,7 +128,7 @@ export function CelebrationOverlay() {
           <FxCanvas style={c.style} />
           <motion.div onClick={() => useCeleb.setState({ current: null })}
             initial={{ y: 80, opacity: 0, scale: 0.9 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 40, opacity: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 22, delay: 0.1 }}
-            style={{ position: 'absolute', left: '50%', bottom: 90, translateX: '-50%', pointerEvents: 'auto', cursor: 'pointer', padding: '16px 26px', borderRadius: 24, background: 'var(--glass-strong)', border: '1px solid var(--line2)', backdropFilter: 'blur(30px)', boxShadow: '0 20px 60px rgba(0,0,0,.4)', textAlign: 'center', maxWidth: 420 }}>
+            style={{ position: 'absolute', left: '50%', bottom: 90, translateX: '-50%', pointerEvents: 'auto', cursor: 'pointer', padding: '16px 26px', borderRadius: 24, background: 'var(--glass-strong)', border: '1px solid var(--line2)', boxShadow: '0 20px 60px rgba(0,0,0,.4)', textAlign: 'center', maxWidth: 420 }}>
             <div style={{ fontSize: '1.3rem', fontWeight: 850 }}>{c.title}</div>
             <div className="muted small" style={{ marginTop: 4 }}>{c.subtitle}</div>
           </motion.div>

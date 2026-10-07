@@ -10,7 +10,7 @@ import { hw, homeworkStore } from '../lib/homework'
 import { safu } from '../lib/bridge'
 import { mapsURL } from '../lib/maps'
 
-export function SlotRow({ s, now, compact, showDay }: { s: Slot; now: number; compact?: boolean; showDay?: string }) {
+export function SlotRow({ s, now, compact, showDay, alts = [] }: { s: Slot; now: number; compact?: boolean; showDay?: string; alts?: Slot[] }) {
   homeworkStore.use()
   const st = kindStyle(s.kind)
   const live = s.start <= now && now < s.end
@@ -22,7 +22,7 @@ export function SlotRow({ s, now, compact, showDay }: { s: Slot; now: number; co
       className="row top"
       layout="position"
       whileHover={{ x: 3 }}
-      onClick={() => useModals.getState().set({ lesson: s })}
+      onClick={() => useModals.getState().set({ lesson: alts.length ? { ...s, alts } : s })}
       onContextMenu={e => openMenu(e, [
         { label: 'Подробнее', run: () => useModals.getState().set({ lesson: s }) },
         { label: 'Предмет: файлы и заметки', run: () => openSubject(s.subject) },
@@ -30,7 +30,7 @@ export function SlotRow({ s, now, compact, showDay }: { s: Slot; now: number; co
         ...(s.address && !s.remote ? [{ label: 'Маршрут в Яндекс Картах', icon: <MapPin size={15} />, run: () => safu.shell.open(mapsURL(s.address)) }] : [])
       ])}
       style={{
-        position: 'relative', padding: compact ? '10px 12px' : '13px 14px', borderRadius: 16, cursor: 'pointer', gap: 14,
+        position: 'relative', flexShrink: 0, padding: compact ? '10px 12px' : '13px 14px', borderRadius: 16, cursor: 'pointer', gap: 14,
         background: live ? `linear-gradient(90deg, ${st.color}26, transparent)` : 'var(--fill)',
         border: `1px solid ${live ? st.color + '66' : 'var(--line)'}`, opacity: past ? 0.55 : 1, overflow: 'hidden'
       }}>
@@ -46,12 +46,13 @@ export function SlotRow({ s, now, compact, showDay }: { s: Slot; now: number; co
           <KindBadge kind={s.kind} />
           {live && <span className="badge" style={{ background: '#22c55e', color: '#fff' }}><span className="live-dot" style={{ width: 6, height: 6, background: '#fff' }} />идёт</span>}
           {s.remote && <span className="pill"><Wifi size={11} /> дистант</span>}
+          {alts.length > 0 && <span className="pill" title="Несколько пар в одно время — выбери свою подгруппу">+{alts.length} {alts.length === 1 ? 'подгруппа' : alts.length < 5 ? 'подгруппы' : 'подгрупп'}</span>}
           {due.length > 0 && <span className="pill" style={{ background: 'rgba(245,158,11,.18)', color: '#f59e0b' }}><BookMarked size={11} /> ДЗ: {due.length}</span>}
         </div>
         <div className="bold" style={{ fontSize: compact ? '.95rem' : '1.02rem', lineHeight: 1.25 }}>{s.subject}</div>
         <div className="row wrap-row sub" style={{ gap: '4px 14px', marginTop: 4 }}>
-          {(s.room || s.address) && <span className="row gap4"><MapPin size={12} />{s.room ? `ауд. ${s.room}` : ''}{s.room && s.address ? ' · ' : ''}{!compact && AddressFormat.full(s.address)}</span>}
-          {s.teacher && <span className="row gap4"><User size={12} />{s.teacher}</span>}
+          {alts.length > 0 ? <span className="row gap4"><MapPin size={12} />{[s, ...alts].map(x => x.room).filter(Boolean).slice(0, 4).join(', ')}{alts.length > 3 ? '…' : ''}</span> : (s.room || s.address) && <span className="row gap4"><MapPin size={12} />{s.room ? `ауд. ${s.room}` : ''}{s.room && s.address ? ' · ' : ''}{!compact && AddressFormat.full(s.address)}</span>}
+          {s.teacher && !alts.length && <span className="row gap4"><User size={12} />{s.teacher}</span>}
         </div>
       </div>
     </motion.div>

@@ -59,7 +59,7 @@ export function LockGate() {
   return (
     <AnimatePresence>
       {locked ? (
-        <motion.div key="lock" style={{ position: 'fixed', inset: 0, zIndex: 950, display: 'grid', placeItems: 'center', background: 'rgba(5,8,14,.75)', backdropFilter: 'blur(40px)' }}
+        <motion.div key="lock" style={{ position: 'fixed', inset: 0, zIndex: 950, display: 'grid', placeItems: 'center', background: 'rgba(5,8,14,.75)' }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.05 }}>
           <div className="col" style={{ alignItems: 'center', gap: 18, color: '#fff' }}>
             <motion.div animate={{ rotate: [0, -10, 10, 0] }} transition={{ duration: 0.6 }} className="icon-tile" style={{ width: 72, height: 72, borderRadius: 22, background: 'var(--grad)' }}><Lock size={32} /></motion.div>
@@ -81,7 +81,7 @@ export function LockGate() {
           </div>
         </motion.div>
       ) : shieldOn && blurred ? (
-        <motion.div key="shield" style={{ position: 'fixed', inset: 0, zIndex: 940, display: 'grid', placeItems: 'center', background: 'var(--glass-strong)', backdropFilter: 'blur(50px)' }}
+        <motion.div key="shield" style={{ position: 'fixed', inset: 0, zIndex: 940, display: 'grid', placeItems: 'center', background: 'var(--glass-strong)' }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
           <div className="col" style={{ alignItems: 'center', gap: 10 }}><Snowflake size={52} color="var(--brand)" /><div className="h-card">САФУ</div></div>
         </motion.div>

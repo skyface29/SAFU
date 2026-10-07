@@ -25,8 +25,8 @@
   --line2: rgba(255, 255, 255, .16);
   --fill: rgba(255, 255, 255, .06);
   --fill2: rgba(255, 255, 255, .10);
-  --glass: rgba(22, 27, 40, .58);
-  --glass-strong: rgba(20, 24, 36, .86);
+  --glass: rgba(20, 25, 38, .78);
+  --glass-strong: rgba(20, 24, 36, .97);
   --shadow: 0 10px 40px rgba(0, 0, 0, .45);
   --solid: #161b28;
   color-scheme: dark;
@@ -42,8 +42,8 @@
   --line2: rgba(15, 19, 32, .14);
   --fill: rgba(15, 19, 32, .045);
   --fill2: rgba(15, 19, 32, .08);
-  --glass: rgba(255, 255, 255, .62);
-  --glass-strong: rgba(255, 255, 255, .9);
+  --glass: rgba(255, 255, 255, .84);
+  --glass-strong: rgba(255, 255, 255, .98);
   --shadow: 0 10px 34px rgba(30, 45, 80, .14);
   --solid: #ffffff;
   color-scheme: light;
@@ -141,11 +141,15 @@ a { color: var(--brand); text-decoration: none; }
 .card {
   position: relative; border-radius: calc(22px * var(--r)); padding: 18px;
   background: var(--glass); border: 1px solid var(--line);
-  backdrop-filter: blur(28px) saturate(1.5); -webkit-backdrop-filter: blur(28px) saturate(1.5);
   box-shadow: var(--shadow);
   transition: transform .35s var(--spring), box-shadow .3s, border-color .3s, background .3s;
-  isolation: isolate;
+  isolation: isolate; contain: layout paint;
 }
+/* размытие под карточками — по желанию (Оформление → «Настоящее стекло»): каждое размытие пересчитывается вместе с фоном */
+:root[data-blur="true"] { --glass-blur: 1; }
+:root[data-blur="true"][data-scheme="dark"] .card { background: rgba(22, 27, 40, .58); }
+:root[data-blur="true"][data-scheme="light"] .card { background: rgba(255, 255, 255, .62); }
+:root[data-blur="true"] .card { backdrop-filter: blur(22px) saturate(1.4); }
 .card.hover:hover { transform: translateY(-2px); border-color: var(--line2); }
 .card.press { cursor: pointer; }
 .card.press:active { transform: scale(.985); }
@@ -157,6 +161,7 @@ a { color: var(--brand); text-decoration: none; }
   background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(var(--brand-rgb), .14), transparent 45%);
 }
 .card:hover .spot { opacity: 1; }
+.card:not(:hover) .spot, .card:not(:hover) .spot-border { display: none; }
 .card .spot-border {
   pointer-events: none; position: absolute; inset: -1px; border-radius: inherit; opacity: 0; transition: opacity .3s;
   padding: 1px; background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(var(--brand-rgb), .7), transparent 50%);
@@ -292,11 +297,10 @@ h1, h2, h3, h4 { margin: 0; letter-spacing: -.02em; }
 /* ---------- окна поверх (листы) ---------- */
 
 .overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 50px 20px 20px; }
-.overlay-bg { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); backdrop-filter: blur(6px); }
+.overlay-bg { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); }
 .sheet {
   position: relative; width: min(640px, 100%); max-height: calc(100vh - 80px); overflow: hidden; display: flex; flex-direction: column;
   border-radius: 26px; background: var(--glass-strong); border: 1px solid var(--line2); box-shadow: 0 30px 90px rgba(0, 0, 0, .5);
-  backdrop-filter: blur(40px) saturate(1.6);
 }
 .sheet.wide { width: min(920px, 100%); }
 .sheet.xwide { width: min(1180px, 100%); height: calc(100vh - 80px); }
@@ -306,9 +310,9 @@ h1, h2, h3, h4 { margin: 0; letter-spacing: -.02em; }
 .sheet-foot { display: flex; gap: 10px; justify-content: flex-end; padding: 12px 22px 18px; border-top: 1px solid var(--line); }
 
 .toast-wrap { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 400; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
-.toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--line2); box-shadow: var(--shadow); backdrop-filter: blur(30px); font-weight: 600; font-size: .9rem; max-width: 520px; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--line2); box-shadow: var(--shadow); font-weight: 600; font-size: .9rem; max-width: 520px; }
 
-.menu { position: fixed; z-index: 500; min-width: 210px; padding: 6px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--line2); box-shadow: 0 20px 60px rgba(0,0,0,.4); backdrop-filter: blur(30px); }
+.menu { position: fixed; z-index: 500; min-width: 210px; padding: 6px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--line2); box-shadow: 0 20px 60px rgba(0,0,0,.4); }
 .menu-item { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 9px; cursor: pointer; font-size: .88rem; font-weight: 550; }
 .menu-item:hover { background: var(--fill2); }
 .menu-item.danger { color: #ef4444; }

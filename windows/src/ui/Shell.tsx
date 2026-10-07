@@ -104,7 +104,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
   }, [])
   return (
     <motion.div style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'grid', placeItems: 'center', background: 'var(--bg)' }}
-      initial={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.08, filter: 'blur(12px)' }} transition={{ duration: 0.55, ease: [0.2, 0.9, 0.25, 1] }}>
+      initial={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.06 }} transition={{ duration: 0.55, ease: [0.2, 0.9, 0.25, 1] }}>
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(600px 400px at 60% 35%, rgba(var(--brand-rgb), .25), transparent), radial-gradient(500px 360px at 30% 80%, rgba(var(--brand2-rgb), .15), transparent)' }} />
       <div className="col" style={{ alignItems: 'center', gap: 14, position: 'relative' }}>
         <motion.div initial={{ scale: 0.3, rotate: -140, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 220, damping: 13 }}

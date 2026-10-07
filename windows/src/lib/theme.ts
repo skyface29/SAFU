@@ -179,6 +179,7 @@ export function applyThemeToDocument(dark: boolean) {
   root.dataset.pack = kv.get('look.pack', '')
   root.dataset.motion = kv.get('ui.reduceMotion', false) ? 'reduce' : 'full'
   root.dataset.gradTitle = String(kv.get('ui.gradTitle', false))
+  root.dataset.blur = String(kv.get('ui.blur', false))
   root.style.setProperty('--brand', c1)
   root.style.setProperty('--brand2', c2)
   root.style.setProperty('--brand-rgb', hexToRgb(c1).join(','))

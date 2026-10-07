@@ -42,7 +42,8 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card(
       style={{ ...style, rotateX: tilt ? rx : undefined, rotateY: tilt ? ry : undefined, transformPerspective: 900 }}
       onMouseMove={e => {
         const el = local.current
-        if (el) {
+        if (el && !(el as any).__raf) {
+          (el as any).__raf = requestAnimationFrame(() => { (el as any).__raf = 0 })
           const r = el.getBoundingClientRect()
           el.style.setProperty('--mx', `${e.clientX - r.left}px`)
           el.style.setProperty('--my', `${e.clientY - r.top}px`)
@@ -220,10 +221,10 @@ export function Sheet({ open, onClose, title, children, footer, size, headRight,
         <div className="overlay">
           <motion.div className="overlay-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
           <motion.div className={`sheet ${size || ''}`}
-            initial={{ opacity: 0, y: 40, scale: 0.94, filter: 'blur(8px)' }}
-            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: 30, scale: 0.96, filter: 'blur(6px)' }}
-            transition={{ type: 'spring', stiffness: 380, damping: 32 }}>
+            initial={{ opacity: 0, y: 30, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 460, damping: 36, mass: 0.7 }}>
             {(title || headRight) && (
               <div className="sheet-head">
                 <div className="sheet-title">{title}</div>

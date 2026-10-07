@@ -32,6 +32,11 @@ if (process.defaultApp && process.argv.length >= 2) {
   app.setAsDefaultProtocolClient('safu')
 }
 
+// плавность: растеризация на видеокарте даже на «неподдерживаемых» драйверах
+app.commandLine.appendSwitch('enable-gpu-rasterization')
+app.commandLine.appendSwitch('enable-zero-copy')
+app.commandLine.appendSwitch('ignore-gpu-blocklist')
+
 protocol.registerSchemesAsPrivileged([
   { scheme: 'safu-file', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true } }
 ])
@@ -156,7 +161,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       webviewTag: true,
-      backgroundThrottling: false,
+      // в трее окно не рисует кадры впустую; таймеры почты и РУЗ всё равно срабатывают
+      backgroundThrottling: true,
       spellcheck: true
     }
   })

@@ -8,7 +8,7 @@ import {
 import { useSchedule, scheduleStore, teacherMode } from '../lib/scheduleStore'
 import {
   type Slot, type Lesson, slotsOn, usesRuz, academicWeek, BELLS, bellLabel, LESSON_KINDS, kindStyle, slotShareLine,
-  subjects, teachersOf, AddressFormat, defaultSemesterStart
+  subjects, teachersOf, AddressFormat, defaultSemesterStart, groupParallel
 } from '../lib/schedule'
 import { monday, addDays, startOfDay, isToday, dayMon, DAY_NAMES, WEEKDAYS, fullDay, hm, ymd, plural, relativeAgo, weekday } from '../lib/date'
 import { RUZ_BASE, timetableURL, institutions } from '../lib/ruz'
@@ -41,7 +41,7 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
   const archived = weekStart < monday(Date.now())
   const perDay = days.map(d => slotsOn(d, data))
   const visibleDays = days.filter((d, i) => i < 6 || perDay[i].length)
-  const total = perDay.reduce((a, l) => a + l.length, 0)
+  const total = perDay.reduce((a, l) => a + groupParallel(l).length, 0)
 
   useEffect(() => { if (archived && usesRuz(data)) scheduleStore.loadArchiveWeek(weekStart) }, [weekStart])
   useEffect(() => { if (showChanges) scheduleStore.markChangesSeen() }, [showChanges])
@@ -104,7 +104,7 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
                       <div className="tiny" style={{ opacity: 0.8 }}>{dayMon(d)}</div>
                     </div>
                     {!list.length && <div className="tc tiny faint" style={{ padding: 20 }}>нет пар</div>}
-                    {list.map(s => <WeekCell key={s.key} s={s} now={now} />)}
+                    {groupParallel(list).map(g => <WeekCell key={g.slot.key} s={g.slot} alts={g.alts} now={now} />)}
                   </motion.div>
                 )
               })}
@@ -121,7 +121,7 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
                       <span className="spacer" />
                       {list.length > 0 && <button className="btn sm ghost" onClick={() => copyDay(d, data)}><Copy size={13} /> Отправить</button>}
                     </div>
-                    {!list.length ? <div className="sub" style={{ margin: '0 4px' }}>Пар нет</div> : <div className="col gap8">{list.map(s => <SlotRow key={s.key} s={s} now={now} />)}</div>}
+                    {!list.length ? <div className="sub" style={{ margin: '0 4px' }}>Пар нет</div> : <div className="col gap8">{groupParallel(list).map(g => <SlotRow key={g.slot.key} s={g.slot} alts={g.alts} now={now} />)}</div>}
                   </div>
                 )
               })}
@@ -141,14 +141,14 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
   )
 }
 
-function WeekCell({ s, now }: { s: Slot; now: number }) {
+function WeekCell({ s, now, alts = [] }: { s: Slot; now: number; alts?: Slot[] }) {
   homeworkStore.use()
   const st = kindStyle(s.kind)
   const live = s.start <= now && now < s.end
   const due = hw.dueAt(s).filter(h => !h.done).length
   return (
     <motion.div whileHover={{ y: -3, scale: 1.02 }} whileTap={{ scale: 0.97 }} layout
-      onClick={() => useModals.getState().set({ lesson: s })}
+      onClick={() => useModals.getState().set({ lesson: alts.length ? { ...s, alts } : s })}
       onContextMenu={e => openMenu(e, [
         { label: 'Предмет: файлы и заметки', run: () => openSubject(s.subject) },
         { label: 'Записать ДЗ', run: () => openHomeworkEditor({ subject: s.subject, slotStart: s.start }) }
@@ -164,7 +164,7 @@ function WeekCell({ s, now }: { s: Slot; now: number }) {
       </div>
       <div className="bold clamp3" style={{ fontSize: '.84rem', lineHeight: 1.22, margin: '5px 0' }}>{s.subject}</div>
       <div className="tiny" style={{ color: st.color, fontWeight: 800 }}>{st.label}</div>
-      {s.room && <div className="tiny muted ellipsis">ауд. {s.room}</div>}
+      {alts.length > 0 ? <div className="tiny muted ellipsis">{alts.length + 1} подгрупп · выбери свою</div> : s.room && <div className="tiny muted ellipsis">ауд. {s.room}</div>}
     </motion.div>
   )
 }
@@ -393,9 +393,10 @@ function ExportSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
 
 // ---------- подробности пары ----------
 
-export function LessonSheet({ slot, onClose }: { slot: Slot | null; onClose: () => void }) {
+export function LessonSheet({ slot, onClose }: { slot: (Slot & { alts?: Slot[] }) | null; onClose: () => void }) {
   homeworkStore.use()
   const [roomNotes, setRoomNotes] = usePref<Record<string, string>>('room.notes', {})
+  const head = useProfileHead()
   if (!slot) return <Sheet open={false} onClose={onClose} />
   const s = slot
   const st = kindStyle(s.kind)
@@ -411,6 +412,20 @@ export function LessonSheet({ slot, onClose }: { slot: Slot | null; onClose: () 
         {s.teacher && <div className="row"><User size={16} color={st.color} />{s.teacher}</div>}
         {s.note && <div className="sub wrap" style={{ padding: 10, borderRadius: 10, background: 'var(--fill)' }}>{s.note}</div>}
       </div>
+      {!!slot.alts?.length && (
+        <div className="mb16">
+          <div className="h-sec" style={{ marginTop: 0 }}>В это время {slot.alts.length + 1} подгрупп — какая твоя?</div>
+          <div className="col gap6">
+            {[s, ...slot.alts].map(x => (
+              <div key={x.key} className="row" style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--fill)' }}>
+                <div className="grow"><div className="bold small">{x.teacher || 'Преподаватель не указан'}</div><div className="tiny muted">{x.room ? `ауд. ${x.room}` : ''}{x.address ? ` · ${AddressFormat.full(x.address)}` : ''}{x.note ? ` · ${x.note}` : ''}</div></div>
+                {x.teacher && <button className="btn sm primary" onClick={() => { scheduleStore.setTeacherPref(s.subject, x.teacher.split(/[\s,]/)[0]); toast('Запомнил — буду показывать только твою подгруппу'); onClose() }}>Моя</button>}
+              </div>
+            ))}
+          </div>
+          <div className="tiny faint mt8">Поменять потом: «Пары» → настройки → «Подгруппы».</div>
+        </div>
+      )}
       <Field label="Как найти аудиторию (своя подсказка)">
         <input className="input" value={roomNotes[roomKey] || ''} placeholder="3 этаж, налево от лестницы" onChange={e => setRoomNotes({ ...roomNotes, [roomKey]: e.target.value })} />
       </Field>
@@ -419,7 +434,7 @@ export function LessonSheet({ slot, onClose }: { slot: Slot | null; onClose: () 
         <button className="btn" onClick={() => { onClose(); openSubject(s.subject) }}><FolderOpen size={15} /> Файлы и заметки</button>
         <button className="btn" onClick={() => safu.fs.openRoot(subjectFolder(s.subject))}><FolderOpen size={15} /> Папка в Проводнике</button>
         <button className="btn primary" onClick={() => { onClose(); openHomeworkEditor({ subject: s.subject, slotStart: s.start }) }}><BookMarked size={15} /> Записать ДЗ</button>
-        {useProfileHead() && <button className="btn" onClick={() => { onClose(); go('attendance', { slot: s.start, subject: s.subject }) }}><Users size={15} /> Посещаемость</button>}
+        {head && <button className="btn" onClick={() => { onClose(); go('attendance', { slot: s.start, subject: s.subject }) }}><Users size={15} /> Посещаемость</button>}
       </div>
       {(due.length > 0 || given.length > 0) && <div className="h-sec">Домашка</div>}
       {due.map(h => <HWLine key={h.id} id={h.id} label="сдать" />)}

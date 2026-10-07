@@ -5,7 +5,7 @@ import {
   RefreshCw, MapPin, User, BookMarked, Plus, ChevronRight, Check, Bus, GraduationCap, Wind, Settings2, Coffee, PartyPopper, Clock, Mail
 } from 'lucide-react'
 import { useSchedule, scheduleStore, teacherMode } from '../lib/scheduleStore'
-import { nowAndNext, slotsOn, kindStyle, academicWeek, usesRuz, slotsRange, type Slot } from '../lib/schedule'
+import { nowAndNext, slotsOn, kindStyle, academicWeek, usesRuz, slotsRange, groupParallel, type Slot } from '../lib/schedule'
 import { greeting, fullDay, hm, timer, untilText, addDays, startOfDay, isToday, isTomorrow, relDay, DAY_NAMES, plural, weekday } from '../lib/date'
 import { useProfile } from '../lib/profile'
 import { usePref } from '../lib/kv'
@@ -45,7 +45,7 @@ export default function Home() {
   const data = useSchedule(s => s.data)
   const syncing = useSchedule(s => s.syncing)
   const p = useProfile()
-  const now = useNow(1000)
+  const now = useNow(30_000)
   const [order] = usePref('home.order', DEFAULT_HOME)
   const sections = order.split(',').filter(s => HOME_SECTIONS.some(h => h.id === s) && (s !== 'teacher' || p.teacher))
   const week = academicWeek(data.semesterStart)
@@ -61,7 +61,7 @@ export default function Home() {
       {has('quick') && <QuickSites />}
       {has('now') && (
         <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.55fr) minmax(0, 1fr)', marginTop: 16 }}>
-          <NowCard now={now} />
+          <NowCard />
           <DayTimeline now={now} />
         </div>
       )}
@@ -96,7 +96,7 @@ export default function Home() {
 function Hero({ name, week, syncing }: { name: string; week: number | null; syncing: boolean }) {
   const data = useSchedule(s => s.data)
   const msg = useSchedule(s => s.syncMessage)
-  const today = slotsOn(Date.now(), data)
+  const today = groupParallel(slotsOn(Date.now(), data)).map(g => g.slot)
   const left = today.filter(s => s.end > Date.now()).length
   return (
     <motion.div className="row top" style={{ margin: '12px 4px 18px' }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
@@ -148,7 +148,8 @@ function QuickSites() {
   )
 }
 
-function NowCard({ now }: { now: number }) {
+function NowCard() {
+  const now = useNow(1000)
   const data = useSchedule(s => s.data)
   const { current, next } = nowAndNext(now, data)
   const s = current || next
@@ -236,8 +237,8 @@ function DayTimeline({ now }: { now: number }) {
         <button className="btn sm ghost" onClick={() => go('schedule')}>Все пары <ChevronRight size={14} /></button>
       </div>
       {!list.length && <div className="sub">Пар нет</div>}
-      <div className="col gap8" style={{ maxHeight: 320, overflowY: 'auto', margin: '0 -4px', padding: '0 4px' }}>
-        {list.map(s => <SlotRow key={s.key} s={s} now={now} compact />)}
+      <div className="col gap8" style={{ maxHeight: 340, overflowY: 'auto', margin: '0 -4px', padding: '0 4px' }}>
+        {groupParallel(list).map(g => <SlotRow key={g.slot.key} s={g.slot} alts={g.alts} now={now} compact />)}
       </div>
     </Card>
   )
@@ -284,7 +285,7 @@ function WeekCard({ delay }: { delay: number }) {
   const data = useSchedule(s => s.data)
   homeworkStore.use()
   const days = Array.from({ length: 7 }, (_, i) => addDays(startOfDay(Date.now()), i))
-  const counts = days.map(d => slotsOn(d, data).length)
+  const counts = days.map(d => groupParallel(slotsOn(d, data)).length)
   const deadlines = days.map(d => hw.active().filter(h => startOfDay(h.due) === d).length)
   const max = Math.max(4, ...counts)
   return (

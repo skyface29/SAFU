@@ -125,6 +125,7 @@ export function Appearance() {
   const [mica, setMica] = usePref('ui.mica', false)
   const [pack] = usePref('look.pack', '')
   const [backdropAnim, setBackdropAnim] = usePref('ui.siteBackdrop', true)
+  const [blur, setBlur] = usePref('ui.blur', false)
   const Swatch = ({ a }: { a: typeof ACCENTS[0] }) => (
     <motion.button whileHover={{ scale: 1.12, y: -2 }} whileTap={{ scale: 0.9 }} title={a.title} onClick={() => { setTheme(a.id); setSeasonal(false); kv.set('look.pack', '') }}
       style={{ width: 46, height: 46, borderRadius: 14, border: 'none', cursor: 'pointer', background: `linear-gradient(135deg, ${a.c1}, ${a.c2})`, boxShadow: theme === a.id && !seasonal ? `0 0 0 3px var(--bg), 0 0 0 5px ${a.c1}` : 'none', display: 'grid', placeItems: 'center' }}>
@@ -172,6 +173,7 @@ export function Appearance() {
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
           {CARD_STYLES.map(c => <button key={c.id} className={`chip ${card === c.id ? 'on' : ''}`} style={{ height: 40, justifyContent: 'center' }} onClick={() => setCard(c.id)}>{c.title}</button>)}
         </div>
+        <div className="row mt12"><div className="grow"><b className="small">Настоящее стекло</b><div className="tiny muted">Размытие фона под карточками. Красиво, но нагружает видеокарту — включай на мощном компьютере</div></div><Toggle on={blur} onChange={setBlur} /></div>
         <div className="row mt12"><span className="small grow">Скругление углов</span><input type="range" min={0.3} max={1.4} step={0.05} value={radius} onChange={e => setRadius(+e.target.value)} style={{ width: 240, accentColor: 'var(--brand)' }} /></div>
       </Card>
       <div className="h-sec">Текст</div>

@@ -176,11 +176,11 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
         position: 'fixed', left: '4%', right: '4%', top: 'calc(var(--titlebar) + 6px)', bottom: 0, zIndex: 100,
         y, scale, borderTopLeftRadius: radius, borderTopRightRadius: radius, overflow: 'hidden',
         background: 'var(--glass-strong)', border: '1px solid var(--line2)', borderBottom: 'none',
-        boxShadow: '0 -20px 80px rgba(0,0,0,.45)', backdropFilter: 'blur(40px)', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 -20px 80px rgba(0,0,0,.45)', display: 'flex', flexDirection: 'column',
         pointerEvents: visible ? 'auto' : 'none', transformOrigin: '50% 100%'
       }}
       initial={false}
-      animate={visible ? { opacity: 1, translateY: 0, scaleX: 1 } : { opacity: 0, translateY: '105%', scaleX: 0.9 }}
+      animate={visible ? { opacity: 1, translateY: 0, scaleX: 1, visibility: 'visible' } : { opacity: 0, translateY: '105%', scaleX: 0.9, transitionEnd: { visibility: 'hidden' } }}
       transition={visible ? { type: 'spring', stiffness: 300, damping: 32 } : { type: 'spring', stiffness: 360, damping: 38 }}
     >
       {/* шапка: тяни вниз, чтобы свернуть */}
@@ -315,7 +315,7 @@ function Pill({ tabs }: { tabs: SiteTab[] }) {
       initial={{ y: 80, opacity: 0, scale: 0.8 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 80, opacity: 0, scale: 0.8 }}
       transition={{ type: 'spring', stiffness: 420, damping: 26 }}>
       <motion.div className="row" whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
-        style={{ gap: 10, padding: '7px 8px 7px 8px', borderRadius: 999, background: 'var(--glass-strong)', border: '1px solid var(--line2)', boxShadow: '0 14px 40px rgba(0,0,0,.35)', backdropFilter: 'blur(30px)', cursor: 'pointer' }}
+        style={{ gap: 10, padding: '7px 8px 7px 8px', borderRadius: 999, background: 'var(--glass-strong)', border: '1px solid var(--line2)', boxShadow: '0 14px 40px rgba(0,0,0,.35)', cursor: 'pointer' }}
         onClick={() => sites.expand(last.id)}>
         <div className="row" style={{ gap: 0 }}>
           {tabs.slice(-4).map((t, i) => (
@@ -342,7 +342,7 @@ function Pill({ tabs }: { tabs: SiteTab[] }) {
 function Stack({ tabs }: { tabs: SiteTab[] }) {
   const ordered = [...tabs].reverse()
   return (
-    <motion.div style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(5,8,14,.6)', backdropFilter: 'blur(14px)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 70, overflowY: 'auto' }}
+    <motion.div style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(5,8,14,.6)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 70, overflowY: 'auto' }}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => sites.minimize()}>
       <div className="row" style={{ width: 'min(760px, 90%)', marginBottom: 16, color: '#fff' }} onClick={e => e.stopPropagation()}>
         <div className="h-card grow">Открыто: {tabs.length}</div>

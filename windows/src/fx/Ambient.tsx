@@ -5,6 +5,18 @@ import { type Backdrop, currentBackdrop, rgba } from '../lib/theme'
 
 type P = { x: number; y: number; z: number; vx: number; vy: number; r: number; a: number; va: number; hue: number; life: number; ch?: string }
 
+// Частицам нужна чёткость, мягким пятнам — нет: их рисуем в половинном разрешении и реже
+const PARTICLES = new Set(['snow', 'leaves', 'petals', 'matrix', 'summer', 'workshop'])
+const STATIC = new Set(['plain', 'linen', 'soft', 'wash'])
+
+/** Фон замирает, пока открыт сайт или окно не в фокусе (меньше кадров) — вся мощность интерфейсу */
+const pauseState = { paused: false, unfocused: false }
+export function setAmbientPaused(p: boolean) { pauseState.paused = p }
+if (typeof window !== 'undefined') {
+  window.addEventListener('blur', () => { pauseState.unfocused = true })
+  window.addEventListener('focus', () => { pauseState.unfocused = false })
+}
+
 export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: string }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const [style] = usePref('bg.style', 'glow')
@@ -26,7 +38,7 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
     const t0 = performance.now()
 
     const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      dpr = PARTICLES.has(mode) ? Math.min(window.devicePixelRatio || 1, 1) * 0.8 : 0.5
       W = cv.clientWidth; H = cv.clientHeight
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -62,7 +74,8 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
       if (vis && !running) { running = true; raf = requestAnimationFrame(frame) }
       if (!vis) running = false
     }
-    window.addEventListener('resize', resize)
+    const onResize = () => { resize(); if (STATIC.has(mode)) { last = 0; raf = requestAnimationFrame(frame) } }
+    window.addEventListener('resize', onResize)
     window.addEventListener('mousemove', onMove)
     document.addEventListener('visibilitychange', onVis)
 
@@ -76,8 +89,13 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
       ctx.fillRect(x - r, y - r, r * 2, r * 2)
     }
 
+    let last = 0
+    const baseInterval = PARTICLES.has(mode) ? 1000 / 60 : 1000 / 30
     function frame(now: number) {
       if (!running) return
+      const interval = pauseState.paused ? 500 : pauseState.unfocused ? 1000 / 15 : baseInterval
+      if (now - last < interval - 2) { raf = requestAnimationFrame(frame); return }
+      last = now
       const t = (now - t0) / 1000
       mx += (tmx - mx) * 0.04; my += (tmy - my) * 0.04
       const px = (mx - 0.5) * 30, py = (my - 0.5) * 30
@@ -252,14 +270,14 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
         }
       }
 
-      if (!reduce) raf = requestAnimationFrame(frame)
+      if (!reduce && !STATIC.has(mode)) raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)
 
     return () => {
       running = false
       cancelAnimationFrame(raf)
-      window.removeEventListener('resize', resize)
+      window.removeEventListener('resize', onResize)
       window.removeEventListener('mousemove', onMove)
       document.removeEventListener('visibilitychange', onVis)
     }
