@@ -104,7 +104,7 @@ export function SubjectSheet({ name, onClose }: { name: string | null; onClose: 
             {upcoming.map(x => (
               <div key={x.key} className="row clickable" style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--fill)' }} onClick={() => useModals.getState().set({ lesson: x })}>
                 <KindBadge kind={x.kind} />
-                <span className="grow small bold" style={{ textTransform: 'capitalize' }}>{shortDayTime(x.start)}</span>
+                <span className="grow small bold"><span className="cap">{shortDayTime(x.start)}</span></span>
                 {x.room && <span className="tiny muted">ауд. {x.room}</span>}
               </div>
             ))}

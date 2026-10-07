@@ -89,6 +89,7 @@ const api = {
     resize: (h: number) => ipcRenderer.send('widget:resize', h)
   },
   backup: { readIOS: (file?: string) => ipcRenderer.invoke('backup:readIOS', file) },
+  ai: { summarize: (r: { subject: string; minutes: number; style: string; transcript: string }) => ipcRenderer.invoke('ai:summarize', r) },
   mail: { check: (acc: unknown) => ipcRenderer.invoke('mail:check', acc) },
   sites: {
     clear: () => ipcRenderer.invoke('sites:clear'),

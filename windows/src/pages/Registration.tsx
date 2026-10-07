@@ -375,7 +375,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                     <motion.div className="card mt16" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                       <div className="tiny heavy" style={{ color: 'var(--brand)' }}>БЛИЖАЙШАЯ ПАРА</div>
                       <div className="h-card mt4">{next.subject}</div>
-                      <div className="sub" style={{ textTransform: 'capitalize' }}>{fullDay(next.start)}, {hm(next.start)}{next.room ? ` · ауд. ${next.room}` : ''}</div>
+                      <div className="sub cap">{fullDay(next.start)}, {hm(next.start)}{next.room ? ` · ауд. ${next.room}` : ''}</div>
                     </motion.div>
                   )}
                 </>

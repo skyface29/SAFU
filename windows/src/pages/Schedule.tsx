@@ -117,7 +117,7 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
                 return (
                   <div key={d}>
                     <div className="row" style={{ margin: '0 4px 8px' }}>
-                      <div className="h-card" style={{ textTransform: 'capitalize', color: isToday(d) ? 'var(--brand)' : undefined }}>{isToday(d) ? 'Сегодня, ' : ''}{fullDay(d)}</div>
+                      <div className="h-card cap" style={{ color: isToday(d) ? 'var(--brand)' : undefined }}>{isToday(d) ? 'Сегодня, ' : ''}{fullDay(d)}</div>
                       <span className="spacer" />
                       {list.length > 0 && <button className="btn sm ghost" onClick={() => copyDay(d, data)}><Copy size={13} /> Отправить</button>}
                     </div>
@@ -406,7 +406,7 @@ export function LessonSheet({ slot, onClose }: { slot: Slot | null; onClose: () 
     <Sheet open={!!slot} onClose={onClose} title={<span className="row gap8"><KindBadge kind={s.kind} size="md" />{s.pair ? <span className="pill">{s.pair} пара</span> : null}</span>}>
       <div style={{ fontSize: '1.6rem', fontWeight: 850, lineHeight: 1.15, marginBottom: 14 }}>{s.subject}</div>
       <div className="col gap8 mb16">
-        <div className="row"><Clock size={16} color={st.color} /><span style={{ textTransform: 'capitalize' }}>{fullDay(s.start)}</span> · {hm(s.start)}–{hm(s.end)}</div>
+        <div className="row"><Clock size={16} color={st.color} /><span className="cap">{fullDay(s.start)}</span> · {hm(s.start)}–{hm(s.end)}</div>
         {(s.room || s.address) && <div className="row top"><MapPin size={16} color={st.color} style={{ marginTop: 2 }} /><div>{s.room && <b>ауд. {s.room}</b>}{s.room && s.address ? ' · ' : ''}{AddressFormat.full(s.address)}</div></div>}
         {s.teacher && <div className="row"><User size={16} color={st.color} />{s.teacher}</div>}
         {s.note && <div className="sub wrap" style={{ padding: 10, borderRadius: 10, background: 'var(--fill)' }}>{s.note}</div>}

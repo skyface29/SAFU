@@ -354,3 +354,4 @@ h1, h2, h3, h4 { margin: 0; letter-spacing: -.02em; }
 :root[data-pack="ios6"] .side-item { color: #3b4659; }
 :root[data-pack="ios6"] .h-page { color: #4c566c; text-shadow: 0 1px 0 #fff; font-family: Helvetica, Arial, sans-serif; }
 :root[data-pack="machinarium"] .h-page { font-family: "Segoe Print", "Comic Sans MS", cursive; color: #5a3d1e; }
+.cap { display: inline-block; } .cap::first-letter { text-transform: uppercase; }

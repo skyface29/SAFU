@@ -11,6 +11,7 @@ import * as fs from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { checkMail, type MailAccount } from './mail'
 import * as zlib from 'node:zlib'
+import { summarizeLecture } from './claude'
 
 const isDev = !!process.env.VITE_DEV
 const APP_ID = 'ru.student.safuhub'
@@ -771,6 +772,12 @@ function registerIPC() {
       }
     }
     return { kind: 'ios', name: path.basename(file), plist, files }
+  })
+
+  ipcMain.handle('ai:summarize', async (_e, r: { subject: string; minutes: number; style: string; transcript: string }) => {
+    const apiKey = secrets['claude.key']
+    if (!apiKey) return { ok: false, error: 'Добавь ключ Claude API в настройках лекций' }
+    return summarizeLecture({ ...r, apiKey })
   })
 
   ipcMain.handle('mail:check', (_e, acc: MailAccount) => checkMail(acc))

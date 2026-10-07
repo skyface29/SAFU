@@ -16,8 +16,9 @@
     "dist": "npm run build && electron-builder --win --x64",
     "test": "node --test --experimental-strip-types tests/"
   },
-  "dependencies": {},
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.132.0",
+    "@huggingface/transformers": "^3.3.3",
     "@types/node": "22.10.2",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
@@ -40,11 +41,31 @@
     "appId": "ru.student.safuhub",
     "productName": "САФУ",
     "artifactName": "SAFU-${version}-${arch}.${ext}",
-    "directories": { "output": "release", "buildResources": "build" },
-    "files": ["dist/**", "dist-electron/**", "package.json"],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json"
+    ],
     "asar": true,
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }, { "target": "portable", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.png"
     },
     "nsis": {
@@ -56,7 +77,16 @@
       "shortcutName": "САФУ",
       "artifactName": "SAFU-Setup-${version}.${ext}"
     },
-    "portable": { "artifactName": "SAFU-Portable-${version}.${ext}" },
-    "protocols": [{ "name": "САФУ", "schemes": ["safu"] }]
+    "portable": {
+      "artifactName": "SAFU-Portable-${version}.${ext}"
+    },
+    "protocols": [
+      {
+        "name": "САФУ",
+        "schemes": [
+          "safu"
+        ]
+      }
+    ]
   }
 }
