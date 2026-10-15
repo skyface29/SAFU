@@ -69,20 +69,23 @@ const PART = '.arktika-part'
 /** Адреса компьютера в локальных сетях: сначала домашние Wi‑Fi (192.168…), потом остальные */
 export function lanAddresses(): string[] {
   const out: { ip: string; rank: number }[] = []
-  for (const list of Object.values(os.networkInterfaces())) {
+  for (const [name, list] of Object.entries(os.networkInterfaces())) {
+    // виртуальные сети (WSL, Hyper-V, VirtualBox, VMware, Docker) — в конец: телефон туда не достучится
+    const virtual = /vethernet|virtualbox|vmware|hyper-v|wsl|docker|vbox|loopback|bluetooth|tailscale|zerotier|vpn/i.test(name)
     for (const a of list || []) {
       if (a.internal || a.family !== 'IPv4') continue
       const ip = a.address
       if (ip.startsWith('169.254.')) continue // нет сети: адрес «сам себе»
-      const rank = ip.startsWith('192.168.137.') ? 2 // мобильный хот-спот Windows
+      let rank = ip.startsWith('192.168.137.') ? 2 // мобильный хот-спот Windows
         : ip.startsWith('192.168.') ? 0
         : ip.startsWith('10.') ? 1
-        : /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ? 3
+        : /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ? 1 // в том числе «Режим модема» iPhone (172.20.10.x)
         : 4
+      if (virtual) rank += 10
       out.push({ ip, rank })
     }
   }
-  return out.sort((a, b) => a.rank - b.rank).map(a => a.ip).slice(0, 4)
+  return out.sort((a, b) => a.rank - b.rank).map(a => a.ip).slice(0, 5)
 }
 
 // ---------- шифрование ----------
