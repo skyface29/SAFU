@@ -1,0 +1,99 @@
+name: App Store (TestFlight)
+
+# Сборка для App Store без Mac: GitHub собирает, подписывает сертификатом Apple и сам загружает
+# сборку в App Store Connect (TestFlight). Запуск — вручную: Actions → App Store (TestFlight) → Run workflow.
+#
+# Один раз добавь секреты (Settings → Secrets and variables → Actions):
+#   ASC_KEY_ID      — Key ID ключа App Store Connect API (Пользователи и доступ → Интеграции → Ключи, роль «Администратор»)
+#   ASC_ISSUER_ID   — Issuer ID с той же страницы
+#   ASC_KEY_P8      — содержимое файла AuthKey_XXXX.p8 целиком (вместе со строками BEGIN/END)
+#   TEAM_ID         — Team ID из developer.apple.com → Membership
+#   YANDEX_MAPKIT_KEY — уже есть, тот же ключ Яндекс Карт
+# Сертификаты и профили создавать вручную не нужно: Xcode получит их сам по ключу API.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  upload:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Unpack
+        run: |
+          if [ -f SAFU.zip ]; then unzip -o -q SAFU.zip; fi
+          if [ -d SAFU ]; then cp -R SAFU/. .; fi
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - name: API key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          test -n "$ASC_KEY_P8" || { echo "::error::Нет секрета ASC_KEY_P8 — см. комментарий в начале файла"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" >> $GITHUB_ENV
+      - name: Archive
+        shell: bash
+        env:
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          YANDEX_MAPKIT_KEY: ${{ secrets.YANDEX_MAPKIT_KEY }}
+        run: |
+          set -o pipefail
+          # номер сборки растёт с каждым запуском — App Store Connect не принимает повторы
+          BUILD=$((1000 + ${{ github.run_number }}))
+          xcodebuild -project SAFU.xcodeproj -scheme SAFU -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/SAFU.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_ENTITLEMENTS=Store.entitlements \
+            CURRENT_PROJECT_VERSION="$BUILD" \
+            YANDEX_MAPKIT_KEY="$YANDEX_MAPKIT_KEY" \
+            archive 2>&1 | tee archive.log
+      - name: Show errors
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "error:" archive.log | sort -u | head -20 | while IFS= read -r L; do echo "::error::$(echo "$L" | cut -c1-300)"; done
+          exit 1
+      - name: Upload to App Store Connect
+        shell: bash
+        env:
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/SAFU.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tee export.log
+          echo "Готово: сборка загружена в App Store Connect. Через 10–30 минут она появится в TestFlight."
+      - name: Clean up key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"

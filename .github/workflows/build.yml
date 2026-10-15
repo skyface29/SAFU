@@ -89,7 +89,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         with:
           tag_name: build-${{ github.run_number }}
-          name: САФУ ${{ env.APP_VERSION }} (сборка ${{ github.run_number }})
+          name: Сполох ${{ env.APP_VERSION }} (сборка ${{ github.run_number }})
           files: |
             ${{ env.IPA_NAME }}
             SAFU.ipa
