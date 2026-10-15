@@ -1,0 +1,93 @@
+{
+  "name": "safu-desktop",
+  "productName": "Арктика",
+  "version": "18.2.0",
+  "description": "Арктика для Windows — расписание, ДЗ, файлы, почта и сайты университета САФУ",
+  "author": "Зарубин Кирилл (студент группы 151621)",
+  "license": "MIT",
+  "private": true,
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "node scripts/build-electron.mjs && concurrently -k \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV=1 electron .\"",
+    "build:renderer": "vite build",
+    "build:electron": "node scripts/build-electron.mjs",
+    "build": "tsc --noEmit -p tsconfig.json && npm run build:renderer && npm run build:electron",
+    "start": "electron .",
+    "dist": "npm run build && electron-builder --win --x64",
+    "test": "node scripts/test.mjs"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.132.0",
+    "@huggingface/transformers": "^3.3.3",
+    "@types/node": "22.10.2",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "4.3.4",
+    "concurrently": "9.1.0",
+    "cross-env": "7.0.3",
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8",
+    "esbuild": "0.24.0",
+    "framer-motion": "11.15.0",
+    "lucide-react": "0.468.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.7.2",
+    "vite": "5.4.11",
+    "wait-on": "8.0.1",
+    "zustand": "5.0.2"
+  },
+  "build": {
+    "appId": "ru.student.safuhub",
+    "productName": "Арктика",
+    "artifactName": "Arktika-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Арктика",
+      "artifactName": "Arktika-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Arktika-Portable-${version}.${ext}"
+    },
+    "protocols": [
+      {
+        "name": "Арктика",
+        "schemes": [
+          "safu"
+        ]
+      }
+    ]
+  }
+}
