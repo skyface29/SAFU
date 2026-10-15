@@ -1,12 +1,12 @@
 // Дорога (автобусы), подъём к паре, расписание картинкой, фото доски, праздники, игра, все инструменты
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bus, Plus, Share2, Trash2, ClipboardPaste, MapPin, ExternalLink, Check, Image as ImageIcon, Download, Copy, Upload, AlarmClock, PartyPopper, FolderOpen, Gamepad2, RotateCcw } from 'lucide-react'
+import { Bus, Plus, Share2, Trash2, ClipboardPaste, MapPin, ExternalLink, Check, Image as ImageIcon, Download, Copy, Upload, AlarmClock, PartyPopper, FolderOpen, Gamepad2, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader, Card, Sheet, Empty, Field, Segmented, Toggle, ToggleRow, Row, toast, confirmDialog, alertDialog, useNow } from '../../ui/kit'
 import { bus, busStore, BUS_DAYS, BUS_PALETTE, times, trips, routeTitle, routeText, mapURL, shareCode, fromShareCode, normalizeTimes, newRoute, commute, type BusRoute, type Direction, dayType } from '../../lib/bus'
 import { useSchedule } from '../../lib/scheduleStore'
 import { slotsOn, kindStyle, subjects, type Slot } from '../../lib/schedule'
-import { hm, fullDay, startOfDay, addDays, untilText, isToday, relDay, monday, DAY_NAMES, dayMon, weekday, ymd } from '../../lib/date'
+import { hm, fullDay, startOfDay, addDays, untilText, isToday, isYesterday, plural, relDay, monday, DAY_NAMES, dayMon, weekday, ymd } from '../../lib/date'
 import { usePref, kv } from '../../lib/kv'
 import { safu, fileURL, type FileInfo } from '../../lib/bridge'
 import { openURL } from '../../sites/sites'
@@ -268,56 +268,158 @@ export function ShareImage() {
 
 // ---------- фото доски ----------
 
+type BoardShot = FileInfo & { subj: string; day: number }
+
+/** «Сегодня», «Вчера», «Понедельник, 12 октября» */
+function boardDayTitle(t: number) {
+  if (isToday(t)) return 'Сегодня'
+  if (isYesterday(t)) return 'Вчера'
+  const s = fullDay(t)
+  const y = new Date(t).getFullYear()
+  return s.charAt(0).toUpperCase() + s.slice(1) + (y !== new Date().getFullYear() ? ` ${y}` : '')
+}
+
+/** Фото доски: предметы → даты → фото. Снимки лежат в папке «Доска» каждого предмета */
 export function Boards() {
   const data = useSchedule(s => s.data)
-  const [shots, setShots] = useState<FileInfo[]>([])
-  const [subject, setSubject] = useState('')
-  const [view, setView] = useState<FileInfo | null>(null)
+  const [shots, setShots] = useState<BoardShot[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [subject, setSubject] = useState<string | null>(null)
+  const [day, setDay] = useState<number | null>(null)
+  const [view, setView] = useState<number | null>(null)
+
   const load = async () => {
     const all: FileInfo[] = await safu.fs.walk('Предметы')
-    setShots(all.filter(f => /\/Доска\//.test(f.rel) && /\.(png|jpe?g|webp|heic|bmp)$/i.test(f.name)).sort((a, b) => b.mtime - a.mtime))
+    setShots(all
+      .filter(f => /\/Доска\//.test(f.rel) && /\.(png|jpe?g|webp|bmp)$/i.test(f.name))
+      .map(f => ({ ...f, subj: f.rel.split('/')[1], day: startOfDay(f.mtime) }))
+      .sort((a, b) => a.mtime - b.mtime))
+    setLoaded(true)
   }
   useEffect(() => { load() }, [])
-  const groups = useMemo(() => {
-    const m = new Map<string, FileInfo[]>()
-    for (const f of shots) {
-      const subj = f.rel.split('/')[1]
-      if (subject && subj !== subject) continue
-      const k = `${subj}|${ymd(f.mtime)}`
-      if (!m.has(k)) m.set(k, []); m.get(k)!.push(f)
-    }
+
+  // предметы: свежие сверху, обложка — последний снимок
+  const bySubject = useMemo(() => {
+    const m = new Map<string, BoardShot[]>()
+    for (const f of shots) { if (!m.has(f.subj)) m.set(f.subj, []); m.get(f.subj)!.push(f) }
     return [...m.entries()]
+      .map(([name, list]) => ({ name, list, days: new Set(list.map(f => f.day)).size, last: list[list.length - 1] }))
+      .sort((a, b) => b.last.mtime - a.last.mtime)
+  }, [shots])
+
+  // даты выбранного предмета: новые сверху
+  const days = useMemo(() => {
+    if (!subject) return []
+    const m = new Map<number, BoardShot[]>()
+    for (const f of shots) if (f.subj === subject) { if (!m.has(f.day)) m.set(f.day, []); m.get(f.day)!.push(f) }
+    return [...m.entries()].map(([d, list]) => ({ day: d, list })).sort((a, b) => b.day - a.day)
   }, [shots, subject])
+
+  const photos = useMemo(() => (day == null ? [] : days.find(d => d.day === day)?.list ?? []), [days, day])
+
+  // листать фото стрелками
+  useEffect(() => {
+    if (view == null) return
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') setView(v => (v == null ? v : Math.min(photos.length - 1, v + 1)))
+      if (e.key === 'ArrowLeft') setView(v => (v == null ? v : Math.max(0, v - 1)))
+      if (e.key === 'Escape') { e.stopPropagation(); setView(null) }
+    }
+    window.addEventListener('keydown', h, true)
+    return () => window.removeEventListener('keydown', h, true)
+  }, [view, photos.length])
+
   const add = async () => {
     const s = subject || slotsOn(Date.now(), data).find(x => x.start <= Date.now() && x.end > Date.now())?.subject || subjects(data)[0]
     if (!s) { toast('Сначала подключи расписание', 'warn'); return }
-    const r = await safu.fs.import(`${subjectFolder(s)}/Доска`)
-    if (r.length) { toast(`Добавлено в «${s}»: ${r.length}`); load() }
+    const folder = subject ? `Предметы/${subject}/Доска` : `${subjectFolder(s)}/Доска`
+    const r = await safu.fs.import(folder)
+    if (r.length) { toast(`Добавлено в «${subject || s}»: ${r.length}`); load() }
   }
+
+  const back = subject && day != null
+    ? <button className="btn" onClick={() => setDay(null)}><ChevronLeft size={15} /> {subject}</button>
+    : subject ? <button className="btn" onClick={() => setSubject(null)}><ChevronLeft size={15} /> Все предметы</button> : null
+
+  const title = day != null ? boardDayTitle(day) : subject || 'Фото доски'
+  const subtitle = day != null
+    ? `${subject} · ${photos.length} фото · по времени съёмки`
+    : subject ? `${days.length} ${plural(days.length, 'дата', 'даты', 'дат')} · нажми на дату, чтобы открыть фото`
+    : 'Нажми на предмет — увидишь даты, когда фотографировал доску'
+
   return (
     <>
-      <PageHeader title="Фото доски" subtitle="Снимки по парам — в папке «Доска» каждого предмета" right={<>
-        <select className="select" style={{ width: 260 }} value={subject} onChange={e => setSubject(e.target.value)}><option value="">Все предметы</option>{subjects(data).map(s => <option key={s} value={s.replace(/[\\/:*?"<>|]/g, '_')}>{s}</option>)}</select>
+      <PageHeader title={title} subtitle={subtitle} right={<>
+        {back}
+        {subject && <button className="btn" onClick={() => safu.fs.openRoot(`Предметы/${subject}/Доска`)}><FolderOpen size={15} /> Папка</button>}
         <button className="btn primary" onClick={add}><Upload size={15} /> Добавить фото</button>
       </>} />
-      {!groups.length && <Empty emoji="📸" title="Фото пока нет" text="Сфотографируй доску телефоном и перекинь на компьютер — или добавь кнопкой выше. Снимки лягут в папку предмета, по датам." />}
-      <div className="col gap18">
-        {groups.map(([k, list]) => {
-          const [subj, day] = k.split('|')
-          return (
-            <div key={k}>
-              <div className="row mb8"><div className="h-card">{subj}</div><span className="pill">{day}</span><span className="pill">{list.length}</span><span className="spacer" /><button className="btn sm ghost" onClick={() => safu.fs.openRoot(`Предметы/${subj}/Доска`)}><FolderOpen size={13} /> Папка</button></div>
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-                {list.map((f, i) => <motion.img key={f.rel} src={fileURL(f.rel)} onClick={() => setView(f)} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }} whileHover={{ scale: 1.03 }} style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 14, cursor: 'zoom-in' }} />)}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      {loaded && !bySubject.length && <Empty emoji="📸" title="Фото пока нет" text="Перенеси фото с iPhone по QR-коду (Профиль → Перенос с iPhone) или добавь кнопкой выше. Снимки лягут в папку предмета, по датам." />}
+      <AnimatePresence mode="wait">
+        {!subject && (
+          <motion.div key="subjects" className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 }}
+            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            {bySubject.map((s, i) => (
+              <motion.div key={s.name} className="card flush press" onClick={() => { setSubject(s.name); setDay(null) }}
+                initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} whileHover={{ y: -3 }}>
+                <div style={{ position: 'relative', aspectRatio: '4 / 3', overflow: 'hidden' }}>
+                  <img src={fileURL(s.last.rel)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(transparent 50%, rgba(0,0,0,.55))' }} />
+                  <span className="pill" style={{ position: 'absolute', left: 10, bottom: 10, background: 'rgba(0,0,0,.45)', color: '#fff' }}><ImageIcon size={12} /> {s.list.length}</span>
+                </div>
+                <div style={{ padding: '12px 14px' }}>
+                  <div className="bold clamp2">{s.name}</div>
+                  <div className="tiny faint mt4">{s.days} {plural(s.days, 'дата', 'даты', 'дат')} · последнее {isToday(s.last.mtime) ? 'сегодня' : isYesterday(s.last.mtime) ? 'вчера' : dayMon(s.last.mtime)}</div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+        {subject && day == null && (
+          <motion.div key={'days-' + subject} className="col gap8" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            {days.map((d, i) => (
+              <motion.div key={d.day} className="card press row" style={{ gap: 18, padding: '12px 16px' }} onClick={() => setDay(d.day)}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.025 }} whileHover={{ x: 3 }}>
+                <div style={{ position: 'relative', width: 78, height: 62, flexShrink: 0 }}>
+                  {d.list.slice(-3).map((f, j, arr) => {
+                    const depth = arr.length - 1 - j
+                    return <img key={f.rel} src={fileURL(f.rel)} style={{ position: 'absolute', left: 8 - depth * 4, top: 4 - depth * 3, width: 62, height: 54, objectFit: 'cover', borderRadius: 10, border: '2px solid rgba(255,255,255,.85)', boxShadow: '0 2px 6px rgba(0,0,0,.25)', transform: `rotate(${-depth * 6}deg)` }} />
+                  })}
+                </div>
+                <div className="grow">
+                  <div className="bold">{boardDayTitle(d.day)}</div>
+                  <div className="sub mt4">{d.list.length} фото · {hm(d.list[0].mtime)}{d.list.length > 1 ? `–${hm(d.list[d.list.length - 1].mtime)}` : ''}</div>
+                </div>
+                <ChevronRight size={18} className="faint" />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+        {subject && day != null && (
+          <motion.div key={'day-' + day} className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            {photos.map((f, i) => (
+              <motion.div key={f.rel} style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => setView(i)}
+                initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }} whileHover={{ scale: 1.03 }}>
+                <img src={fileURL(f.rel)} style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 14, display: 'block' }} />
+                <span className="pill" style={{ position: 'absolute', left: 8, top: 8, background: 'var(--grad)', color: '#fff' }}>{i + 1}</span>
+                <span className="pill" style={{ position: 'absolute', right: 8, bottom: 8, background: 'rgba(0,0,0,.5)', color: '#fff' }}>{hm(f.mtime)}</span>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
-        {view && <motion.div onClick={() => setView(null)} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.85)', display: 'grid', placeItems: 'center', cursor: 'zoom-out' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <motion.img src={fileURL(view.rel)} initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} style={{ maxWidth: '94vw', maxHeight: '90vh', borderRadius: 12 }} />
-        </motion.div>}
+        {view != null && photos[view] && (
+          <motion.div onClick={() => setView(null)} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.88)', display: 'grid', placeItems: 'center', cursor: 'zoom-out' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.img key={photos[view].rel} src={fileURL(photos[view].rel)} initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              style={{ maxWidth: '90vw', maxHeight: '86vh', borderRadius: 12 }} />
+            <div className="tiny" style={{ position: 'absolute', bottom: 22, color: 'rgba(255,255,255,.8)' }}>{view + 1} из {photos.length} · {hm(photos[view].mtime)} · ← → листать, Esc — закрыть</div>
+            {view > 0 && <button className="btn icon round" style={{ position: 'absolute', left: 24 }} onClick={e => { e.stopPropagation(); setView(view - 1) }}><ChevronLeft size={20} /></button>}
+            {view < photos.length - 1 && <button className="btn icon round" style={{ position: 'absolute', right: 24 }} onClick={e => { e.stopPropagation(); setView(view + 1) }}><ChevronRight size={20} /></button>}
+          </motion.div>
+        )}
       </AnimatePresence>
     </>
   )
