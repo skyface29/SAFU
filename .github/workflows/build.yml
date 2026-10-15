@@ -2,7 +2,8 @@ name: Build IPA
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    # dev — проверочные сборки: .ipa в артефактах, без релиза
+    branches: [ main, dev ]
 permissions:
   contents: write
 jobs:
@@ -85,6 +86,7 @@ jobs:
           name: ${{ env.IPA_NAME }}
           path: ${{ env.IPA_NAME }}
       - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
         with:
           tag_name: build-${{ github.run_number }}
           name: САФУ ${{ env.APP_VERSION }} (сборка ${{ github.run_number }})
