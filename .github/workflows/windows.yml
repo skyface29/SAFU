@@ -23,9 +23,22 @@ jobs:
           cache-dependency-path: windows/package-lock.json
       - run: npm ci
       - name: Проверка типов и тесты
+        shell: bash
         run: |
-          npx tsc --noEmit -p tsconfig.json
-          npm test
+          set +e
+          npx tsc --noEmit -p tsconfig.json > tsc.log 2>&1; t=$?
+          cat tsc.log
+          if [ $t -ne 0 ]; then
+            # ошибки видны прямо на странице запуска (Annotations)
+            echo "::error::$(grep -E 'error TS' tsc.log | head -15 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+          npm test > test.log 2>&1; r=$?
+          cat test.log
+          if [ $r -ne 0 ]; then
+            echo "::error::$(grep -E -A16 'not ok' test.log | head -60 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
       # Подпись .exe (убирает предупреждение SmartScreen). Работает сама, если в Settings → Secrets добавить:
       #  • Azure Trusted Signing: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
       #    AZURE_SIGN_ENDPOINT, AZURE_SIGN_ACCOUNT, AZURE_SIGN_PROFILE, AZURE_SIGN_PUBLISHER;
