@@ -407,6 +407,15 @@ export class TransferServer {
             fs.writeFileSync(entry.dest, Buffer.alloc(0))
             entry.done = true
           } catch { /* пропустим */ }
+        } else if (entry.received === size) {
+          // файл дошёл целиком, но в прошлый раз не успел встать на место — ставим сейчас
+          try {
+            fs.rmSync(entry.dest, { force: true })
+            fs.renameSync(entry.tmp, entry.dest)
+            const t = new Date(mtime)
+            fs.utimesSync(entry.dest, t, t)
+            entry.done = true
+          } catch { /* пришлют заново */ }
         }
       }
       this.entries.set(id, entry)
