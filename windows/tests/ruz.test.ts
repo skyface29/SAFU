@@ -81,7 +81,9 @@ test('страница преподавателя: вместо ФИО — гр�
 
 test('слияние РУЗ: прошлое не стирается, отменённое будущее исчезает, замены видны', () => {
   const day = 86400000
-  const now = Date.now()
+  // середина дня: вечером «+2 часа» уходило за полночь, на другой день, и тест падал после 22:00
+  const noon = new Date(); noon.setHours(12, 0, 0, 0)
+  const now = noon.getTime()
   const mk = (t: number, s: string, room = '1') => ({ start: t, end: t + 5700000, subject: s, kind: 'Лекция', teacher: '', room, address: '', note: '' })
   let d = { ...emptySchedule(), source: 1 }
   const past = mk(now - 10 * day, 'Старое')
