@@ -22,6 +22,8 @@ export type MailReport = {
   total?: number
   messages?: MailMessage[]
   validity?: number
+  /** Номер самого свежего письма в ящике (не только среди непрочитанных) */
+  maxUID?: number
   error?: string
   kind?: 'login' | 'network' | 'server'
 }
@@ -211,12 +213,29 @@ async function ximssCheck(acc: MailAccount): Promise<MailReport> {
     const n = total ?? limit
     let items: MailMessage[] = []
     if (n > 0) {
-      const from = sorted ? 0 : Math.max(0, n - limit)
-      const till = sorted ? limit - 1 : Math.max(0, n - 1)
-      const b = await request(`<folderBrowse id="browse" folder="INBOX"><index from="${from}" till="${till}"/></folderBrowse>`)
-      const e = respError(b, 'browse')
-      if (e) throw new MailError('server', e)
-      items = all(b, 'folderReport').map(x => {
+      // оба края списка: если сервер не понял сортировку и отдал письма «старые сверху», свежие — в конце.
+      // Раньше в этом случае смотрели только на 20 самых старых и новые письма не замечались никогда
+      const ranges: [number, number][] = [[0, Math.min(n, limit) - 1]]
+      if (n > limit) ranges.push([n - limit, n - 1])
+      const byUID = new Map<number, MailMessage>()
+      for (const [i, [from, till]] of ranges.entries()) {
+        const b = await request(`<folderBrowse id="browse${i}" folder="INBOX"><index from="${from}" till="${till}"/></folderBrowse>`)
+        const e = respError(b, `browse${i}`)
+        if (e) throw new MailError('server', e)
+        for (const m of parseItems(b)) byUID.set(m.uid, m)
+      }
+      items = [...byUID.values()].sort((a, b) => b.uid - a.uid).slice(0, limit)
+    }
+    void sorted
+    await request('<folderClose id="close" folder="INBOX"/>').catch(() => null)
+    return { ok: true, via: 'ximss', unseen: unseenAttr ?? items.filter(i => !i.seen).length, total, messages: items, validity: 0, maxUID: items[0]?.uid ?? 0 }
+  } finally {
+    await request('<bye id="bye"/>').catch(() => null)
+  }
+}
+
+function parseItems(b: XNode): MailMessage[] {
+      return all(b, 'folderReport').map(x => {
         const uid = Number(attr(x, 'UID'))
         if (!uid) return null
         const flags = fullText(child(x, 'FLAGS') || { name: '', attrs: {}, text: '', children: [] }).toLowerCase()
@@ -226,13 +245,6 @@ async function ximssCheck(acc: MailAccount): Promise<MailReport> {
         const s = child(x, 'Subject')
         return { uid, seen: /\bseen\b/.test(flags.replace(/\\/g, ' ')), from: fromText, subject: decodeMIME((s ? fullText(s) : '').trim()) }
       }).filter((v): v is MailMessage => !!v)
-      if (!sorted) items.reverse()
-    }
-    await request('<folderClose id="close" folder="INBOX"/>').catch(() => null)
-    return { ok: true, via: 'ximss', unseen: unseenAttr ?? items.filter(i => !i.seen).length, total, messages: items, validity: 0 }
-  } finally {
-    await request('<bye id="bye"/>').catch(() => null)
-  }
 }
 
 // ---------- IMAP ----------
@@ -296,6 +308,8 @@ async function imapCheck(acc: MailAccount): Promise<MailReport> {
     if (!ok) throw new MailError('login', lastNo || 'логин не принят')
     const sel = await command('EXAMINE INBOX')
     const validity = Number(/UIDVALIDITY (\d+)/.exec(sel)?.[1] || 0)
+    // номер, который получит следующее письмо: по нему видно самое свежее, даже если всё прочитано
+    const uidNext = Number(/UIDNEXT (\d+)/.exec(sel)?.[1] || 0)
     const total = Number(/\* (\d+) EXISTS/.exec(sel)?.[1] || 0)
     const search = await command('UID SEARCH UNSEEN')
     const line = search.split('\r\n').find(l => l.startsWith('* SEARCH')) || ''
@@ -316,7 +330,7 @@ async function imapCheck(acc: MailAccount): Promise<MailReport> {
     }
     await command('LOGOUT').catch(() => null)
     messages = messages.sort((a, b) => b.uid - a.uid)
-    return { ok: true, via: 'imap', unseen: uids.length, total, messages, validity }
+    return { ok: true, via: 'imap', unseen: uids.length, total, messages, validity, maxUID: Math.max(uidNext - 1, uids[uids.length - 1] || 0, 0) }
   } finally {
     sock.destroy()
   }

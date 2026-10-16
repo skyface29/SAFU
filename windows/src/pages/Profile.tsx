@@ -427,7 +427,7 @@ export function MailNotify() {
           <div className="h-card mb12">Последние письма</div>
           {!recent.length && <div className="sub">Появятся после первой проверки</div>}
           <div className="col gap6">{recent.map(m => <div key={m.uid} className="row top" style={{ padding: '8px 10px', borderRadius: 10, background: 'var(--fill)' }}>{!m.seen && <span className="dot" style={{ marginTop: 6 }} />}<div className="grow"><div className="bold small ellipsis">{m.from}</div><div className="tiny muted ellipsis">{m.subject}</div></div></div>)}</div>
-          <div className="tiny faint mt12">Письма не скачиваются и не помечаются прочитанными. Пока приложение открыто или в трее, почта проверяется каждую минуту.</div>
+          <div className="tiny faint mt12">Письма не скачиваются и не помечаются прочитанными. Пока приложение открыто или в трее, почта проверяется каждую минуту. Когда компьютер спит или выключен — не проверяется; после пробуждения проверка продолжится сама.</div>
         </Card>
       </div>
     </>
@@ -471,6 +471,10 @@ export function Backup() {
 // ---------- автор ----------
 
 const CHANGELOG: { version: string; items: string[] }[] = [
+  { version: '19.0.2 для Windows', items: [
+    'Уведомления о почте: исправлено, что новые письма могли не замечаться — если во «Входящих» не оставалось непрочитанных (через IMAP) или ящик пустел, следующее письмо проходило без уведомления',
+    'Почта: новые письма находятся при любом порядке писем на сервере — раньше, если сервер не понимал сортировку, приложение смотрело только на самые старые'
+  ] },
   { version: '19.0.1 для Windows', items: [
     'Исправлено: после обновления до 19.0 окно открывалось пустым (только фон) — приложение падало при запуске из-за сохранения открытых сайтов'
   ] },

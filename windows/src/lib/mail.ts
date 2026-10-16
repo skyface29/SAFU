@@ -3,8 +3,9 @@ import { kv } from './kv'
 import { safu } from './bridge'
 import { creds } from './creds'
 import { notify } from './notify'
+import { advanceMail, type MailBoxState } from './mailstate'
 
-export type MailReport = { ok: boolean; via?: 'ximss' | 'imap'; unseen?: number; total?: number; messages?: { uid: number; from: string; subject: string; seen: boolean }[]; validity?: number; error?: string; kind?: string }
+export type MailReport = { ok: boolean; via?: 'ximss' | 'imap'; unseen?: number; total?: number; messages?: { uid: number; from: string; subject: string; seen: boolean }[]; validity?: number; maxUID?: number; error?: string; kind?: string }
 
 let running = false
 
@@ -40,20 +41,15 @@ export const mailWatch = {
       kv.set('mail.lastSuccess', Date.now())
       kv.set('mail.via', r.via)
       kv.set('mail.unseen', r.unseen ?? 0)
-      // новые письма: UID больше последнего виденного (как advance() в iOS)
+      // новые письма: номер больше последнего виденного (как advance() в iOS)
       const msgs = r.messages || []
-      const unseen = msgs.filter(m => !m.seen)
-      const maxUID = Math.max(0, ...msgs.map(m => m.uid))
       const vKey = `mail.uidValidity.${r.via}`
-      const lastUID = kv.get('mail.lastUID', 0)
-      let fresh: typeof msgs = []
-      if (lastUID > 0 && (r.validity ?? 0) === kv.get(vKey, 0) && maxUID >= lastUID) {
-        fresh = unseen.filter(m => m.uid > lastUID).sort((a, b) => a.uid - b.uid).slice(-5)
-        kv.set('mail.lastUID', Math.max(lastUID, maxUID))
-      } else {
-        kv.set('mail.lastUID', maxUID)
-      }
-      kv.set(vKey, r.validity ?? 0)
+      const iKey = `mail.inited.${r.via}`
+      const st: MailBoxState = { lastUID: kv.get('mail.lastUID', 0), validity: kv.get(vKey, 0), inited: kv.get(iKey, false) }
+      const { fresh, next } = advanceMail(st, msgs, r.maxUID ?? 0, r.validity ?? 0)
+      kv.set('mail.lastUID', next.lastUID)
+      kv.set(vKey, next.validity)
+      kv.set(iKey, true)
       kv.set('mail.recent', msgs.slice(0, 10))
       if (doNotify && fresh.length) {
         for (const m of fresh.slice(-3)) notify.show({ title: m.from || 'Почта САФУ', body: m.subject || '(без темы)', route: 'site:mail' })
