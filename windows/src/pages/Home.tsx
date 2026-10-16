@@ -16,6 +16,7 @@ import { homeworkStore, hw, hwTitle, chip, urgency, hwKind } from '../lib/homewo
 import { resources, resourcesStore, recentsStore } from '../lib/resources'
 import { openSite } from '../sites/sites'
 import { SiteGlyph, siteColor } from '../ui/icons'
+import { LIBRARIES } from '../lib/libraries'
 import { useWeather, weather, weatherEmoji, deg, sky, outfit } from '../lib/weather'
 import { bus, commute, busStore, routeTitle } from '../lib/bus'
 import { session, daysLeft, isConsult } from '../lib/session'
@@ -124,8 +125,10 @@ function QuickSites() {
   const [unseen] = usePref('mail.unseen', 0)
   const [mailOn] = usePref('mail.notify', false)
   const quick = useMemo(() => resources.quick(), [list])
+  const [libsOpen, setLibsOpen] = usePref('home.libsOpen', false)
   return (
-    <div className="grid" style={{ gridTemplateColumns: `repeat(${Math.max(quick.length, 1)}, minmax(0, 1fr))`, gap: 12 }}>
+    <div className="col" style={{ gap: 12 }}>
+    <div className="grid" style={{ gridTemplateColumns: `repeat(${quick.length + 1}, minmax(0, 1fr))`, gap: 12 }}>
       {quick.map((r, i) => (
         <motion.div key={r.id} className="card hover press tight row" style={{ gap: 12, padding: '12px 14px' }}
           initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, type: 'spring', stiffness: 300, damping: 24 }}
@@ -144,6 +147,47 @@ function QuickSites() {
           </div>
         </motion.div>
       ))}
+      {/* отдельная кнопка: все электронные библиотеки */}
+      <motion.div className="card hover press tight row" style={{ gap: 12, padding: '12px 14px', outline: libsOpen ? '2px solid var(--brand)' : undefined }}
+        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: quick.length * 0.05, type: 'spring', stiffness: 300, damping: 24 }}
+        whileHover={{ y: -3 }} whileTap={{ scale: 0.96 }} onClick={() => setLibsOpen(!libsOpen)}>
+        <motion.div className="icon-tile" style={{ width: 42, height: 42, borderRadius: 13, background: 'var(--grad)' }}
+          whileHover={{ rotate: [0, -8, 8, 0] }} transition={{ duration: 0.4 }}>
+          <SiteGlyph icon="books.vertical.fill" size={20} />
+        </motion.div>
+        <div className="grow">
+          <div className="bold ellipsis">Библиотеки</div>
+          <div className="tiny muted ellipsis">Знаниум, Лань, Юрайт…</div>
+        </div>
+      </motion.div>
+    </div>
+    <AnimatePresence initial={false}>
+      {libsOpen && (
+        <motion.div key="libs" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 32 }} style={{ overflow: 'hidden' }}>
+          <Card style={{ padding: 18 }}>
+            <div className="row mb12" style={{ alignItems: 'baseline', gap: 10 }}>
+              <div className="h-card">Библиотеки</div>
+              <div className="tiny muted grow">ЭБС для студентов САФУ</div>
+            </div>
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10 }}>
+              {LIBRARIES.map(l => (
+                <motion.div key={l.url} className="card hover press tight row" style={{ gap: 10, padding: '10px 12px' }}
+                  whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} onClick={() => openSite({ title: l.title, url: l.url, icon: l.icon })}
+                  onContextMenu={e => openMenu(e, [{ label: 'Открыть в браузере', run: () => safu.shell.open(l.url) }])}>
+                  <div className="icon-tile" style={{ width: 36, height: 36, borderRadius: 11, background: 'var(--grad)' }}><SiteGlyph icon={l.icon} size={17} /></div>
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <div className="bold ellipsis">{l.title}</div>
+                    <div className="tiny muted ellipsis">{l.about}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            <div className="tiny faint mt12">Подписку на ЭБС оплачивает университет: зарегистрируйся в нужной библиотеке из сети САФУ — потом вход по своему логину работает и из дома. Что подключено сейчас — на сайте «Библиотека САФУ».</div>
+          </Card>
+        </motion.div>
+      )}
+    </AnimatePresence>
     </div>
   )
 }

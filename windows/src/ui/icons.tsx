@@ -3,7 +3,8 @@ import {
   Presentation, PencilRuler, FlaskConical, MessagesSquare, GraduationCap, BadgeCheck, MessageCircleQuestion, BookOpen,
   Clock, Mail, FileText, Building2, Book, Cpu, IdCard, UserCircle, ShieldCheck, PlayCircle, Briefcase, Wrench, Library,
   Link, Globe, Calculator, Atom, Code2, Languages, Landmark, Dumbbell, Sigma, Leaf, Brain, Music, Palette, Scale, BarChart3,
-  Zap, Ship, Fish, HeartPulse, Map as MapIcon, Laptop, Database, Network, Cog, Microscope, PenTool, Hammer
+  Zap, Ship, Fish, HeartPulse, Map as MapIcon, Laptop, Database, Network, Cog, Microscope, PenTool, Hammer,
+  BookText, BookOpenText, BookA, BookMarked, FileSearch, Newspaper, Building
 } from 'lucide-react'
 import { kindStyle } from '../lib/schedule'
 
@@ -26,7 +27,9 @@ const SITE_ICONS: Record<string, any> = {
   'graduationcap.fill': GraduationCap, 'clock.fill': Clock, 'envelope.fill': Mail, 'doc.text.fill': FileText,
   'building.columns.fill': Building2, 'book.fill': Book, cpu: Cpu, 'person.text.rectangle.fill': IdCard,
   'person.crop.circle.fill': UserCircle, 'checkmark.shield.fill': ShieldCheck, 'play.rectangle.fill': PlayCircle,
-  'briefcase.fill': Briefcase, 'wrench.and.screwdriver.fill': Wrench, 'books.vertical.fill': Library, link: Link, globe: Globe
+  'briefcase.fill': Briefcase, 'wrench.and.screwdriver.fill': Wrench, 'books.vertical.fill': Library, link: Link, globe: Globe,
+  'text.book.closed.fill': BookText, 'book.pages.fill': BookOpenText, 'character.book.closed.fill': BookA,
+  'book.closed.fill': BookMarked, 'doc.text.magnifyingglass': FileSearch, 'magazine.fill': Newspaper, 'building.2.fill': Building
 }
 
 export const SITE_ICON_CHOICES = Object.keys(SITE_ICONS)
@@ -36,20 +39,9 @@ export function SiteGlyph({ icon, size = 18 }: { icon: string; size?: number }) 
   return <C size={size} strokeWidth={2.2} />
 }
 
-/** Свой цвет у каждого сайта — узнаётся с полувзгляда */
+/** Плитка сайта — в цвет темы у всех сайтов, без пестроты (url и title оставлены для совместимости) */
 export function siteColor(url: string, title = ''): string {
-  const u = url.toLowerCase()
-  if (u.includes('sakai')) return 'linear-gradient(135deg,#f59e0b,#ef4444)'
-  if (u.includes('ruz.')) return 'linear-gradient(135deg,#3b82f6,#06b6d4)'
-  if (u.includes('edu.narfu')) return 'linear-gradient(135deg,#0ea5e9,#6366f1)'
-  if (u.includes('office')) return 'linear-gradient(135deg,#10b981,#059669)'
-  if (u.includes('lk.')) return 'linear-gradient(135deg,#8b5cf6,#ec4899)'
-  if (u.includes('antiplagiat')) return 'linear-gradient(135deg,#14b8a6,#0f766e)'
-  if (u.includes('library')) return 'linear-gradient(135deg,#a16207,#d97706)'
-  let h = 0
-  for (const ch of url + title) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  const hue = h % 360
-  return `linear-gradient(135deg, hsl(${hue} 75% 55%), hsl(${(hue + 40) % 360} 75% 48%))`
+  return 'var(--grad)'
 }
 
 /** Значок предмета по ключевым словам (как SubjectIcon) */
