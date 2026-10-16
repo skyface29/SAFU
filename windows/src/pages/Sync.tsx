@@ -1,8 +1,10 @@
-// Синхронизация с iPhone: один раз связать QR-кодом — дальше ДЗ, задачи и заметки одинаковые на обоих
+// Синхронизация с iPhone: один раз связать (телефон сам находит компьютер, сверяешь код — или QR-код),
+// дальше ДЗ, задачи и заметки одинаковые на обоих
 import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { RefreshCw, Smartphone, Wifi, ShieldCheck, Camera, Unlink, QrCode, Check, ArrowLeftRight } from 'lucide-react'
-import { PageHeader, Card, softSpring, confirmDialog, toast } from '../ui/kit'
+import { RefreshCw, Smartphone, Wifi, ShieldCheck, Unlink, QrCode, Check, ArrowLeftRight, Search, ShieldAlert, Loader2 } from 'lucide-react'
+import { PageHeader, Card, Sheet, softSpring, confirmDialog, toast } from '../ui/kit'
+import { safu } from '../lib/bridge'
 import { encodeQr, qrPath } from '../lib/qr'
 import { usePref } from '../lib/kv'
 import { sync, LAST_KEY, type SyncLast } from '../lib/sync'
@@ -16,7 +18,10 @@ export default function SyncPage() {
   const [last] = usePref<SyncLast | null>(LAST_KEY, null)
 
   useEffect(() => {
-    sync.link().then(u => { setPaired(!!u); setUrl(u); setShowQr(!u ? false : !last) })
+    const load = (first: boolean) => sync.link().then(u => { setPaired(!!u); setUrl(u); if (first) setShowQr(false) })
+    load(true)
+    // телефон связался сам (без QR-кода) — обновляем экран
+    return safu.sync.onChanged(() => { load(false); setShowQr(false) })
   }, [])
 
   const pair = async () => {
@@ -48,18 +53,20 @@ export default function SyncPage() {
             )}
           </AnimatePresence>
           <div className="row gap8 mt16" style={{ position: 'relative', flexWrap: 'wrap' }}>
-            {!paired && <button className="btn primary" onClick={pair}><QrCode size={16} /> Связать с iPhone</button>}
+            {!paired && !showQr && <button className="btn" onClick={pair}><QrCode size={16} /> Связать по QR-коду</button>}
             {paired && !showQr && <button className="btn" onClick={() => setShowQr(true)}><QrCode size={15} /> Показать код ещё раз</button>}
             {paired && <button className="btn ghost" onClick={pair}><RefreshCw size={14} /> Новый код</button>}
             {paired && <button className="btn ghost" onClick={unpair}><Unlink size={14} /> Отключить</button>}
           </div>
         </Card>
 
+        <div className="col" style={{ gap: 16 }}>
+        <FirewallCard />
         <Card style={{ padding: 26 }}>
           <div className="h-card mb12">Как это работает</div>
           <div className="col" style={{ gap: 16 }}>
-            <Point icon={<Camera size={18} />} title="Один раз связываешь QR-кодом"
-              sub="Код показывается здесь. Наведи на него камеру iPhone — и всё, больше ничего делать не нужно" />
+            <Point icon={<Search size={18} />} title="Телефон сам находит компьютер"
+              sub="На iPhone: Профиль → «Синхронизация с компьютером» — Арктика найдёт этот компьютер в сети. Нажми на него, сверь код на обоих экранах и нажми здесь «Разрешить». Один раз — дальше ничего делать не нужно. QR-код — запасной способ" />
             <Point icon={<ArrowLeftRight size={18} />} title="Дальше всё само"
               sub="Пока Арктика открыта на телефоне, он заглядывает на компьютер каждые несколько секунд: сделал ДЗ, добавил задачу, поправил заметку — изменение появится на другом устройстве" />
             <Point icon={<Wifi size={18} />} title="Нужна одна сеть Wi‑Fi"
@@ -67,10 +74,11 @@ export default function SyncPage() {
             <Point icon={<Check size={18} />} title="Ничего не теряется"
               sub="Если одно и то же поменяли и тут, и там — побеждает то, что сделали позже, по каждому полю отдельно: отметка «сделано» не сотрёт новый срок, и наоборот. Фото ДЗ остаются на своём устройстве" />
             <Point icon={<ShieldCheck size={18} />} title="Без облаков и чужих серверов"
-              sub="Напрямую по домашней сети, с шифрованием AES‑256. Ключ есть только в этом QR-коде. «Новый код» или «Отключить» — и старый телефон больше не подключится" />
+              sub="Напрямую по домашней сети, с шифрованием AES‑256. Ключ передаётся зашифрованным только после твоего «Разрешить». «Новый код» или «Отключить» — и старый телефон больше не подключится" />
           </div>
           <div className="tiny faint mt16">Перенести файлы предметов, фото доски и записи лекций — по-прежнему в разделе <a className="clickable" style={{ color: 'var(--brand)' }} onClick={() => go('transfer')}>«Перенос с iPhone»</a>.</div>
         </Card>
+        </div>
       </div>
     </>
   )
@@ -91,7 +99,7 @@ function SyncStatus({ paired, last }: { paired: boolean | null; last: SyncLast |
           {paired === null ? 'Проверяю…' : paired ? (last ? `Синхронизировано с «${last.device}»` : 'Связано — жду iPhone') : 'iPhone не связан'}
         </div>
         <div className="sub mt4">
-          {paired ? (last ? `${fresh ? 'Телефон на связи · ' : ''}последний раз ${relativeAgo(last.at)}` : 'Отсканируй код камерой iPhone — и открой Арктику на телефоне') : 'Свяжи телефон QR-кодом — и ДЗ, задачи и заметки станут общими'}
+          {paired ? (last ? `${fresh ? 'Телефон на связи · ' : ''}последний раз ${relativeAgo(last.at)}` : 'Открой Арктику на телефоне — он зайдёт сам') : 'На iPhone: Профиль → «Синхронизация с компьютером» — телефон найдёт этот компьютер сам'}
         </div>
       </div>
     </div>
@@ -117,6 +125,86 @@ function Point({ icon, title, sub }: { icon: React.ReactNode; title: string; sub
       <div className="icon-tile" style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, background: 'var(--grad)' }}>{icon}</div>
       <div className="grow"><div className="bold">{title}</div><div className="sub mt4">{sub}</div></div>
     </div>
+  )
+}
+
+/** Брандмауэр Windows: из-за него телефон в той же сети «не видит» компьютер. Проверка и починка в одно нажатие */
+function FirewallCard() {
+  const [st, setSt] = useState<Awaited<ReturnType<typeof safu.sync.firewall>> | null>(null)
+  const [busy, setBusy] = useState(false)
+  const check = () => safu.sync.firewall().then(setSt).catch(() => setSt({ state: 'unknown' }))
+  useEffect(() => { check() }, [])
+  if (!st || st.state === 'na') return null
+  const fix = async () => {
+    setBusy(true)
+    const r = await safu.sync.firewallFix().catch(() => 'failed' as const)
+    setBusy(false)
+    if (r === 'ok') toast('Брандмауэр больше не мешает синхронизации')
+    else if (r === 'cancelled') toast('Нужно нажать «Да» в окне Windows', 'warn')
+    else toast('Не вышло поменять настройки брандмауэра', 'warn')
+    check()
+  }
+  const ok = st.state === 'ok'
+  const text = ok
+    ? 'Входящие подключения от телефона разрешены' + (st.network === 'Public' ? ' — и в «общественной» сети тоже' : '')
+    : st.state === 'blocked'
+      ? 'Windows запрещает Арктике входящие подключения (наверное, когда-то закрыли окно «Разрешить доступ?»). Из-за этого телефон в той же сети не видит компьютер'
+      : st.state === 'missing'
+        ? 'Входящие подключения от телефона могут блокироваться' + (st.network === 'Public' ? ' — сеть отмечена как «общественная»' : '') + '. Разреши один раз — Windows спросит подтверждение'
+        : 'Не получилось проверить брандмауэр. Если телефон не находит компьютер — разреши подключения'
+  return (
+    <Card style={{ padding: 20 }}>
+      <div className="row top" style={{ gap: 12 }}>
+        <div className="icon-tile" style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, background: ok ? 'linear-gradient(135deg,#22c55e,#0ea5e9)' : 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+          {ok ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
+        </div>
+        <div className="grow">
+          <div className="bold">Брандмауэр Windows</div>
+          <div className="sub mt4">{text}</div>
+          {!ok && (
+            <button className="btn primary sm mt12" onClick={fix} disabled={busy}>
+              {busy ? <Loader2 size={14} className="spin" /> : <ShieldCheck size={14} />} Разрешить синхронизацию
+            </button>
+          )}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+/** Телефон просит связаться без QR-кода: показываем его код, человек сверяет и разрешает */
+export function SyncPairAsk() {
+  const [req, setReq] = useState<{ rid: string; device: string; code: string } | null>(null)
+  useEffect(() => {
+    const a = safu.sync.onAsk((rid, info) => setReq({ rid, ...info }))
+    const b = safu.sync.onAskDone(rid => setReq(r => (r?.rid === rid ? null : r)))
+    return () => { a(); b() }
+  }, [])
+  const answer = (ok: boolean) => {
+    if (!req) return
+    safu.sync.answer(req.rid, ok)
+    setReq(null)
+    if (ok) toast(`«${req.device}» связан — ДЗ, задачи и заметки теперь общие`)
+  }
+  return (
+    <Sheet open={!!req} onClose={() => answer(false)} title="Связать iPhone?"
+      footer={<>
+        <button className="btn" onClick={() => answer(false)}>Отклонить</button>
+        <button className="btn primary" autoFocus onClick={() => answer(true)}><Check size={15} /> Разрешить</button>
+      </>}>
+      {req && (
+        <div className="col" style={{ alignItems: 'center', gap: 14, padding: '6px 0 4px' }}>
+          <div className="icon-tile" style={{ width: 58, height: 58, borderRadius: 18, background: 'var(--grad)' }}><Smartphone size={26} /></div>
+          <div className="muted tc" style={{ lineHeight: 1.5 }}><b>{req.device}</b> хочет синхронизировать ДЗ, задачи и заметки с этим компьютером</div>
+          <div className="row" style={{ gap: 10 }}>
+            {req.code.split('').map((d, i) => (
+              <div key={i} style={{ width: 52, height: 64, borderRadius: 14, display: 'grid', placeItems: 'center', fontSize: 34, fontWeight: 700, background: 'rgba(var(--brand-rgb), .12)', color: 'var(--brand)' }}>{d}</div>
+            ))}
+          </div>
+          <div className="small faint tc" style={{ maxWidth: 340 }}>Разрешай, только если на телефоне тот же код. Не ты просил — нажми «Отклонить»</div>
+        </div>
+      )}
+    </Sheet>
   )
 }
 

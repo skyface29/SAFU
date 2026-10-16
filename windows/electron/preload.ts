@@ -103,6 +103,15 @@ const api = {
     pair: (): Promise<{ url: string; hosts: string[]; port: number } | null> => ipcRenderer.invoke('sync:pair'),
     link: (): Promise<{ url: string; hosts: string[]; port: number } | null> => ipcRenderer.invoke('sync:link'),
     unpair: () => ipcRenderer.invoke('sync:unpair'),
+    /** Брандмауэр Windows: проверить и разрешить синхронизацию (одно окно UAC) */
+    firewall: (): Promise<{ state: 'ok' | 'blocked' | 'missing' | 'unknown' | 'na'; network?: string }> => ipcRenderer.invoke('sync:firewall'),
+    firewallFix: (): Promise<'ok' | 'cancelled' | 'failed' | 'na'> => ipcRenderer.invoke('sync:firewallFix'),
+    /** Телефон просит связаться без QR-кода: показать код и спросить */
+    onAsk: (cb: (rid: string, info: { device: string; code: string }) => void) => on('sync:ask', cb),
+    onAskDone: (cb: (rid: string) => void) => on('sync:askDone', cb),
+    answer: (rid: string, ok: boolean) => ipcRenderer.send('sync:askReply', rid, ok),
+    /** Связка появилась или поменялась */
+    onChanged: (cb: () => void) => on('sync:changed', cb),
     /** Отвечать телефону: главный процесс присылает его данные, интерфейс сводит их со своими */
     serve: (handler: (body: any) => unknown) => on('sync:request', async (rid: string, body: unknown) => {
       try {

@@ -14,6 +14,8 @@ import * as zlib from 'node:zlib'
 import { summarizeLecture } from './claude'
 import { TransferServer } from './transfer'
 import { SyncServer, newPairing, syncLink, type SyncPairing } from './sync'
+import { PairBroker } from './syncpair'
+import { firewallStatus, firewallFix } from './firewall'
 import * as os from 'node:os'
 
 const isDev = !!process.env.VITE_DEV
@@ -106,7 +108,7 @@ function inRoot(rel: string): string {
 /** Приём с iPhone по QR (пока открыт экран переноса) */
 let transfer: TransferServer | null = null
 
-// ---------- синхронизация с iPhone: пока приложение запущено, связанный телефон заходит сам ----------
+// ---------- синхронизация с iPhone: пока приложение запущено, телефон заходит сам ----------
 
 let syncServer: SyncServer | null = null
 const syncWaiters = new Map<string, (r: { ok: boolean; result?: unknown; error?: string }) => void>()
@@ -131,25 +133,60 @@ function syncInRenderer(body: unknown): Promise<unknown> {
   })
 }
 
-/** Сервер синхронизации работает, только пока есть связка */
-async function ensureSync(): Promise<SyncServer | null> {
-  if (!syncPairing()) {
-    syncServer?.stop()
-    syncServer = null
-    return null
-  }
-  if (syncServer?.running) return syncServer
-  const s = new SyncServer({
-    name: os.hostname(),
-    version: app.getVersion(),
-    port: Number(kv['sync.port']) || SYNC_PORT,
-    pairing: syncPairing,
-    handle: syncInRenderer
+/** Телефон просит связаться без QR-кода: показываем окно с кодом, человек сверяет и решает */
+const pairAsks = new Map<string, (ok: boolean) => void>()
+function askPair(device: string, code: string): Promise<boolean> {
+  return new Promise(resolve => {
+    if (!win || win.isDestroyed()) createWindow()
+    if (!win) { resolve(false); return }
+    const rid = Math.random().toString(36).slice(2)
+    const timer = setTimeout(() => { pairAsks.delete(rid); win?.webContents.send('sync:askDone', rid); resolve(false) }, 100_000)
+    pairAsks.set(rid, ok => { clearTimeout(timer); resolve(ok) })
+    showMain()
+    win.flashFrame(true)
+    if (!win.isFocused()) showNotification({ title: `${device} хочет синхронизироваться`, body: `Сверь код ${code} с экраном телефона и нажми «Разрешить»` })
+    const send = () => win?.webContents.send('sync:ask', rid, { device, code })
+    if (win.webContents.isLoading()) win.webContents.once('did-finish-load', () => setTimeout(send, 600))
+    else send()
   })
-  const port = await s.start()
-  syncServer = s
-  if (kv['sync.port'] !== port) { kv['sync.port'] = port; saveKVSoon() }
-  return s
+}
+
+const pairBroker = new PairBroker({
+  ask: askPair,
+  grant: async () => {
+    // уже связан другой телефон — отдаём ту же связку: оба будут синхронизироваться
+    let p = syncPairing()
+    if (!p) {
+      p = newPairing()
+      secrets['sync.pair'] = JSON.stringify(p)
+      saveSecrets()
+    }
+    const s = await ensureSync()
+    win?.webContents.send('sync:changed')
+    return { id: p.id, key: p.key, hosts: s?.hosts ?? [], port: s?.port ?? SYNC_PORT, name: os.hostname() }
+  }
+})
+
+/** Сервер работает всё время, пока запущено приложение: телефон найдёт компьютер и без QR-кода */
+let syncStarting: Promise<SyncServer | null> | null = null
+async function ensureSync(): Promise<SyncServer | null> {
+  if (syncServer?.running) return syncServer
+  if (syncStarting) return syncStarting
+  syncStarting = (async () => {
+    const s = new SyncServer({
+      name: os.hostname(),
+      version: app.getVersion(),
+      port: Number(kv['sync.port']) || SYNC_PORT,
+      pairing: syncPairing,
+      handle: syncInRenderer,
+      pair: pairBroker
+    })
+    const port = await s.start()
+    syncServer = s
+    if (kv['sync.port'] !== port) { kv['sync.port'] = port; saveKVSoon() }
+    return s
+  })().finally(() => { syncStarting = null })
+  return syncStarting
 }
 
 async function currentSyncLink(): Promise<{ url: string; hosts: string[]; port: number } | null> {
@@ -1070,10 +1107,15 @@ function registerIPC() {
   ipcMain.handle('sync:unpair', () => {
     delete secrets['sync.pair']
     saveSecrets()
-    syncServer?.stop()
-    syncServer = null
     return true
   })
+  ipcMain.on('sync:askReply', (_e, rid: string, ok: boolean) => {
+    pairAsks.get(rid)?.(!!ok)
+    pairAsks.delete(rid)
+  })
+  // брандмауэр: проверить (без прав администратора) и разрешить (одно окно UAC)
+  ipcMain.handle('sync:firewall', () => firewallStatus(process.execPath))
+  ipcMain.handle('sync:firewallFix', () => firewallFix(process.execPath))
   ipcMain.on('sync:reply', (_e, rid: string, r: { ok: boolean; result?: unknown; error?: string }) => {
     syncWaiters.get(rid)?.(r)
     syncWaiters.delete(rid)

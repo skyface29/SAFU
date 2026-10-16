@@ -1,29 +1,38 @@
 // Синхронизация с iPhone по домашнему Wi‑Fi.
 //
-// Один раз связываем телефон QR-кодом: в нём адрес компьютера, номер связки и постоянный ключ.
-// Дальше, пока Арктика здесь запущена (даже свёрнутой в трей), компьютер ждёт телефон на своём порту.
+// Один раз связываем телефон: он сам находит компьютер в сети (GET /v2/hello), оба показывают код,
+// человек нажимает «Разрешить» (syncpair.ts), — или по старинке QR-кодом. В связке — номер, постоянный
+// ключ и адреса компьютера. Пока Арктика здесь запущена (даже свёрнутой в трей), компьютер ждёт телефон
+// на своём порту; сменился адрес в сети — телефон найдёт компьютер заново по отпечатку связки.
 // Телефон сам заходит раз в несколько секунд, пока на нём открыто приложение, присылает свою версию
 // ДЗ, задач и заметок и забирает общую. Всё зашифровано AES-256-GCM ключом из QR (как у переноса),
 // к шифру привязан адрес запроса.
 //
+//   GET  /v2/hello                                         → {app, v, pc, pair}  (pair — отпечаток связки)
 //   POST /v2/sync  {device, data:{homework, tasks, notes}}  → {data, pc, app, hosts, port}
 
 import * as http from 'node:http'
 import * as crypto from 'node:crypto'
 import { seal, open, lanAddresses } from './transfer'
+import { PairBroker, PairError, pairTag } from './syncpair'
 
 export type SyncPairing = { id: string; key: string; created: number }
 
 export type SyncOptions = {
   name: string
   version: string
-  /** Порт, на котором ждать телефон (связанный телефон его помнит). Занят — любой свободный */
+  /** Порт, на котором ждать телефон (связанный телефон его помнит). Занят — соседние, потом любой свободный */
   port: number
   pairing: () => SyncPairing | null
   /** Свести присланное с данными приложения и вернуть общее */
   handle: (body: any) => Promise<any>
+  /** Связка без QR-кода */
+  pair?: PairBroker
   bind?: string
 }
+
+/** Порты, которые телефон проверяет при поиске компьютера (и которые открываем в брандмауэре) */
+export const SYNC_PORTS = [47823, 47824, 47825, 47826, 47827, 47828, 47829, 47830]
 
 const BODY_LIMIT = 24 * 1024 * 1024
 const ROUTE = '/v2/sync'
@@ -63,8 +72,11 @@ export class SyncServer {
       srv.once('error', reject)
       srv.listen(port, this.opts.bind ?? '0.0.0.0', () => resolve(srv))
     })
-    return listen(this.opts.port)
-      .catch(() => listen(0)) // порт занят другой программой — берём свободный (телефон узнает новый при следующей связке)
+    // порт занят другой программой — соседние из известных телефону, в крайнем случае любой свободный
+    const order = [...new Set([this.opts.port, ...SYNC_PORTS])]
+    const attempt = (i: number): Promise<http.Server> =>
+      i < order.length ? listen(order[i]).catch(() => attempt(i + 1)) : listen(0)
+    return attempt(0)
       .then(srv => {
         const a = srv.address()
         this.port = typeof a === 'object' && a ? a.port : 0
@@ -87,14 +99,14 @@ export class SyncServer {
     res.end(msg)
   }
 
-  private readBody(req: http.IncomingMessage): Promise<Buffer> {
+  private readBody(req: http.IncomingMessage, limit = BODY_LIMIT): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      if (Number(req.headers['content-length'] || 0) > BODY_LIMIT) { reject(new Error('too-big')); return }
+      if (Number(req.headers['content-length'] || 0) > limit) { reject(new Error('too-big')); return }
       const parts: Buffer[] = []
       let n = 0
       req.on('data', (c: Buffer) => {
         n += c.length
-        if (n > BODY_LIMIT) { reject(new Error('too-big')); req.destroy(); return }
+        if (n > limit) { reject(new Error('too-big')); req.destroy(); return }
         parts.push(c)
       })
       req.on('end', () => resolve(Buffer.concat(parts)))
@@ -102,9 +114,39 @@ export class SyncServer {
     })
   }
 
+  private json(res: http.ServerResponse, status: number, body: unknown) {
+    const data = Buffer.from(JSON.stringify(body), 'utf8')
+    res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'content-length': data.length, 'cache-control': 'no-store' })
+    res.end(data)
+  }
+
+  /** Связка без QR-кода: небольшие открытые JSON-запросы, секрет внутри шифруется ключом X25519 */
+  private async handlePair(step: string, req: http.IncomingMessage, res: http.ServerResponse) {
+    const broker = this.opts.pair
+    if (!broker) { this.fail(res, 404, 'unknown'); return }
+    let j: any
+    try { j = JSON.parse((await this.readBody(req, 4096)).toString('utf8') || '{}') } catch { this.fail(res, 400, 'json'); return }
+    try {
+      if (step === 'start') this.json(res, 200, broker.start(j.device))
+      else if (step === 'key') this.json(res, 200, { pub: broker.key(j.sid, j.pub).pub })
+      else if (step === 'wait') this.json(res, 200, await broker.wait(j.sid))
+      else this.fail(res, 404, 'unknown')
+    } catch (e) {
+      if (e instanceof PairError) this.json(res, e.status, { error: e.message })
+      else throw e
+    }
+  }
+
   private async handle(req: http.IncomingMessage, res: http.ServerResponse) {
     const method = req.method || 'GET'
     const route = (req.url || '/').split('?')[0]
+    // «Кто тут?» — телефон ищет компьютер в сети. Имя и отпечаток связки, без данных и ключей
+    if (method === 'GET' && route === '/v2/hello') {
+      const p = this.opts.pairing()
+      this.json(res, 200, { app: 'arktika', v: 2, pc: this.opts.name, pair: p ? pairTag(p.id) : null, port: this.port })
+      return
+    }
+    if (method === 'POST' && route.startsWith('/v2/pair/')) { await this.handlePair(route.slice(9), req, res); return }
     if (method !== 'POST' || route !== ROUTE) { this.fail(res, 404, 'unknown'); return }
     const p = this.opts.pairing()
     // телефон связан с другим кодом (связку обновили или отключили)

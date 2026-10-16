@@ -11,6 +11,7 @@ import { hw, homeworkStore } from './lib/homework'
 import { creds } from './lib/creds'
 import { mailWatch } from './lib/mail'
 import { serveSync } from './lib/sync'
+import { SyncPairAsk } from './pages/Sync'
 import { Ambient, setAmbientPaused } from './fx/Ambient'
 import { Titlebar, Sidebar, Splash, CommandPalette } from './ui/Shell'
 import { DialogHost, ToastHost, MenuHost } from './ui/kit'
@@ -139,6 +140,7 @@ export default function App() {
       <SiteLayer />
       <ModalHost />
       <TaskbarBadge />
+      <SyncPairAsk />
       <CommandPalette />
       <CelebrationOverlay />
       <Tour />

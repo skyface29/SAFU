@@ -55,7 +55,17 @@ function browserFallback(): SafuAPI {
     widget: { toggle: async () => false, state: async () => false, push: () => {}, ready: () => {}, open: () => {}, resize: () => {} },
     backup: { readIOS: noop },
     transfer: { start: async () => null, stop: noop, on: () => () => {} },
-    sync: { pair: async () => null, link: async () => null, unpair: noop, serve: () => () => {} },
+    sync: {
+      pair: async () => null, link: async () => null, unpair: noop, serve: () => () => {},
+      firewall: async () => ({ state: 'na' as const }), firewallFix: async () => 'na' as const,
+      // в браузере запрос телефона можно изобразить событием safu:sync-ask (для проверки окна)
+      onAsk: (cb: (rid: string, info: { device: string; code: string }) => void) => {
+        const h = (e: Event) => { const d = (e as CustomEvent).detail; cb(d.rid, d.info) }
+        window.addEventListener('safu:sync-ask', h)
+        return () => window.removeEventListener('safu:sync-ask', h)
+      },
+      onAskDone: () => () => {}, answer: (rid: string, ok: boolean) => console.info('[sync] ответ', rid, ok), onChanged: () => () => {}
+    },
     ai: { summarize: async () => ({ ok: false, error: 'Конспекты ИИ работают в приложении для Windows' }) },
     mail: { check: async () => ({ ok: false, error: 'Почта проверяется только в приложении для Windows' }) },
     sites: { clear: noop, preload: async () => '' }
