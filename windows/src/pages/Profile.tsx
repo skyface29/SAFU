@@ -515,6 +515,7 @@ export function Developer() {
           <button className="btn block" onClick={() => safu.shell.open('https://github.com/skyface29/SAFU')}><Code2 size={15} /> Исходники на GitHub</button>
           <button className="btn ghost block" onClick={() => go('legal')}>Конфиденциальность и условия</button>
           <div className="tiny faint row gap4">Сделано с <Heart size={11} color="#ef4444" fill="#ef4444" /> в Архангельске</div>
+          <div className="tiny faint">© 2026 Зарубин Кирилл. Все права защищены. Код открыт для чтения; изменять, копировать и распространять его без разрешения автора нельзя</div>
         </Card>
         <div className="col gap14">
           {CHANGELOG.map((c, i) => (
