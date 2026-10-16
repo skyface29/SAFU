@@ -135,6 +135,18 @@ a { color: var(--brand); text-decoration: none; }
   transition: background .2s; overflow: hidden; white-space: nowrap;
 }
 .side-profile:hover { background: var(--fill); }
+/* пометка «iPhone на связи» над профилем */
+.phone-link {
+  display: flex; align-items: center; gap: 7px; padding: 5px 10px; margin: 0 4px; border-radius: 10px; cursor: pointer;
+  font-size: .74rem; font-weight: 600; color: var(--text2); white-space: nowrap; overflow: hidden; transition: background .2s;
+}
+.phone-link:hover { background: var(--fill); }
+.phone-link .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; position: relative; }
+.phone-link .dot.live::after {
+  content: ""; position: absolute; inset: -4px; border-radius: 50%; background: currentColor; opacity: .35;
+  animation: phone-pulse 2s ease-out infinite;
+}
+@keyframes phone-pulse { 0% { transform: scale(.6); opacity: .5; } 100% { transform: scale(1.8); opacity: 0; } }
 
 /* ---------- карточки ---------- */
 

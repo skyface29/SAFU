@@ -60,14 +60,52 @@ useSites.subscribe(st => {
   }, 1000)
 })
 
+// ---------- откуда карточка выросла (и куда вернётся при закрытии) ----------
+// Запоминаем, на что нажали перед открытием: плитку, кнопку, плашку свёрнутых. Карточка вырастает из
+// этого места, а при закрытии садится обратно, если оно ещё на экране
+
+let lastPress: { el: WeakRef<Element>; at: number } | null = null
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('pointerdown', e => {
+    const t = e.target as Element | null
+    const el = t?.closest?.('[data-site-origin], .card, .chip, .btn, button, .side-item, .row, [role="button"]')
+    lastPress = el ? { el: new WeakRef(el), at: performance.now() } : null
+  }, true)
+}
+const origins = new Map<string, WeakRef<Element>>()
+const lastExpandFrom = new Map<string, WeakRef<Element> | undefined>()
+
+function takeOrigin(id: string) {
+  const p = lastPress
+  lastPress = null
+  if (!p || performance.now() - p.at > 800) return
+  const el = p.el.deref()
+  if (el && el.isConnected) origins.set(id, new WeakRef(el))
+}
+
+export type OriginRect = { x: number; y: number; w: number; h: number; radius: number }
+
+/** Где сейчас плитка, из которой открыли вкладку; null — её нет на экране (перешли на другую страницу) */
+export function originRect(id: string): OriginRect | null {
+  const el = origins.get(id)?.deref()
+  if (!el || !el.isConnected) return null
+  const r = el.getBoundingClientRect()
+  if (r.width < 8 || r.height < 8 || r.width > window.innerWidth * 0.7 || r.bottom < 0 || r.top > window.innerHeight) return null
+  if (getComputedStyle(el).visibility === 'hidden') return null
+  return { x: r.left, y: r.top, w: r.width, h: r.height, radius: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 14 }
+}
+
+export function forgetOrigin(id: string) { origins.delete(id) }
+
 export function openSite(r: Resource | { title: string; url: string; icon?: string }, opts: { fresh?: boolean } = {}) {
   const s = useSites.getState()
   const res = 'id' in r ? r as Resource : null
   const existing = s.tabs.find(t => (res && t.resourceId === res.id) || (!res && t.url === r.url))
   if (res) resources.markOpened(res)
-  if (existing) { useSites.setState({ active: existing.id, mode: 'open' }); return existing.id }
+  if (existing) { takeOrigin(existing.id); useSites.setState({ active: existing.id, mode: 'open' }); return existing.id }
   const url = res && !opts.fresh ? resources.lastURL(res) || res.url : r.url
   const tab: SiteTab = { id: uid(), kind: 'site', title: r.title, url, icon: (r as any).icon || 'globe', resourceId: res?.id, loading: true }
+  takeOrigin(tab.id)
   useSites.setState({ tabs: trimmed([...s.tabs, tab], tab.id), active: tab.id, mode: 'open' })
   return tab.id
 }
@@ -89,8 +127,9 @@ export function openSiteByKey(k: string) {
 export function openFileCard(rel: string, name: string, ext: string) {
   const s = useSites.getState()
   const existing = s.tabs.find(t => t.fileRel === rel)
-  if (existing) { useSites.setState({ active: existing.id, mode: 'open' }); return }
+  if (existing) { takeOrigin(existing.id); useSites.setState({ active: existing.id, mode: 'open' }); return }
   const tab: SiteTab = { id: uid(), kind: 'file', title: name, url: '', icon: 'file', fileRel: rel, ext }
+  takeOrigin(tab.id)
   useSites.setState({ tabs: trimmed([...s.tabs, tab], tab.id), active: tab.id, mode: 'open' })
 }
 
@@ -117,9 +156,25 @@ export const sites = {
   expand(id?: string) {
     const s = useSites.getState()
     const target = id || s.active || s.tabs[s.tabs.length - 1]?.id
-    if (target) useSites.setState({ active: target, mode: 'open' })
+    if (!target) return
+    // развернули из плашки или стопки — вырастает оттуда (а закроется туда, откуда открывали вначале)
+    const keep = origins.get(target)
+    takeOrigin(target)
+    const fresh = origins.get(target)
+    if (keep && fresh !== keep) { lastExpandFrom.set(target, fresh); origins.set(target, keep) }
+    useSites.setState({ active: target, mode: 'open' })
   },
   stack() { if (useSites.getState().tabs.length) useSites.setState({ mode: 'stack' }) },
+  /** Откуда вырос этот разворот (плашка, стопка) — только для анимации появления */
+  expandedFrom(id: string): OriginRect | null {
+    const ref = lastExpandFrom.get(id)
+    lastExpandFrom.delete(id)
+    const el = ref?.deref()
+    if (!el || !el.isConnected) return null
+    const r = el.getBoundingClientRect()
+    if (r.width < 8 || r.height < 8) return null
+    return { x: r.left, y: r.top, w: r.width, h: r.height, radius: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 14 }
+  },
   close(id: string) {
     const s = useSites.getState()
     const wasOpen = s.active === id && s.mode === 'open'
@@ -136,7 +191,7 @@ export const sites = {
     // развёрнутая: сначала карточка плавно уезжает (страница в ней уже спрятана),
     // и только потом страница выгружается — выгрузка больше не попадает на анимацию
     useSites.setState({ tabs: s.tabs.map(t => t.id === id ? { ...t, closing: true } : t), mode: 'closed' })
-    setTimeout(drop, 420)
+    setTimeout(() => { drop(); origins.delete(id) }, 520)
   },
   closeAll() { useSites.setState({ tabs: [], active: null, mode: 'closed' }) },
   update(id: string, patch: Partial<SiteTab>) {

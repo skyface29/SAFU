@@ -48,6 +48,8 @@ export default function App() {
   const [again, setAgain] = usePref('onboarding.again', false)
   const [mica] = usePref('ui.mica', false)
   const backdrop = useSiteBackdrop()
+  // приложение под сайтом отъезжает на видеокарте; слой держим, пока не вернулось на место (текст потом снова чёткий)
+  const [shellLayer, setShellLayer] = useState(false)
   const sitesOpen = useSites(s => s.mode !== 'closed')
   useEffect(() => setAmbientPaused(sitesOpen), [sitesOpen])
 
@@ -128,7 +130,8 @@ export default function App() {
       {!(mica && isDesktop) && <Ambient dark={dark} c1={dark && accent.c1d ? accent.c1d : accent.c1} c2={dark && accent.c2d ? accent.c2d : accent.c2} />}
       <motion.div className="shell"
         animate={backdrop ? { scale: 0.95, opacity: 0.6 } : { scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 30 }} style={{ transformOrigin: '50% 30%' }}>
+        transition={{ type: 'spring', stiffness: 260, damping: 30 }} onAnimationComplete={() => setShellLayer(backdrop)}
+        style={{ transformOrigin: '50% 30%', willChange: backdrop || shellLayer ? 'transform, opacity' : 'auto' }}>
         <Titlebar />
         <Sidebar />
         <main className="shell-main">

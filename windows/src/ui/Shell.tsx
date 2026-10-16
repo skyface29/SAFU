@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, CalendarDays, BookMarked, ListChecks, Folder, Library, UserCheck, Code2, UserCircle2, Search, Snowflake,
-  PanelLeftClose, PanelLeftOpen, Wrench, Globe, Command, ArrowRight
+  PanelLeftClose, PanelLeftOpen, Wrench, Globe, Command, ArrowRight, Smartphone
 } from 'lucide-react'
 import { useNav, go, parseTabs, DEFAULT_TABS, TAB_META, type PageId, useModals, openSubject, openHomeworkEditor, openHomework } from '../lib/nav'
 import { usePref } from '../lib/kv'
@@ -16,6 +16,9 @@ import { spring } from './kit'
 import { TOOLS } from '../pages/tools/registry'
 import { resourcesStore } from '../lib/resources'
 import { openSite } from '../sites/sites'
+import { safu } from '../lib/bridge'
+import { LAST_KEY, type SyncLast } from '../lib/sync'
+import { relativeAgo } from '../lib/date'
 
 const TAB_ICONS: Record<string, React.ComponentType<any>> = {
   home: Home, schedule: CalendarDays, homework: BookMarked, tasks: ListChecks, files: Folder, subjects: Library,
@@ -62,7 +65,8 @@ export function Sidebar() {
       <div className="side-sep" />
       <SideItem id="tools" title="Инструменты" Icon={Wrench} active={page === 'tools'} collapsed={collapsed} />
       <div className="side-sep" />
-      <div className={`side-profile ${page === 'profile' ? 'active' : ''}`} onClick={() => go('profile')}>
+      <PhoneLink collapsed={collapsed} />
+      <div className={`side-profile ${page === 'profile' ? 'active' : ''}`} style={{ marginTop: 4 }} onClick={() => go('profile')}>
         <Avatar size={34} />
         {!collapsed && (
           <div className="grow">
@@ -75,6 +79,32 @@ export function Sidebar() {
         {collapsed ? <PanelLeftOpen size={16} /> : <><PanelLeftClose size={16} /> Свернуть</>}
       </button>
     </nav>
+  )
+}
+
+/** Маленькая пометка над профилем: на связи ли iPhone. Нажал — экран синхронизации */
+function PhoneLink({ collapsed }: { collapsed: boolean }) {
+  const [last] = usePref<SyncLast | null>(LAST_KEY, null)
+  const [paired, setPaired] = useState<boolean | null>(null)
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const load = () => safu.sync.link().then(u => setPaired(!!u)).catch(() => undefined)
+    load()
+    const off = safu.sync.onChanged(load)
+    // раз в 10 секунд: «на связи» сменится на «был N минут назад», а отвязку видно и без событий
+    const t = setInterval(() => { tick(x => x + 1); load() }, 10_000)
+    return () => { off(); clearInterval(t) }
+  }, [])
+  if (paired === null) return null
+  const online = !!paired && !!last && Date.now() - last.at < 30_000
+  const text = !paired ? 'iPhone не связан' : online ? `${last!.device} · на связи` : last ? `iPhone · ${relativeAgo(last.at)}` : 'iPhone · жду телефон'
+  const color = online ? '#22c55e' : paired ? '#f59e0b' : 'var(--text3)'
+  return (
+    <div className="phone-link" style={{ marginTop: 'auto', justifyContent: collapsed ? 'center' : 'flex-start' }} onClick={() => go('sync')} title={text}>
+      <span className={`dot ${online ? 'live' : ''}`} style={{ background: color, color }} />
+      <Smartphone size={14} />
+      {!collapsed && <span className="ellipsis">{text}</span>}
+    </div>
   )
 }
 
