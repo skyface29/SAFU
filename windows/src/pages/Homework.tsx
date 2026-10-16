@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Settings2, Search, Star, Clock, ArrowRightCircle, Copy, Trash2, Pencil, AlertTriangle, X, Image, ListChecks, BookMarked } from 'lucide-react'
 import { PageHeader, Card, Segmented, Empty, Ring, AnimatedNumber, openMenu, burst, Row, ToggleRow, toast, confirmDialog, Field } from '../ui/kit'
+import { SyncBadge } from './Sync'
 import { homeworkStore, hw, hwTitle, hwKind, chip, urgency, dayTime, type Homework, HW_KINDS } from '../lib/homework'
 import { useSchedule } from '../lib/scheduleStore'
 import { openHomeworkEditor, openSubject, go } from '../lib/nav'
@@ -52,6 +53,7 @@ export default function HomeworkPage() {
     <>
       <PageHeader title="Домашка" subtitle={active.length ? `${active.length} ${plural(active.length, 'задание', 'задания', 'заданий')} в работе · ${hw.badgeCount()} к сдаче в ближайшие сутки` : 'Всё сделано — красота'}
         right={<>
+          <SyncBadge />
           <button className="btn icon" onClick={() => go('hwsettings')} title="Настройки"><Settings2 size={16} /></button>
           <button className="btn primary" onClick={() => openHomeworkEditor({})}><Plus size={16} /> Записать <span className="kbd" style={{ color: 'rgba(255,255,255,.8)', borderColor: 'rgba(255,255,255,.4)' }}>Ctrl N</span></button>
         </>} />

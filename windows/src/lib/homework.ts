@@ -368,6 +368,9 @@ export const hw = {
 
 // ---------- напоминания ----------
 
+/** Напоминания одного ДЗ заново (после синхронизации с iPhone) */
+export const rearmHomework = (h: Homework) => scheduleReminders(h)
+
 function scheduleReminders(h: Homework) {
   const prefix = `hw-${h.id}-`
   if (h.done) { notify.cancel(prefix); return }

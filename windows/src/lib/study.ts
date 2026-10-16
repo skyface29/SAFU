@@ -23,6 +23,9 @@ function taskReminders(t: StudyTask) {
   notify.schedule(prefix, list.filter(n => (n.at ?? 0) > Date.now()))
 }
 
+/** Напоминания задачи заново (после синхронизации с iPhone) */
+export const rearmTask = (t: StudyTask) => taskReminders(t)
+
 export const tasks = {
   upsert(t: StudyTask) { tasksStore.set(l => { const i = l.findIndex(x => x.id === t.id); if (i >= 0) { const c = [...l]; c[i] = t; return c } return [...l, t] }); taskReminders(t) },
   toggle(id: string) { let r = false; tasksStore.set(l => l.map(t => t.id === id ? (r = !t.done, { ...t, done: r }) : t)); const t = tasksStore.get().find(x => x.id === id); if (t) taskReminders(t); return r },

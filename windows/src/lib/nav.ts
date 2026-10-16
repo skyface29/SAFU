@@ -6,7 +6,7 @@ export type PageId =
   | 'home' | 'schedule' | 'homework' | 'tasks' | 'files' | 'subjects' | 'attendance' | 'developer' | 'profile'
   | 'grades' | 'session' | 'polls' | 'broadcast' | 'teachers' | 'rooms' | 'map' | 'boards' | 'wake' | 'lectures'
   | 'focus' | 'report' | 'matrix' | 'stats' | 'bus' | 'notes' | 'appearance' | 'passwords' | 'backup' | 'settings'
-  | 'share' | 'tools' | 'game' | 'mailnotify' | 'celebrations' | 'hwsettings' | 'customize' | 'legal' | 'transfer'
+  | 'share' | 'tools' | 'game' | 'mailnotify' | 'celebrations' | 'hwsettings' | 'customize' | 'legal' | 'transfer' | 'sync'
 
 export const TAB_META: Record<string, { title: string }> = {
   home: { title: 'Главная' }, schedule: { title: 'Пары' }, homework: { title: 'ДЗ' }, tasks: { title: 'Задачи' },

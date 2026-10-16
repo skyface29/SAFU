@@ -13,6 +13,7 @@ import { checkMail, type MailAccount } from './mail'
 import * as zlib from 'node:zlib'
 import { summarizeLecture } from './claude'
 import { TransferServer } from './transfer'
+import { SyncServer, newPairing, syncLink, type SyncPairing } from './sync'
 import * as os from 'node:os'
 
 const isDev = !!process.env.VITE_DEV
@@ -74,6 +75,59 @@ function inRoot(rel: string): string {
 
 /** Приём с iPhone по QR (пока открыт экран переноса) */
 let transfer: TransferServer | null = null
+
+// ---------- синхронизация с iPhone: пока приложение запущено, связанный телефон заходит сам ----------
+
+let syncServer: SyncServer | null = null
+const syncWaiters = new Map<string, (r: { ok: boolean; result?: unknown; error?: string }) => void>()
+const SYNC_PORT = 47823
+
+function syncPairing(): SyncPairing | null {
+  try { return secrets['sync.pair'] ? JSON.parse(secrets['sync.pair']) : null } catch { return null }
+}
+
+/** Свести данные просит интерфейс: там живут ДЗ, задачи и заметки */
+function syncInRenderer(body: unknown): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    if (!win || win.isDestroyed()) { reject(new Error('Окно Арктики не открыто')); return }
+    const rid = Math.random().toString(36).slice(2) + Date.now().toString(36)
+    const timer = setTimeout(() => { syncWaiters.delete(rid); reject(new Error('timeout')) }, 15_000)
+    syncWaiters.set(rid, r => {
+      clearTimeout(timer)
+      if (r.ok) resolve(r.result)
+      else reject(new Error(r.error || 'sync'))
+    })
+    win.webContents.send('sync:request', rid, body)
+  })
+}
+
+/** Сервер синхронизации работает, только пока есть связка */
+async function ensureSync(): Promise<SyncServer | null> {
+  if (!syncPairing()) {
+    syncServer?.stop()
+    syncServer = null
+    return null
+  }
+  if (syncServer?.running) return syncServer
+  const s = new SyncServer({
+    name: os.hostname(),
+    version: app.getVersion(),
+    port: Number(kv['sync.port']) || SYNC_PORT,
+    pairing: syncPairing,
+    handle: syncInRenderer
+  })
+  const port = await s.start()
+  syncServer = s
+  if (kv['sync.port'] !== port) { kv['sync.port'] = port; saveKVSoon() }
+  return s
+}
+
+async function currentSyncLink(): Promise<{ url: string; hosts: string[]; port: number } | null> {
+  const p = syncPairing()
+  const s = await ensureSync()
+  if (!p || !s) return null
+  return { url: syncLink(p, s.hosts, s.port, os.hostname()), hosts: s.hosts, port: s.port }
+}
 
 let kv: Record<string, unknown> = {}
 let kvTimer: NodeJS.Timeout | null = null
@@ -814,6 +868,25 @@ function registerIPC() {
   })
   ipcMain.handle('transfer:stop', () => { transfer?.stop(); transfer = null; return true })
 
+  // синхронизация с iPhone: новая связка (старый код перестаёт работать), показать код ещё раз, отвязать
+  ipcMain.handle('sync:pair', async () => {
+    secrets['sync.pair'] = JSON.stringify(newPairing())
+    saveSecrets()
+    return currentSyncLink()
+  })
+  ipcMain.handle('sync:link', () => currentSyncLink())
+  ipcMain.handle('sync:unpair', () => {
+    delete secrets['sync.pair']
+    saveSecrets()
+    syncServer?.stop()
+    syncServer = null
+    return true
+  })
+  ipcMain.on('sync:reply', (_e, rid: string, r: { ok: boolean; result?: unknown; error?: string }) => {
+    syncWaiters.get(rid)?.(r)
+    syncWaiters.delete(rid)
+  })
+
   ipcMain.handle('ai:summarize', async (_e, r: { subject: string; minutes: number; style: string; transcript: string }) => {
     const apiKey = secrets['claude.key']
     if (!apiKey) return { ok: false, error: 'Добавь ключ Claude API в настройках лекций' }
@@ -877,6 +950,7 @@ app.whenReady().then(() => {
   createWindow()
   createTray()
   armAll()
+  ensureSync().catch(e => console.error('sync server', e))
   if (kv['widget.open']) setTimeout(() => toggleWidget(true), 1500)
 
   // глобальная горячая клавиша: Ctrl+Alt+S — показать Арктику откуда угодно
@@ -896,6 +970,7 @@ app.whenReady().then(() => {
 app.on('before-quit', () => {
   quitting = true
   transfer?.stop()
+  syncServer?.stop()
   saveKVNow()
   saveScheduled()
 })

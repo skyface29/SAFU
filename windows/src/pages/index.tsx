@@ -16,6 +16,7 @@ import { Focus, Report, Matrix, Stats } from './tools/Productivity'
 import { Lectures } from './tools/Lectures'
 import { BusPage, Wake, ShareImage, Boards, CelebrationSettings, Game, ToolsPage } from './tools/Misc'
 import TransferPage from './Transfer'
+import SyncPage from './Sync'
 
 export const PAGES: Partial<Record<PageId, React.ComponentType<any>>> = {
   home: Home, schedule: Schedule, homework: HomeworkPage, hwsettings: HomeworkSettings, tasks: Tasks, files: Files,
@@ -24,5 +25,5 @@ export const PAGES: Partial<Record<PageId, React.ComponentType<any>>> = {
   attendance: Attendance, broadcast: Broadcast, polls: Polls, grades: Grades, session: Session, teachers: Teachers,
   rooms: FreeRooms, map: CampusMap, focus: Focus, report: Report, matrix: Matrix, stats: Stats, lectures: Lectures,
   bus: BusPage, wake: Wake, share: ShareImage, boards: Boards, celebrations: CelebrationSettings, game: Game, tools: ToolsPage,
-  transfer: TransferPage
+  transfer: TransferPage, sync: SyncPage
 }

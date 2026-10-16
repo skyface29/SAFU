@@ -94,6 +94,19 @@ const api = {
     stop: () => ipcRenderer.invoke('transfer:stop'),
     on: (cb: (e: any) => void) => on('transfer:event', cb)
   },
+  sync: {
+    pair: (): Promise<{ url: string; hosts: string[]; port: number } | null> => ipcRenderer.invoke('sync:pair'),
+    link: (): Promise<{ url: string; hosts: string[]; port: number } | null> => ipcRenderer.invoke('sync:link'),
+    unpair: () => ipcRenderer.invoke('sync:unpair'),
+    /** Отвечать телефону: главный процесс присылает его данные, интерфейс сводит их со своими */
+    serve: (handler: (body: any) => unknown) => on('sync:request', async (rid: string, body: unknown) => {
+      try {
+        ipcRenderer.send('sync:reply', rid, { ok: true, result: await handler(body) })
+      } catch (e) {
+        ipcRenderer.send('sync:reply', rid, { ok: false, error: String((e as Error)?.message || e) })
+      }
+    })
+  },
   ai: { summarize: (r: { subject: string; minutes: number; style: string; transcript: string }) => ipcRenderer.invoke('ai:summarize', r) },
   mail: { check: (acc: unknown) => ipcRenderer.invoke('mail:check', acc) },
   sites: {

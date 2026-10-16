@@ -55,6 +55,7 @@ function browserFallback(): SafuAPI {
     widget: { toggle: async () => false, state: async () => false, push: () => {}, ready: () => {}, open: () => {}, resize: () => {} },
     backup: { readIOS: noop },
     transfer: { start: async () => null, stop: noop, on: () => () => {} },
+    sync: { pair: async () => null, link: async () => null, unpair: noop, serve: () => () => {} },
     ai: { summarize: async () => ({ ok: false, error: 'Конспекты ИИ работают в приложении для Windows' }) },
     mail: { check: async () => ({ ok: false, error: 'Почта проверяется только в приложении для Windows' }) },
     sites: { clear: noop, preload: async () => '' }

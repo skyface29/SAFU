@@ -45,6 +45,7 @@ export default function Profile() {
     { id: 'settings', title: 'Приложение и Windows', sub: 'Трей, автозапуск, мини-окно, уведомления', Icon: Monitor, color: 'linear-gradient(135deg,#0ea5e9,#2563eb)' },
     { id: 'passwords', title: 'Пароли и сайты', sub: 'Вход на сайты вуза, список сайтов', Icon: KeyRound, color: 'linear-gradient(135deg,#f59e0b,#ef4444)' },
     { id: 'mailnotify', title: 'Уведомления о почте', sub: 'Новые письма в почте САФУ', Icon: Mail, color: 'linear-gradient(135deg,#0ea5e9,#6366f1)' },
+    { id: 'sync', title: 'Синхронизация с iPhone', sub: 'ДЗ, задачи и заметки — одинаковые на телефоне и тут', Icon: RefreshCw, color: 'linear-gradient(135deg,#22c55e,#0ea5e9)' },
     { id: 'transfer', title: 'Перенос с iPhone', sub: 'Наведи телефон на QR-код — файлы перелетят сами', Icon: QrCode, color: 'linear-gradient(135deg,#a855f7,#2563eb)' },
     { id: 'backup', title: 'Резервная копия', sub: 'Сохранить, восстановить, перенести с iPhone', Icon: ArchiveRestore, color: 'linear-gradient(135deg,#10b981,#059669)' },
     { id: 'developer', title: 'Автор и новости', sub: 'Связаться, что нового', Icon: Code2, color: 'linear-gradient(135deg,#64748b,#334155)' }
@@ -470,6 +471,11 @@ export function Backup() {
 // ---------- автор ----------
 
 const CHANGELOG: { version: string; items: string[] }[] = [
+  { version: '18.6 для Windows', items: [
+    'Синхронизация с iPhone: один раз свяжи телефон QR-кодом (Профиль → «Синхронизация с iPhone») — и ДЗ, задачи и заметки станут общими. Отметил ДЗ сделанным здесь — через пару секунд оно сделано и на телефоне, и наоборот',
+    'Работает по домашнему Wi‑Fi, пока Арктика запущена (можно свёрнутой в трей). Без облаков и серверов, с шифрованием AES‑256; ключ — только в QR-коде',
+    'Одно и то же поменяли в двух местах — побеждает поздняя правка, по каждому полю отдельно: «сделано» не сотрёт новый срок. В шапке «Домашки» видно, когда последний раз сверялись с iPhone',
+  ] },
   { version: '18.3 для Windows', items: [
     'Фото доски — по полочкам: предметы с обложкой из последнего снимка → даты → фото этого дня. Стрелками ← → листаются снимки',
   ] },

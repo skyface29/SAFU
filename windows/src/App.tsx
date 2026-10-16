@@ -10,6 +10,7 @@ import { installEffects, startTicker } from './lib/effects'
 import { hw, homeworkStore } from './lib/homework'
 import { creds } from './lib/creds'
 import { mailWatch } from './lib/mail'
+import { serveSync } from './lib/sync'
 import { Ambient, setAmbientPaused } from './fx/Ambient'
 import { Titlebar, Sidebar, Splash, CommandPalette } from './ui/Shell'
 import { DialogHost, ToastHost, MenuHost } from './ui/kit'
@@ -95,6 +96,9 @@ export default function App() {
     const n = (kv.get('hw.badge', true) ? hw.badgeCount() : 0) + (mailOn && mailBadge ? mailUnseen : 0)
     safu.app.badge(n)
   }, [items, mailUnseen, mailBadge, mailOn])
+
+  // связанный iPhone заходит сам и сводит ДЗ, задачи и заметки — отвечаем, пока приложение запущено
+  useEffect(() => serveSync(), [])
 
   // переходы из уведомлений, трея и ссылок safu://
   useEffect(() => safu.app.on('app:route', (route: string) => handleRoute(route)), [])
