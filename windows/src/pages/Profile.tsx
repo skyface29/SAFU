@@ -262,7 +262,8 @@ export function AppSettings() {
   const [lockAfter, setLockAfter] = usePref('lock.after', 1)
   const [root, setRoot] = useState('')
   const [autoFill, setAutoFill] = usePref('sites.autoFill', true)
-  const [autoLogin, setAutoLogin] = usePref('sites.autoLogin', false)
+  const [autoLogin, setAutoLogin] = usePref('sites.autoLogin', true)
+  const [savePass, setSavePass] = usePref('sites.savePasswords', true)
   useEffect(() => { safu.app.info().then(setInfo); safu.widget.state().then(setWidget); safu.fs.root().then(setRoot) }, [])
   const setPin = async () => {
     const a = await promptDialog('Новый PIN-код', '', '4–8 цифр')
@@ -299,8 +300,9 @@ export function AppSettings() {
           </Card>
           <div className="h-sec">Сайты</div>
           <Card className="list" style={{ padding: 0 }}>
+            <ToggleRow title="Запоминать пароли" sub="Вошёл один раз — пароль сохранится сам, зашифрованный Windows" on={savePass} onChange={setSavePass} />
             <ToggleRow title="Подставлять сохранённый пароль" on={autoFill} onChange={setAutoFill} />
-            <ToggleRow title="И сразу входить" sub="Нажимать «Войти» за тебя" on={autoLogin} onChange={setAutoLogin} />
+            <ToggleRow title="И сразу входить" sub="Нажимать «Войти» за тебя (если пароль не подошёл — не больше двух попыток)" on={autoLogin} onChange={setAutoLogin} />
             <Row title="Выйти со всех сайтов" sub="Удалить cookie и данные сайтов" danger onClick={async () => { if (await confirmDialog('Выйти со всех сайтов?', 'Сохранённые пароли останутся.', 'Выйти', true)) { await safu.sites.clear(); toast('Готово') } }} />
           </Card>
           <div className="h-sec">Горячие клавиши</div>
@@ -514,6 +516,11 @@ export function Backup() {
 // ---------- автор ----------
 
 const CHANGELOG: { version: string; items: string[] }[] = [
+  { version: '19.4 для Windows', items: [
+    'Пароли — как на iPhone: вошёл на сайт один раз — пароль запоминается сам (зашифрован средствами Windows), дальше подставляется и «Войти» нажимается за тебя. Если сохранённый пароль не подошёл — не больше двух попыток, потом вводишь новый, и он обновится',
+    'Вход на сайтах вуза переживает перезапуск Арктики: сессия сохраняется зашифрованной и возвращается при запуске (не дольше двух недель)',
+    'Автонажатие ищет именно кнопку «Войти», а не первую попавшуюся (например, «показать пароль»)'
+  ] },
   { version: '19.3 для Windows', items: [
     'Сайты вырастают прямо из плитки, на которую нажал (Sakai, почта, библиотеки…), и при закрытии садятся обратно в неё; свёрнутый — уходит в плашку внизу и вырастает из неё',
     'Пока карточка сайта едет или её тянут, вместо живой страницы — её полноразмерный снимок: анимация идёт с частотой экрана и не грузит компьютер',

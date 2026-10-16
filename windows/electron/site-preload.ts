@@ -37,10 +37,14 @@ ipcRenderer.on('safu:fill', (_e, user: string, pass: string, submit: boolean) =>
   setVal(f.p, pass)
   if (submit) {
     setTimeout(() => {
+      // «Войти»: сначала настоящая кнопка отправки формы, потом кнопка со словом «Войти»/«Вход»,
+      // и только потом отправка формы или Enter (а не первая попавшаяся кнопка — например, «показать пароль»)
       const scope: ParentNode = f.form || document
-      const b = scope.querySelector<HTMLElement>('#submitButton, button[type="submit"], input[type="submit"], button:not([type]), [role="button"], .login-button, .btn-login')
-      if (b) b.click()
-      else if (f.form) f.form.submit()
+      const byText = Array.from(scope.querySelectorAll<HTMLElement>('button, input[type="button"], a[role="button"], [role="button"]'))
+        .find(el => visible(el) && /войти|вход|log\s?in|sign\s?in|submit/i.test((el.textContent || (el as HTMLInputElement).value || '').trim()))
+      const b = scope.querySelector<HTMLElement>('#submitButton, button[type="submit"], input[type="submit"], .login-button, .btn-login') || byText
+      if (b && visible(b)) b.click()
+      else if (f.form) { if (typeof f.form.requestSubmit === 'function') f.form.requestSubmit(); else f.form.submit() }
       else f.p.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, which: 13, bubbles: true }))
     }, 400)
   }

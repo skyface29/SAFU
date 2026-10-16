@@ -798,8 +798,49 @@ function copyInto(rel: string, sources: string[]): string[] {
 
 const SITES_PARTITION = 'persist:sites'
 
+// Вход на сайтах вуза держится в «сессионных» cookie — без срока, их стирает каждый выход из
+// приложения, и войти приходилось заново. Как на iPhone: сохраняем их зашифрованными (DPAPI)
+// и возвращаем при запуске; старше двух недель — не возвращаем
+const SESSION_COOKIES = 'sites.sessionCookies'
+
+async function saveSiteSessionCookies() {
+  try {
+    const ses = session.fromPartition(SITES_PARTITION)
+    const list = (await ses.cookies.get({})).filter(c => c.session && c.domain && c.name)
+    const out = list.slice(0, 400).map(c => ({
+      url: `${c.secure ? 'https' : 'http'}://${String(c.domain).replace(/^\./, '')}${c.path || '/'}`,
+      name: c.name, value: c.value, domain: c.hostOnly ? undefined : c.domain, path: c.path,
+      secure: c.secure, httpOnly: c.httpOnly, sameSite: c.sameSite
+    }))
+    const text = JSON.stringify({ at: Date.now(), list: out })
+    if (secrets[SESSION_COOKIES] === text) return
+    secrets[SESSION_COOKIES] = text
+    saveSecrets()
+  } catch (e) {
+    logError('session cookies: ' + String(e))
+  }
+}
+
+async function restoreSiteSessionCookies() {
+  try {
+    const raw = secrets[SESSION_COOKIES]
+    if (!raw) return
+    const j = JSON.parse(raw) as { at: number; list: Electron.CookiesSetDetails[] }
+    if (!j?.list || Date.now() - j.at > 14 * 86_400_000) return
+    const ses = session.fromPartition(SITES_PARTITION)
+    await Promise.all(j.list.map(c => ses.cookies.set(c).catch(() => undefined)))
+  } catch { /* испорченная запись — войдут заново */ }
+}
+
 function setupSiteSession() {
   const ses = session.fromPartition(SITES_PARTITION)
+  void restoreSiteSessionCookies()
+  // вошли или вышли — запоминаем (не чаще раза в 5 секунд)
+  let cookieTimer: ReturnType<typeof setTimeout> | null = null
+  ses.cookies.on('changed', (_e, c) => {
+    if (!c.session || cookieTimer) return
+    cookieTimer = setTimeout(() => { cookieTimer = null; void saveSiteSessionCookies() }, 5000)
+  })
   // сайты видят обычный Chrome: со словом «Electron» в адресе браузера некоторые страницы входа не пускают
   ses.setUserAgent(ses.getUserAgent().replace(/\s(Electron|safu-desktop|Arktika|arktika)\/\S+/g, ''))
   ses.setPermissionRequestHandler((_wc, permission, cb) => {
@@ -1179,6 +1220,9 @@ function registerIPC() {
 
   ipcMain.handle('sites:clear', async () => {
     await session.fromPartition(SITES_PARTITION).clearStorageData()
+    // и сохранённый вход тоже — иначе он вернётся при следующем запуске
+    delete secrets[SESSION_COOKIES]
+    saveSecrets()
     return true
   })
   ipcMain.handle('sites:preload', () => pathToFileURL(path.join(__dirname, 'site-preload.js')).toString())
@@ -1249,7 +1293,16 @@ app.whenReady().then(() => {
   if (link) handleDeepLink([link])
 })
 
-app.on('before-quit', () => {
+let cookiesSaved = false
+app.on('before-quit', e => {
+  // перед выходом — сохранить вход на сайтах (это асинхронно: выходим чуть позже, не дольше секунды)
+  if (!cookiesSaved) {
+    cookiesSaved = true
+    e.preventDefault()
+    quitting = true
+    Promise.race([saveSiteSessionCookies(), new Promise(r => setTimeout(r, 1000))]).finally(() => app.quit())
+    return
+  }
   quitting = true
   transfer?.stop()
   syncServer?.stop()

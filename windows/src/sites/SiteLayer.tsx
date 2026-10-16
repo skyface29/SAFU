@@ -21,6 +21,8 @@ let preloadURL = ''
 safu.sites.preload().then(u => { preloadURL = u })
 
 const webviews = new Map<string, any>()
+/** Автонажатие «Войти»: не больше 2 раз за 5 минут на сайт — неверный сохранённый пароль не зациклит вход */
+const autoAttempts = new Map<string, number[]>()
 /** Карточка готовится уехать: снимает полноразмерный снимок страницы и прячет живую страницу */
 const preparers = new Map<string, () => Promise<void>>()
 /** Последний снимок страницы (из него же — маленький для плашки и стопки) */
@@ -117,7 +119,6 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
   const boxRef = useRef<HTMLDivElement>(null)
   const [shown, setShown] = useState(visible)
   const [formHost, setFormHost] = useState<string | null>(null)
-  const [offer, setOffer] = useState<{ host: string; user: string; pass: string } | null>(null)
   const credList = useCreds(s => s.list)
   const [zoom, setZoom] = useState(1)
   const [dark, setDark] = useState(false)
@@ -289,6 +290,7 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
     let slow: ReturnType<typeof setTimeout> | null = null
     let timedOut = false
     const onStart = () => {
+      formHere = false // новая страница: форма входа, если есть, найдётся заново
       sites.update(tab.id, { loading: true }); setFailed(null)
       if (slow) clearTimeout(slow)
       timedOut = false
@@ -298,19 +300,54 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
       if (slow) { clearTimeout(slow); slow = null }
       if (timedOut) { timedOut = false; setFailed(null) }
       sites.update(tab.id, { loading: false }); nav()
+      // после входа открылась страница без формы — вход удался, запоминаем пароль
+      if (candidate) setTimeout(trySave, 1500)
+    }
+    // пароли, как на iPhone: ввёл один раз — вход удался — пароль запомнился сам (зашифрован Windows),
+    // дальше он подставляется и «Войти» нажимается за тебя. Только на https и только с адреса самой страницы
+    let candidate: { host: string; user: string; pass: string } | null = null
+    let formHere = false
+    const pageHost = (): string | null => {
+      try { const u = new URL(wv.getURL()); return u.protocol === 'https:' ? u.host.toLowerCase() : null } catch { return null }
+    }
+    const trySave = () => {
+      const c = candidate
+      // форма входа всё ещё на странице — вход не удался (неверный пароль), не запоминаем
+      if (!c || formHere || !kv.get('sites.savePasswords', true)) return
+      candidate = null
+      const old = creds.get(c.host)
+      if (old && old.host === c.host && old.pass === c.pass && (!c.user || old.user === c.user)) return
+      const user = c.user || (old?.host === c.host ? old.user : '')
+      creds.set({ host: c.host, user, pass: c.pass }).then(() => {
+        toast(old ? `Пароль для ${c.host} обновлён` : `Пароль для ${c.host} сохранён — дальше вход сам`, 'ok', {
+          label: 'Не сохранять',
+          run: () => { if (old && old.host === c.host) creds.set(old); else creds.remove(c.host) }
+        })
+      }).catch(() => undefined)
     }
     const onMsg = (e: any) => {
+      const host = pageHost()
+      if (!host) return
       const [p] = e.args || []
       if (e.channel === 'safu:form') {
-        setFormHost(p.host)
-        const c = creds.get(p.host)
-        if (c && kv.get('sites.autoFill', true)) wv.send('safu:fill', c.user, c.pass, kv.get('sites.autoLogin', false))
+        formHere = true
+        setFormHost(host)
+        const c = creds.get(host)
+        if (c && kv.get('sites.autoFill', true)) {
+          const now = Date.now()
+          const recent = (autoAttempts.get(host) || []).filter(t => now - t < 300_000)
+          const submit = kv.get('sites.autoLogin', true) && recent.length < 2
+          if (submit) autoAttempts.set(host, [...recent, now])
+          wv.send('safu:fill', c.user, c.pass, submit)
+        }
       }
-      if (e.channel === 'safu:gone') setFormHost(null)
-      if (e.channel === 'safu:creds' && p.pass) {
-        const c = creds.get(p.host)
-        if (!c || c.pass !== p.pass || (p.user && c.user !== p.user)) setOffer(p)
+      if (e.channel === 'safu:gone') {
+        // форма входа исчезла без перезагрузки (почта и «одностраничные» сайты) — вход удался
+        formHere = false
+        setFormHost(null)
+        setTimeout(trySave, 900)
       }
+      if (e.channel === 'safu:creds' && p?.pass) candidate = { host, user: String(p.user || ''), pass: String(p.pass) }
     }
     // процесс страницы упал (не хватило памяти, сайт уронил вкладку) — просто загружаем заново, а не белый экран
     const onGone = () => { setFailed(null); setTimeout(() => { try { wv.reload() } catch { /* уже закрыта */ } }, 300) }
@@ -425,20 +462,6 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
             style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: 'var(--grad)', boxShadow: '0 0 10px rgba(var(--brand-rgb),.8)' }} />}
         </AnimatePresence>
       </div>
-
-      {/* предложение сохранить пароль */}
-      <AnimatePresence>
-        {offer && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden', flexShrink: 0 }}>
-            <div className="row" style={{ padding: '10px 16px', background: 'rgba(var(--brand-rgb), .12)', borderBottom: '1px solid var(--line)' }}>
-              <KeyRound size={18} color="var(--brand)" />
-              <div className="grow small"><b>Сохранить пароль</b> для {offer.host}{offer.user ? ` (${offer.user})` : ''}? Он будет зашифрован средствами Windows.</div>
-              <button className="btn sm" onClick={() => setOffer(null)}>Не сейчас</button>
-              <button className="btn sm primary" onClick={async () => { await creds.set(offer); setOffer(null); toast('Пароль сохранён') }}>Сохранить</button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div style={{ flex: 1, position: 'relative', background: '#fff' }}>
         {tab.kind === 'site' ? (live &&
