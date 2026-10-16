@@ -91,6 +91,15 @@ window.addEventListener('DOMContentLoaded', () => {
     timer = window.setTimeout(() => { timer = null; check() }, 700)
   }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] })
   window.addEventListener('load', check)
+  // затишье после прокрутки, кликов и ввода — приложение снимает страницу заранее, чтобы
+  // сворачивать карточку мгновенно, с готовым снимком
+  let idle: number | null = null
+  const activity = () => {
+    if (idle) clearTimeout(idle)
+    idle = window.setTimeout(() => { idle = null; if (!document.hidden) ipcRenderer.sendToHost('safu:idle') }, 700)
+  }
+  for (const ev of ['scroll', 'wheel', 'keyup', 'click', 'input']) window.addEventListener(ev, activity, { passive: true, capture: true })
+  window.addEventListener('load', activity)
   setTimeout(check, 1500)
   setTimeout(check, 4000)
 })

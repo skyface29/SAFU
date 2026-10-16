@@ -1,7 +1,9 @@
 // Слой сайтов-«мини-приложений», как в Telegram: развёрнутая карточка, плашка свёрнутых и стопка.
 // Все страницы остаются загруженными: свернул — и вернулся на то же место.
-import React, { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { CardMotion, REST, OPEN, CLOSE, BACK, fadeTo, type Pose } from './cardMotion'
+import { setAmbientPaused } from '../fx/Ambient'
 import {
   X, ChevronDown, ChevronUp, MoreHorizontal, ArrowLeft, ArrowRight, RotateCw, ExternalLink, Copy, KeyRound, Home,
   Moon, ZoomIn, ZoomOut, Layers, FileText, FolderOpen, Lock, Download, Printer
@@ -21,6 +23,24 @@ let preloadURL = ''
 safu.sites.preload().then(u => { preloadURL = u })
 
 const webviews = new Map<string, any>()
+
+// открыт сайт — фон замирает, приложение (по желанию) чуть отъезжает. Без перерисовки всего приложения:
+// раньше от этого перерисовывались все страницы ровно в момент начала анимации
+let prevMode = useSites.getState().mode
+useSites.subscribe(st => {
+  if (st.mode === prevMode) return
+  prevMode = st.mode
+  setAmbientPaused(st.mode !== 'closed')
+  if (!kv.get('ui.siteBackdrop', false)) return
+  const shell = document.querySelector<HTMLElement>('.shell')
+  if (!shell) return
+  const on = st.mode === 'open'
+  const from = getComputedStyle(shell).transform
+  shell.style.willChange = 'transform'
+  shell.style.transform = on ? 'scale(0.965)' : 'none'
+  const a = shell.animate([{ transform: from }, { transform: on ? 'scale(0.965)' : 'none' }], { duration: OPEN.duration, easing: OPEN.easing })
+  if (!on) a.finished.then(() => { shell.style.willChange = '' }, () => undefined)
+})
 /** Автонажатие «Войти»: не больше 2 раз за 5 минут на сайт — неверный сохранённый пароль не зациклит вход */
 const autoAttempts = new Map<string, number[]>()
 /** Карточка готовится уехать: снимает полноразмерный снимок страницы и прячет живую страницу */
@@ -28,15 +48,15 @@ const preparers = new Map<string, () => Promise<void>>()
 /** Последний снимок страницы (из него же — маленький для плашки и стопки) */
 const lastImages = new Map<string, any>()
 
-async function prepare(id: string | null) {
+function prepare(id: string | null) {
   const f = id ? preparers.get(id) : null
-  if (f) await Promise.race([f(), new Promise(r => setTimeout(r, 180))])
+  if (f) void f()
 }
 
-/** Закрыть вкладку: сначала снимок, чтобы карточка уезжала гладко, а не с живой страницей */
-export async function closeWithSnapshot(id: string) {
+/** Закрыть вкладку: живая страница сразу прячется под заранее снятый снимок, карточка уезжает без ожидания */
+export function closeWithSnapshot(id: string) {
   const s = useSites.getState()
-  if (s.active === id && s.mode === 'open') await prepare(id)
+  if (s.active === id && s.mode === 'open') prepare(id)
   sites.close(id)
 }
 
@@ -86,11 +106,11 @@ export function SiteLayer() {
   )
 }
 
-export async function minimizeWithSnapshot() {
+export function minimizeWithSnapshot() {
   const s = useSites.getState()
   const id = s.active
-  // полноразмерный снимок — до анимации: карточка едет с картинкой, живая страница спрятана
-  await prepare(id)
+  // снимок уже готов (снят, когда на странице было затишье): прячем живую страницу и сразу едем
+  prepare(id)
   sites.minimize()
   if (!id) return
   // маленький снимок для стопки — после того, как карточка доехала, чтобы не попасть на анимацию
@@ -105,18 +125,11 @@ const UNLOAD_AFTER = 10 * 60_000
 
 // одна вкладка обновилась (загрузка, заголовок) — перерисовывается только её карточка
 const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; preload: string }) {
-  // карточка двигается только трансформацией (на видеокарте): сдвиг, масштаб по осям и прозрачность
-  const tx = useMotionValue(0)
-  const ty = useMotionValue(0)
-  const sx = useMotionValue(1)
-  const sy = useMotionValue(1)
-  const op = useMotionValue(visible ? 1 : 0)
-  // заставка с значком сайта: карточка вырастает из плитки ею, пока страница грузится
-  const cover = useMotionValue(0)
-  // значок на заставке не сплющивается вместе с карточкой
-  const iconSX = useTransform([sx, sy], ([a, b]: number[]) => Math.min(a, b) / Math.max(a, 0.001))
-  const iconSY = useTransform([sx, sy], ([a, b]: number[]) => Math.min(a, b) / Math.max(b, 0.001))
   const boxRef = useRef<HTMLDivElement>(null)
+  const motionRef = useRef<CardMotion | null>(null)
+  const coverRef = useRef<HTMLDivElement>(null)
+  const iconRef = useRef<HTMLDivElement>(null)
+  const veilRef = useRef<HTMLImageElement>(null)
   const [shown, setShown] = useState(visible)
   const [formHost, setFormHost] = useState<string | null>(null)
   const credList = useCreds(s => s.list)
@@ -125,112 +138,156 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
   const [failed, setFailed] = useState<string | null>(null)
   const ref = useRef<any>(null)
   const res = tab.resourceId ? resourcesStore.get().find(r => r.id === tab.resourceId) : undefined
-  // вкладка после перезапуска: страница грузится, только когда её впервые развернули
-  const [live, setLive] = useState(!tab.dormant)
+  // страница (webview) создаётся, когда карточка уже доехала: создание процесса страницы подвешивает окно
+  // на десятые доли секунды, и раньше это съедало анимацию — карточка «внезапно появлялась»
+  const [live, setLive] = useState(false)
+  const liveRef = useRef(false)
+  liveRef.current = live
   // адрес, с которого страница стартует (при повторной загрузке — тот, где остановились)
   const [src, setSrc] = useState(tab.currentURL || tab.url)
-  // пока карточка едет (свернуть, закрыть, развернуть), живая страница спрятана, а вместо неё — снимок:
-  // двигать живую страницу из другого процесса тяжело, отсюда и были рывки «как в 30 кадров»
-  const [still, setStillState] = useState(!visible)
-  const stillRef = useRef(!visible)
-  const setStill = (v: boolean) => { stillRef.current = v; setStillState(v) }
+  // пока карточка едет, живая страница спрятана (двигать страницу из другого процесса дорого),
+  // а сверху — её снимок
+  const [hideLive, setHideLiveState] = useState(true)
+  const hideRef = useRef(true)
+  const setHideLive = (v: boolean) => { hideRef.current = v; setHideLiveState(v) }
   const visibleRef = useRef(visible)
   visibleRef.current = visible
-  // полноразмерный снимок страницы (JPEG в памяти): на нём карточка и едет
+
+  // снимок страницы (JPEG в памяти) готовится заранее — когда на странице затишье, а не в момент сворачивания
   const [shot, setShot] = useState<string | null>(null)
   useEffect(() => () => { if (shot) URL.revokeObjectURL(shot) }, [shot])
-  const grab = async () => {
+  const lastGrab = useRef(0)
+  const grab = async (force = false) => {
     const wv = ref.current
-    if (!wv || tab.kind !== 'site' || !live || stillRef.current) return
+    if (!wv || tab.kind !== 'site' || !liveRef.current || hideRef.current || !visibleRef.current) return
+    if (!force && performance.now() - lastGrab.current < 1500) return
+    lastGrab.current = performance.now()
     try {
-      const img = await wv.capturePage()
+      let img = await wv.capturePage()
       if (!img || img.isEmpty()) return
+      // на экранах с масштабом — до размера окна: меньше кодировать и раскодировать
+      const dpr = window.devicePixelRatio || 1
+      if (dpr > 1.2) img = img.resize({ width: Math.round(img.getSize().width / dpr), quality: 'good' })
       lastImages.set(tab.id, img)
-      setShot(URL.createObjectURL(new Blob([img.toJPEG(86)], { type: 'image/jpeg' })))
+      const url = URL.createObjectURL(new Blob([img.toJPEG(84)], { type: 'image/jpeg' }))
+      // раскодировать заранее: в начале анимации картинка уже готова
+      const probe = new Image()
+      probe.src = url
+      await probe.decode().catch(() => undefined)
+      setShot(url)
     } catch { /* страница ещё грузится */ }
   }
+  // свернуть или закрыть: живую страницу — спрятать, снимок — показать (мгновенно, без ожидания)
   useEffect(() => {
-    preparers.set(tab.id, async () => { await grab(); setStill(true) })
+    preparers.set(tab.id, async () => {
+      setHideLive(true)
+      if (veilRef.current) { for (const a of veilRef.current.getAnimations()) a.cancel(); veilRef.current.style.opacity = '1' }
+    })
     return () => { preparers.delete(tab.id) }
   })
 
-  // появление и уход карточки
+  const mountLive = () => {
+    if (liveRef.current || tab.kind !== 'site') return
+    const cur = useSites.getState().tabs.find(x => x.id === tab.id)
+    setSrc(cur?.currentURL || cur?.url || tab.url)
+    setLive(true)
+    liveRef.current = true
+    if (cur?.dormant) sites.update(tab.id, { dormant: false })
+  }
+
+  // появление и уход карточки — до первой отрисовки (useLayoutEffect), чтобы не мигнуло на старом месте
   const firstRun = useRef(true)
-  useEffect(() => {
-    if (firstRun.current) { firstRun.current = false; if (!visible) return }
+  useLayoutEffect(() => {
     const el = boxRef.current
     if (!el) return
+    if (!motionRef.current) motionRef.current = new CardMotion(el)
+    const m = motionRef.current
+    if (firstRun.current) {
+      firstRun.current = false
+      if (!visible) { m.set({ ...REST, o: 0 }); return }
+    }
     const f = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth || 1, h: el.offsetHeight || 1 }
-    const toward = (r: OriginRect) => ({ x: r.x - f.x, y: r.y - f.y, sx: Math.max(0.02, r.w / f.w), sy: Math.max(0.02, r.h / f.h) })
-    const running: { stop: () => void }[] = []
-    const go = (mv: any, to: number, tr: any) => { const c = animate(mv, to, tr); running.push(c); return c }
+    const toward = (r: OriginRect, o: number): Pose => ({ x: r.x - f.x, y: r.y - f.y, sx: Math.max(0.02, r.w / f.w), sy: Math.max(0.02, r.h / f.h), o })
+    const iconFrom = (p: Pose) => `scale(${(Math.min(p.sx, p.sy) / p.sx).toFixed(4)}, ${(Math.min(p.sx, p.sy) / p.sy).toFixed(4)})`
     const picture = tab.kind === 'file' || !!shot || !!tab.snapshot
     if (visible) {
       setShown(true)
-      setStill(true)
+      if (tab.kind === 'site') {
+        setHideLive(true)
+        if (veilRef.current) veilRef.current.style.opacity = '1'
+      }
       const from = sites.expandedFrom(tab.id) ?? originRect(tab.id)
+      const fresh = tab.kind === 'site' && !liveRef.current && !picture
       if (from) {
         // вырастает из плитки (или из плашки свёрнутых)
-        const t = toward(from)
-        tx.set(t.x); ty.set(t.y); sx.set(t.sx); sy.set(t.sy); op.set(0.6)
-        cover.set(picture ? 0 : 1)
-      } else if (op.get() < 0.05) {
-        tx.set(0); ty.set(f.h * 0.3); sx.set(0.96); sy.set(0.96); op.set(0)
-        cover.set(0)
+        const start = toward(from, 0.7)
+        m.set(start)
+        if (coverRef.current) coverRef.current.style.opacity = fresh ? '1' : '0'
+        iconRef.current?.animate([{ transform: iconFrom(start) }, { transform: 'scale(1, 1)' }], { duration: OPEN.duration, easing: OPEN.easing })
+      } else if (el.style.opacity === '0' || !el.style.opacity) {
+        m.set({ x: 0, y: f.h * 0.25, sx: 0.96, sy: 0.96, o: 0 })
+        if (coverRef.current) coverRef.current.style.opacity = fresh ? '1' : '0'
       }
-      const sp = { type: 'spring', stiffness: 240, damping: 29, mass: 0.85, restDelta: 0.001 }
-      go(op, 1, { duration: 0.14, ease: 'easeOut' })
-      go(tx, 0, sp); go(sx, 1, sp); go(sy, 1, sp)
-      go(ty, 0, sp).then(() => {
-        if (!visibleRef.current) return
-        setStill(false)
-        go(cover, 0, { duration: 0.24, ease: 'easeOut' })
+      m.to(REST, OPEN, { duration: 140 }).then(ok => {
+        if (!ok || !visibleRef.current) return
+        if (tab.kind !== 'site') { fadeTo(coverRef.current, 0, 200); return }
+        const first = !liveRef.current
+        mountLive()
+        setHideLive(false)
+        // живая страница под снимком уже нарисовалась — снимок тает, а не исчезает рывком
+        if (!first) fadeTo(veilRef.current, 0, 160, 90)
+        else { if (veilRef.current) veilRef.current.style.opacity = '0' }
+        if (!first) fadeTo(coverRef.current, 0, 200)
+        // первая загрузка: заставка уходит, когда страница начала рисоваться (или через 1,5 с)
+        else setTimeout(() => fadeTo(coverRef.current, 0, 260), 1500)
+        // снимок для будущего сворачивания — когда страница успокоится
+        setTimeout(() => { void grab() }, first ? 2500 : 700)
       })
     } else {
-      setStill(true)
+      if (tab.kind === 'site') {
+        setHideLive(true)
+        if (veilRef.current) { for (const a of veilRef.current.getAnimations()) a.cancel(); veilRef.current.style.opacity = '1' }
+      }
       const mode = useSites.getState().mode
       const target = tab.closing ? originRect(tab.id) : mode === 'closed' ? pillRect() : null
-      const sp = { type: 'spring', stiffness: 330, damping: 34, mass: 0.8, restDelta: 0.001 }
-      let done: { then: (f: () => void) => unknown }
+      let done: Promise<boolean>
       if (target) {
         // садится обратно в плитку (закрыли) или в плашку внизу (свернули)
-        const t = toward(target)
-        if (tab.closing) go(cover, 1, { duration: 0.16 })
-        go(tx, t.x, sp); go(sx, t.sx, sp); go(sy, t.sy, sp)
-        done = go(ty, t.y, sp)
-        go(op, 0, { duration: 0.12, delay: 0.2 })
+        const t = toward(target, 0)
+        if (tab.closing) fadeTo(coverRef.current, 1, 150)
+        done = m.to(t, CLOSE, { duration: 120, delay: Math.max(0, CLOSE.duration - 200) })
       } else if (mode === 'open') {
-        done = go(op, 0, { duration: 0.12 })
+        done = m.to({ ...REST, o: 0 }, CLOSE, { duration: 120 })
       } else {
-        go(ty, f.h * 0.55, sp)
-        done = go(op, 0, { duration: 0.22 })
+        done = m.to({ x: 0, y: f.h * 0.5, sx: 0.96, sy: 0.96, o: 0 }, CLOSE, { duration: 200 })
       }
-      done.then(() => {
-        if (visibleRef.current) return
+      done.then(ok => {
+        if (!ok || visibleRef.current) return
         setShown(false)
-        tx.set(0); ty.set(0); sx.set(1); sy.set(1); cover.set(0)
+        m.set({ ...REST, o: 0 })
+        if (coverRef.current) coverRef.current.style.opacity = '0'
       })
     }
-    return () => running.forEach(c => c.stop())
   }, [visible])
 
   // шапка: потянуть вниз — свернуть. Тянется, только пока кнопка мыши зажата
-  const drag = useRef<{ id: number; y0: number; on: boolean; lastY: number; lastT: number; v: number } | null>(null)
+  const drag = useRef<{ id: number; y0: number; on: boolean; lastY: number; lastT: number; v: number; off: number } | null>(null)
   const endDrag = () => {
     const d = drag.current
     drag.current = null
     if (!d?.on) return
-    if (ty.get() > 140 || d.v > 0.9) { minimizeWithSnapshot(); return }
-    const sp = { type: 'spring' as const, stiffness: 420, damping: 34 }
-    animate(tx, 0, sp); animate(sx, 1, sp); animate(sy, 1, sp)
-    animate(ty, 0, sp).then(() => { if (drag.current === null && visibleRef.current) setStill(false) })
+    if (d.off > 140 || d.v > 0.9) { minimizeWithSnapshot(); return }
+    motionRef.current?.to(REST, BACK).then(ok => {
+      if (!ok || drag.current || !visibleRef.current) return
+      setHideLive(false)
+      fadeTo(veilRef.current, 0, 140, 60)
+    })
   }
   const dragHandlers = {
     onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0 || (e.target as HTMLElement).closest('button, a, input')) return
       e.currentTarget.setPointerCapture(e.pointerId)
-      drag.current = { id: e.pointerId, y0: e.clientY, on: false, lastY: e.clientY, lastT: performance.now(), v: 0 }
-      void grab() // снимок заранее: если потянут — карточка поедет уже с ним
+      drag.current = { id: e.pointerId, y0: e.clientY, on: false, lastY: e.clientY, lastT: performance.now(), v: 0, off: 0 }
     },
     onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
       const d = drag.current
@@ -241,40 +298,36 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
       if (!d.on) {
         if (dy < 6) return
         d.on = true
-        setStill(true)
+        if (tab.kind === 'site') {
+          setHideLive(true)
+          if (veilRef.current) { for (const a of veilRef.current.getAnimations()) a.cancel(); veilRef.current.style.opacity = '1' }
+        }
       }
       const now = performance.now()
       d.v = (e.clientY - d.lastY) / Math.max(1, now - d.lastT)
       d.lastY = e.clientY
       d.lastT = now
-      const off = Math.max(0, dy - 6)
-      const k = 1 - Math.min(0.14, off / 2600)
+      d.off = Math.max(0, dy - 6)
+      const k = 1 - Math.min(0.14, d.off / 2600)
       const w = boxRef.current?.offsetWidth || 0
-      ty.set(off); sx.set(k); sy.set(k); tx.set((w * (1 - k)) / 2)
+      motionRef.current?.set({ x: (w * (1 - k)) / 2, y: d.off, sx: k, sy: k, o: 1 })
     },
     onPointerUp: endDrag,
     onPointerCancel: endDrag,
     onLostPointerCapture: endDrag
   }
 
+  // долго свёрнута — отпускаем память; развернёшь — загрузится там же
   useEffect(() => {
-    if (!visible) {
-      // долго свёрнута — отпускаем память; развернёшь — загрузится там же
-      if (!live || tab.kind !== 'site') return
-      const t = setTimeout(() => {
-        const cur = useSites.getState().tabs.find(x => x.id === tab.id)
-        setLive(false)
-        sites.update(tab.id, { dormant: true, loading: false, url: cur?.currentURL || cur?.url || tab.url })
-      }, UNLOAD_AFTER)
-      return () => clearTimeout(t)
-    }
-    if (!live) {
+    if (visible || !live || tab.kind !== 'site') return
+    const t = setTimeout(() => {
       const cur = useSites.getState().tabs.find(x => x.id === tab.id)
-      setSrc(cur?.currentURL || cur?.url || tab.url)
-      setLive(true)
-      sites.update(tab.id, { dormant: false })
-    }
-  }, [visible])
+      setLive(false)
+      liveRef.current = false
+      sites.update(tab.id, { dormant: true, loading: false, url: cur?.currentURL || cur?.url || tab.url })
+    }, UNLOAD_AFTER)
+    return () => clearTimeout(t)
+  }, [visible, live])
 
   useEffect(() => {
     const wv = ref.current
@@ -326,6 +379,7 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
       }).catch(() => undefined)
     }
     const onMsg = (e: any) => {
+      if (e.channel === 'safu:idle') { void grab(); return }
       const host = pageHost()
       if (!host) return
       const [p] = e.args || []
@@ -365,7 +419,11 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
     wv.addEventListener('ipc-message', onMsg)
     wv.addEventListener('did-fail-load', onFail)
     wv.addEventListener('render-process-gone', onGone)
+    // страница начала рисоваться — заставка со значком тает
+    const onReady = () => { if (visibleRef.current) setTimeout(() => fadeTo(coverRef.current, 0, 260), 250) }
+    wv.addEventListener('dom-ready', onReady)
     return () => {
+      wv.removeEventListener('dom-ready', onReady)
       webviews.delete(tab.id)
       wv.removeEventListener('page-title-updated', onTitle)
       wv.removeEventListener('did-start-loading', onStart)
@@ -410,11 +468,11 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
   }
 
   return (
-    <motion.div
+    <div
       ref={boxRef}
       style={{
         position: 'fixed', left: '4%', right: '4%', top: 'calc(var(--titlebar) + 6px)', bottom: 0, zIndex: 100,
-        x: tx, y: ty, scaleX: sx, scaleY: sy, opacity: op, transformOrigin: '0 0', willChange: 'transform, opacity',
+        transformOrigin: '0 0', willChange: 'transform, opacity',
         borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden',
         background: 'var(--glass-strong)', border: '1px solid var(--line2)', borderBottom: 'none',
         boxShadow: '0 -20px 80px rgba(0,0,0,.45)', display: 'flex', flexDirection: 'column',
@@ -466,11 +524,12 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
       <div style={{ flex: 1, position: 'relative', background: '#fff' }}>
         {tab.kind === 'site' ? (live &&
           <webview ref={ref} src={src} partition="persist:sites" preload={preload || undefined} allowpopups={"true" as any}
-            webpreferences="contextIsolation=yes, spellcheck=yes" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: still ? 'hidden' : 'visible' }} />
+            webpreferences="contextIsolation=yes, spellcheck=yes" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: hideLive ? 'hidden' : 'visible' }} />
         ) : <FileView tab={tab} />}
-        {still && tab.kind === 'site' && (shot || tab.snapshot) && (
-          <img src={shot || tab.snapshot} alt="" draggable={false}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', pointerEvents: 'none' }} />
+        {/* снимок страницы: всегда на месте (уже раскодирован), видимость — только прозрачностью */}
+        {tab.kind === 'site' && (shot || tab.snapshot) && (
+          <img ref={veilRef} src={shot || tab.snapshot} alt="" draggable={false}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', pointerEvents: 'none', opacity: 0, willChange: 'opacity' }} />
         )}
         <AnimatePresence>
           {failed && tab.kind === 'site' && (
@@ -486,13 +545,13 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
         </AnimatePresence>
       </div>
       {/* заставка: карточка вырастает из плитки значком сайта, потом под ней показывается страница */}
-      <motion.div className="center" style={{ position: 'absolute', inset: 0, opacity: cover, pointerEvents: 'none', zIndex: 5,
+      <div ref={coverRef} className="center" style={{ position: 'absolute', inset: 0, opacity: 0, pointerEvents: 'none', zIndex: 5, willChange: 'opacity',
         background: tab.kind === 'file' ? 'linear-gradient(135deg,#64748b,#334155)' : 'var(--grad)' }}>
-        <motion.div style={{ scaleX: iconSX, scaleY: iconSY, color: '#fff', display: 'grid', placeItems: 'center' }}>
+        <div ref={iconRef} style={{ color: '#fff', display: 'grid', placeItems: 'center' }}>
           {tab.kind === 'file' ? <FileText size={64} /> : <SiteGlyph icon={tab.icon} size={64} />}
-        </motion.div>
-      </motion.div>
-    </motion.div>
+        </div>
+      </div>
+    </div>
   )
 })
 
@@ -605,9 +664,9 @@ function Stack({ tabs }: { tabs: SiteTab[] }) {
   )
 }
 
-/** Приложение под открытым сайтом отъезжает назад */
+/** Приложение под открытым сайтом отъезжает назад (по желанию; по умолчанию выключено — так быстрее) */
 export function useSiteBackdrop() {
   const mode = useSites(s => s.mode)
-  const [anim] = usePref('ui.siteBackdrop', true)
+  const [anim] = usePref('ui.siteBackdrop', false)
   return anim && mode !== 'closed'
 }

@@ -68,7 +68,8 @@ let lastPress: { el: WeakRef<Element>; at: number } | null = null
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener('pointerdown', e => {
     const t = e.target as Element | null
-    const el = t?.closest?.('[data-site-origin], .card, .chip, .btn, button, .side-item, .row, [role="button"]')
+    // своя метка (плашка, карточка стопки) важнее кнопки внутри неё
+    const el = t?.closest?.('[data-site-origin]') || t?.closest?.('.card, .chip, .btn, button, .side-item, .row, [role="button"]')
     lastPress = el ? { el: new WeakRef(el), at: performance.now() } : null
   }, true)
 }

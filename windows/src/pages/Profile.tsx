@@ -127,7 +127,7 @@ export function Appearance() {
   const [motionOff, setMotionOff] = usePref('ui.reduceMotion', false)
   const [mica, setMica] = usePref('ui.mica', false)
   const [pack] = usePref('look.pack', '')
-  const [backdropAnim, setBackdropAnim] = usePref('ui.siteBackdrop', true)
+  const [backdropAnim, setBackdropAnim] = usePref('ui.siteBackdrop', false)
   const [blur, setBlur] = usePref('ui.blur', false)
   const Swatch = ({ a }: { a: typeof ACCENTS[0] }) => (
     <motion.button whileHover={{ scale: 1.12, y: -2 }} whileTap={{ scale: 0.9 }} title={a.title} onClick={() => { setTheme(a.id); setSeasonal(false); kv.set('look.pack', '') }}
@@ -192,7 +192,7 @@ export function Appearance() {
         <FxQualityRow />
         <ToggleRow title="Уменьшить анимации" sub="Для слабых компьютеров и если укачивает" on={motionOff} onChange={setMotionOff} />
         <GpuRow />
-        <ToggleRow title="Приложение отъезжает под сайтом" sub="Как в Telegram, когда открыта карточка сайта" on={backdropAnim} onChange={setBackdropAnim} />
+        <ToggleRow title="Приложение отъезжает под сайтом" sub="Как в Telegram. На слабых компьютерах лучше выключить" on={backdropAnim} onChange={setBackdropAnim} />
         <Row title="Показать салют" sub="Проверить, как выглядят праздники" onClick={() => celebrations.test()} />
       </Card>
     </>
@@ -516,6 +516,12 @@ export function Backup() {
 // ---------- автор ----------
 
 const CHANGELOG: { version: string; items: string[] }[] = [
+  { version: '19.5 для Windows', items: [
+    'Сайты сворачиваются и разворачиваются плавно: карточку теперь двигает сама видеокарта (а не кадры в JavaScript), поэтому занятость приложения больше не даёт рывков',
+    'Сворачивание — мгновенно: снимок страницы готовится заранее, когда на сайте затишье, а не в момент нажатия',
+    'Первое открытие сайта больше не «выпрыгивает»: страница создаётся, когда карточка уже выросла из плитки, — раньше создание страницы съедало анимацию',
+    'Открытие сайта больше не перерисовывает всё приложение; «Приложение отъезжает под сайтом» теперь по умолчанию выключено'
+  ] },
   { version: '19.4 для Windows', items: [
     'Пароли — как на iPhone: вошёл на сайт один раз — пароль запоминается сам (зашифрован средствами Windows), дальше подставляется и «Войти» нажимается за тебя. Если сохранённый пароль не подошёл — не больше двух попыток, потом вводишь новый, и он обновится',
     'Вход на сайтах вуза переживает перезапуск Арктики: сессия сохраняется зашифрованной и возвращается при запуске (не дольше двух недель)',

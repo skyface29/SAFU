@@ -12,12 +12,12 @@ import { creds } from './lib/creds'
 import { mailWatch } from './lib/mail'
 import { serveSync } from './lib/sync'
 import { SyncPairAsk, SyncFirewallAsk } from './pages/Sync'
-import { Ambient, setAmbientPaused } from './fx/Ambient'
+import { Ambient } from './fx/Ambient'
 import { initFx, applyFx } from './fx/perf'
 import { Titlebar, Sidebar, Splash, CommandPalette } from './ui/Shell'
 import { DialogHost, ToastHost, MenuHost } from './ui/kit'
-import { SiteLayer, useSiteBackdrop } from './sites/SiteLayer'
-import { openSiteByKey, useSites } from './sites/sites'
+import { SiteLayer } from './sites/SiteLayer'
+import { openSiteByKey } from './sites/sites'
 import { PAGES } from './pages'
 import { Registration } from './pages/Registration'
 import { SubjectSheet } from './pages/Subjects'
@@ -47,11 +47,6 @@ export default function App() {
   const [onboarded] = usePref('onboarded', false)
   const [again, setAgain] = usePref('onboarding.again', false)
   const [mica] = usePref('ui.mica', false)
-  const backdrop = useSiteBackdrop()
-  // приложение под сайтом отъезжает на видеокарте; слой держим, пока не вернулось на место (текст потом снова чёткий)
-  const [shellLayer, setShellLayer] = useState(false)
-  const sitesOpen = useSites(s => s.mode !== 'closed')
-  useEffect(() => setAmbientPaused(sitesOpen), [sitesOpen])
 
   // тема пересчитывается при любом изменении оформления
   useEffect(() => {
@@ -128,10 +123,8 @@ export default function App() {
   return (
     <DialogHost>
       {!(mica && isDesktop) && <Ambient dark={dark} c1={dark && accent.c1d ? accent.c1d : accent.c1} c2={dark && accent.c2d ? accent.c2d : accent.c2} />}
-      <motion.div className="shell"
-        animate={backdrop ? { scale: 0.95, opacity: 0.6 } : { scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 30 }} onAnimationComplete={() => setShellLayer(backdrop)}
-        style={{ transformOrigin: '50% 30%', willChange: backdrop || shellLayer ? 'transform, opacity' : 'auto' }}>
+      {/* приложение не перерисовывается, когда открывают сайт: фон и «отъезд» меняются в SiteLayer напрямую */}
+      <div className="shell" style={{ transformOrigin: '50% 30%' }}>
         <Titlebar />
         <Sidebar />
         <main className="shell-main">
@@ -146,7 +139,7 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
         </main>
-      </motion.div>
+      </div>
 
       <SiteLayer />
       <ModalHost />
