@@ -48,7 +48,9 @@ export function SiteLayer() {
 
   if (!pre) return null
   const open = mode === 'open'
-  const minimized = tabs.length > 0 && mode === 'closed'
+  // закрывающаяся вкладка уже не в плашке и не в стопке — только её карточка доезжает
+  const listed = tabs.filter(t => !t.closing)
+  const minimized = listed.length > 0 && mode === 'closed'
 
   return (
     <>
@@ -57,8 +59,8 @@ export function SiteLayer() {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={minimizeWithSnapshot} />}
       </AnimatePresence>
       {tabs.map(t => <SiteCard key={t.id} tab={t} visible={open && active === t.id} preload={pre === 'none' ? '' : pre} />)}
-      <AnimatePresence>{minimized && <Pill key="pill" tabs={tabs} />}</AnimatePresence>
-      <AnimatePresence>{mode === 'stack' && <Stack key="stack" tabs={tabs} />}</AnimatePresence>
+      <AnimatePresence>{minimized && <Pill key="pill" tabs={listed} />}</AnimatePresence>
+      <AnimatePresence>{mode === 'stack' && <Stack key="stack" tabs={listed} />}</AnimatePresence>
     </>
   )
 }
@@ -99,6 +101,10 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
   const [live, setLive] = useState(!tab.dormant)
   // адрес, с которого страница стартует (при повторной загрузке — тот, где остановились)
   const [src, setSrc] = useState(tab.currentURL || tab.url)
+  // пока карточка едет (свернуть, закрыть, развернуть), живая страница спрятана, а вместо неё — снимок:
+  // двигать живую страницу из другого процесса тяжело, отсюда и были рывки «как в 30 кадров»
+  const [still, setStill] = useState(!visible)
+  useEffect(() => { if (!visible) setStill(true) }, [visible])
 
   useEffect(() => {
     if (!visible) {
@@ -227,6 +233,7 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
         pointerEvents: visible ? 'auto' : 'none', transformOrigin: '50% 100%'
       }}
       initial={false}
+      onAnimationComplete={() => { if (visible) setStill(false) }}
       animate={visible ? { opacity: 1, translateY: 0, scaleX: 1, visibility: 'visible' } : { opacity: 0, translateY: '105%', scaleX: 0.9, transitionEnd: { visibility: 'hidden' } }}
       transition={visible ? { type: 'spring', stiffness: 300, damping: 32 } : { type: 'spring', stiffness: 360, damping: 38 }}
     >
@@ -293,8 +300,12 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
       <div style={{ flex: 1, position: 'relative', background: '#fff' }}>
         {tab.kind === 'site' ? (live &&
           <webview ref={ref} src={src} partition="persist:sites" preload={preload || undefined} allowpopups={"true" as any}
-            webpreferences="contextIsolation=yes, spellcheck=yes" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+            webpreferences="contextIsolation=yes, spellcheck=yes" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: still ? 'hidden' : 'visible' }} />
         ) : <FileView tab={tab} />}
+        {still && tab.kind === 'site' && tab.snapshot && (
+          <img src={tab.snapshot} alt="" draggable={false}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', pointerEvents: 'none' }} />
+        )}
         <AnimatePresence>
           {failed && tab.kind === 'site' && (
             <motion.div className="center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'var(--bg)' }}>

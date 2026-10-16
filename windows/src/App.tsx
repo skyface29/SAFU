@@ -90,6 +90,9 @@ export default function App() {
   // связанный iPhone заходит сам и сводит ДЗ, задачи и заметки — отвечаем, пока приложение запущено
   useEffect(() => serveSync(), [])
 
+  // интерфейс собрался — сторож в главном процессе не будет показывать экран восстановления
+  useEffect(() => { (safu.app as any).ready?.() }, [])
+
   // переходы из уведомлений, трея и ссылок safu://
   useEffect(() => safu.app.on('app:route', (route: string) => handleRoute(route)), [])
 

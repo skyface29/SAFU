@@ -77,6 +77,11 @@ const api = {
     titlebar: (color: string, symbol: string) => ipcRenderer.invoke('app:titlebar', { color, symbol }),
     mica: (on: boolean) => ipcRenderer.invoke('app:mica', on),
     flash: () => ipcRenderer.invoke('app:flash'),
+    /** Интерфейс собрался (для сторожа, который иначе покажет экран восстановления) */
+    ready: () => ipcRenderer.send('app:ready'),
+    log: (text: string) => ipcRenderer.send('app:log', text),
+    recover: (action: 'reload' | 'reset' | 'safe-gpu' | 'logs') => ipcRenderer.invoke('app:recover', action),
+    gpuSafe: (safe: boolean) => ipcRenderer.invoke('app:gpuSafe', safe),
     on
   },
   tray: { update: (s: { tooltip: string; line: string }) => ipcRenderer.invoke('tray:update', s) },

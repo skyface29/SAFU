@@ -10,11 +10,15 @@ const PARTICLES = new Set(['snow', 'leaves', 'petals', 'matrix', 'summer', 'work
 const STATIC = new Set(['plain', 'linen', 'soft', 'wash'])
 
 /** Фон замирает, пока открыт сайт или окно не в фокусе (меньше кадров) — вся мощность интерфейсу */
-const pauseState = { paused: false, unfocused: false }
+const pauseState = { paused: false, unfocused: false, scrollUntil: 0 }
 export function setAmbientPaused(p: boolean) { pauseState.paused = p }
 if (typeof window !== 'undefined') {
   window.addEventListener('blur', () => { pauseState.unfocused = true })
   window.addEventListener('focus', () => { pauseState.unfocused = false })
+  // пока листают — фон замирает: видеокарта целиком на прокрутку, а фон и так почти не движется
+  const scrolling = () => { pauseState.scrollUntil = performance.now() + 350 }
+  window.addEventListener('wheel', scrolling, { passive: true, capture: true })
+  window.addEventListener('scroll', scrolling, { passive: true, capture: true })
 }
 
 export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: string }) {
@@ -38,7 +42,8 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
     const t0 = performance.now()
 
     const resize = () => {
-      dpr = PARTICLES.has(mode) ? Math.min(window.devicePixelRatio || 1, 1) * 0.8 : 0.5
+      // мягкие пятна на треть разрешения: на глаз то же, а рисовать в 2 раза меньше
+      dpr = PARTICLES.has(mode) ? Math.min(window.devicePixelRatio || 1, 1) * 0.8 : 0.35
       W = cv.clientWidth; H = cv.clientHeight
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -93,6 +98,7 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
     const baseInterval = PARTICLES.has(mode) ? 1000 / 60 : 1000 / 30
     function frame(now: number) {
       if (!running) return
+      if (now < pauseState.scrollUntil && last > 0) { raf = requestAnimationFrame(frame); return }
       const interval = pauseState.paused ? 500 : pauseState.unfocused ? 1000 / 15 : baseInterval
       if (now - last < interval - 2) { raf = requestAnimationFrame(frame); return }
       last = now

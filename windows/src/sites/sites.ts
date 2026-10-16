@@ -20,6 +20,8 @@ export type SiteTab = {
   canForward?: boolean
   /** Вкладка вернулась после перезапуска: страница загрузится, только когда её развернут */
   dormant?: boolean
+  /** Закрывается: карточка уезжает, а страница выгрузится, когда анимация закончится */
+  closing?: boolean
 }
 
 type State = {
@@ -120,13 +122,21 @@ export const sites = {
   stack() { if (useSites.getState().tabs.length) useSites.setState({ mode: 'stack' }) },
   close(id: string) {
     const s = useSites.getState()
-    const tabs = s.tabs.filter(t => t.id !== id)
-    const wasActive = s.active === id
-    useSites.setState({
-      tabs,
-      active: wasActive ? null : s.active,
-      mode: !tabs.length ? 'closed' : wasActive && s.mode === 'open' ? 'closed' : s.mode
-    })
+    const wasOpen = s.active === id && s.mode === 'open'
+    const drop = () => {
+      const st = useSites.getState()
+      const tabs = st.tabs.filter(t => t.id !== id)
+      useSites.setState({
+        tabs,
+        active: st.active === id ? null : st.active,
+        mode: !tabs.length ? 'closed' : st.mode
+      })
+    }
+    if (!wasOpen) { drop(); return }
+    // развёрнутая: сначала карточка плавно уезжает (страница в ней уже спрятана),
+    // и только потом страница выгружается — выгрузка больше не попадает на анимацию
+    useSites.setState({ tabs: s.tabs.map(t => t.id === id ? { ...t, closing: true } : t), mode: 'closed' })
+    setTimeout(drop, 420)
   },
   closeAll() { useSites.setState({ tabs: [], active: null, mode: 'closed' }) },
   update(id: string, patch: Partial<SiteTab>) {

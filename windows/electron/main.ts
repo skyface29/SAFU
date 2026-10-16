@@ -35,11 +35,40 @@ if (process.defaultApp && process.argv.length >= 2) {
   app.setAsDefaultProtocolClient('safu')
 }
 
-// плавность: растеризация на видеокарте. Чёрный список драйверов больше не обходим: на части встроенных
-// видеокарт это давало белые и чёрные сайты, мерцание и падения видеопроцесса — после них Chromium до конца
-// сеанса рисовал всё процессором, и приложение тормозило целиком
+// ---------- видеокарта ----------
+// Рисуем на видеокарте, даже если драйвер в «чёрном списке» Chromium: без этого на многих ноутбуках всё
+// окно рисуется процессором — прокрутка и анимации идут рывками, как в 30 кадров (так было в 19.0).
+// Если видеокарта при этом падает дважды за запуск, следующий запуск идёт в безопасном режиме (gpu.json),
+// а сломанный кеш шейдеров не копится на диске — с ним окно могло открываться чёрным
+const gpuFile = () => path.join(app.getPath('userData'), 'gpu.json')
+const gpuState: { safe?: boolean } = (() => { try { return JSON.parse(fs.readFileSync(gpuFile(), 'utf8')) } catch { return {} } })()
+function saveGpuState(s: { safe: boolean }) {
+  try { fs.mkdirSync(app.getPath('userData'), { recursive: true }); fs.writeFileSync(gpuFile(), JSON.stringify(s)) } catch { /* не страшно */ }
+}
 app.commandLine.appendSwitch('enable-gpu-rasterization')
-app.on('child-process-gone', (_e, d) => { if (d.type === 'GPU') console.warn('GPU process gone:', d.reason, d.exitCode) })
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
+if (!gpuState.safe) {
+  app.commandLine.appendSwitch('ignore-gpu-blocklist')
+  app.commandLine.appendSwitch('enable-zero-copy')
+}
+let gpuCrashes = 0
+app.on('child-process-gone', (_e, d) => {
+  if (d.type !== 'GPU' || d.reason === 'clean-exit') return
+  gpuCrashes += 1
+  logError(`GPU process gone: ${d.reason} (${d.exitCode})`)
+  if (gpuCrashes >= 2 && !gpuState.safe) saveGpuState({ safe: true })
+})
+
+// ---------- журнал ошибок: чтобы по нему понять, почему окно не открылось ----------
+function logError(text: string) {
+  try {
+    const dir = path.join(app.getPath('userData'), 'logs')
+    fs.mkdirSync(dir, { recursive: true })
+    const f = path.join(dir, 'errors.log')
+    try { if (fs.statSync(f).size > 512 * 1024) fs.renameSync(f, f + '.old') } catch { /* файла ещё нет */ }
+    fs.appendFileSync(f, `[${new Date().toISOString()}] ${text}\n`)
+  } catch { /* не страшно */ }
+}
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'safu-file', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true } }
@@ -256,7 +285,8 @@ function createWindow() {
     show: false,
     title: 'Арктика',
     icon: appIcon(),
-    backgroundColor: '#00000000',
+    // непрозрачный фон: пока интерфейс грузится (или если он не загрузился) — тёмное окно, а не «дыра»
+    backgroundColor: mica ? '#00000000' : (darkUI() ? '#0a0d14' : '#eef2f8'),
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#00000000', symbolColor: '#ffffff', height: 40 },
     ...(process.platform === 'win32' && mica ? { backgroundMaterial: 'mica' as const } : {}),
@@ -272,6 +302,24 @@ function createWindow() {
   })
   if (kv['win.maximized']) win.maximize()
   win.loadURL(rendererURL())
+  armWatchdog()
+  // интерфейс упал — перезагружаем сами; не помогает — экран восстановления вместо чёрного окна
+  win.webContents.on('render-process-gone', (_e, d) => {
+    if (d.reason === 'clean-exit') return
+    logError(`renderer gone: ${d.reason} (${d.exitCode})`)
+    recoverOrReload(`Окно приложения упало (${d.reason})`)
+  })
+  win.webContents.on('did-fail-load', (_e, code, desc, _url, isMain) => {
+    if (!isMain || code === -3) return
+    logError(`did-fail-load ${code} ${desc}`)
+    recoverOrReload(`Не загрузился интерфейс: ${desc}`)
+  })
+  win.webContents.on('unresponsive', () => logError('renderer unresponsive'))
+  win.webContents.on('will-navigate', (e, url) => {
+    if (!url.startsWith('safu-recover://')) return
+    e.preventDefault()
+    void runRecovery(url.slice('safu-recover://'.length).replace(/\/+$/, ''))
+  })
   win.once('ready-to-show', () => {
     const hidden = process.argv.includes('--hidden')
     if (!hidden) win?.show()
@@ -316,6 +364,78 @@ function createWindow() {
   win.webContents.on('did-finish-load', () => {
     if (pendingRoute) { win?.webContents.send('app:route', pendingRoute); pendingRoute = null }
   })
+}
+
+// ---------- окно не загрузилось: сами перезагружаем, потом — экран восстановления ----------
+
+let rendererReady = false
+let recoverTries = 0
+let watchdog: NodeJS.Timeout | null = null
+
+function darkUI() {
+  const s = kv['ui.scheme']
+  return s === 'light' ? false : s === 'system' ? nativeTheme.shouldUseDarkColors : true
+}
+
+function armWatchdog() {
+  rendererReady = false
+  if (watchdog) clearTimeout(watchdog)
+  watchdog = setTimeout(() => {
+    if (rendererReady || !win || win.isDestroyed()) return
+    logError('renderer did not report ready in 20s')
+    recoverOrReload('Интерфейс не загрузился за 20 секунд')
+  }, 20_000)
+}
+
+function recoverOrReload(reason: string) {
+  if (!win || win.isDestroyed()) return
+  if (recoverTries < 1) {
+    recoverTries += 1
+    win.webContents.session.clearCache().catch(() => null).finally(() => {
+      if (!win || win.isDestroyed()) return
+      win.loadURL(rendererURL())
+      armWatchdog()
+    })
+    return
+  }
+  showRecovery(reason)
+}
+
+function showRecovery(reason: string) {
+  if (!win || win.isDestroyed()) return
+  if (watchdog) { clearTimeout(watchdog); watchdog = null }
+  const esc = (s: string) => s.replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]!))
+  const btn = (a: string, t: string, primary = false) =>
+    `<a href="safu-recover://${a}" style="display:block;margin:8px 0;padding:12px 16px;border-radius:12px;text-decoration:none;font-weight:600;color:#fff;background:${primary ? 'linear-gradient(135deg,#2973fa,#22d3ee)' : 'rgba(255,255,255,.08)'}">${t}</a>`
+  const html = `<!doctype html><meta charset="utf-8"><title>Арктика</title>
+<body style="margin:0;height:100vh;display:grid;place-items:center;background:#0a0d14;color:#e8ecf4;font-family:'Segoe UI',sans-serif">
+<div style="max-width:440px;padding:28px">
+<div style="font-size:44px">❄️</div>
+<h2 style="margin:8px 0">Арктика не открылась</h2>
+<p style="opacity:.7;line-height:1.5">${esc(reason)}. Данные (расписание, ДЗ, заметки, пароли) целы — попробуй по порядку:</p>
+${btn('reload', 'Попробовать ещё раз', true)}
+${btn('reset', 'Сбросить открытые сайты и кеш — и открыть')}
+${btn('safe-gpu', 'Перезапустить без ускорения видеокартой')}
+${btn('logs', 'Открыть папку с журналом ошибок')}
+</div></body>`
+  win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+  if (!win.isVisible() && !process.argv.includes('--hidden')) win.show()
+}
+
+async function runRecovery(action: string) {
+  logError(`recovery: ${action}`)
+  if (action === 'safe-gpu') { saveGpuState({ safe: true }); quitting = true; app.relaunch(); app.exit(0); return }
+  if (action === 'logs') { void shell.openPath(path.join(app.getPath('userData'), 'logs')); return }
+  if (action === 'reset') {
+    delete kv['sites.saved.v1']
+    saveKVNow()
+    await win?.webContents.session.clearCache().catch(() => null)
+    await session.fromPartition(SITES_PARTITION).clearCache().catch(() => null)
+  }
+  recoverTries = 0
+  if (!win || win.isDestroyed()) return
+  win.loadURL(rendererURL())
+  armWatchdog()
 }
 
 function showMain(route?: string) {
@@ -825,8 +945,11 @@ function registerIPC() {
     userData: userDir(),
     autostart: app.getLoginItemSettings().openAtLogin,
     encryption: safeStorage.isEncryptionAvailable(),
-    dark: nativeTheme.shouldUseDarkColors
+    dark: nativeTheme.shouldUseDarkColors,
+    // как сейчас рисуется окно: enabled — видеокартой, остальное — процессором (будет рывками)
+    gpu: { safe: !!gpuState.safe, compositing: String((app.getGPUFeatureStatus() as any).gpu_compositing || ''), raster: String((app.getGPUFeatureStatus() as any).rasterization || '') }
   }))
+  ipcMain.handle('app:gpuSafe', (_e, safe: boolean) => { saveGpuState({ safe }); return safe })
   ipcMain.handle('app:autostart', (_e, on: boolean) => { app.setLoginItemSettings({ openAtLogin: on, args: ['--hidden'] }); return on })
   ipcMain.handle('app:quit', () => { quitting = true; app.quit() })
   ipcMain.handle('app:relaunch', () => { quitting = true; app.relaunch(); app.exit(0) })
@@ -854,6 +977,10 @@ function registerIPC() {
     try { win?.setBackgroundMaterial(on ? 'mica' : 'none') } catch { /* Windows 10 */ }
   })
   ipcMain.handle('app:flash', () => { win?.flashFrame(true) })
+  // интерфейс собрался — сторож больше не нужен
+  ipcMain.on('app:ready', () => { rendererReady = true; recoverTries = 0; if (watchdog) { clearTimeout(watchdog); watchdog = null } })
+  ipcMain.on('app:log', (_e, text: string) => logError(`renderer: ${String(text).slice(0, 2000)}`))
+  ipcMain.handle('app:recover', (_e, action: string) => runRecovery(action))
 
   ipcMain.handle('tray:update', (_e, s: { tooltip: string; line: string }) => {
     trayState = s
