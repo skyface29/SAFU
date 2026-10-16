@@ -79,9 +79,12 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && fields()) capture() }, true)
   check()
   let timer: number | null = null
+  // страницу не видно (свёрнута) — форму входа не ищем: на «живых» сайтах это пересчитывало раскладку
+  // всей страницы несколько раз в секунду и в свёрнутых вкладках тоже
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check() })
   new MutationObserver(() => {
-    if (timer) return
-    timer = window.setTimeout(() => { timer = null; check() }, 400)
+    if (timer || document.hidden) return
+    timer = window.setTimeout(() => { timer = null; check() }, 700)
   }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] })
   window.addEventListener('load', check)
   setTimeout(check, 1500)

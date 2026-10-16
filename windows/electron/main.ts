@@ -35,10 +35,11 @@ if (process.defaultApp && process.argv.length >= 2) {
   app.setAsDefaultProtocolClient('safu')
 }
 
-// плавность: растеризация на видеокарте даже на «неподдерживаемых» драйверах
+// плавность: растеризация на видеокарте. Чёрный список драйверов больше не обходим: на части встроенных
+// видеокарт это давало белые и чёрные сайты, мерцание и падения видеопроцесса — после них Chromium до конца
+// сеанса рисовал всё процессором, и приложение тормозило целиком
 app.commandLine.appendSwitch('enable-gpu-rasterization')
-app.commandLine.appendSwitch('enable-zero-copy')
-app.commandLine.appendSwitch('ignore-gpu-blocklist')
+app.on('child-process-gone', (_e, d) => { if (d.type === 'GPU') console.warn('GPU process gone:', d.reason, d.exitCode) })
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'safu-file', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true } }
@@ -141,18 +142,57 @@ function loadKV() {
   }
 }
 
+// Хранилище пишется на диск не на каждое изменение, а пачкой через 1,5 с после последнего — и в фоне:
+// раньше каждая запись (почта раз в минуту, переход по странице сайта, перетаскивание окна) останавливала
+// главный процесс, а с ним и сайты, и перетаскивание окна
+let kvWriting = false
+let kvDirty = false
+let kvBackedUp = false
+/** Записали синхронно (выход, замена данных) — фоновая запись, что ещё в пути, не должна её перетереть */
+let kvSyncGen = 0
+
 function saveKVSoon() {
+  kvDirty = true
   if (kvTimer) clearTimeout(kvTimer)
-  kvTimer = setTimeout(saveKVNow, 400)
+  kvTimer = setTimeout(() => { kvTimer = null; void saveKVAsync() }, 1500)
 }
 
+/** Запасная копия — один раз за запуск, а не при каждой записи */
+function backupOnce() {
+  if (kvBackedUp) return
+  kvBackedUp = true
+  try { if (fs.existsSync(storeFile())) fs.copyFileSync(storeFile(), storeFile() + '.bak') } catch { /* не страшно */ }
+}
+
+async function saveKVAsync() {
+  if (kvWriting) { kvDirty = true; return }
+  kvWriting = true
+  kvDirty = false
+  const gen = kvSyncGen
+  try {
+    await fs.promises.mkdir(userDir(), { recursive: true })
+    backupOnce()
+    const tmp = storeFile() + '.tmp'
+    await fs.promises.writeFile(tmp, JSON.stringify(kv))
+    if (gen === kvSyncGen) await fs.promises.rename(tmp, storeFile())
+  } catch (e) {
+    console.error('store save failed', e)
+  } finally {
+    kvWriting = false
+    if (kvDirty) saveKVSoon()
+  }
+}
+
+/** Сразу и синхронно — при выходе и при полной замене данных */
 function saveKVNow() {
   if (kvTimer) { clearTimeout(kvTimer); kvTimer = null }
+  kvDirty = false
+  kvSyncGen++
   try {
     fs.mkdirSync(userDir(), { recursive: true })
-    const tmp = storeFile() + '.tmp'
+    backupOnce()
+    const tmp = storeFile() + '.now.tmp'
     fs.writeFileSync(tmp, JSON.stringify(kv))
-    if (fs.existsSync(storeFile())) fs.copyFileSync(storeFile(), storeFile() + '.bak')
     fs.renameSync(tmp, storeFile())
   } catch (e) {
     console.error('store save failed', e)
@@ -243,8 +283,11 @@ function createWindow() {
     if (!win.isMaximized()) kv['win.bounds'] = win.getBounds()
     saveKVSoon()
   }
-  win.on('resize', remember)
-  win.on('move', remember)
+  // место окна — когда его отпустили, а не на каждом пикселе перетаскивания
+  win.on('resized', remember)
+  win.on('moved', remember)
+  win.on('maximize', remember)
+  win.on('unmaximize', remember)
 
   win.on('close', e => {
     // закрытие окна — уходим в трей: напоминания о парах, замены и почта работают дальше
@@ -405,8 +448,26 @@ function loadScheduled() {
   try { scheduled = JSON.parse(fs.readFileSync(notifFile(), 'utf8')) } catch { scheduled = [] }
 }
 
+// список напоминаний пишется в фоне и не чаще раза в секунду
+let schedSaveTimer: NodeJS.Timeout | null = null
 function saveScheduled() {
+  if (schedSaveTimer) clearTimeout(schedSaveTimer)
+  schedSaveTimer = setTimeout(() => {
+    schedSaveTimer = null
+    fs.promises.writeFile(notifFile(), JSON.stringify(scheduled)).catch(() => { /* ничего */ })
+  }, 1000)
+}
+
+function saveScheduledNow() {
+  if (schedSaveTimer) { clearTimeout(schedSaveTimer); schedSaveTimer = null }
   try { fs.writeFileSync(notifFile(), JSON.stringify(scheduled)) } catch { /* ничего */ }
+}
+
+// несколько списков подряд (пары, ДЗ, вопросы «что задали?») — один пересчёт таймеров
+let armTimer: NodeJS.Timeout | null = null
+function armSoon() {
+  if (armTimer) clearTimeout(armTimer)
+  armTimer = setTimeout(() => { armTimer = null; armAll() }, 150)
 }
 
 function armAll() {
@@ -539,6 +600,8 @@ const SITES_PARTITION = 'persist:sites'
 
 function setupSiteSession() {
   const ses = session.fromPartition(SITES_PARTITION)
+  // сайты видят обычный Chrome: со словом «Electron» в адресе браузера некоторые страницы входа не пускают
+  ses.setUserAgent(ses.getUserAgent().replace(/\s(Electron|safu-desktop|Arktika|arktika)\/\S+/g, ''))
   ses.setPermissionRequestHandler((_wc, permission, cb) => {
     cb(['notifications', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen', 'media'].includes(permission))
   })
@@ -635,14 +698,16 @@ function registerIPC() {
     fs.mkdirSync(dir, { recursive: true })
     return path.join(dir, name.replace(/[^\w.-]/g, '_') + '.json')
   }
-  ipcMain.handle('cache:get', (_e, name: string) => {
-    try { return JSON.parse(fs.readFileSync(cacheFile(name), 'utf8')) } catch { return null }
+  // в фоне: архив пар и расписание всей школы бывают по несколько мегабайт
+  ipcMain.handle('cache:get', async (_e, name: string) => {
+    try { return JSON.parse(await fs.promises.readFile(cacheFile(name), 'utf8')) } catch { return null }
   })
-  ipcMain.handle('cache:set', (_e, name: string, value: unknown) => {
+  ipcMain.handle('cache:set', async (_e, name: string, value: unknown) => {
     const f = cacheFile(name)
-    if (value == null) { try { fs.unlinkSync(f) } catch { /* нет файла */ } return true }
-    fs.writeFileSync(f + '.tmp', JSON.stringify(value))
-    fs.renameSync(f + '.tmp', f)
+    if (value == null) { try { await fs.promises.unlink(f) } catch { /* нет файла */ } return true }
+    const tmp = f + '.' + Math.random().toString(36).slice(2) + '.tmp'
+    await fs.promises.writeFile(tmp, JSON.stringify(value))
+    await fs.promises.rename(tmp, f)
     return true
   })
 
@@ -650,7 +715,7 @@ function registerIPC() {
   ipcMain.handle('notify:schedule', (_e, prefix: string, list: Note[]) => {
     // заменить все запланированные с таким началом id на новый список
     scheduled = scheduled.filter(n => !(n.id || '').startsWith(prefix)).concat(list.filter(n => (n.at ?? 0) > Date.now()))
-    armAll()
+    armSoon()
     return scheduled.filter(n => (n.id || '').startsWith(prefix)).length
   })
   ipcMain.handle('notify:list', () => scheduled)
@@ -972,7 +1037,7 @@ app.on('before-quit', () => {
   transfer?.stop()
   syncServer?.stop()
   saveKVNow()
-  saveScheduled()
+  saveScheduledNow()
 })
 
 app.on('will-quit', () => globalShortcut.unregisterAll())

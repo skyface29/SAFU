@@ -180,6 +180,9 @@ export function Ring({ value, size = 64, stroke = 7, color, children }: { value:
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   const id = useId()
+  // при появлении дуга вырастает от нуля
+  const [shown, setShown] = useState(false)
+  useEffect(() => { const t = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(t) }, [])
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
@@ -190,9 +193,9 @@ export function Ring({ value, size = 64, stroke = 7, color, children }: { value:
           </linearGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--fill2)" strokeWidth={stroke} />
-        <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`url(#g${id})`} strokeWidth={stroke} strokeLinecap="round"
-          strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - Math.max(0, Math.min(1, value))) }}
-          transition={{ duration: 1.1, ease: [0.2, 0.9, 0.25, 1] }} />
+        {/* дуга дорисовывается переходом CSS: без кадров в JavaScript на каждое обновление */}
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`url(#g${id})`} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={c} style={{ strokeDashoffset: shown ? c * (1 - Math.max(0, Math.min(1, value))) : c, transition: 'stroke-dashoffset 1.1s cubic-bezier(.2,.9,.25,1)' }} />
       </svg>
       <div className="center" style={{ position: 'absolute', inset: 0 }}>{children}</div>
     </div>
@@ -200,7 +203,11 @@ export function Ring({ value, size = 64, stroke = 7, color, children }: { value:
 }
 
 export function Progress({ value }: { value: number }) {
-  return <div className="progress"><motion.i initial={{ width: 0 }} animate={{ width: `${Math.max(0, Math.min(1, value)) * 100}%` }} transition={{ duration: 0.8, ease: [0.2, 0.9, 0.25, 1] }} /></div>
+  // ширину не анимируем (это перекладка страницы на каждом кадре) — сжимаем полоску на видеокарте
+  const [shown, setShown] = useState(false)
+  useEffect(() => { const t = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(t) }, [])
+  const v = shown ? Math.max(0, Math.min(1, value)) : 0
+  return <div className="progress"><i style={{ width: '100%', transform: `scaleX(${v})`, transformOrigin: 'left center', transition: 'transform .8s cubic-bezier(.2,.9,.25,1)' }} /></div>
 }
 
 // ---------- лист (модальное окно) ----------

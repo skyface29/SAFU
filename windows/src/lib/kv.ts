@@ -10,6 +10,13 @@ let data: Record<string, unknown> = safu.kv.all() || {}
 const listeners = new Map<string, Set<() => void>>()
 const anyListeners = new Set<() => void>()
 
+/** Равны ли значения. Один и тот же объект считаем изменённым: его могли поменять на месте */
+function same(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return Object.is(a, b)
+  if (a === b) return false
+  try { return JSON.stringify(a) === JSON.stringify(b) } catch { return false }
+}
+
 function emit(key: string) {
   listeners.get(key)?.forEach(f => f())
   anyListeners.forEach(f => f())
@@ -22,6 +29,9 @@ export const kv = {
   },
   has(key: string) { return data[key] !== undefined },
   set<T>(key: string, value: T) {
+    // то же самое значение — не трогаем ни диск, ни подписчиков (почта, сайты и окно пишут одно и то же часто)
+    const old = data[key]
+    if ((value === undefined || value === null) ? old === undefined : same(old, value)) return
     if (value === undefined || value === null) delete data[key]
     else data[key] = value as unknown
     safu.kv.set(key, value as unknown)

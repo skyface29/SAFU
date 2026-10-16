@@ -60,7 +60,9 @@ export const resources = {
     const s = url.toLowerCase()
     const bad = ['login', 'logout', 'auth', 'adfs', 'saml', 'token', 'ticket', 'sso', 'signin', 'session', 'xlogin', 'relogin', 'error', 'redirect']
     if (bad.some(b => s.includes(b))) return
-    kv.set('memory.lastURLs', { ...kv.get<Record<string, string>>('memory.lastURLs', {}), [r.id]: url })
+    const m = kv.get<Record<string, string>>('memory.lastURLs', {})
+    if (m[r.id] === url) return
+    kv.set('memory.lastURLs', { ...m, [r.id]: url })
   },
   clearLastURL(r: Resource) { const m = { ...kv.get<Record<string, string>>('memory.lastURLs', {}) }; delete m[r.id]; kv.set('memory.lastURLs', m) },
   clearMemory() { recentsStore.set([]); kv.set('memory.lastURLs', {}) },

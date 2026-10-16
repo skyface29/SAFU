@@ -48,7 +48,6 @@ export default function App() {
   const backdrop = useSiteBackdrop()
   const sitesOpen = useSites(s => s.mode !== 'closed')
   useEffect(() => setAmbientPaused(sitesOpen), [sitesOpen])
-  const modals = useModals()
 
   // тема пересчитывается при любом изменении оформления
   useEffect(() => {
@@ -87,16 +86,6 @@ export default function App() {
     const celebTimer = setInterval(() => celebrations.checkOnOpen(scheduleStore.data), 60_000)
     return () => { clearTimeout(t1); clearInterval(syncTimer); clearInterval(mailTimer); clearInterval(celebTimer) }
   }, [])
-
-  // бейдж на значке в панели задач: ДЗ к сдаче + непрочитанные письма
-  const items = homeworkStore.use()
-  const [mailUnseen] = usePref('mail.unseen', 0)
-  const [mailBadge] = usePref('mail.badge', true)
-  const [mailOn] = usePref('mail.notify', false)
-  useEffect(() => {
-    const n = (kv.get('hw.badge', true) ? hw.badgeCount() : 0) + (mailOn && mailBadge ? mailUnseen : 0)
-    safu.app.badge(n)
-  }, [items, mailUnseen, mailBadge, mailOn])
 
   // связанный iPhone заходит сам и сводит ДЗ, задачи и заметки — отвечаем, пока приложение запущено
   useEffect(() => serveSync(), [])
@@ -145,10 +134,8 @@ export default function App() {
       </motion.div>
 
       <SiteLayer />
-      <SubjectSheet name={modals.subject} onClose={() => modals.set({ subject: null })} />
-      <HomeworkEditor req={modals.hwEdit} onClose={() => modals.set({ hwEdit: null })} />
-      <HomeworkView id={modals.hwView} onClose={() => modals.set({ hwView: null })} />
-      <LessonSheet slot={modals.lesson} onClose={() => modals.set({ lesson: null })} />
+      <ModalHost />
+      <TaskbarBadge />
       <CommandPalette />
       <CelebrationOverlay />
       <Tour />
@@ -161,6 +148,37 @@ export default function App() {
       <MenuHost />
     </DialogHost>
   )
+}
+
+// Окна поверх: подписаны только они — открытие листа не перерисовывает всё приложение
+const closeModal = (p: Parameters<ReturnType<typeof useModals.getState>['set']>[0]) => useModals.getState().set(p)
+function ModalHost() {
+  const subject = useModals(s => s.subject)
+  const hwEdit = useModals(s => s.hwEdit)
+  const hwView = useModals(s => s.hwView)
+  const lesson = useModals(s => s.lesson)
+  return (
+    <>
+      <SubjectSheet name={subject} onClose={() => closeModal({ subject: null })} />
+      <HomeworkEditor req={hwEdit} onClose={() => closeModal({ hwEdit: null })} />
+      <HomeworkView id={hwView} onClose={() => closeModal({ hwView: null })} />
+      <LessonSheet slot={lesson} onClose={() => closeModal({ lesson: null })} />
+    </>
+  )
+}
+
+/** Число на значке в панели задач: ДЗ к сдаче + непрочитанные письма. Отдельно, чтобы правка ДЗ не перерисовывала всё */
+function TaskbarBadge() {
+  const items = homeworkStore.use()
+  const [mailUnseen] = usePref('mail.unseen', 0)
+  const [mailBadge] = usePref('mail.badge', true)
+  const [mailOn] = usePref('mail.notify', false)
+  const [hwBadge] = usePref('hw.badge', true)
+  useEffect(() => {
+    const n = (hwBadge ? hw.badgeCount() : 0) + (mailOn && mailBadge ? mailUnseen : 0)
+    safu.app.badge(n)
+  }, [items, mailUnseen, mailBadge, mailOn, hwBadge])
+  return null
 }
 
 export function handleRoute(route: string) {

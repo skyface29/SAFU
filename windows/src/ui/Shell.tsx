@@ -27,9 +27,10 @@ export function Titlebar() {
   return (
     <div className="titlebar">
       <div className="app-name">
-        <motion.span animate={{ rotate: 360 }} transition={{ duration: 24, repeat: Infinity, ease: 'linear' }} style={{ display: 'grid', color: 'var(--brand)' }}>
+        {/* вращение на видеокарте (CSS), а не кадрами в JavaScript: снежинка крутится всегда, даже когда открыт сайт */}
+        <span style={{ display: 'grid', color: 'var(--brand)', animation: 'spin 24s linear infinite' }}>
           <Snowflake size={16} strokeWidth={2.6} />
-        </motion.span>
+        </span>
         Арктика
       </div>
       <div className="search" onClick={() => setModals({ palette: true })}>
@@ -52,32 +53,14 @@ export function Sidebar() {
   const tabs = parseTabs(tabsRaw).filter(t => t !== 'profile')
   const hwBadge = badgeOn ? hw.badgeCount() : 0
 
-  const Item = ({ id, title, Icon, badge }: { id: PageId; title: string; Icon: React.ComponentType<any>; badge?: number }) => {
-    const active = page === id
-    return (
-      <motion.div className={`side-item ${active ? 'active' : ''}`} onClick={() => go(id)} whileTap={{ scale: 0.96 }} title={collapsed ? title : undefined}>
-        {active && <motion.div layoutId="side-pill" className="side-pill" transition={spring} />}
-        <span className="ico">
-          <motion.span key={active ? 'a' : 'b'} initial={active ? { scale: 0.6, rotate: -15 } : false} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 15 }} style={{ display: 'grid' }}>
-            <Icon size={19} strokeWidth={active ? 2.5 : 2} color={active ? 'var(--brand)' : undefined} />
-          </motion.span>
-        </span>
-        <span className="lbl">{title}</span>
-        <AnimatePresence>
-          {!!badge && <motion.span className="side-badge" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 18 }}>{badge}</motion.span>}
-        </AnimatePresence>
-      </motion.div>
-    )
-  }
-
   return (
     <nav className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       {tabs.map(t => (
-        <Item key={t} id={t as PageId} title={TAB_META[t].title} Icon={TAB_ICONS[t]}
+        <SideItem key={t} id={t as PageId} title={TAB_META[t].title} Icon={TAB_ICONS[t]} active={page === t} collapsed={collapsed}
           badge={t === 'homework' ? hwBadge : t === 'schedule' ? unseen : 0} />
       ))}
       <div className="side-sep" />
-      <Item id="tools" title="Инструменты" Icon={Wrench} />
+      <SideItem id="tools" title="Инструменты" Icon={Wrench} active={page === 'tools'} collapsed={collapsed} />
       <div className="side-sep" />
       <div className={`side-profile ${page === 'profile' ? 'active' : ''}`} onClick={() => go('profile')}>
         <Avatar size={34} />
@@ -95,11 +78,32 @@ export function Sidebar() {
   )
 }
 
+/** Пункт боковой панели. Отдельным компонентом: раньше он объявлялся внутри панели и пересоздавался
+ *  на каждой перерисовке — все пункты и их анимации собирались заново */
+const SideItem = React.memo(function SideItem({ id, title, Icon, badge, active, collapsed }: {
+  id: PageId; title: string; Icon: React.ComponentType<any>; badge?: number; active: boolean; collapsed: boolean
+}) {
+  return (
+    <motion.div className={`side-item ${active ? 'active' : ''}`} onClick={() => go(id)} whileTap={{ scale: 0.96 }} title={collapsed ? title : undefined}>
+      {active && <motion.div layoutId="side-pill" className="side-pill" transition={spring} />}
+      <span className="ico">
+        <motion.span key={active ? 'a' : 'b'} initial={active ? { scale: 0.6, rotate: -15 } : false} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 15 }} style={{ display: 'grid' }}>
+          <Icon size={19} strokeWidth={active ? 2.5 : 2} color={active ? 'var(--brand)' : undefined} />
+        </motion.span>
+      </span>
+      <span className="lbl">{title}</span>
+      <AnimatePresence>
+        {!!badge && <motion.span className="side-badge" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 18 }}>{badge}</motion.span>}
+      </AnimatePresence>
+    </motion.div>
+  )
+})
+
 export function Splash({ onDone }: { onDone: () => void }) {
   const [version, setVersion] = useState('')
   useEffect(() => {
     import('../lib/bridge').then(({ safu }) => safu.app.info().then((i: any) => setVersion(i.version)))
-    const t = setTimeout(onDone, 1250)
+    const t = setTimeout(onDone, 850)
     return () => clearTimeout(t)
   }, [])
   return (
@@ -109,9 +113,9 @@ export function Splash({ onDone }: { onDone: () => void }) {
       <div className="col" style={{ alignItems: 'center', gap: 14, position: 'relative' }}>
         <motion.div initial={{ scale: 0.3, rotate: -140, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 220, damping: 13 }}
           style={{ width: 120, height: 120, borderRadius: 34, background: 'var(--grad)', display: 'grid', placeItems: 'center', boxShadow: '0 20px 60px rgba(var(--brand-rgb), .55)' }}>
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }} style={{ display: 'grid' }}>
+          <div style={{ display: 'grid', animation: 'spin 8s linear infinite' }}>
             <Snowflake size={64} color="#fff" strokeWidth={2.2} />
-          </motion.div>
+          </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, type: 'spring', stiffness: 300, damping: 24 }}
           style={{ fontSize: '2.6rem', fontWeight: 900, letterSpacing: '-.03em' }}>Арктика</motion.div>

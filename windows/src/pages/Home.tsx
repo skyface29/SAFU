@@ -193,7 +193,8 @@ function QuickSites() {
 }
 
 function NowCard() {
-  const now = useNow(1000)
+  // карточка целиком — раз в 15 с; секунды тикают только в таймере внутри кольца
+  const now = useNow(15_000)
   const data = useSchedule(s => s.data)
   const { current, next } = nowAndNext(now, data)
   const s = current || next
@@ -247,7 +248,7 @@ function NowCard() {
           <div className="col" style={{ alignItems: 'center', gap: 8 }}>
             <Ring value={live ? progress : Math.max(0.02, 1 - Math.min(1, left / (3 * 3600_000)))} size={128} stroke={10} color={live ? st.color : undefined}>
               <div className="tc">
-                <div className="heavy mono" style={{ fontSize: left < 3600_000 ? '1.6rem' : '1.25rem' }}>{left < 24 * 3600_000 ? timer(left) : untilText(left)}</div>
+                <LiveLeft target={live ? s.end : s.start} />
                 <div className="tiny muted">{live ? 'до конца' : 'до начала'}</div>
               </div>
             </Ring>
@@ -264,6 +265,13 @@ function NowCard() {
       )}
     </Card>
   )
+}
+
+/** Сколько осталось — тикает каждую секунду, не трогая остальную карточку */
+function LiveLeft({ target }: { target: number }) {
+  const now = useNow(1000)
+  const left = Math.max(0, target - now)
+  return <div className="heavy mono" style={{ fontSize: left < 3600_000 ? '1.6rem' : '1.25rem' }}>{left < 24 * 3600_000 ? timer(left) : untilText(left)}</div>
 }
 
 function DayTimeline({ now }: { now: number }) {
@@ -434,7 +442,7 @@ function WeatherCard({ delay }: { delay: number }) {
     <Card delay={delay} style={{ overflow: 'hidden' }}>
       <div style={{ position: 'absolute', right: -30, top: -30, fontSize: '9rem', opacity: 0.12, pointerEvents: 'none' }}>{weatherEmoji(now.code)}</div>
       <div className="row">
-        <motion.div style={{ fontSize: '3rem' }} animate={{ y: [0, -5, 0], rotate: [0, 4, 0] }} transition={{ duration: 4, repeat: Infinity }}>{weatherEmoji(now.code)}</motion.div>
+        <div className="bob" style={{ fontSize: '3rem' }}>{weatherEmoji(now.code)}</div>
         <div className="grow">
           <div style={{ fontSize: '2.3rem', fontWeight: 850, lineHeight: 1 }}>{deg(now.temp)}</div>
           <div className="sub">{sky(now.code)} · ощущается {deg(now.feels)}</div>

@@ -147,7 +147,7 @@ function WeekCell({ s, now, alts = [] }: { s: Slot; now: number; alts?: Slot[] }
   const live = s.start <= now && now < s.end
   const due = hw.dueAt(s).filter(h => !h.done).length
   return (
-    <motion.div whileHover={{ y: -3, scale: 1.02 }} whileTap={{ scale: 0.97 }} layout
+    <motion.div whileHover={{ y: -3, scale: 1.02 }} whileTap={{ scale: 0.97 }}
       onClick={() => useModals.getState().set({ lesson: alts.length ? { ...s, alts } : s })}
       onContextMenu={e => openMenu(e, [
         { label: 'Предмет: файлы и заметки', run: () => openSubject(s.subject) },
@@ -198,7 +198,7 @@ function copyDay(day: number, data: any) {
 function SetupCard({ onManual }: { onManual: () => void }) {
   return (
     <div className="col" style={{ alignItems: 'center', textAlign: 'center', padding: 30, gap: 12 }}>
-      <motion.div style={{ fontSize: '3.5rem' }} animate={{ rotate: [0, -6, 6, 0] }} transition={{ duration: 2, repeat: Infinity }}>📅</motion.div>
+      <div className="wobble" style={{ fontSize: '3.5rem' }}>📅</div>
       <div className="h-card" style={{ fontSize: '1.4rem' }}>Расписание из РУЗ</div>
       <div className="sub" style={{ maxWidth: 440 }}>Подтягивается с ruz.narfu.ru, обновляется само и хранится офлайн. Пройди короткую регистрацию: школа → группа → готово.</div>
       <div className="row mt8">

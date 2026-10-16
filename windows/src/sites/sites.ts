@@ -64,7 +64,7 @@ export function openSite(r: Resource | { title: string; url: string; icon?: stri
   if (existing) { useSites.setState({ active: existing.id, mode: 'open' }); return existing.id }
   const url = res && !opts.fresh ? resources.lastURL(res) || res.url : r.url
   const tab: SiteTab = { id: uid(), kind: 'site', title: r.title, url, icon: (r as any).icon || 'globe', resourceId: res?.id, loading: true }
-  useSites.setState({ tabs: [...s.tabs, tab].slice(-8), active: tab.id, mode: 'open' })
+  useSites.setState({ tabs: trimmed([...s.tabs, tab], tab.id), active: tab.id, mode: 'open' })
   return tab.id
 }
 
@@ -87,7 +87,25 @@ export function openFileCard(rel: string, name: string, ext: string) {
   const existing = s.tabs.find(t => t.fileRel === rel)
   if (existing) { useSites.setState({ active: existing.id, mode: 'open' }); return }
   const tab: SiteTab = { id: uid(), kind: 'file', title: name, url: '', icon: 'file', fileRel: rel, ext }
-  useSites.setState({ tabs: [...s.tabs, tab].slice(-8), active: tab.id, mode: 'open' })
+  useSites.setState({ tabs: trimmed([...s.tabs, tab], tab.id), active: tab.id, mode: 'open' })
+}
+
+/** Сайтов держим не больше 4 (каждый — отдельный процесс на 150–400 МБ), всего вкладок — 8: самые давние закрываются */
+const SITE_LIMIT = 4
+const TOTAL_LIMIT = 8
+function trimmed(list: SiteTab[], keep: string): SiteTab[] {
+  let out = list
+  while (out.filter(t => t.kind === 'site').length > SITE_LIMIT) {
+    const old = out.find(t => t.kind === 'site' && t.id !== keep)
+    if (!old) break
+    out = out.filter(t => t.id !== old.id)
+  }
+  while (out.length > TOTAL_LIMIT) {
+    const old = out.find(t => t.id !== keep)
+    if (!old) break
+    out = out.filter(t => t.id !== old.id)
+  }
+  return out
 }
 
 export const sites = {

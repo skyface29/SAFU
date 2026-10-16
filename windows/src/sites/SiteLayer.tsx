@@ -67,16 +67,23 @@ export async function minimizeWithSnapshot() {
   const s = useSites.getState()
   const id = s.active
   const wv = id ? webviews.get(id) : null
+  // снимок страницы для стопки — сразу (пока карточка ещё видна), а сжатие картинки — после того,
+  // как карточка доехала: раньше оно попадало прямо на анимацию сворачивания и давало рывок
+  const shot = wv && id ? wv.capturePage().catch(() => null) : null
   sites.minimize()
-  if (wv && id) {
-    try {
-      const img = await wv.capturePage()
-      sites.update(id, { snapshot: img.resize({ width: 520 }).toDataURL() })
-    } catch { /* страница ещё не загрузилась */ }
-  }
+  if (!shot || !id) return
+  const img = await shot
+  if (!img) return
+  setTimeout(() => {
+    try { sites.update(id, { snapshot: img.resize({ width: 420 }).toDataURL() }) } catch { /* страница ещё не загрузилась */ }
+  }, 500)
 }
 
-function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; preload: string }) {
+/** Свёрнутый сайт, который не открывали 10 минут, выгружается из памяти (снимок и адрес остаются) */
+const UNLOAD_AFTER = 10 * 60_000
+
+// одна вкладка обновилась (загрузка, заголовок) — перерисовывается только её карточка
+const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; preload: string }) {
   const y = useMotionValue(0)
   const scale = useTransform(y, [0, 400], [1, 0.86])
   const radius = useTransform(y, [0, 200], [18, 30])
@@ -90,11 +97,27 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
   const res = tab.resourceId ? resourcesStore.get().find(r => r.id === tab.resourceId) : undefined
   // вкладка после перезапуска: страница грузится, только когда её впервые развернули
   const [live, setLive] = useState(!tab.dormant)
+  // адрес, с которого страница стартует (при повторной загрузке — тот, где остановились)
+  const [src, setSrc] = useState(tab.currentURL || tab.url)
 
   useEffect(() => {
-    if (!visible) return
+    if (!visible) {
+      // долго свёрнута — отпускаем память; развернёшь — загрузится там же
+      if (!live || tab.kind !== 'site') return
+      const t = setTimeout(() => {
+        const cur = useSites.getState().tabs.find(x => x.id === tab.id)
+        setLive(false)
+        sites.update(tab.id, { dormant: true, loading: false, url: cur?.currentURL || cur?.url || tab.url })
+      }, UNLOAD_AFTER)
+      return () => clearTimeout(t)
+    }
     animate(y, 0, spring)
-    if (!live) { setLive(true); sites.update(tab.id, { dormant: false }) }
+    if (!live) {
+      const cur = useSites.getState().tabs.find(x => x.id === tab.id)
+      setSrc(cur?.currentURL || cur?.url || tab.url)
+      setLive(true)
+      sites.update(tab.id, { dormant: false })
+    }
   }, [visible])
 
   useEffect(() => {
@@ -107,8 +130,20 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
       if (res) resources.saveLastURL(url, res)
     }
     const onTitle = (e: any) => sites.update(tab.id, { pageTitle: e.title })
-    const onStart = () => { sites.update(tab.id, { loading: true }); setFailed(null) }
-    const onStop = () => { sites.update(tab.id, { loading: false }); nav() }
+    // сайт молчит 45 секунд — честно говорим, а не держим полоску загрузки вечно
+    let slow: ReturnType<typeof setTimeout> | null = null
+    let timedOut = false
+    const onStart = () => {
+      sites.update(tab.id, { loading: true }); setFailed(null)
+      if (slow) clearTimeout(slow)
+      timedOut = false
+      slow = setTimeout(() => { timedOut = true; setFailed('Сайт долго не отвечает — возможно, он на обслуживании или нет интернета') }, 45_000)
+    }
+    const onStop = () => {
+      if (slow) { clearTimeout(slow); slow = null }
+      if (timedOut) { timedOut = false; setFailed(null) }
+      sites.update(tab.id, { loading: false }); nav()
+    }
     const onMsg = (e: any) => {
       const [p] = e.args || []
       if (e.channel === 'safu:form') {
@@ -127,7 +162,8 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
     const onFail = (e: any) => {
       if (e.errorCode === -3 || !e.isMainFrame) return
       sites.update(tab.id, { loading: false })
-      setFailed(e.errorCode === -106 ? 'Нет интернета' : e.errorCode === -105 || e.errorCode === -102 || e.errorCode === -118 ? 'Сайт не отвечает — возможно, он на обслуживании' : `Не удалось открыть страницу (${e.errorDescription || e.errorCode})`)
+      if (slow) { clearTimeout(slow); slow = null }
+      setFailed(e.errorCode <= -200 && e.errorCode >= -220 ? 'Не удалось проверить сертификат сайта — проверь дату и время на компьютере' : e.errorCode === -106 ? 'Нет интернета' : e.errorCode === -105 || e.errorCode === -102 || e.errorCode === -118 ? 'Сайт не отвечает — возможно, он на обслуживании' : `Не удалось открыть страницу (${e.errorDescription || e.errorCode})`)
     }
     wv.addEventListener('page-title-updated', onTitle)
     wv.addEventListener('did-start-loading', onStart)
@@ -147,6 +183,7 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
       wv.removeEventListener('ipc-message', onMsg)
       wv.removeEventListener('did-fail-load', onFail)
       wv.removeEventListener('render-process-gone', onGone)
+      if (slow) clearTimeout(slow)
     }
   }, [tab.id, live])
 
@@ -255,14 +292,14 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
 
       <div style={{ flex: 1, position: 'relative', background: '#fff' }}>
         {tab.kind === 'site' ? (live &&
-          <webview ref={ref} src={tab.url} partition="persist:sites" preload={preload || undefined} allowpopups={"true" as any}
+          <webview ref={ref} src={src} partition="persist:sites" preload={preload || undefined} allowpopups={"true" as any}
             webpreferences="contextIsolation=yes, spellcheck=yes" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
         ) : <FileView tab={tab} />}
         <AnimatePresence>
           {failed && tab.kind === 'site' && (
             <motion.div className="center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'var(--bg)' }}>
               <div className="col" style={{ alignItems: 'center', gap: 12, textAlign: 'center' }}>
-                <motion.div style={{ fontSize: '3.5rem' }} animate={{ rotate: [0, -8, 8, 0] }} transition={{ duration: 2, repeat: Infinity }}>🔌</motion.div>
+                <div className="wobble" style={{ fontSize: '3.5rem' }}>🔌</div>
                 <div className="h-card">{failed}</div>
                 <div className="sub">{host}</div>
                 <div className="row"><button className="btn primary" onClick={() => { setFailed(null); ref.current?.reload() }}><RotateCw size={15} /> Ещё раз</button><button className="btn" onClick={() => safu.shell.open(tab.currentURL || tab.url)}><ExternalLink size={15} /> В браузере</button></div>
@@ -273,7 +310,7 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
       </div>
     </motion.div>
   )
-}
+})
 
 function chooseDownloadTarget(e: React.MouseEvent, subj: string[]) {
   if (kv.get('download.target', '')) { kv.set('download.target', ''); toast('Файлы будут скачиваться в «Загрузки\\Арктика»', 'info'); return }

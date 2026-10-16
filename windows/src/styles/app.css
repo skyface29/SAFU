@@ -344,6 +344,12 @@ h1, h2, h3, h4 { margin: 0; letter-spacing: -.02em; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes shine { 0%, 60% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* бесконечные покачивания — на видеокарте, а не кадрами в JavaScript */
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-5px) rotate(4deg); } }
+@keyframes wobble { 0%, 100% { transform: rotate(0); } 33% { transform: rotate(-8deg); } 66% { transform: rotate(8deg); } }
+.bob { animation: bob 4s ease-in-out infinite; }
+.wobble { animation: wobble 2s ease-in-out infinite; }
+.wobble.slow { animation-duration: 4s; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @keyframes gradient-move { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
