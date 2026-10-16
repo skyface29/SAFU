@@ -167,6 +167,47 @@ const pairBroker = new PairBroker({
   }
 })
 
+/** Файлы связанного телефона (файлы предметов, фото доски, записи лекций, фото к ДЗ): приходят сами после
+ *  синхронизации, по ключу связки. Приёмник тот же, что у переноса по QR, только постоянный */
+let pairedFiles: { id: string; t: TransferServer } | null = null
+const fileBatch: { n: number; names: string[]; timer: ReturnType<typeof setTimeout> | null } = { n: 0, names: [], timer: null }
+function pairedFilesHandler(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse): Promise<void> {
+  const p = syncPairing()!
+  if (!pairedFiles || pairedFiles.id !== p.id) {
+    pairedFiles = {
+      id: p.id,
+      t: new TransferServer({
+        name: os.hostname(),
+        version: app.getVersion(),
+        root: filesRoot,
+        key: Buffer.from(p.key, 'base64url'),
+        session: p.id,
+        persistent: true,
+        emit: ev => {
+          if (ev.type !== 'file') return
+          win?.webContents.send('sync:file', { rel: ev.rel, name: ev.name, size: ev.size })
+          // одно уведомление на пачку: «С iPhone пришло 5 файлов»
+          fileBatch.n++
+          if (fileBatch.names.length < 3) fileBatch.names.push(ev.name)
+          if (fileBatch.timer) clearTimeout(fileBatch.timer)
+          fileBatch.timer = setTimeout(() => {
+            const n = fileBatch.n
+            if (n && (!win || !win.isFocused())) {
+              const word = n % 10 === 1 && n % 100 !== 11 ? 'файл' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'файла' : 'файлов'
+              showNotification({ title: `С iPhone: ${n} ${word}`, body: fileBatch.names.join(', ') + (n > fileBatch.names.length ? '…' : ''), route: 'files' })
+            }
+            fileBatch.n = 0; fileBatch.names = []; fileBatch.timer = null
+          }, 4000)
+        }
+      })
+    }
+  }
+  return pairedFiles.t.serve(req, res)
+}
+
+/** Кто и когда искал компьютер в сети — подсказка на экране синхронизации («телефон видит компьютер») */
+const syncSeen: { at: number; from: string } = { at: 0, from: '' }
+
 /** Сервер работает всё время, пока запущено приложение: телефон найдёт компьютер и без QR-кода */
 let syncStarting: Promise<SyncServer | null> | null = null
 async function ensureSync(): Promise<SyncServer | null> {
@@ -179,7 +220,9 @@ async function ensureSync(): Promise<SyncServer | null> {
       port: Number(kv['sync.port']) || SYNC_PORT,
       pairing: syncPairing,
       handle: syncInRenderer,
-      pair: pairBroker
+      pair: pairBroker,
+      files: pairedFilesHandler,
+      onHello: from => { syncSeen.at = Date.now(); syncSeen.from = from }
     })
     const port = await s.start()
     syncServer = s
@@ -1116,6 +1159,11 @@ function registerIPC() {
   // брандмауэр: проверить (без прав администратора) и разрешить (одно окно UAC)
   ipcMain.handle('sync:firewall', () => firewallStatus(process.execPath))
   ipcMain.handle('sync:firewallFix', () => firewallFix(process.execPath))
+  // для экрана синхронизации: адреса компьютера, порт и когда телефон последний раз его искал
+  ipcMain.handle('sync:stats', async () => {
+    const s = await ensureSync().catch(() => null)
+    return { hosts: s?.hosts ?? [], port: s?.port ?? 0, seenAt: syncSeen.at, seenFrom: syncSeen.from, name: os.hostname() }
+  })
   ipcMain.on('sync:reply', (_e, rid: string, r: { ok: boolean; result?: unknown; error?: string }) => {
     syncWaiters.get(rid)?.(r)
     syncWaiters.delete(rid)

@@ -62,6 +62,7 @@ export default function SyncPage() {
 
         <div className="col" style={{ gap: 16 }}>
         <FirewallCard />
+        <NetCard />
         <Card style={{ padding: 26 }}>
           <div className="h-card mb12">Как это работает</div>
           <div className="col" style={{ gap: 16 }}>
@@ -72,7 +73,7 @@ export default function SyncPage() {
             <Point icon={<Wifi size={18} />} title="Нужна одна сеть Wi‑Fi"
               sub="Телефон и компьютер — дома в одном Wi‑Fi, Арктика на компьютере запущена (можно свёрнутой в трей). Разошлись по разным местам — догонит, как только окажетесь в одной сети" />
             <Point icon={<Check size={18} />} title="Ничего не теряется"
-              sub="Если одно и то же поменяли и тут, и там — побеждает то, что сделали позже, по каждому полю отдельно: отметка «сделано» не сотрёт новый срок, и наоборот. Фото ДЗ остаются на своём устройстве" />
+              sub="Если одно и то же поменяли и тут, и там — побеждает то, что сделали позже, по каждому полю отдельно: отметка «сделано» не сотрёт новый срок, и наоборот. Файлы и фото к ДЗ с iPhone приходят сюда сами, фото — сразу к своему заданию" />
             <Point icon={<ShieldCheck size={18} />} title="Без облаков и чужих серверов"
               sub="Напрямую по домашней сети, с шифрованием AES‑256. Ключ передаётся зашифрованным только после твоего «Разрешить». «Новый код» или «Отключить» — и старый телефон больше не подключится" />
           </div>
@@ -169,6 +170,80 @@ function FirewallCard() {
         </div>
       </div>
     </Card>
+  )
+}
+
+/** Адрес компьютера и видел ли его телефон: если телефон не находит компьютер — видно, в чём дело */
+function NetCard() {
+  const [st, setSt] = useState<Awaited<ReturnType<typeof safu.sync.stats>> | null>(null)
+  useEffect(() => {
+    const load = () => safu.sync.stats().then(setSt).catch(() => null)
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [])
+  if (!st) return null
+  const seen = st.seenAt > 0
+  return (
+    <Card style={{ padding: 20 }}>
+      <div className="row top" style={{ gap: 12 }}>
+        <div className="icon-tile" style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, background: seen ? 'linear-gradient(135deg,#22c55e,#0ea5e9)' : 'var(--grad)' }}><Wifi size={18} /></div>
+        <div className="grow">
+          <div className="bold">Этот компьютер в сети</div>
+          <div className="sub mt4">
+            {st.hosts.length
+              ? <>Адрес: <b className="selectable">{st.hosts[0]}</b>{st.hosts.length > 1 && <span className="faint"> (ещё {st.hosts.slice(1).join(', ')})</span>} · порт {st.port}. Если iPhone не находит компьютер сам — введи этот адрес на телефоне: «Синхронизация с компьютером» → «Ввести адрес»</>
+              : 'Компьютер не подключён к сети — подключись к тому же Wi‑Fi, что и телефон'}
+          </div>
+          <div className="small mt8" style={{ color: seen ? 'var(--ok, #22c55e)' : 'var(--text3)' }}>
+            {seen ? `Телефон видел этот компьютер ${relativeAgo(st.seenAt)}${st.seenFrom ? ` (${st.seenFrom})` : ''}` : 'Телефон ещё не находил этот компьютер с момента запуска. Если на iPhone поиск ничего не находит — сеть не пропускает телефон к компьютеру: проверь брандмауэр выше или подключи компьютер к «Режиму модема» iPhone'}
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+/** При запуске: брандмауэр не пропустит телефон — предлагаем разрешить (раз на версию; Windows спросит подтверждение) */
+export function SyncFirewallAsk() {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [asked, setAsked] = usePref<string>('sync.fwAsked', '')
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      const info = await safu.app.info().catch(() => null) as { version?: string; platform?: string } | null
+      if (!info || info.platform === 'browser' || asked === info.version) return
+      const st = await safu.sync.firewall().catch(() => null)
+      if (st && (st.state === 'blocked' || st.state === 'missing')) setOpen(true)
+      setAsked(info.version || '')
+    }, 9000)
+    return () => clearTimeout(t)
+  }, [])
+  const fix = async () => {
+    setBusy(true)
+    const r = await safu.sync.firewallFix().catch(() => 'failed' as const)
+    setBusy(false)
+    setOpen(false)
+    if (r === 'ok') toast('Готово: iPhone сможет находить компьютер сам')
+    else if (r === 'cancelled') toast('Можно разрешить позже: Профиль → «Синхронизация с iPhone»', 'warn')
+    else toast('Не вышло поменять брандмауэр — попробуй из «Синхронизации с iPhone»', 'warn')
+  }
+  return (
+    <Sheet open={open} onClose={() => setOpen(false)} title="Пусть iPhone находит компьютер сам"
+      footer={<>
+        <button className="btn" onClick={() => setOpen(false)}>Не сейчас</button>
+        <button className="btn primary" autoFocus disabled={busy} onClick={fix}>
+          {busy ? <Loader2 size={15} className="spin" /> : <ShieldCheck size={15} />} Разрешить
+        </button>
+      </>}>
+      <div className="col" style={{ gap: 12, alignItems: 'center', padding: '4px 0' }}>
+        <div className="icon-tile" style={{ width: 58, height: 58, borderRadius: 18, background: 'var(--grad)' }}><ArrowLeftRight size={26} /></div>
+        <div className="muted tc" style={{ lineHeight: 1.55, maxWidth: 420 }}>
+          ДЗ, задачи, заметки и файлы с телефона приходят сюда сами по Wi‑Fi. Сейчас брандмауэр Windows не пускает iPhone к Арктике — поэтому телефон «не видит» компьютер. Нажми «Разрешить», и в окне Windows — «Да». Это один раз.
+        </div>
+        <div className="tiny faint tc">Разрешаются только порты Арктики для синхронизации. Всё, что идёт по сети, зашифровано</div>
+      </div>
+    </Sheet>
   )
 }
 

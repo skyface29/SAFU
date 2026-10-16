@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useSpring, useMotionValue, useTransform, anima
 import { X, Check, Info, AlertTriangle } from 'lucide-react'
 import { kindStyle } from '../lib/schedule'
 import { KindIcon } from './icons'
+import { fxNow } from '../fx/perf'
 
 export const spring = { type: 'spring' as const, stiffness: 420, damping: 34 }
 export const softSpring = { type: 'spring' as const, stiffness: 260, damping: 28 }
@@ -39,7 +40,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card(
       initial={{ opacity: 0, y: 18, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ ...softSpring, delay }}
-      style={{ ...style, rotateX: tilt ? rx : undefined, rotateY: tilt ? ry : undefined, transformPerspective: 900 }}
+      style={{ ...style, rotateX: tilt || hover || press ? rx : undefined, rotateY: tilt || hover || press ? ry : undefined, transformPerspective: 900 }}
       onMouseMove={e => {
         const el = local.current
         if (el && !(el as any).__raf) {
@@ -47,9 +48,11 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card(
           const r = el.getBoundingClientRect()
           el.style.setProperty('--mx', `${e.clientX - r.left}px`)
           el.style.setProperty('--my', `${e.clientY - r.top}px`)
-          if (tilt) {
-            rx.set(((e.clientY - r.top) / r.height - 0.5) * -6)
-            ry.set(((e.clientX - r.left) / r.width - 0.5) * 6)
+          // наклон за курсором: у карточек с наклоном — всегда, у нажимаемых — на мощном железе и чуть-чуть
+          const amp = tilt ? 6 : (hover || press) && fxNow() === 'high' && r.width < 900 ? 2.5 : 0
+          if (amp) {
+            rx.set(((e.clientY - r.top) / r.height - 0.5) * -amp)
+            ry.set(((e.clientX - r.left) / r.width - 0.5) * amp)
           }
         }
         onMouseMove?.(e)

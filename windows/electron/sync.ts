@@ -28,6 +28,10 @@ export type SyncOptions = {
   handle: (body: any) => Promise<any>
   /** Связка без QR-кода */
   pair?: PairBroker
+  /** Файлы с телефона по ключу связки (протокол переноса /v1/*) */
+  files?: (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void>
+  /** Кто-то спросил «кто тут?» — для подсказки на экране синхронизации */
+  onHello?: (from: string) => void
   bind?: string
 }
 
@@ -68,7 +72,7 @@ export class SyncServer {
         this.handle(req, res).catch(err => this.fail(res, 500, String((err as Error)?.message || err)))
       })
       srv.keepAliveTimeout = 10_000
-      srv.requestTimeout = 30_000
+      srv.requestTimeout = 120_000 // куски файлов по 4 МБ
       srv.once('error', reject)
       srv.listen(port, this.opts.bind ?? '0.0.0.0', () => resolve(srv))
     })
@@ -142,11 +146,19 @@ export class SyncServer {
     const route = (req.url || '/').split('?')[0]
     // «Кто тут?» — телефон ищет компьютер в сети. Имя и отпечаток связки, без данных и ключей
     if (method === 'GET' && route === '/v2/hello') {
+      this.opts.onHello?.(String(req.socket.remoteAddress || '').replace(/^::ffff:/, ''))
       const p = this.opts.pairing()
       this.json(res, 200, { app: 'arktika', v: 2, pc: this.opts.name, pair: p ? pairTag(p.id) : null, port: this.port })
       return
     }
     if (method === 'POST' && route.startsWith('/v2/pair/')) { await this.handlePair(route.slice(9), req, res); return }
+    // файлы связанного телефона: тот же протокол, что у переноса по QR, ключ — ключ связки
+    if (route.startsWith('/v1/')) {
+      const p = this.opts.pairing()
+      if (!this.opts.files || !p || req.headers['x-arktika-session'] !== p.id) { this.fail(res, 403, 'pair'); return }
+      await this.opts.files(req, res)
+      return
+    }
     if (method !== 'POST' || route !== ROUTE) { this.fail(res, 404, 'unknown'); return }
     const p = this.opts.pairing()
     // телефон связан с другим кодом (связку обновили или отключили)

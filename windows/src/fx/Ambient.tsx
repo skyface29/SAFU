@@ -1,13 +1,19 @@
-// Живой фон под всем приложением. Один canvas, рисуется только пока окно на экране.
-import { useEffect, useRef } from 'react'
+// Живой фон под всем приложением. «Свет» и «Сияние» — шейдер на видеокарте (ShaderBackdrop), снег,
+// листья и лепестки летят поверх переливов отдельным слоем; сетка, матрица и мастерская — рисунком на canvas.
+// Рисуется только пока окно на экране; качество — под железо (perf.ts).
+import { useEffect, useRef, useState } from 'react'
 import { usePref } from '../lib/kv'
 import { type Backdrop, currentBackdrop, rgba } from '../lib/theme'
+import { ShaderBackdrop, type ShaderMode } from './ShaderBackdrop'
+import { useFx, backdropBudget } from './perf'
 
 type P = { x: number; y: number; z: number; vx: number; vy: number; r: number; a: number; va: number; hue: number; life: number; ch?: string }
 
 // Частицам нужна чёткость, мягким пятнам — нет: их рисуем в половинном разрешении и реже
 const PARTICLES = new Set(['snow', 'leaves', 'petals', 'matrix', 'summer', 'workshop'])
 const STATIC = new Set(['plain', 'linen', 'soft', 'wash'])
+/** Частицы, которые летят поверх переливов шейдера */
+const ON_LIQUID = new Set(['snow', 'leaves', 'petals', 'summer'])
 
 /** Фон замирает, пока открыт сайт или окно не в фокусе (меньше кадров) — вся мощность интерфейсу */
 const pauseState = { paused: false, unfocused: false, scrollUntil: 0 }
@@ -15,7 +21,7 @@ export function setAmbientPaused(p: boolean) { pauseState.paused = p }
 if (typeof window !== 'undefined') {
   window.addEventListener('blur', () => { pauseState.unfocused = true })
   window.addEventListener('focus', () => { pauseState.unfocused = false })
-  // пока листают — фон замирает: видеокарта целиком на прокрутку, а фон и так почти не движется
+  // на слабом железе фон замирает, пока листают: видеокарта целиком на прокрутку
   const scrolling = () => { pauseState.scrollUntil = performance.now() + 350 }
   window.addEventListener('wheel', scrolling, { passive: true, capture: true })
   window.addEventListener('scroll', scrolling, { passive: true, capture: true })
@@ -29,10 +35,40 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
   const [reduce] = usePref('ui.reduceMotion', false)
   const mode: Backdrop = currentBackdrop()
   void style; void seasonal
+  const tier = useFx(s => s.tier)
+  const shaderRef = useRef<HTMLCanvasElement>(null)
+  const [glFailed, setGlFailed] = useState(false)
+  const shaderMode: ShaderMode | null = glFailed ? null
+    : mode === 'aurora' ? 'aurora' : mode === 'glow' || ON_LIQUID.has(mode) ? 'liquid' : null
+  /** 2D-слой: весь фон (сетка, матрица…) или только частицы поверх шейдера */
+  const overlay = !!shaderMode && ON_LIQUID.has(mode)
+  const need2d = !shaderMode || overlay
+
+  // шейдер на видеокарте
+  useEffect(() => {
+    if (!shaderMode) return
+    const cv = shaderRef.current
+    if (!cv) return
+    const b = backdropBudget(tier)
+    const k = Math.max(0.2, Math.min(2, intensity)) * (ON_LIQUID.has(mode) ? 0.75 : 1)
+    let sb: ShaderBackdrop
+    try {
+      sb = new ShaderBackdrop(cv, {
+        mode: shaderMode, scale: b.scale, minScale: b.minScale, fps: b.fps,
+        colors: { base: dark ? '#0a0d14' : '#eef2f8', c1, c2, c3: dark ? '#7c3aed' : '#a78bfa', dark, k },
+        state: () => ({ paused: pauseState.paused, unfocused: pauseState.unfocused, frozen: b.pauseOnScroll && performance.now() < pauseState.scrollUntil })
+      }, () => setGlFailed(true))
+    } catch {
+      setGlFailed(true)
+      return
+    }
+    if (reduce) sb.still(); else sb.start()
+    return () => sb.stop()
+  }, [shaderMode, mode, tier, dark, c1, c2, intensity, reduce])
 
   useEffect(() => {
     const cv = ref.current
-    if (!cv) return
+    if (!cv || !need2d) return
     const ctx = cv.getContext('2d')!
     let W = 0, H = 0, dpr = 1
     let raf = 0
@@ -51,7 +87,7 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
     resize()
 
     const rnd = (a: number, b: number) => a + Math.random() * (b - a)
-    const k = Math.max(0.2, Math.min(2, intensity))
+    const k = Math.max(0.2, Math.min(2, intensity)) * (tier === 'low' ? 0.6 : 1)
     const countFor: Partial<Record<Backdrop, number>> = { snow: 140, leaves: 34, petals: 46, summer: 26, matrix: 0, workshop: 50, glow: 0, aurora: 0, grid: 0 }
     const n = Math.round((countFor[mode] ?? 0) * k)
     const leafHues = [18, 28, 38, 8, 45]
@@ -95,10 +131,11 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
     }
 
     let last = 0
-    const baseInterval = PARTICLES.has(mode) ? 1000 / 60 : 1000 / 30
+    const budget = backdropBudget(tier)
+    const baseInterval = PARTICLES.has(mode) ? 1000 / budget.fps : 1000 / 30
     function frame(now: number) {
       if (!running) return
-      if (now < pauseState.scrollUntil && last > 0) { raf = requestAnimationFrame(frame); return }
+      if (budget.pauseOnScroll && now < pauseState.scrollUntil && last > 0) { raf = requestAnimationFrame(frame); return }
       const interval = pauseState.paused ? 500 : pauseState.unfocused ? 1000 / 15 : baseInterval
       if (now - last < interval - 2) { raf = requestAnimationFrame(frame); return }
       last = now
@@ -123,17 +160,20 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
       }
 
       ctx.clearRect(0, 0, W, H)
-      ctx.fillStyle = bgBase
-      ctx.fillRect(0, 0, W, H)
+      // поверх шейдера — только частицы, фон уже нарисован
+      if (!overlay) {
+        ctx.fillStyle = bgBase
+        ctx.fillRect(0, 0, W, H)
+      }
 
       // общее мягкое свечение темы — почти у всех фонов
-      if (mode !== 'plain' && mode !== 'linen') {
+      if (!overlay && mode !== 'plain' && mode !== 'linen') {
         const a = dark ? 0.22 : 0.16
         blob(W * 0.78 + px + Math.sin(t * 0.13) * 60, H * 0.18 + py + Math.cos(t * 0.11) * 40, Math.max(W, H) * 0.55, rgba(c1, a * k))
         blob(W * 0.18 - px + Math.cos(t * 0.09) * 70, H * 0.85 - py + Math.sin(t * 0.12) * 50, Math.max(W, H) * 0.5, rgba(c2, a * 0.75 * k))
       }
 
-      if (mode === 'glow') {
+      if (mode === 'glow' && !overlay) {
         for (let i = 0; i < 4; i++) {
           const ang = t * (0.05 + i * 0.02) + i * 1.7
           blob(W * (0.5 + Math.cos(ang) * 0.35) + px * (i + 1) * 0.3, H * (0.5 + Math.sin(ang * 1.3) * 0.32) + py * (i + 1) * 0.3,
@@ -270,6 +310,7 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
           }
           ctx.restore()
         } else if (mode === 'summer') {
+          if (overlay && tier === 'low') continue
           blob(p.x + px * p.z * 2, p.y + py * p.z * 2, p.r, `hsla(${p.hue}, 100%, 70%, ${(dark ? 0.08 : 0.14) * k})`)
         } else if (mode === 'workshop') {
           blob(p.x, p.y, p.r, dark ? 'rgba(170,150,120,0.05)' : 'rgba(255,250,235,0.18)')
@@ -287,7 +328,7 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
       window.removeEventListener('mousemove', onMove)
       document.removeEventListener('visibilitychange', onVis)
     }
-  }, [mode, dark, c1, c2, intensity, reduce])
+  }, [mode, dark, c1, c2, intensity, reduce, tier, need2d, overlay])
 
   const cssLayer = mode === 'wash'
     ? { background: `linear-gradient(120deg, ${rgba(c1, dark ? 0.35 : 0.25)}, ${rgba(c2, dark ? 0.3 : 0.22)}, ${rgba(c1, dark ? 0.2 : 0.15)})`, backgroundSize: '300% 300%', animation: 'gradient-move 18s ease infinite' }
@@ -298,8 +339,9 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
         : null
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-      <canvas ref={ref} style={{ width: '100%', height: '100%', display: 'block' }} />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: dark ? '#0a0d14' : '#eef2f8' }}>
+      {shaderMode && <canvas ref={shaderRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />}
+      {need2d && <canvas ref={ref} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />}
       {cssLayer && <div style={{ position: 'absolute', inset: 0, ...cssLayer }} />}
     </div>
   )

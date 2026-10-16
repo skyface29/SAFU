@@ -11,8 +11,9 @@ import { hw, homeworkStore } from './lib/homework'
 import { creds } from './lib/creds'
 import { mailWatch } from './lib/mail'
 import { serveSync } from './lib/sync'
-import { SyncPairAsk } from './pages/Sync'
+import { SyncPairAsk, SyncFirewallAsk } from './pages/Sync'
 import { Ambient, setAmbientPaused } from './fx/Ambient'
+import { initFx, applyFx } from './fx/perf'
 import { Titlebar, Sidebar, Splash, CommandPalette } from './ui/Shell'
 import { DialogHost, ToastHost, MenuHost } from './ui/kit'
 import { SiteLayer, useSiteBackdrop } from './sites/SiteLayer'
@@ -66,6 +67,13 @@ export default function App() {
   }, [dark])
 
   useEffect(() => { document.body.classList.toggle('mica', !!mica && isDesktop) }, [mica])
+
+  // качество анимаций под железо: видеокарта, ядра, память; выбор человека — Оформление → «Качество анимаций»
+  useEffect(() => {
+    initFx(null)
+    safu.app.info().then((i: any) => initFx(i?.gpu)).catch(() => undefined)
+    return kv.subscribe('fx.quality', applyFx)
+  }, [])
 
   // запуск: расписание, напоминания, почта
   useEffect(() => {
@@ -141,6 +149,7 @@ export default function App() {
       <ModalHost />
       <TaskbarBadge />
       <SyncPairAsk />
+      <SyncFirewallAsk />
       <CommandPalette />
       <CelebrationOverlay />
       <Tour />

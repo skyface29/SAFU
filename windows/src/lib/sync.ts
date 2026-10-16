@@ -78,9 +78,26 @@ export function handleSync(body: { device?: string; data?: Partial<Record<Coll, 
   return { data: out }
 }
 
-/** Компьютер отвечает телефону, пока приложение запущено */
+/** Фото к ДЗ с iPhone приходят файлами «ДЗ с iPhone/<номер ДЗ>/<имя>» — прикрепляем их к тому же ДЗ здесь */
+export const HW_PHOTO_DIR = 'ДЗ с iPhone'
+export function attachHomeworkPhoto(rel: string): boolean {
+  const m = new RegExp(`^${HW_PHOTO_DIR}/([0-9a-f-]{36})/[^/]+$`, 'i').exec(rel)
+  if (!m) return false
+  const id = m[1].toLowerCase()
+  const list = homeworkStore.get()
+  const i = list.findIndex(h => String(h.id).toLowerCase() === id)
+  if (i < 0 || list[i].photos?.includes(rel)) return false
+  const next = list.slice()
+  next[i] = { ...list[i], photos: [...(list[i].photos || []), rel] }
+  homeworkStore.set(next)
+  return true
+}
+
+/** Компьютер отвечает телефону, пока приложение запущено; файлы с телефона приходят сами */
 export function serveSync() {
-  return safu.sync.serve(body => handleSync(body))
+  const a = safu.sync.serve(body => handleSync(body))
+  const b = safu.sync.onFile(f => { attachHomeworkPhoto(f.rel) })
+  return () => { a(); b() }
 }
 
 export const sync = {

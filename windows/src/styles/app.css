@@ -63,7 +63,7 @@ body {
 body.mica { background: transparent; }
 body.widget-body { background: transparent !important; }
 input, textarea, select, button { font: inherit; color: inherit; }
-textarea, input, [contenteditable] { user-select: text; }
+textarea, input, [contenteditable], .selectable { user-select: text; }
 a { color: var(--brand); text-decoration: none; }
 ::selection { background: rgba(var(--brand-rgb), .35); }
 

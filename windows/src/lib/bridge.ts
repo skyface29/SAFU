@@ -64,7 +64,8 @@ function browserFallback(): SafuAPI {
         window.addEventListener('safu:sync-ask', h)
         return () => window.removeEventListener('safu:sync-ask', h)
       },
-      onAskDone: () => () => {}, answer: (rid: string, ok: boolean) => console.info('[sync] ответ', rid, ok), onChanged: () => () => {}
+      onAskDone: () => () => {}, answer: (rid: string, ok: boolean) => console.info('[sync] ответ', rid, ok), onChanged: () => () => {},
+      stats: async () => ({ hosts: ['192.168.1.5'], port: 47823, seenAt: 0, seenFrom: '', name: 'DESKTOP' }), onFile: () => () => {}
     },
     ai: { summarize: async () => ({ ok: false, error: 'Конспекты ИИ работают в приложении для Windows' }) },
     mail: { check: async () => ({ ok: false, error: 'Почта проверяется только в приложении для Windows' }) },

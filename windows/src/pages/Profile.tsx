@@ -20,6 +20,7 @@ import { creds, useCreds } from '../lib/creds'
 import { mailWatch } from '../lib/mail'
 import { makeBackup, restoreBackupInteractive } from '../lib/backup'
 import { hashPin } from './AppLock'
+import { useFx, type FxChoice, type FxTier } from '../fx/perf'
 import { relativeAgo } from '../lib/date'
 import { hw, homeworkStore } from '../lib/homework'
 import { tasksStore, notesStore } from '../lib/study'
@@ -188,6 +189,7 @@ export function Appearance() {
       <div className="grid g4">{PACKS.map(pk => <Card key={pk.id} press onClick={() => applyPack(pk.id)} style={{ borderColor: pack === pk.id ? 'var(--brand)' : undefined }}><div className="bold">{pk.title}</div><div className="tiny muted mt4">{pk.subtitle}</div></Card>)}</div>
       <div className="h-sec">Движение</div>
       <Card className="list" style={{ padding: 0 }}>
+        <FxQualityRow />
         <ToggleRow title="Уменьшить анимации" sub="Для слабых компьютеров и если укачивает" on={motionOff} onChange={setMotionOff} />
         <GpuRow />
         <ToggleRow title="Приложение отъезжает под сайтом" sub="Как в Telegram, когда открыта карточка сайта" on={backdropAnim} onChange={setBackdropAnim} />
@@ -385,6 +387,29 @@ function SiteEditor({ r, onClose }: { r: Resource | null; onClose: () => void })
 }
 
 /** Ускорение видеокартой: что сейчас и переключатель на случай чёрных сайтов (меняется после перезапуска) */
+/** Качество анимаций: «Авто» — под железо; видно, что определилось */
+function FxQualityRow() {
+  const [choice, setChoice] = usePref<FxChoice>('fx.quality', 'auto')
+  const fx = useFx()
+  const name: Record<FxTier, string> = { high: 'максимум', mid: 'баланс', low: 'экономно' }
+  const gpu = fx.gpu.replace(/^ANGLE \((.*)\)$/, '$1').replace(/,\s*(D3D|OpenGL|Direct3D).*$/i, '').replace(/\s*\(0x[0-9a-f]+\)/gi, '').slice(0, 70)
+  return (
+    <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--line)' }}>
+      <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
+        <div className="grow">
+          <div className="bold">Качество анимаций</div>
+          <div className="tiny muted mt4">
+            Живой фон, переходы и наклон карточек — под твоё железо. Сейчас: <b>{name[fx.tier]}</b>
+            {choice === 'auto' && gpu ? ` · ${gpu}` : ''}{!fx.accelerated ? ' · без ускорения видеокартой' : ''}. Если кадры не успевают, фон сам рисует проще
+          </div>
+        </div>
+        <Segmented size="sm" value={choice} onChange={setChoice}
+          options={[{ value: 'auto', label: 'Авто' }, { value: 'high', label: 'Максимум' }, { value: 'mid', label: 'Баланс' }, { value: 'low', label: 'Экономно' }]} />
+      </div>
+    </div>
+  )
+}
+
 function GpuRow() {
   const [info, setInfo] = useState<{ safe: boolean; compositing: string } | null>(null)
   useEffect(() => { safu.app.info().then((i: any) => i?.gpu && setInfo(i.gpu)).catch(() => null) }, [])
@@ -489,6 +514,12 @@ export function Backup() {
 // ---------- автор ----------
 
 const CHANGELOG: { version: string; items: string[] }[] = [
+  { version: '19.2 для Windows', items: [
+    'Живые обои на видеокарте: «Свет» — переливающийся градиент в цветах темы, «Сияние» — северное сияние со звёздами; снег, листья и лепестки летят поверх переливов. Фон плавно следует за мышью',
+    'Качество анимаций под железо (Оформление → «Качество анимаций»): «Авто» смотрит на видеокарту и процессор; если кадры не успевают, фон сам рисует проще. На мощном железе карточки чуть наклоняются за курсором',
+    'Синхронизация с iPhone: при запуске Арктика сама предложит разрешить брандмауэр Windows (из-за него телефон «не видел» компьютер); на экране синхронизации — адрес компьютера и видел ли его телефон',
+    'Файлы с iPhone приходят сами после синхронизации: файлы предметов, фото доски, записи лекций и фото к ДЗ — фото сразу прикрепляются к своему заданию'
+  ] },
   { version: '19.1 для Windows', items: [
     'Синхронизация с iPhone без QR-кода: телефон сам находит компьютер в той же сети Wi‑Fi. Выбираешь его на iPhone, сверяешь код и нажимаешь здесь «Разрешить» — и всё',
     'Брандмауэр Windows больше не мешает: в «Синхронизация с iPhone» видно, пропускает ли он телефон, и кнопка «Разрешить синхронизацию» чинит это в одно нажатие (Windows спросит подтверждение)',

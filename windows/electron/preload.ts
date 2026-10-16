@@ -112,6 +112,10 @@ const api = {
     answer: (rid: string, ok: boolean) => ipcRenderer.send('sync:askReply', rid, ok),
     /** Связка появилась или поменялась */
     onChanged: (cb: () => void) => on('sync:changed', cb),
+    /** Адреса компьютера и когда телефон последний раз искал его в сети */
+    stats: (): Promise<{ hosts: string[]; port: number; seenAt: number; seenFrom: string; name: string }> => ipcRenderer.invoke('sync:stats'),
+    /** Файл с телефона пришёл сам (по связке) */
+    onFile: (cb: (f: { rel: string; name: string; size: number }) => void) => on('sync:file', cb),
     /** Отвечать телефону: главный процесс присылает его данные, интерфейс сводит их со своими */
     serve: (handler: (body: any) => unknown) => on('sync:request', async (rid: string, body: unknown) => {
       try {

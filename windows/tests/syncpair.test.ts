@@ -111,3 +111,46 @@ test('по сети: hello с отпечатком связки и связка 
     srv.stop()
   }
 })
+
+test('файлы связанного телефона приходят по ключу связки; чужой номер — отказ', async () => {
+  const { TransferServer, seal: sealT } = await import('../electron/transfer')
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'arktika-sync-files-'))
+  const pairing = { id: 'files-pair', key: crypto.randomBytes(32).toString('base64url'), created: Date.now() }
+  const key = Buffer.from(pairing.key, 'base64url')
+  const got: string[] = []
+  const t = new TransferServer({ name: 'PC', version: '1', root: () => root, key, session: pairing.id, persistent: true, emit: e => { if (e.type === 'file') got.push(e.rel) } })
+  const srv = new SyncServer({ name: 'PC', version: '1', port: 0, pairing: () => pairing, handle: async () => ({}), files: (req, res) => t.serve(req, res), bind: '127.0.0.1' })
+  const port = await srv.start()
+  const base = `http://127.0.0.1:${port}`
+  const call = async (method: string, pathQ: string, body: Buffer, session = pairing.id) => {
+    const res = await fetch(base + pathQ, { method, headers: { 'x-arktika-session': session }, body: sealT(key, body, `${method} ${pathQ}`) })
+    const raw = Buffer.from(await res.arrayBuffer())
+    return { status: res.status, json: res.headers.get('content-type') === 'application/octet-stream' ? JSON.parse(open(key, raw, `R ${method} ${pathQ}`).toString('utf8')) : null }
+  }
+  try {
+    assert.equal((await call('POST', '/v1/plan', Buffer.from('{}'), 'stranger')).status, 403)
+    const data = Buffer.from('фото задания')
+    const rel = 'ДЗ с iPhone/0f8fad5b-d9cb-469f-a165-70867728950e/1.jpg'
+    for (let round = 0; round < 2; round++) {
+      const plan = await call('POST', '/v1/plan', Buffer.from(JSON.stringify({ files: [{ p: rel, s: data.length, m: Date.now() }] })))
+      assert.equal(plan.status, 200)
+      if (round === 0) {
+        assert.equal(plan.json.files[0].o, 0)
+        assert.equal((await call('PUT', '/v1/file?i=0&o=0', data)).status, 200)
+      } else {
+        assert.equal(plan.json.files[0].o, -1, 'второй раз — уже есть, не шлём')
+      }
+      assert.equal((await call('POST', '/v1/done', Buffer.from('{}'))).status, 200)
+    }
+    assert.deepEqual(got, [rel])
+    assert.equal(fs.readFileSync(path.join(root, 'ДЗ с iPhone', '0f8fad5b-d9cb-469f-a165-70867728950e', '1.jpg'), 'utf8'), 'фото задания')
+    // канал постоянный: после «done» сервер не закрывается
+    assert.equal((await fetch(`${base}/v2/hello`)).status, 200)
+  } finally {
+    srv.stop()
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})

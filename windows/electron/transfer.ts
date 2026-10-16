@@ -45,6 +45,11 @@ export type TransferOptions = {
   port?: number
   /** Слушать только этот адрес (в тестах — 127.0.0.1) */
   bind?: string
+  /** Постоянный канал связанного телефона (синхронизация): свой ключ и номер, без простоя и без закрытия после «done».
+   *  Такой приёмник не слушает порт сам — запросы ему передаёт сервер синхронизации (serve) */
+  key?: Buffer
+  session?: string
+  persistent?: boolean
 }
 
 type Entry = {
@@ -177,6 +182,13 @@ export class TransferServer {
 
   constructor(opts: TransferOptions) {
     this.opts = opts
+    if (opts.key) this.key = opts.key
+    if (opts.session) this.session = opts.session
+  }
+
+  /** Обработать запрос, пришедший на чужой сервер (канал связанного телефона) */
+  serve(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    return this.handle(req, res).catch(err => this.fail(res, 500, String((err as Error)?.message || err)))
   }
 
   /** Запустить приём. Возвращает ссылку для QR */
@@ -223,6 +235,7 @@ export class TransferServer {
   get running() { return !!this.server }
 
   private touch() {
+    if (this.opts.persistent) return
     if (this.idle) clearTimeout(this.idle)
     this.idle = setTimeout(() => this.stop('idle'), this.opts.idleMs ?? 15 * 60_000)
   }
@@ -295,6 +308,8 @@ export class TransferServer {
       const j = JSON.parse(plain.toString('utf8') || '{}')
       const files = Array.isArray(j.files) ? j.files : []
       this.wantsData = !!j.data
+      // постоянный канал: каждый план — новый перенос
+      if (this.opts.persistent) { this.finished = false; this.startedAt = 0; this.gotData = false }
       this.plan(files)
       const answer = [...this.entries.values()].map(e => ({ i: e.id, o: e.done ? -1 : e.received }))
       if (!this.startedAt) this.startedAt = Date.now()
@@ -349,7 +364,7 @@ export class TransferServer {
           type: 'done', files, bytes, skipped: this.skipped, data: this.gotData,
           seconds: this.startedAt ? Math.round((Date.now() - this.startedAt) / 1000) : 0
         })
-        setTimeout(() => this.stop('done'), 1500)
+        if (!this.opts.persistent) setTimeout(() => this.stop('done'), 1500)
       }
       return
     }
