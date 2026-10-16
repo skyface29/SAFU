@@ -15,7 +15,7 @@ import { RUZ_BASE, timetableURL, institutions } from '../lib/ruz'
 import { Card, PageHeader, Segmented, Sheet, Empty, KindBadge, Toggle, Row, ToggleRow, Field, toast, confirmDialog, useNow, openMenu } from '../ui/kit'
 import { SlotRow } from '../ui/lesson'
 import { usePref, kv, uid } from '../lib/kv'
-import { useModals, openSubject, openHomeworkEditor, go } from '../lib/nav'
+import { useModals, openSubject, openHomeworkEditor, openHomework, go } from '../lib/nav'
 import { safu } from '../lib/bridge'
 import { mapsURL, routeURL } from '../lib/maps'
 import { hw, homeworkStore, hwTitle, chip } from '../lib/homework'
@@ -449,7 +449,7 @@ function HWLine({ id, label }: { id: string; label: string }) {
   const h = hw.item(id)
   if (!h) return null
   return (
-    <div className="row" style={{ padding: 10, borderRadius: 12, background: 'var(--fill)', marginBottom: 6, cursor: 'pointer' }} onClick={() => openHomeworkEditor({ id })}>
+    <div className="row" style={{ padding: 10, borderRadius: 12, background: 'var(--fill)', marginBottom: 6, cursor: 'pointer' }} onClick={() => openHomework(id)}>
       <Toggle on={h.done} onChange={() => hw.toggle(id)} />
       <div className="grow"><div className="bold small" style={{ textDecoration: h.done ? 'line-through' : undefined }}>{hwTitle(h)}</div><div className="tiny muted">{label} · {chip(h.due, h.done)}</div></div>
       <Pencil size={14} className="faint" />

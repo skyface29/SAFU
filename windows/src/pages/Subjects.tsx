@@ -7,7 +7,7 @@ import { useSchedule } from '../lib/scheduleStore'
 import { subjects as allSubjects, slotsRange, teachersOf, kindStyle, type Slot } from '../lib/schedule'
 import { hw, homeworkStore, hwTitle, chip, urgency } from '../lib/homework'
 import { shortDayTime, relDay, hm, plural } from '../lib/date'
-import { openHomeworkEditor, openSubject, go, useModals } from '../lib/nav'
+import { openHomeworkEditor, openHomework, openSubject, go, useModals } from '../lib/nav'
 import { SubjectGlyph, subjectColor } from '../ui/icons'
 import { subjectNotes, pins, pinsStore, notesStore } from '../lib/study'
 import { safu, type FileInfo } from '../lib/bridge'
@@ -119,7 +119,7 @@ export function SubjectSheet({ name, onClose }: { name: string | null; onClose: 
           {!open.length && <div className="sub">Открытых заданий нет</div>}
           <div className="col gap6">
             {open.map(h => (
-              <div key={h.id} className="row clickable" style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--fill)' }} onClick={() => { onClose(); openHomeworkEditor({ id: h.id }) }}>
+              <div key={h.id} className="row clickable" style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--fill)' }} onClick={() => { onClose(); openHomework(h.id) }}>
                 <span className="grow small bold ellipsis">{hwTitle(h)}</span>
                 <span className="pill" style={{ color: urgency(h.due) }}>{chip(h.due)}</span>
               </div>

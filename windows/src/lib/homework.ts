@@ -4,6 +4,7 @@ import { kv, createCollection, uid } from './kv'
 import { type ScheduleData, type Slot, slotsOn, usesRuz, kindStyle } from './schedule'
 import { startOfDay, addDays, isToday, isTomorrow, isYesterday, hm, dayMon, WEEKDAYS_SHORT, daysBetween, DAY } from './date'
 import { notify, type Note } from './notify'
+import { line as prettyLine, clean as prettyClean } from './hwpretty'
 
 export type HWKind = 'exercises' | 'reading' | 'notes' | 'lab' | 'prep' | 'project' | 'other'
 
@@ -102,7 +103,8 @@ export function newHomework(subject: string, text: string, due: number): Homewor
   }
 }
 
-export const hwTitle = (h: Homework) => h.text.trim() || h.steps[0]?.text || 'Без описания'
+/** Заголовок для списков: текст (аккуратно оформленный, в одну строку), а если его нет — первый подпункт */
+export const hwTitle = (h: Homework) => (h.text.trim() ? prettyLine(h.text) : h.steps[0] ? prettyClean(h.steps[0].text) : 'Без описания')
 export const key = (s: string) => s.toLowerCase().trim()
 export const sameSubject = (a: string, b: string) => key(a) === key(b)
 const sameKind = (a: string, b: string) => kindStyle(a).label === kindStyle(b).label

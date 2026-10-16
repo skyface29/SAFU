@@ -1,15 +1,17 @@
 // «ДЗ»: по срокам, по предметам, сделанное. Настройки домашки.
 import React, { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Settings2, Search, Star, Clock, ArrowRightCircle, Copy, Trash2, Pencil, AlertTriangle, X, Image, ListChecks, BookMarked } from 'lucide-react'
+import { Plus, Settings2, Search, Star, Clock, ArrowRightCircle, Copy, Trash2, Pencil, AlertTriangle, X, Image, ListChecks, BookMarked, Send } from 'lucide-react'
 import { PageHeader, Card, Segmented, Empty, Ring, AnimatedNumber, openMenu, burst, Row, ToggleRow, toast, confirmDialog, Field } from '../ui/kit'
 import { SyncBadge } from './Sync'
 import { homeworkStore, hw, hwTitle, hwKind, chip, urgency, dayTime, type Homework, HW_KINDS } from '../lib/homework'
 import { useSchedule } from '../lib/scheduleStore'
-import { openHomeworkEditor, openSubject, go } from '../lib/nav'
+import { openHomeworkEditor, openHomework, openSubject, go } from '../lib/nav'
 import { startOfDay, addDays, isToday, isTomorrow, DAY, plural } from '../lib/date'
 import { celebrations } from '../fx/Celebrations'
 import { usePref } from '../lib/kv'
+import { shareText, shareList } from '../lib/hwpretty'
+import { safu } from '../lib/bridge'
 import { SubjectGlyph, subjectColor } from '../ui/icons'
 
 type Mode = 'due' | 'subjects' | 'done'
@@ -54,6 +56,11 @@ export default function HomeworkPage() {
       <PageHeader title="Домашка" subtitle={active.length ? `${active.length} ${plural(active.length, 'задание', 'задания', 'заданий')} в работе · ${hw.badgeCount()} к сдаче в ближайшие сутки` : 'Всё сделано — красота'}
         right={<>
           <SyncBadge />
+          {active.length > 0 && <button className="btn" onClick={e => openMenu(e, [
+            { label: 'ДЗ на завтра', run: () => copyBatch('tomorrow') },
+            { label: 'ДЗ на неделю', run: () => copyBatch('week') },
+            { label: 'Всё ДЗ', run: () => copyBatch('all') }
+          ])}><Send size={15} /> Отправить ребятам</button>}
           <button className="btn icon" onClick={() => go('hwsettings')} title="Настройки"><Settings2 size={16} /></button>
           <button className="btn primary" onClick={() => openHomeworkEditor({})}><Plus size={16} /> Записать <span className="kbd" style={{ color: 'rgba(255,255,255,.8)', borderColor: 'rgba(255,255,255,.4)' }}>Ctrl N</span></button>
         </>} />
@@ -106,6 +113,18 @@ export default function HomeworkPage() {
   )
 }
 
+/** Подборка ДЗ одним сообщением в чат группы */
+function copyBatch(scope: 'tomorrow' | 'week' | 'all') {
+  const now = Date.now()
+  const tomorrow = addDays(startOfDay(now), 1)
+  const DAYS = ['воскресенье', 'понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу']
+  const list = hw.active().filter(h => scope === 'tomorrow' ? isTomorrow(h.due) : scope === 'week' ? h.due >= now && h.due < now + 7 * DAY : h.due >= now)
+  if (!list.length) { toast(scope === 'tomorrow' ? 'На завтра ничего не задано' : 'Ничего не задано', 'info'); return }
+  const title = scope === 'tomorrow' ? `ДЗ на завтра, ${DAYS[new Date(tomorrow).getDay()]}` : scope === 'week' ? 'ДЗ на неделю' : 'Всё ДЗ'
+  safu.clipboard.write(shareList(list, title))
+  toast(`Скопировано ${list.length} ${plural(list.length, 'задание', 'задания', 'заданий')} — вставь в чат группы`)
+}
+
 function Stat({ label, value, color, delay }: { label: string; value: number; color: string; delay: number }) {
   return (
     <Card delay={delay}>
@@ -123,10 +142,11 @@ export function HWRow({ h, showSubject, data }: { h: Homework; showSubject?: boo
     <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 60, height: 0, marginTop: -8 }}
       transition={{ type: 'spring', stiffness: 400, damping: 34 }}
       className="card hover" style={{ padding: '12px 14px', cursor: 'pointer' }}
-      onClick={() => openHomeworkEditor({ id: h.id })}
+      onClick={() => openHomework(h.id)}
       onContextMenu={e => openMenu(e, [
         { label: 'Изменить', icon: <Pencil size={15} />, run: () => openHomeworkEditor({ id: h.id }) },
         { label: h.rule === 'pair' ? 'На следующую пару' : 'На день позже', icon: <ArrowRightCircle size={15} />, run: () => { hw.postpone(h.id, data); toast('Срок перенесён') } },
+        { label: 'Отправить ребятам (текстом)', icon: <Send size={15} />, run: () => { safu.clipboard.write(shareText(h)); toast('Скопировано — вставь в чат группы') } },
         { label: 'Дублировать', icon: <Copy size={15} />, run: () => hw.duplicate(h.id) },
         { label: 'Предмет', icon: <BookMarked size={15} />, run: () => openSubject(h.subject) },
         { sep: true, label: '' },

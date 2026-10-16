@@ -5,7 +5,7 @@ import {
   Home, CalendarDays, BookMarked, ListChecks, Folder, Library, UserCheck, Code2, UserCircle2, Search, Snowflake,
   PanelLeftClose, PanelLeftOpen, Wrench, Globe, Command, ArrowRight
 } from 'lucide-react'
-import { useNav, go, parseTabs, DEFAULT_TABS, TAB_META, type PageId, useModals, openSubject, openHomeworkEditor } from '../lib/nav'
+import { useNav, go, parseTabs, DEFAULT_TABS, TAB_META, type PageId, useModals, openSubject, openHomeworkEditor, openHomework } from '../lib/nav'
 import { usePref } from '../lib/kv'
 import { homeworkStore, hw, hwTitle } from '../lib/homework'
 import { useSchedule } from '../lib/scheduleStore'
@@ -159,7 +159,7 @@ export function CommandPalette() {
     list.push({ id: 'appearance', group: 'Действия', title: 'Оформление', sub: 'темы, фоны, шрифты', icon: <Command size={16} />, run: close(() => go('appearance')) })
     for (const s of allSubjects(data)) list.push({ id: 'subj-' + s, group: 'Предметы', title: s, icon: <Library size={16} />, run: close(() => openSubject(s)) })
     for (const r of resourcesStore.get()) list.push({ id: 'site-' + r.id, group: 'Сайты', title: r.title, sub: r.subtitle, icon: <Globe size={16} />, run: close(() => openSite(r)) })
-    for (const h of hw.active().slice(0, 40)) list.push({ id: 'hw-' + h.id, group: 'Домашка', title: hwTitle(h), sub: h.subject, icon: <BookMarked size={16} />, run: close(() => openHomeworkEditor({ id: h.id })) })
+    for (const h of hw.active().slice(0, 40)) list.push({ id: 'hw-' + h.id, group: 'Домашка', title: hwTitle(h), sub: h.subject, icon: <BookMarked size={16} />, run: close(() => openHomework(h.id)) })
     return list
   }, [open, data])
 

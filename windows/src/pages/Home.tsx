@@ -11,7 +11,7 @@ import { useProfile } from '../lib/profile'
 import { usePref } from '../lib/kv'
 import { Card, KindBadge, Ring, useNow, Empty, burst, AnimatedNumber, openMenu, Progress } from '../ui/kit'
 import { SlotRow } from '../ui/lesson'
-import { go, openHomeworkEditor, openSubject, useModals } from '../lib/nav'
+import { go, openHomeworkEditor, openHomework, openSubject, useModals } from '../lib/nav'
 import { homeworkStore, hw, hwTitle, chip, urgency, hwKind } from '../lib/homework'
 import { resources, resourcesStore, recentsStore } from '../lib/resources'
 import { openSite } from '../sites/sites'
@@ -308,7 +308,7 @@ function HomeworkCard({ delay }: { delay: number }) {
         <AnimatePresence initial={false}>
           {active.slice(0, 5).map(h => (
             <motion.div key={h.id} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, x: 40, height: 0 }}
-              className="row" style={{ padding: '9px 10px', borderRadius: 12, background: 'var(--fill)', cursor: 'pointer' }} onClick={() => openHomeworkEditor({ id: h.id })}>
+              className="row" style={{ padding: '9px 10px', borderRadius: 12, background: 'var(--fill)', cursor: 'pointer' }} onClick={() => openHomework(h.id)}>
               <motion.button whileTap={{ scale: 0.8 }} onClick={e => { e.stopPropagation(); burst(e.clientX, e.clientY); hw.toggle(h.id); celebrations.taskDone(hwTitle(h), hw.active().length) }}
                 style={{ width: 22, height: 22, borderRadius: 7, border: `2px solid ${hwKind(h.kind).color}`, background: 'none', cursor: 'pointer', flexShrink: 0, display: 'grid', placeItems: 'center' }} />
               <span style={{ fontSize: '1.05rem' }}>{hwKind(h.kind).emoji}</span>

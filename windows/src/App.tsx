@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { kv, usePref } from './lib/kv'
 import { safu, isDesktop } from './lib/bridge'
 import { applyThemeToDocument, currentAccent, firstLook } from './lib/theme'
-import { useNav, go, useModals, openHomeworkEditor, type PageId } from './lib/nav'
+import { useNav, go, useModals, openHomeworkEditor, openHomework, type PageId } from './lib/nav'
 import { scheduleStore, useSchedule } from './lib/scheduleStore'
 import { installEffects, startTicker } from './lib/effects'
 import { hw, homeworkStore } from './lib/homework'
@@ -20,6 +20,7 @@ import { PAGES } from './pages'
 import { Registration } from './pages/Registration'
 import { SubjectSheet } from './pages/Subjects'
 import { HomeworkEditor } from './pages/HomeworkEditor'
+import { HomeworkView } from './pages/HomeworkView'
 import { LessonSheet } from './pages/Schedule'
 import { CelebrationOverlay, celebrations } from './fx/Celebrations'
 import { LockGate, appLock } from './pages/AppLock'
@@ -146,6 +147,7 @@ export default function App() {
       <SiteLayer />
       <SubjectSheet name={modals.subject} onClose={() => modals.set({ subject: null })} />
       <HomeworkEditor req={modals.hwEdit} onClose={() => modals.set({ hwEdit: null })} />
+      <HomeworkView id={modals.hwView} onClose={() => modals.set({ hwView: null })} />
       <LessonSheet slot={modals.lesson} onClose={() => modals.set({ lesson: null })} />
       <CommandPalette />
       <CelebrationOverlay />
@@ -172,7 +174,7 @@ export function handleRoute(route: string) {
     openHomeworkEditor({ subject: subj.join(':'), slotStart: Number(start) })
     return
   }
-  if (r.startsWith('hw:')) { openHomeworkEditor({ id: r.slice(3) }); return }
+  if (r.startsWith('hw:')) { openHomework(r.slice(3)); return }
   if (r.startsWith('site:')) { openSiteByKey(r.slice(5)); return }
   if (r.startsWith('pair')) {
     const subj = new URLSearchParams(r.split('?')[1] || '').get('subject')

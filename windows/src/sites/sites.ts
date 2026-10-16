@@ -1,6 +1,6 @@
 // Открытые сайты и файлы-карточки: развёрнут один, остальные свёрнуты в плашку и стопку
 import { create } from 'zustand'
-import { uid } from '../lib/kv'
+import { uid, kv } from '../lib/kv'
 import { type Resource, resources, resourcesStore } from '../lib/resources'
 
 export type SiteTab = {
@@ -18,6 +18,8 @@ export type SiteTab = {
   currentURL?: string
   canBack?: boolean
   canForward?: boolean
+  /** Вкладка вернулась после перезапуска: страница загрузится, только когда её развернут */
+  dormant?: boolean
 }
 
 type State = {
@@ -26,7 +28,33 @@ type State = {
   mode: 'closed' | 'open' | 'stack'
 }
 
-export const useSites = create<State>(() => ({ tabs: [], active: null, mode: 'closed' }))
+export const useSites = create<State>(() => ({ tabs: restoreSaved(), active: null, mode: 'closed' }))
+
+// ---------- вкладки переживают перезапуск (как на iPhone) ----------
+
+type Saved = { kind: SiteTab['kind']; title: string; url: string; icon: string; resourceId?: string; fileRel?: string; ext?: string }
+const SAVED_KEY = 'sites.saved.v1'
+
+/** При запуске — свёрнутыми в плашку, как их оставили (если с тех пор прошло меньше недели) */
+function restoreSaved(): SiteTab[] {
+  const s = kv.get<{ at: number; tabs: Saved[] } | null>(SAVED_KEY, null)
+  if (!s || !Array.isArray(s.tabs) || Date.now() - s.at > 7 * 24 * 3600_000) return []
+  return s.tabs.slice(-8).map(t => ({ ...t, id: uid(), dormant: true }))
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+let lastSaved = ''
+useSites.subscribe(st => {
+  if (saveTimer) clearTimeout(saveTimer)
+  // не на каждый кадр загрузки страницы: раз в секунду после последнего изменения
+  saveTimer = setTimeout(() => {
+    const tabs: Saved[] = st.tabs.map(t => ({ kind: t.kind, title: t.title, url: t.currentURL || t.url, icon: t.icon, resourceId: t.resourceId, fileRel: t.fileRel, ext: t.ext }))
+    const json = JSON.stringify(tabs)
+    if (json === lastSaved) return
+    lastSaved = json
+    kv.set(SAVED_KEY, tabs.length ? { at: Date.now(), tabs } : null)
+  }, 1000)
+})
 
 export function openSite(r: Resource | { title: string; url: string; icon?: string }, opts: { fresh?: boolean } = {}) {
   const s = useSites.getState()

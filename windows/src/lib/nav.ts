@@ -59,10 +59,14 @@ export const go = (page: PageId, params?: Record<string, any>) => useNav.getStat
 type Modals = {
   subject: string | null
   hwEdit: { id?: string; subject?: string; slotStart?: number } | null
+  /** ДЗ, открытое по нажатию: красивая карточка (оттуда «Изменить») */
+  hwView: string | null
   lesson: any | null
   palette: boolean
   set: (p: Partial<Omit<Modals, 'set'>>) => void
 }
-export const useModals = create<Modals>(set => ({ subject: null, hwEdit: null, lesson: null, palette: false, set: p => set(p) }))
+export const useModals = create<Modals>(set => ({ subject: null, hwEdit: null, hwView: null, lesson: null, palette: false, set: p => set(p) }))
 export const openSubject = (s: string) => useModals.getState().set({ subject: s })
-export const openHomeworkEditor = (p: Modals['hwEdit']) => useModals.getState().set({ hwEdit: p || {} })
+export const openHomeworkEditor = (p: Modals['hwEdit']) => useModals.getState().set({ hwEdit: p || {}, hwView: null })
+/** Нажали на задание — открыть его карточку */
+export const openHomework = (id: string) => useModals.getState().set({ hwView: id })

@@ -88,12 +88,18 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
   const [failed, setFailed] = useState<string | null>(null)
   const ref = useRef<any>(null)
   const res = tab.resourceId ? resourcesStore.get().find(r => r.id === tab.resourceId) : undefined
+  // вкладка после перезапуска: страница грузится, только когда её впервые развернули
+  const [live, setLive] = useState(!tab.dormant)
 
-  useEffect(() => { if (visible) animate(y, 0, spring) }, [visible])
+  useEffect(() => {
+    if (!visible) return
+    animate(y, 0, spring)
+    if (!live) { setLive(true); sites.update(tab.id, { dormant: false }) }
+  }, [visible])
 
   useEffect(() => {
     const wv = ref.current
-    if (!wv || tab.kind !== 'site') return
+    if (!wv || tab.kind !== 'site' || !live) return
     webviews.set(tab.id, wv)
     const nav = () => {
       const url = wv.getURL()
@@ -116,6 +122,8 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
         if (!c || c.pass !== p.pass || (p.user && c.user !== p.user)) setOffer(p)
       }
     }
+    // процесс страницы упал (не хватило памяти, сайт уронил вкладку) — просто загружаем заново, а не белый экран
+    const onGone = () => { setFailed(null); setTimeout(() => { try { wv.reload() } catch { /* уже закрыта */ } }, 300) }
     const onFail = (e: any) => {
       if (e.errorCode === -3 || !e.isMainFrame) return
       sites.update(tab.id, { loading: false })
@@ -128,6 +136,7 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
     wv.addEventListener('did-navigate-in-page', nav)
     wv.addEventListener('ipc-message', onMsg)
     wv.addEventListener('did-fail-load', onFail)
+    wv.addEventListener('render-process-gone', onGone)
     return () => {
       webviews.delete(tab.id)
       wv.removeEventListener('page-title-updated', onTitle)
@@ -137,8 +146,9 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
       wv.removeEventListener('did-navigate-in-page', nav)
       wv.removeEventListener('ipc-message', onMsg)
       wv.removeEventListener('did-fail-load', onFail)
+      wv.removeEventListener('render-process-gone', onGone)
     }
-  }, [tab.id])
+  }, [tab.id, live])
 
   const saved = formHost ? creds.get(formHost) : null
   void credList
@@ -244,7 +254,7 @@ function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; p
       </AnimatePresence>
 
       <div style={{ flex: 1, position: 'relative', background: '#fff' }}>
-        {tab.kind === 'site' ? (
+        {tab.kind === 'site' ? (live &&
           <webview ref={ref} src={tab.url} partition="persist:sites" preload={preload || undefined} allowpopups={"true" as any}
             webpreferences="contextIsolation=yes, spellcheck=yes" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
         ) : <FileView tab={tab} />}
