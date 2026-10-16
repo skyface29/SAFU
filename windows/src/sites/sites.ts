@@ -28,12 +28,14 @@ type State = {
   mode: 'closed' | 'open' | 'stack'
 }
 
-export const useSites = create<State>(() => ({ tabs: restoreSaved(), active: null, mode: 'closed' }))
-
 // ---------- вкладки переживают перезапуск (как на iPhone) ----------
+// Ключ объявлен до хранилища: хранилище создаётся сразу при загрузке и читает его
+// (когда ключ стоял ниже, приложение падало при запуске — оставался пустой фон)
 
 type Saved = { kind: SiteTab['kind']; title: string; url: string; icon: string; resourceId?: string; fileRel?: string; ext?: string }
 const SAVED_KEY = 'sites.saved.v1'
+
+export const useSites = create<State>(() => ({ tabs: restoreSaved(), active: null, mode: 'closed' }))
 
 /** При запуске — свёрнутыми в плашку, как их оставили (если с тех пор прошло меньше недели) */
 function restoreSaved(): SiteTab[] {
