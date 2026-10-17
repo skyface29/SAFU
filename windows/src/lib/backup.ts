@@ -2,7 +2,7 @@
 import { kv } from './kv'
 import { safu } from './bridge'
 import { parseBinaryPlist, type PlistValue } from './plist'
-import { confirmDialog, alertDialog, toast } from '../ui/kit'
+import { confirmDialog, alertDialog, passwordDialog, toast } from '../ui/kit'
 import { ymd } from './date'
 
 const CACHE_NAMES = (all: Record<string, unknown>) => {
@@ -10,13 +10,66 @@ const CACHE_NAMES = (all: Record<string, unknown>) => {
   return g ? [`ruz-archive-${g}`] : []
 }
 
+// ---------- пароли в копии: только зашифрованными паролем копии ----------
+// PBKDF2-SHA256 (600 000 итераций) → ключ AES-256-GCM. Открытым текстом пароли в файл копии не попадают.
+
+type SealedSecrets = { v: 1; kdf: 'PBKDF2-SHA256'; iter: number; salt: string; iv: string; data: string }
+
+const KDF_ITER = 600_000
+const AAD = new TextEncoder().encode('arktika-backup-secrets-v1')
+
+function toB64(u: Uint8Array): string {
+  let s = ''
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000))
+  return btoa(s)
+}
+const fromB64 = (s: string) => Uint8Array.from(atob(s), c => c.charCodeAt(0))
+
+async function backupKey(password: string, salt: Uint8Array<ArrayBuffer>, iterations: number) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey'])
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
+}
+
+export async function sealSecrets(secrets: Record<string, string>, password: string): Promise<SealedSecrets> {
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const key = await backupKey(password, salt, KDF_ITER)
+  const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: AAD }, key, new TextEncoder().encode(JSON.stringify(secrets))))
+  return { v: 1, kdf: 'PBKDF2-SHA256', iter: KDF_ITER, salt: toB64(salt), iv: toB64(iv), data: toB64(data) }
+}
+
+/** Неверный пароль или испорченный файл — исключение */
+export async function openSecrets(s: SealedSecrets, password: string): Promise<Record<string, string>> {
+  if (s?.v !== 1 || s.kdf !== 'PBKDF2-SHA256' || !(s.iter >= 100_000 && s.iter <= 10_000_000)) throw new Error('Неизвестный формат паролей в копии')
+  const key = await backupKey(password, fromB64(s.salt), s.iter)
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(s.iv), additionalData: AAD }, key, fromB64(s.data))
+  const out = JSON.parse(new TextDecoder().decode(plain))
+  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('Испорченные данные')
+  return out as Record<string, string>
+}
+
+async function askNewBackupPassword(): Promise<string | null> {
+  const p1 = await passwordDialog('Пароль для копии', 'Сохранённые пароли сайтов в копии зашифруются этим паролем (AES‑256). Без него их не восстановить, поэтому запомни или запиши его. Не короче 8 символов.')
+  if (p1 == null) return null
+  if (p1.length < 8) { await alertDialog('Слишком короткий пароль', 'Нужно хотя бы 8 символов. Копия не сохранена.'); return null }
+  const p2 = await passwordDialog('Повтори пароль')
+  if (p2 == null) return null
+  if (p1 !== p2) { await alertDialog('Пароли не совпали', 'Копия не сохранена — попробуй ещё раз.'); return null }
+  return p1
+}
+
 export async function makeBackup(includePasswords: boolean) {
+  let secretsEnc: SealedSecrets | undefined
+  if (includePasswords) {
+    const pw = await askNewBackupPassword()
+    if (!pw) return null
+    secretsEnc = await sealSecrets(await safu.secret.all(), pw)
+  }
   const all = kv.all()
   const caches: Record<string, unknown> = {}
   for (const n of CACHE_NAMES(all)) caches[n] = await safu.cache.get(n)
   const blob = {
-    app: 'safu-windows', version: 1, created: Date.now(), kv: all, caches,
-    secrets: includePasswords ? await safu.secret.all() : undefined
+    app: 'safu-windows', version: 2, created: Date.now(), kv: all, caches, secretsEnc
   }
   const p = await safu.dialog.save({ name: `Арктика копия ${ymd(Date.now())}.safu`, text: JSON.stringify(blob), filters: [{ name: 'Копия Арктики', extensions: ['safu'] }] })
   if (p) { kv.set('backup.last', Date.now()); toast('Копия сохранена') }
@@ -33,9 +86,19 @@ export async function restoreBackupInteractive(): Promise<boolean> {
       const blob = JSON.parse(r.text)
       if (blob.app !== 'safu-windows' || !blob.kv) throw new Error('Это не резервная копия Арктики')
       if (!await confirmDialog('Восстановить копию?', `Все текущие данные заменятся данными из «${r.name}».`, 'Восстановить', true)) return false
+      let secrets: Record<string, string> | null = null
+      if (blob.secretsEnc) {
+        while (!secrets) {
+          const pw = await passwordDialog('Пароль копии', 'В копии есть сохранённые пароли сайтов. Введи пароль, которым она зашифрована. «Отмена» — восстановить всё остальное без паролей.')
+          if (pw == null) break
+          try { secrets = await openSecrets(blob.secretsEnc, pw) } catch { toast('Пароль не подходит', 'warn') }
+        }
+      } else if (blob.secrets && typeof blob.secrets === 'object') {
+        secrets = blob.secrets // копия старой версии, где пароли лежали без шифрования
+      }
       kv.replaceAll({ ...blob.kv, onboarded: true })
       for (const [n, v] of Object.entries(blob.caches || {})) await safu.cache.set(n, v)
-      if (blob.secrets) await safu.secret.replace(blob.secrets)
+      if (secrets) await safu.secret.replace(secrets)
     } else {
       if (!r.plist) throw new Error('Это не резервная копия Арктики')
       const domain = parseBinaryPlist(Uint8Array.from(atob(r.plist), c => c.charCodeAt(0))) as Record<string, PlistValue>
@@ -82,7 +145,8 @@ function toJS(v: PlistValue): any {
 
 export function convertIOS(domain: Record<string, PlistValue>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
-  const skip = /^(Apple|NS|WebKit|com\.apple|PK|AK|INNext|widget\.|live\.)/
+  // разрешение на отправку в ИИ — у каждого устройства своё, с iPhone не переносим
+  const skip = /^(Apple|NS|WebKit|com\.apple|PK|AK|INNext|widget\.|live\.|ai\.consent\.)/
   for (const [k, v] of Object.entries(domain)) {
     if (skip.test(k)) continue
     const j = toJS(v)

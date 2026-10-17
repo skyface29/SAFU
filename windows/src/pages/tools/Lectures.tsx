@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, Square, Pause, Play, Star, Trash2, Sparkles, FileText, KeyRound, FolderOpen, Copy, Wand2, Loader2 } from 'lucide-react'
 import { PageHeader, Card, Sheet, Empty, Field, Segmented, toast, confirmDialog, Progress, promptDialog } from '../../ui/kit'
-import { createCollection, uid, usePref } from '../../lib/kv'
+import { createCollection, uid, usePref, kv } from '../../lib/kv'
 import { useSchedule } from '../../lib/scheduleStore'
 import { subjects, nowAndNext } from '../../lib/schedule'
 import { safu, fileURL } from '../../lib/bridge'
@@ -12,6 +12,10 @@ import { timer, dayMonth, hm, plural } from '../../lib/date'
 import { toBase64 } from '../../lib/zip'
 
 type Segment = { start: number; end: number; text: string }
+
+/** Разрешение отправлять расшифровку в Claude: спрашиваем один раз, сбрасывается вместе с ключом */
+const AI_CONSENT = 'ai.consent.claude'
+const AI_CONSENT_TEXT = 'Чтобы написать конспект, текст расшифровки этой и следующих лекций уйдёт в Anthropic (Claude) по твоему ключу. Аудиозапись, файлы и другие данные не отправляются. Anthropic обрабатывает текст по своим правилам: anthropic.com/legal/privacy. Без разрешения конспект соберётся на компьютере, без ИИ. Отозвать: удали ключ в настройках лекций.'
 type Summary = { title: string; summary: string; keyPoints: string[]; sections: { heading: string; points: string[] }[]; terms: { term: string; definition: string }[]; formulas: string[]; questions: string[]; tasks: string[] }
 type Lecture = { id: string; title: string; subject: string; created: number; duration: number; file: string; marks: number[]; segments: Segment[]; summary: Summary | null; summaryBy: string; notes: string }
 
@@ -186,6 +190,12 @@ function LectureSheet({ l, onClose }: { l: Lecture | null; onClose: () => void }
 
   const summarize = async () => {
     if (!l.segments.length) { toast('Сначала сделай текст', 'warn'); return }
+    // без разрешения человека текст во внешний ИИ не уходит — конспект собирается на компьютере
+    if (await safu.secret.get('claude.key') && !kv.get(AI_CONSENT, false)) {
+      const ok = await confirmDialog('Отправить текст лекции в Claude?', AI_CONSENT_TEXT, 'Разрешить')
+      if (!ok) { upd({ summary: localSummary(l), summaryBy: 'без ИИ' }); setTab('summary'); return }
+      kv.set(AI_CONSENT, true)
+    }
     setStage('Claude пишет конспект…')
     const st = STYLES.find(s => s.id === style) || STYLES[0]
     const r = await safu.ai.summarize({ subject: l.subject, minutes: Math.round(l.duration / 60), style: st.instruction, transcript: transcriptForAI(l) })
@@ -256,11 +266,11 @@ function KeySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => { if (open) safu.secret.get('claude.key').then(k => { setHas(!!k); setKey('') }) }, [open])
   return (
     <Sheet open={open} onClose={onClose} title="ИИ для конспектов" footer={<>
-      {has && <button className="btn danger" onClick={async () => { await safu.secret.set('claude.key', null); setHas(false); toast('Ключ удалён') }}>Удалить ключ</button>}
+      {has && <button className="btn danger" onClick={async () => { await safu.secret.set('claude.key', null); kv.remove(AI_CONSENT); setHas(false); toast('Ключ удалён') }}>Удалить ключ</button>}
       <span className="spacer" />
       <button className="btn primary" disabled={!key.trim().startsWith('sk-')} onClick={async () => { await safu.secret.set('claude.key', key.trim()); toast('Ключ сохранён'); onClose() }}>Сохранить</button>
     </>}>
-      <div className="sub mb12" style={{ lineHeight: 1.5 }}>Конспекты делает Claude (модель Claude Opus 5.5). Нужен свой ключ API с console.anthropic.com. Ключ хранится зашифрованным средствами Windows и отправляется только в Anthropic. Без ключа приложение соберёт конспект само, проще.</div>
+      <div className="sub mb12" style={{ lineHeight: 1.5 }}>Конспекты делает Claude (модель Claude Opus 5.5). Нужен свой ключ API с console.anthropic.com. Ключ хранится зашифрованным средствами Windows и отправляется только в Anthropic. Перед первой отправкой текста лекции приложение спросит разрешение. Без ключа приложение соберёт конспект само, проще.</div>
       <div className="pill mb12">{has ? '✓ Ключ сохранён' : 'Ключ не задан'}</div>
       <Field label="Ключ Claude API"><input className="input" type="password" value={key} onChange={e => setKey(e.target.value)} placeholder="sk-ant-…" /></Field>
       <button className="btn ghost" onClick={() => safu.shell.open('https://console.anthropic.com/settings/keys')}>Получить ключ</button>

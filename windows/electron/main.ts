@@ -310,22 +310,35 @@ function saveKVNow() {
 
 // ---------- секреты (пароли сайтов) — шифруются Windows DPAPI через safeStorage ----------
 
+// Открытым текстом секреты на диск не пишутся никогда: если шифрование Windows недоступно,
+// они живут только в памяти до закрытия приложения.
+
 let secrets: Record<string, string> = {}
 
 function loadSecrets() {
-  try {
-    const raw = fs.readFileSync(secretsFile())
-    const text = safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(raw) : raw.toString('utf8')
-    secrets = JSON.parse(text)
-  } catch {
-    secrets = {}
+  let raw: Buffer
+  try { raw = fs.readFileSync(secretsFile()) } catch { secrets = {}; return }
+  const canEncrypt = safeStorage.isEncryptionAvailable()
+  if (canEncrypt) {
+    try { secrets = JSON.parse(safeStorage.decryptString(raw)); return } catch { /* не зашифрован — возможно, файл старой версии */ }
   }
+  // старые версии без шифрования могли записать открытый JSON — читаем и сразу перешифровываем
+  try {
+    const legacy = JSON.parse(raw.toString('utf8'))
+    if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+      secrets = legacy
+      if (canEncrypt) saveSecrets()
+      return
+    }
+  } catch { /* не JSON — зашифрован, а расшифровать сейчас нечем */ }
+  secrets = {}
 }
 
 function saveSecrets() {
-  const text = JSON.stringify(secrets)
-  const data = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(text) : Buffer.from(text, 'utf8')
-  fs.writeFileSync(secretsFile(), data)
+  if (!safeStorage.isEncryptionAvailable()) return
+  const tmp = secretsFile() + '.tmp'
+  fs.writeFileSync(tmp, safeStorage.encryptString(JSON.stringify(secrets)))
+  fs.renameSync(tmp, secretsFile())
 }
 
 // ---------- окна ----------

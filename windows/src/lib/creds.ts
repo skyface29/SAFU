@@ -8,6 +8,10 @@ export const useCreds = create<{ list: Credential[] }>(() => ({ list: [] }))
 
 const KEY = (host: string) => `cred:${host.toLowerCase()}`
 
+/** Сайты САФУ: у них одна учётная запись, поэтому пароль одного подходит соседним */
+const UNI = 'narfu.ru'
+export const isUniHost = (h: string) => h === UNI || h.endsWith('.' + UNI)
+
 export const creds = {
   async load() {
     const all = await safu.secret.all()
@@ -19,7 +23,11 @@ export const creds = {
   get(host: string): Credential | null {
     const h = host.toLowerCase()
     const list = useCreds.getState().list
-    return list.find(c => c.host === h) || list.find(c => h.endsWith('.' + c.host) || c.host.endsWith('.' + h)) || null
+    const exact = list.find(c => c.host === h)
+    if (exact) return exact
+    // на чужих сайтах — только пароль, сохранённый на этом же адресе
+    if (!isUniHost(h)) return null
+    return list.find(c => isUniHost(c.host) && (h.endsWith('.' + c.host) || c.host.endsWith('.' + h))) || null
   },
   async set(c: Omit<Credential, 'saved'>) {
     const v: Credential = { ...c, host: c.host.toLowerCase(), saved: Date.now() }
@@ -34,7 +42,7 @@ export const creds = {
     const m = creds.get('edu.narfu.ru')
     if (m && usable(m)) return { ...m, source: 'почты' }
     const rank = (h: string) => h.includes('sakai') ? 0 : h.startsWith('lk.') ? 1 : 2
-    const others = useCreds.getState().list.filter(c => c.host.endsWith('narfu.ru') && usable(c)).sort((a, b) => rank(a.host) - rank(b.host))
+    const others = useCreds.getState().list.filter(c => isUniHost(c.host) && usable(c)).sort((a, b) => rank(a.host) - rank(b.host))
     const c = others[0]
     if (!c) return null
     return { ...c, source: c.host.includes('sakai') ? 'Sakai' : c.host.startsWith('lk.') ? 'личного кабинета' : c.host }

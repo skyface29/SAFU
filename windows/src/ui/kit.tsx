@@ -254,7 +254,7 @@ export function Sheet({ open, onClose, title, children, footer, size, headRight,
 
 // ---------- подтверждение и ввод текста ----------
 
-type DialogReq = { kind: 'confirm' | 'prompt' | 'alert'; title: string; text?: string; ok?: string; danger?: boolean; value?: string; placeholder?: string; resolve: (v: any) => void }
+type DialogReq = { kind: 'confirm' | 'prompt' | 'alert'; title: string; text?: string; ok?: string; danger?: boolean; value?: string; placeholder?: string; secret?: boolean; resolve: (v: any) => void }
 const DialogCtx = createContext<(r: Omit<DialogReq, 'resolve'>) => Promise<any>>(async () => null)
 
 export function DialogHost({ children }: { children: React.ReactNode }) {
@@ -274,7 +274,7 @@ export function DialogHost({ children }: { children: React.ReactNode }) {
         </>}>
         {req?.text && <div className="muted wrap" style={{ lineHeight: 1.5 }}>{req.text}</div>}
         {req?.kind === 'prompt' && (
-          <input className="input mt12" autoFocus value={val} placeholder={req.placeholder} onChange={e => setVal(e.target.value)}
+          <input className="input mt12" autoFocus type={req.secret ? 'password' : 'text'} value={val} placeholder={req.placeholder} onChange={e => setVal(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') close(val) }} />
         )}
       </Sheet>
@@ -286,6 +286,8 @@ const dialogRef: { current: (r: Omit<DialogReq, 'resolve'>) => Promise<any> } = 
 export const useDialog = () => useContext(DialogCtx)
 export const confirmDialog = (title: string, text?: string, ok = 'Да', danger = false): Promise<boolean> => dialogRef.current({ kind: 'confirm', title, text, ok, danger })
 export const promptDialog = (title: string, value = '', placeholder = '', text?: string): Promise<string | null> => dialogRef.current({ kind: 'prompt', title, value, placeholder, text, ok: 'Готово' })
+/** Ввод пароля: символы скрыты */
+export const passwordDialog = (title: string, text?: string, ok = 'Готово'): Promise<string | null> => dialogRef.current({ kind: 'prompt', title, value: '', placeholder: 'Пароль', text, ok, secret: true })
 export const alertDialog = (title: string, text?: string): Promise<boolean> => dialogRef.current({ kind: 'alert', title, text })
 
 // ---------- всплывающие сообщения ----------
