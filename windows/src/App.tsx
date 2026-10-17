@@ -15,9 +15,9 @@ import { SyncPairAsk, SyncFirewallAsk } from './pages/Sync'
 import { Ambient } from './fx/Ambient'
 import { initFx, applyFx } from './fx/perf'
 import { Titlebar, Sidebar, Splash, CommandPalette } from './ui/Shell'
-import { DialogHost, ToastHost, MenuHost } from './ui/kit'
+import { DialogHost, ToastHost, MenuHost, toast } from './ui/kit'
 import { SiteLayer } from './sites/SiteLayer'
-import { openSiteByKey } from './sites/sites'
+import { openSiteByKey, openFileCard } from './sites/sites'
 import { PAGES } from './pages'
 import { Registration } from './pages/Registration'
 import { SubjectSheet } from './pages/Subjects'
@@ -101,6 +101,17 @@ export default function App() {
 
   // переходы из уведомлений, трея и ссылок safu://
   useEffect(() => safu.app.on('app:route', (route: string) => handleRoute(route)), [])
+
+  // скачал файл с сайта — говорим, куда он лёг, и даём сразу открыть
+  useEffect(() => safu.app.on('download:progress', (p: any) => {
+    if (p?.state === 'completed') {
+      const name = String(p.name || 'Файл')
+      const ext = name.includes('.') ? name.split('.').pop()!.toLowerCase() : ''
+      toast(`Сохранено в «${p.folder || 'Загрузки'}»: ${name}`, 'ok', p.rel ? { label: 'Открыть', run: () => openFileCard(p.rel, name, ext) } : undefined)
+    } else if (p?.state === 'interrupted') {
+      toast(`Не удалось скачать: ${p.name || 'файл'}`, 'warn')
+    }
+  }), [])
 
   // горячие клавиши
   useEffect(() => {

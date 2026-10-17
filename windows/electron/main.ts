@@ -859,36 +859,40 @@ function setupSiteSession() {
   ses.setPermissionRequestHandler((_wc, permission, cb) => {
     cb(['notifications', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen', 'media'].includes(permission))
   })
-  // загрузки с сайтов (Sakai, почта) — в «Загрузки\Арктика» или в папку предмета, которую выбрали заранее
-  ses.on('will-download', (_e, item) => {
-    const targetRel = (kv['download.target'] as string) || ''
+  // загрузки с сайтов (Sakai, почта) — в «Файлы» приложения: в папку предмета, которую выбрали заранее,
+  // в папку курса Sakai, который сейчас открыт (подсказывает интерфейс), иначе в «Загрузки»
+  ses.on('will-download', (_e, item, wc) => {
+    const chosen = (kv['download.target'] as string) || ''
+    const hint = wc ? downloadHints.get(wc.id) || '' : ''
     let dir: string
-    try {
-      dir = targetRel ? inRoot(targetRel) : path.join(app.getPath('downloads'), 'Арктика')
-    } catch {
-      dir = path.join(app.getPath('downloads'), 'Арктика')
-    }
+    try { dir = inRoot(chosen || hint || 'Загрузки') } catch { dir = inRoot('Загрузки') }
     fs.mkdirSync(dir, { recursive: true })
-    const file = uniquePath(path.join(dir, item.getFilename()))
+    const name = item.getFilename() || 'Файл'
+    const file = uniquePath(path.join(dir, name.replace(/[\\/:*?"<>|]/g, '_')))
     item.setSavePath(file)
-    win?.webContents.send('download:progress', { name: item.getFilename(), state: 'started', path: file })
+    const rel = path.relative(filesRoot(), file).split(path.sep).join('/')
+    const folder = path.basename(dir)
+    const send = (o: Record<string, unknown>) => win?.webContents.send('download:progress', { name: path.basename(file), path: file, rel, folder, ...o })
+    send({ state: 'started' })
     item.on('updated', () => {
       const total = item.getTotalBytes()
-      win?.webContents.send('download:progress', {
-        name: item.getFilename(), state: 'progress', path: file,
-        progress: total > 0 ? item.getReceivedBytes() / total : 0
-      })
+      send({ state: 'progress', progress: total > 0 ? item.getReceivedBytes() / total : 0 })
     })
     item.once('done', (_ev, state) => {
-      win?.webContents.send('download:progress', { name: item.getFilename(), state, path: file })
-      if (state === 'completed') {
-        showNotification({ title: 'Файл скачан', body: path.basename(file), silent: true })
+      send({ state })
+      if (state === 'completed' && !win?.isFocused()) {
+        showNotification({ title: `Сохранено в «${folder}»`, body: path.basename(file), silent: true })
       }
     })
   })
 }
 
+/** Куда класть скачанное с конкретной страницы: интерфейс узнаёт открытый курс Sakai и присылает папку предмета */
+const downloadHints = new Map<number, string>()
+
 function setupSiteContents(wc: Electron.WebContents) {
+  const wcId = wc.id
+  wc.once('destroyed', () => downloadHints.delete(wcId))
   // ссылки «в новом окне» открываем в той же карточке — так работают Sakai и почта
   wc.setWindowOpenHandler(({ url }) => {
     if (/^https?:/i.test(url)) win?.webContents.send('site:newWindow', { id: wc.id, url })
@@ -897,6 +901,7 @@ function setupSiteContents(wc: Electron.WebContents) {
   wc.on('context-menu', (_e, p) => {
     const items: Electron.MenuItemConstructorOptions[] = []
     if (p.linkURL) {
+      if (/^https?:/i.test(p.linkURL)) items.push({ label: 'Скачать в Файлы', click: () => wc.downloadURL(p.linkURL) })
       items.push({ label: 'Открыть ссылку в браузере', click: () => shell.openExternal(p.linkURL) })
       items.push({ label: 'Копировать ссылку', click: () => clipboard.writeText(p.linkURL) })
       items.push({ type: 'separator' })
@@ -907,6 +912,9 @@ function setupSiteContents(wc: Electron.WebContents) {
     }
     if (p.mediaType === 'image' && p.srcURL) {
       items.push({ label: 'Сохранить картинку', click: () => wc.downloadURL(p.srcURL) })
+    }
+    if ((p.mediaType === 'video' || p.mediaType === 'audio') && /^https?:/i.test(p.srcURL)) {
+      items.push({ label: p.mediaType === 'video' ? 'Сохранить видео' : 'Сохранить запись', click: () => wc.downloadURL(p.srcURL) })
     }
     items.push({ type: 'separator' })
     items.push({ label: 'Назад', enabled: wc.navigationHistory.canGoBack(), click: () => wc.navigationHistory.goBack() })
@@ -1237,6 +1245,11 @@ function registerIPC() {
     delete secrets[SESSION_COOKIES]
     saveSecrets()
     return true
+  })
+  ipcMain.on('sites:downloadHint', (_e, id: number, rel: string | null) => {
+    if (typeof id !== 'number') return
+    if (typeof rel === 'string' && rel) downloadHints.set(id, rel)
+    else downloadHints.delete(id)
   })
   ipcMain.handle('sites:preload', () => pathToFileURL(path.join(__dirname, 'site-preload.js')).toString())
 }

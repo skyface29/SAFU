@@ -17,6 +17,8 @@ import { SiteGlyph, siteColor } from '../ui/icons'
 import { openMenu, toast, spring, softSpring } from '../ui/kit'
 import { useSchedule } from '../lib/scheduleStore'
 import { subjects } from '../lib/schedule'
+import { subjectFolder } from '../lib/effects'
+import { bestSubject, looksLikeFile, FIND_FILES_SCRIPT, pageFileName, type PageFile } from '../lib/downloads'
 
 
 let preloadURL = ''
@@ -337,8 +339,20 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
       const url = wv.getURL()
       sites.update(tab.id, { currentURL: url, canBack: wv.canGoBack(), canForward: wv.canGoForward() })
       if (res) resources.saveLastURL(url, res)
+      hintDownloads(wv.getTitle())
     }
-    const onTitle = (e: any) => sites.update(tab.id, { pageTitle: e.title })
+    const onTitle = (e: any) => { sites.update(tab.id, { pageTitle: e.title }); hintDownloads(e.title) }
+    // открыт курс Sakai — скачанное с него сразу ложится в папку этого предмета
+    const hintDownloads = (title: string) => {
+      let rel: string | null = null
+      try {
+        if (new URL(wv.getURL()).host.toLowerCase().includes('sakai')) {
+          const s = bestSubject(title || '', subjects(useSchedule.getState().data))
+          if (s) rel = subjectFolder(s)
+        }
+      } catch { /* адреса ещё нет */ }
+      try { safu.sites.downloadHint(wv.getWebContentsId(), rel) } catch { /* страница ещё не готова */ }
+    }
     // сайт молчит 45 секунд — честно говорим, а не держим полоску загрузки вечно
     let slow: ReturnType<typeof setTimeout> | null = null
     let timedOut = false
@@ -454,6 +468,9 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
       { label: 'Мельче', icon: <ZoomOut size={15} />, run: () => { const z = Math.max(0.5, zoom - 0.1); setZoom(z); wv?.setZoomFactor(z) } },
       { label: 'Печать', icon: <Printer size={15} />, run: () => wv?.print() },
       { sep: true, label: '' },
+      ...(looksLikeFile(tab.currentURL || '') ? [{ label: 'Сохранить этот файл в Файлы', icon: <Download size={15} />, run: () => wv?.downloadURL(tab.currentURL || '') }] : []),
+      { label: 'Файлы на странице…', icon: <FileText size={15} />, run: () => { if (wv) void showPageFiles(e, wv) } },
+      { sep: true, label: '' },
       { label: kv.get('download.target', '') ? 'Скачивать в «Загрузки»' : 'Скачивать в папку предмета…', icon: <Download size={15} />, run: () => chooseDownloadTarget(e, subj) },
       ...(saved ? [{ label: 'Вставить пароль', icon: <KeyRound size={15} />, run: () => wv?.send('safu:fill', saved.user, saved.pass, false) }] : []),
       { sep: true, label: '' },
@@ -555,8 +572,20 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
   )
 })
 
+/** Все файлы со страницы (учебники, лекции, ресурсы Sakai) — нажал, и файл скачался в «Файлы» */
+async function showPageFiles(e: React.MouseEvent, wv: any) {
+  let list: PageFile[] = []
+  try { list = (await wv.executeJavaScript(FIND_FILES_SCRIPT)) || [] } catch { list = [] }
+  if (!list.length) { toast('На этой странице не нашлось файлов', 'info'); return }
+  const shown = list.slice(0, 25)
+  openMenu(e, [
+    ...(list.length > 1 ? [{ label: `Скачать все (${Math.min(list.length, 30)})`, icon: <Download size={15} />, run: () => { for (const f of list.slice(0, 30)) wv.downloadURL(f.u) } }, { sep: true, label: '' }] : []),
+    ...shown.map(f => ({ label: pageFileName(f).slice(0, 70), icon: <FileText size={15} />, run: () => wv.downloadURL(f.u) }))
+  ])
+}
+
 function chooseDownloadTarget(e: React.MouseEvent, subj: string[]) {
-  if (kv.get('download.target', '')) { kv.set('download.target', ''); toast('Файлы будут скачиваться в «Загрузки\\Арктика»', 'info'); return }
+  if (kv.get('download.target', '')) { kv.set('download.target', ''); toast('Файлы будут скачиваться в «Загрузки» (а с курса Sakai — в папку предмета)', 'info'); return }
   openMenu(e, subj.slice(0, 18).map(s => ({
     label: s, run: () => { kv.set('download.target', `Предметы/${s.replace(/[\\/:*?"<>|]/g, '_')}`); toast(`Скачанное попадёт в папку «${s}»`) }
   })))

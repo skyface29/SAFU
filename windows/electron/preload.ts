@@ -129,7 +129,9 @@ const api = {
   mail: { check: (acc: unknown) => ipcRenderer.invoke('mail:check', acc) },
   sites: {
     clear: () => ipcRenderer.invoke('sites:clear'),
-    preload: (): Promise<string> => ipcRenderer.invoke('sites:preload')
+    preload: (): Promise<string> => ipcRenderer.invoke('sites:preload'),
+    /** Скачанное с этой страницы класть в папку (относительно «Файлов»); null — в «Загрузки» */
+    downloadHint: (webContentsId: number, rel: string | null) => ipcRenderer.send('sites:downloadHint', webContentsId, rel)
   }
 }
 
