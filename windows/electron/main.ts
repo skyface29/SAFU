@@ -4,7 +4,7 @@
 
 import {
   app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, Notification, shell, dialog,
-  safeStorage, net, protocol, session, screen, nativeTheme, clipboard, powerMonitor, globalShortcut
+  safeStorage, net, protocol, session, screen, nativeTheme, clipboard, powerMonitor, globalShortcut, webContents
 } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
@@ -23,7 +23,8 @@ const APP_ID = 'ru.student.safuhub'
 
 app.setAppUserModelId(APP_ID)
 app.setName('Арктика')
-app.setPath('userData', path.join(app.getPath('appData'), 'САФУ'))
+// SAFU_USER_DATA — отдельная папка данных для проверок и замеров, чтобы не трогать настоящие
+app.setPath('userData', process.env.SAFU_USER_DATA || path.join(app.getPath('appData'), 'САФУ'))
 
 // ---------- один экземпляр и ссылки safu:// ----------
 
@@ -1252,6 +1253,24 @@ function registerIPC() {
     else downloadHints.delete(id)
   })
   ipcMain.handle('sites:preload', () => pathToFileURL(path.join(__dirname, 'site-preload.js')).toString())
+  // Снимок страницы сайта — здесь, в главном процессе. В окне приложения <webview>.capturePage()
+  // роняет весь интерфейс (Electron 33): окно падало и перезагружалось после каждого разворачивания
+  // сайта — это и был «лаг» при сворачивании почты и ЛК. Отдаём готовый JPEG и маленький снимок для стопки
+  ipcMain.handle('sites:capture', async (e, id: number, width: number) => {
+    const wc = typeof id === 'number' ? webContents.fromId(id) : undefined
+    // только страницы сайтов внутри нашего окна
+    if (!wc || wc.isDestroyed() || wc.getType() !== 'webview' || wc.hostWebContents !== e.sender) return null
+    try {
+      let img = await wc.capturePage()
+      if (img.isEmpty()) return null
+      const w = Math.round(Number(width) || 0)
+      // на экранах с масштабом — до размера окна: меньше кодировать и раскодировать
+      if (w > 0 && img.getSize().width > w * 1.2) img = img.resize({ width: w, quality: 'good' })
+      return { full: img.toJPEG(82), thumb: img.resize({ width: 420, quality: 'good' }).toJPEG(80) }
+    } catch {
+      return null
+    }
+  })
 }
 
 /** Красный кружок с числом для значка в панели задач */

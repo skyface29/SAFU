@@ -69,7 +69,7 @@ function browserFallback(): SafuAPI {
     },
     ai: { summarize: async () => ({ ok: false, error: 'Конспекты ИИ работают в приложении для Windows' }) },
     mail: { check: async () => ({ ok: false, error: 'Почта проверяется только в приложении для Windows' }) },
-    sites: { clear: noop, preload: async () => '', downloadHint: () => undefined }
+    sites: { clear: noop, preload: async () => '', downloadHint: () => undefined, capture: async () => null }
   }
   return api as SafuAPI
 }

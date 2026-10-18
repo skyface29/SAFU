@@ -131,7 +131,10 @@ const api = {
     clear: () => ipcRenderer.invoke('sites:clear'),
     preload: (): Promise<string> => ipcRenderer.invoke('sites:preload'),
     /** Скачанное с этой страницы класть в папку (относительно «Файлов»); null — в «Загрузки» */
-    downloadHint: (webContentsId: number, rel: string | null) => ipcRenderer.send('sites:downloadHint', webContentsId, rel)
+    downloadHint: (webContentsId: number, rel: string | null) => ipcRenderer.send('sites:downloadHint', webContentsId, rel),
+    /** Снимок страницы сайта (JPEG) — делает главный процесс */
+    capture: (webContentsId: number, width: number): Promise<{ full: Uint8Array; thumb: Uint8Array } | null> =>
+      ipcRenderer.invoke('sites:capture', webContentsId, width)
   }
 }
 

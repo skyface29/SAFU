@@ -47,8 +47,23 @@ useSites.subscribe(st => {
 const autoAttempts = new Map<string, number[]>()
 /** Карточка готовится уехать: снимает полноразмерный снимок страницы и прячет живую страницу */
 const preparers = new Map<string, () => Promise<void>>()
-/** Последний снимок страницы (из него же — маленький для плашки и стопки) */
-const lastImages = new Map<string, any>()
+/** Маленький снимок последней страницы (JPEG) — для плашки и стопки */
+const lastThumbs = new Map<string, Uint8Array>()
+/** Снимки для стопки — адреса blob:, освобождаются при замене и закрытии вкладки */
+const thumbURLs = new Map<string, string>()
+
+function setThumb(id: string, jpeg: Uint8Array | undefined) {
+  const old = thumbURLs.get(id)
+  if (!jpeg) {
+    if (old) { URL.revokeObjectURL(old); thumbURLs.delete(id) }
+    return
+  }
+  const url = URL.createObjectURL(new Blob([jpeg], { type: 'image/jpeg' }))
+  thumbURLs.set(id, url)
+  sites.update(id, { snapshot: url })
+  // старый адрес ещё может показываться в стопке — освобождаем чуть позже
+  if (old) setTimeout(() => URL.revokeObjectURL(old), 2000)
+}
 
 function prepare(id: string | null) {
   const f = id ? preparers.get(id) : null
@@ -117,8 +132,8 @@ export function minimizeWithSnapshot() {
   if (!id) return
   // маленький снимок для стопки — после того, как карточка доехала, чтобы не попасть на анимацию
   setTimeout(() => {
-    const img = lastImages.get(id)
-    try { if (img) sites.update(id, { snapshot: img.resize({ width: 420 }).toDataURL() }) } catch { /* страница ещё не загрузилась */ }
+    const t = lastThumbs.get(id)
+    if (t && useSites.getState().tabs.some(x => x.id === id)) setThumb(id, t)
   }, 600)
 }
 
@@ -158,26 +173,26 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
   // снимок страницы (JPEG в памяти) готовится заранее — когда на странице затишье, а не в момент сворачивания
   const [shot, setShot] = useState<string | null>(null)
   useEffect(() => () => { if (shot) URL.revokeObjectURL(shot) }, [shot])
+  // вкладку закрыли — снимки больше не нужны
+  useEffect(() => () => { lastThumbs.delete(tab.id); setThumb(tab.id, undefined) }, [tab.id])
   const lastGrab = useRef(0)
   const grab = async (force = false) => {
     const wv = ref.current
     if (!wv || tab.kind !== 'site' || !liveRef.current || hideRef.current || !visibleRef.current) return
-    if (!force && performance.now() - lastGrab.current < 1500) return
+    if (!force && performance.now() - lastGrab.current < 2500) return
     lastGrab.current = performance.now()
-    try {
-      let img = await wv.capturePage()
-      if (!img || img.isEmpty()) return
-      // на экранах с масштабом — до размера окна: меньше кодировать и раскодировать
-      const dpr = window.devicePixelRatio || 1
-      if (dpr > 1.2) img = img.resize({ width: Math.round(img.getSize().width / dpr), quality: 'good' })
-      lastImages.set(tab.id, img)
-      const url = URL.createObjectURL(new Blob([img.toJPEG(84)], { type: 'image/jpeg' }))
-      // раскодировать заранее: в начале анимации картинка уже готова
-      const probe = new Image()
-      probe.src = url
-      await probe.decode().catch(() => undefined)
-      setShot(url)
-    } catch { /* страница ещё грузится */ }
+    let wcId = 0
+    try { wcId = wv.getWebContentsId() } catch { return /* страница ещё не готова */ }
+    // снимает и сжимает главный процесс: <webview>.capturePage() здесь роняет окно приложения
+    const r = await safu.sites.capture(wcId, Math.round(wv.clientWidth || window.innerWidth)).catch(() => null)
+    if (!r || !ref.current) return
+    lastThumbs.set(tab.id, r.thumb)
+    const url = URL.createObjectURL(new Blob([r.full], { type: 'image/jpeg' }))
+    // раскодировать заранее: в начале анимации картинка уже готова
+    const probe = new Image()
+    probe.src = url
+    await probe.decode().catch(() => undefined)
+    setShot(url)
   }
   // свернуть или закрыть: живую страницу — спрятать, снимок — показать (мгновенно, без ожидания)
   useEffect(() => {
