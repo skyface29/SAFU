@@ -38,7 +38,7 @@ export default function SyncPage() {
 
   return (
     <>
-      <PageHeader title="Синхронизация с iPhone" subtitle="ДЗ, задачи и заметки — одинаковые на телефоне и компьютере. Отметил ДЗ сделанным здесь — через пару секунд оно сделано и на iPhone" />
+      <PageHeader title="Синхронизация с телефоном" subtitle="iPhone и Android: ДЗ, задачи и заметки — одинаковые на телефоне и компьютере. Отметил ДЗ сделанным здесь — через пару секунд оно сделано и на телефоне" />
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <Card style={{ padding: 26, overflow: 'hidden' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(600px 260px at 10% 0%, rgba(var(--brand-rgb), .16), transparent)', pointerEvents: 'none' }} />
@@ -97,7 +97,7 @@ function SyncStatus({ paired, last }: { paired: boolean | null; last: SyncLast |
       </motion.div>
       <div className="grow">
         <div className="h-card" style={{ fontSize: '1.2rem' }}>
-          {paired === null ? 'Проверяю…' : paired ? (last ? `Синхронизировано с «${last.device}»` : 'Связано — жду iPhone') : 'iPhone не связан'}
+          {paired === null ? 'Проверяю…' : paired ? (last ? `Синхронизировано с «${last.device}»` : 'Связано — жду телефон') : 'Телефон не связан'}
         </div>
         <div className="sub mt4">
           {paired ? (last ? `${fresh ? 'Телефон на связи · ' : ''}последний раз ${relativeAgo(last.at)}` : 'Открой Арктику на телефоне — он зайдёт сам') : 'На iPhone: Профиль → «Синхронизация с компьютером» — телефон найдёт этот компьютер сам'}
@@ -225,8 +225,8 @@ export function SyncFirewallAsk() {
     setBusy(false)
     setOpen(false)
     if (r === 'ok') toast('Готово: iPhone сможет находить компьютер сам')
-    else if (r === 'cancelled') toast('Можно разрешить позже: Профиль → «Синхронизация с iPhone»', 'warn')
-    else toast('Не вышло поменять брандмауэр — попробуй из «Синхронизации с iPhone»', 'warn')
+    else if (r === 'cancelled') toast('Можно разрешить позже: Профиль → «Синхронизация с телефоном»', 'warn')
+    else toast('Не вышло поменять брандмауэр — попробуй из «Синхронизации с телефоном»', 'warn')
   }
   return (
     <Sheet open={open} onClose={() => setOpen(false)} title="Пусть iPhone находит компьютер сам"
@@ -290,7 +290,7 @@ export function SyncBadge() {
   useEffect(() => { const t = setInterval(() => tick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
   if (!last) return null
   return (
-    <button className="btn sm ghost" onClick={() => go('sync')} title="Синхронизация с iPhone">
+    <button className="btn sm ghost" onClick={() => go('sync')} title="Синхронизация с телефоном">
       <RefreshCw size={13} /> iPhone · {relativeAgo(last.at)}
     </button>
   )

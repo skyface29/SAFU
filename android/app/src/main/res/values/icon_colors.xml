@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_bg_aurora">#121D3F</color>
+    <color name="ic_bg_cap">#F99335</color>
+    <color name="ic_bg_developer">#14183C</color>
+    <color name="ic_bg_glass">#30A0F4</color>
+    <color name="ic_bg_gold">#1F180E</color>
+    <color name="ic_bg_ice">#C5E1FF</color>
+    <color name="ic_bg_leather">#632D2A</color>
+    <color name="ic_bg_letter">#0B0F1C</color>
+    <color name="ic_bg_machinarium">#6D6C57</color>
+    <color name="ic_bg_mint">#45C286</color>
+    <color name="ic_bg_mono">#EAECF0</color>
+    <color name="ic_bg_neon">#06060E</color>
+    <color name="ic_bg_night">#131B40</color>
+    <color name="ic_bg_pin">#1E283E</color>
+    <color name="ic_bg_pixel">#421877</color>
+    <color name="ic_bg_shield">#3C36C5</color>
+    <color name="ic_bg_steel">#BCC0C4</color>
+    <color name="ic_bg_sunset">#F45463</color>
+    <color name="ic_bg_ticket">#1C3B46</color>
+    <color name="ic_bg_violet">#A44AE0</color>
+    <color name="ic_bg_ios6">#6498DD</color>
+    <color name="ic_bg_classic">#419FFA</color>
+</resources>

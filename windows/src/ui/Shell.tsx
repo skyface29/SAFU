@@ -97,7 +97,7 @@ function PhoneLink({ collapsed }: { collapsed: boolean }) {
   }, [])
   if (paired === null) return null
   const online = !!paired && !!last && Date.now() - last.at < 30_000
-  const text = !paired ? 'iPhone не связан' : online ? `${last!.device} · на связи` : last ? `iPhone · ${relativeAgo(last.at)}` : 'iPhone · жду телефон'
+  const text = !paired ? 'Телефон не связан' : online ? `${last!.device} · на связи` : last ? `Телефон · ${relativeAgo(last.at)}` : 'Жду телефон'
   const color = online ? '#22c55e' : paired ? '#f59e0b' : 'var(--text3)'
   return (
     <div className="phone-link" style={{ marginTop: 'auto', justifyContent: collapsed ? 'center' : 'flex-start' }} onClick={() => go('sync')} title={text}>
