@@ -4,6 +4,9 @@ on:
   push:
     # dev — проверочные сборки: .ipa в артефактах, без релиза
     branches: [ main, dev ]
+    # новый релиз iPhone — только когда поменялось само приложение для iPhone,
+    # а не на каждую правку Windows или Android
+    paths: [ 'SAFU.zip', '.github/workflows/build.yml' ]
 permissions:
   contents: write
 jobs:
