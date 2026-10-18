@@ -98,14 +98,14 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
                 const list = slotsOn(d, data)
                 const today = isToday(d)
                 return (
-                  <motion.div key={d} className="col gap8" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                  <div key={d} className="col gap8 rise-in" style={{ animationDelay: `${i * 0.04}s` }}>
                     <div className="tc" style={{ padding: '8px 4px', borderRadius: 14, background: today ? 'var(--grad)' : 'var(--fill)', color: today ? '#fff' : undefined, boxShadow: today ? '0 6px 20px rgba(var(--brand-rgb),.35)' : undefined }}>
                       <div className="heavy">{DAY_NAMES[weekday(d) - 1]}</div>
                       <div className="tiny" style={{ opacity: 0.8 }}>{dayMon(d)}</div>
                     </div>
                     {!list.length && <div className="tc tiny faint" style={{ padding: 20 }}>нет пар</div>}
                     {groupParallel(list).map(g => <WeekCell key={g.slot.key} s={g.slot} alts={g.alts} now={now} />)}
-                  </motion.div>
+                  </div>
                 )
               })}
             </div>

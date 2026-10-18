@@ -383,11 +383,14 @@ export const stagger = {
   item: { hidden: { opacity: 0, y: 14, scale: 0.98 }, show: { opacity: 1, y: 0, scale: 1, transition: softSpring } }
 }
 
+// Появление по очереди — CSS-анимацией (её ведёт композитор). Раньше каждый элемент был motion.div
+// с layout="position": framer мерил положение каждого элемента при показе страницы — переход в «Пары»
+// стоил до 270 мс главного потока
 export function Stagger({ children, className, style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
-  return <motion.div className={className} style={style} variants={stagger.container} initial="hidden" animate="show">{children}</motion.div>
+  return <div className={`stagger ${className || ''}`} style={style}>{children}</div>
 }
 export function StaggerItem({ children, className, style, onClick, onContextMenu }: { children: React.ReactNode; className?: string; style?: React.CSSProperties; onClick?: () => void; onContextMenu?: (e: React.MouseEvent) => void }) {
-  return <motion.div className={className} style={style} variants={stagger.item} onClick={onClick} onContextMenu={onContextMenu} layout="position">{children}</motion.div>
+  return <div className={className} style={style} onClick={onClick} onContextMenu={onContextMenu}>{children}</div>
 }
 
 /** Часы, тикающие раз в N мс (для таймеров пар) */

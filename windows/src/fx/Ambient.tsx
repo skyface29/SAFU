@@ -16,8 +16,11 @@ const STATIC = new Set(['plain', 'linen', 'soft', 'wash'])
 const ON_LIQUID = new Set(['snow', 'leaves', 'petals', 'summer'])
 
 /** Фон замирает, пока открыт сайт или окно не в фокусе (меньше кадров) — вся мощность интерфейсу */
-const pauseState = { paused: false, unfocused: false, scrollUntil: 0 }
+const pauseState = { paused: false, unfocused: false, scrollUntil: 0, holdUntil: 0 }
 export function setAmbientPaused(p: boolean) { pauseState.paused = p }
+/** Фон замирает на время перехода (смена страницы, сворачивание сайта): видеокарта — новой картинке */
+export function holdAmbient(ms: number) { pauseState.holdUntil = Math.max(pauseState.holdUntil, performance.now() + ms) }
+const held = (now: number) => now < pauseState.holdUntil
 if (typeof window !== 'undefined') {
   window.addEventListener('blur', () => { pauseState.unfocused = true })
   window.addEventListener('focus', () => { pauseState.unfocused = false })
@@ -56,7 +59,10 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
       sb = new ShaderBackdrop(cv, {
         mode: shaderMode, scale: b.scale, minScale: b.minScale, fps: b.fps,
         colors: { base: dark ? '#0a0d14' : '#eef2f8', c1, c2, c3: dark ? '#7c3aed' : '#a78bfa', dark, k },
-        state: () => ({ paused: pauseState.paused, unfocused: pauseState.unfocused, frozen: b.pauseOnScroll && performance.now() < pauseState.scrollUntil })
+        state: () => {
+          const now = performance.now()
+          return { paused: pauseState.paused, unfocused: pauseState.unfocused, frozen: held(now) || (b.pauseOnScroll && now < pauseState.scrollUntil) }
+        }
       }, () => setGlFailed(true))
     } catch {
       setGlFailed(true)
@@ -135,7 +141,7 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
     const baseInterval = PARTICLES.has(mode) ? 1000 / budget.fps : 1000 / 30
     function frame(now: number) {
       if (!running) return
-      if (budget.pauseOnScroll && now < pauseState.scrollUntil && last > 0) { raf = requestAnimationFrame(frame); return }
+      if (((budget.pauseOnScroll && now < pauseState.scrollUntil) || held(now)) && last > 0) { raf = requestAnimationFrame(frame); return }
       const interval = pauseState.paused ? 500 : pauseState.unfocused ? 1000 / 15 : baseInterval
       if (now - last < interval - 2) { raf = requestAnimationFrame(frame); return }
       last = now

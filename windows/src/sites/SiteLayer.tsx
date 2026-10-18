@@ -3,7 +3,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CardMotion, REST, OPEN, CLOSE, BACK, fadeTo, type Pose } from './cardMotion'
-import { setAmbientPaused } from '../fx/Ambient'
+import { setAmbientPaused, holdAmbient } from '../fx/Ambient'
 import {
   X, ChevronDown, ChevronUp, MoreHorizontal, ArrowLeft, ArrowRight, RotateCw, ExternalLink, Copy, KeyRound, Home,
   Moon, ZoomIn, ZoomOut, Layers, FileText, FolderOpen, Lock, Download, Printer
@@ -33,6 +33,8 @@ useSites.subscribe(st => {
   if (st.mode === prevMode) return
   prevMode = st.mode
   setAmbientPaused(st.mode !== 'closed')
+  // карточка уезжает в плашку — фон оживает, когда она доедет, а не в начале анимации
+  holdAmbient(st.mode === 'closed' ? CLOSE.duration + 80 : OPEN.duration)
   if (!kv.get('ui.siteBackdrop', false)) return
   const shell = document.querySelector<HTMLElement>('.shell')
   if (!shell) return

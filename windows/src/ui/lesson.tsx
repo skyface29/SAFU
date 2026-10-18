@@ -1,6 +1,5 @@
 // Строка пары — общая для главной, «Пар», листа предмета
 import React from 'react'
-import { motion } from 'framer-motion'
 import { MapPin, User, Wifi, BookMarked } from 'lucide-react'
 import { type Slot, kindStyle, AddressFormat } from '../lib/schedule'
 import { hm } from '../lib/date'
@@ -18,10 +17,8 @@ export function SlotRow({ s, now, compact, showDay, alts = [] }: { s: Slot; now:
   const due = hw.dueAt(s).filter(h => !h.done)
   const progress = live ? (now - s.start) / (s.end - s.start) : 0
   return (
-    <motion.div
-      className="row top"
-      layout="position"
-      whileHover={{ x: 3 }}
+    <div
+      className="row top slot-row"
       onClick={() => useModals.getState().set({ lesson: alts.length ? { ...s, alts } : s })}
       onContextMenu={e => openMenu(e, [
         { label: 'Подробнее', run: () => useModals.getState().set({ lesson: s }) },
@@ -34,7 +31,8 @@ export function SlotRow({ s, now, compact, showDay, alts = [] }: { s: Slot; now:
         background: live ? `linear-gradient(90deg, ${st.color}26, transparent)` : 'var(--fill)',
         border: `1px solid ${live ? st.color + '66' : 'var(--line)'}`, opacity: past ? 0.55 : 1, overflow: 'hidden'
       }}>
-      {live && <motion.div style={{ position: 'absolute', left: 0, bottom: 0, height: 3, background: st.color, boxShadow: `0 0 10px ${st.color}` }} initial={{ width: 0 }} animate={{ width: `${progress * 100}%` }} transition={{ duration: 1 }} />}
+      {/* полоска прогресса — масштабом, а не шириной: без пересчёта раскладки каждую секунду */}
+      {live && <div className="slot-progress" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, background: st.color, boxShadow: `0 0 10px ${st.color}`, transformOrigin: '0 50%', transform: `scaleX(${progress.toFixed(4)})` }} />}
       <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: st.color, flexShrink: 0, boxShadow: live ? `0 0 12px ${st.color}` : undefined }} />
       <div style={{ width: 62, flexShrink: 0 }}>
         <div className="bold mono" style={{ fontSize: '1.02rem' }}>{hm(s.start)}</div>
@@ -55,6 +53,6 @@ export function SlotRow({ s, now, compact, showDay, alts = [] }: { s: Slot; now:
           {s.teacher && !alts.length && <span className="row gap4"><User size={12} />{s.teacher}</span>}
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

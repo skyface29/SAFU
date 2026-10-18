@@ -1,5 +1,5 @@
 // Корень приложения: фон, каркас, страницы с анимированными переходами, слой сайтов, окна поверх
-import React, { useEffect, useState, useSyncExternalStore } from 'react'
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { kv, usePref } from './lib/kv'
 import { safu, isDesktop } from './lib/bridge'
@@ -12,7 +12,7 @@ import { creds } from './lib/creds'
 import { mailWatch } from './lib/mail'
 import { serveSync } from './lib/sync'
 import { SyncPairAsk, SyncFirewallAsk } from './pages/Sync'
-import { Ambient } from './fx/Ambient'
+import { Ambient, holdAmbient } from './fx/Ambient'
 import { initFx, applyFx } from './fx/perf'
 import { Titlebar, Sidebar, Splash, CommandPalette } from './ui/Shell'
 import { DialogHost, ToastHost, MenuHost, toast } from './ui/kit'
@@ -127,6 +127,14 @@ export default function App() {
     return () => window.removeEventListener('keydown', h)
   }, [])
 
+  // первая страница при запуске появляется без анимации (её закрывает заставка)
+  const firstPage = useRef(true)
+  const pageKey = page + JSON.stringify(params)
+  const lastKey = useRef(pageKey)
+  if (lastKey.current !== pageKey) { lastKey.current = pageKey; firstPage.current = false }
+  // на время перехода фон замирает: видеокарта целиком на отрисовку новой страницы
+  useEffect(() => { if (!firstPage.current) holdAmbient(450) }, [pageKey])
+
   const Page = (PAGES[page] || PAGES.home)!
   const accent = currentAccent()
   const showRegistration = !splash && ((!onboarded && !scheduleStore.isConfigured()) || again)
@@ -139,16 +147,12 @@ export default function App() {
         <Titlebar />
         <Sidebar />
         <main className="shell-main">
-          <AnimatePresence mode="popLayout" initial={false} custom={dir}>
-            <motion.div key={page + JSON.stringify(params)} className="page-scroll"
-              custom={dir}
-              initial={{ opacity: 0, y: 18 * dir }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 * dir }}
-              transition={{ type: 'spring', stiffness: 420, damping: 38, mass: 0.7 }}>
-              <div className="page"><Page {...params} /></div>
-            </motion.div>
-          </AnimatePresence>
+          {/* смена страницы — CSS-анимация в потоке композитора: без замеров раскладки и кадров в JavaScript
+              (раньше popLayout пересчитывал раскладку уходящей страницы, переход давал рывок до 40 мс) */}
+          <div key={page + JSON.stringify(params)} className={`page-scroll ${firstPage.current ? '' : 'page-in'}`}
+            style={{ ['--dir' as any]: dir }}>
+            <div className="page"><Page {...params} /></div>
+          </div>
         </main>
       </div>
 

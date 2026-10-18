@@ -100,6 +100,22 @@ a { color: var(--brand); text-decoration: none; }
   padding: 10px 28px 60px 22px; scroll-behavior: smooth;
 }
 .page { max-width: 1240px; margin: 0 auto; }
+/* появление страницы: только прозрачность и сдвиг — их ведёт композитор, главный поток свободен */
+.page-in > .page { animation: page-in .32s cubic-bezier(.2, .9, .25, 1) both; }
+/* строка пары: сдвиг при наведении и прогресс — на видеокарте */
+.slot-row { transition: transform .25s var(--ease); }
+.slot-row:hover { transform: translateX(3px); }
+.slot-progress { transition: transform 1s linear; }
+/* списки появляются по очереди */
+.stagger > * { animation: stagger-in .42s cubic-bezier(.2, .9, .25, 1) both; }
+.stagger > *:nth-child(2) { animation-delay: .035s; } .stagger > *:nth-child(3) { animation-delay: .07s; }
+.stagger > *:nth-child(4) { animation-delay: .105s; } .stagger > *:nth-child(5) { animation-delay: .14s; }
+.stagger > *:nth-child(6) { animation-delay: .175s; } .stagger > *:nth-child(7) { animation-delay: .21s; }
+.stagger > *:nth-child(8) { animation-delay: .245s; } .stagger > *:nth-child(n+9) { animation-delay: .28s; }
+@keyframes stagger-in { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+.rise-in { animation: stagger-in .42s cubic-bezier(.2, .9, .25, 1) both; }
+:root[data-motion="reduce"] .stagger > *, :root[data-motion="reduce"] .rise-in { animation: none; }
+@keyframes page-in { from { opacity: 0; transform: translateY(calc(16px * var(--dir, 1))); } to { opacity: 1; transform: none; } }
 
 /* ---------- боковая панель ---------- */
 
