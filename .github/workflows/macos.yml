@@ -66,8 +66,11 @@ jobs:
           mkdir -p shots
           # без регистрации: сразу главный экран
           defaults write ru.student.safuhub onboarded -bool true
-          "$APP/Contents/MacOS/Arktika" --smoke-tour > smoke.log 2>&1 &
-          PID=$!
+          open -n "$APP" --stdout "$PWD/smoke.log" --stderr "$PWD/smoke.log" --args --smoke-tour
+          sleep 3
+          PID=$(pgrep -x Arktika | head -1)
+          test -n "$PID" || { echo "::error::Приложение не запустилось"; cat smoke.log; exit 1; }
+          osascript -e 'tell application id "ru.student.safuhub" to activate' || true
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep 6
             if ! kill -0 $PID 2>/dev/null; then
@@ -80,7 +83,7 @@ jobs:
             screencapture -x "shots/$(printf %02d $i).png" || true
           done
           kill $PID || true
-          grep SMOKE smoke.log || true
+          echo "--- журнал приложения ---"; tail -80 smoke.log || true
           ls -la shots
           # уменьшенные копии — текстом в журнал, чтобы их можно было посмотреть без скачивания артефактов
           for F in shots/*.png; do
