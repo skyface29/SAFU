@@ -54,7 +54,9 @@ jobs:
           ln -s /Applications dmg/Applications
           V=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "dmg/Арктика.app/Contents/Info.plist")
           NAME="Arktika-mac-v${V}-build${{ github.run_number }}.dmg"
-          hdiutil create -volname "Арктика" -srcfolder dmg -ov -format UDZO "$NAME"
+          # размер тома задаём сами с запасом: автоматическая оценка hdiutil иногда мала («No space left on device»)
+          SIZE=$(du -sm dmg | cut -f1)
+          hdiutil create -volname "Арктика" -srcfolder dmg -size $((SIZE * 2 + 40))m -fs HFS+ -ov -format UDZO "$NAME"
           cp "$NAME" Arktika.dmg
           echo "DMG_NAME=$NAME" >> $GITHUB_ENV
           echo "APP_VERSION=$V" >> $GITHUB_ENV
