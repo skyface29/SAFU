@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -135,6 +136,7 @@ fun HomeScreen() {
     val columnsCount by prefInt("home.columns", 2)
     val tabsRaw by prefString("tabs.order", AppTab.defaultRaw)
     val compact by prefBool("ui.compact", false)
+    val quickPlace by prefString("home.quickPlace", "homework")
     val userName by prefString("user.name", "")
     val columns = columnsCount.coerceIn(2, 3)
     val data = ScheduleStore.data
@@ -157,6 +159,8 @@ fun HomeScreen() {
     SheetBinding(showBoards) { DoneSheet { BoardBatchesListScreen(null) } }
     SheetBinding(showProfile) { ProfileScreen() }
     SheetBinding(showHomeEditor) { DoneSheet { HomeEditor() } }
+    val showSync = remember { mutableStateOf(false) }
+    SheetBinding(showSync) { DoneSheet { ru.student.safuhub.feature.pcsync.PCSyncScreen() } }
 
     var photoFor by remember { mutableStateOf<String?>(null) }
     val camera = rememberCamera { file ->
@@ -247,8 +251,19 @@ fun HomeScreen() {
                 }) { AvatarView(40.dp) }
             }
         }
+        // маленькая пометка: связан ли компьютер и на связи ли он сейчас
+        ru.student.safuhub.feature.pcsync.PCLinkChip(Modifier.offset(y = if (compact) (-6).dp else (-12).dp)) { showSync.value = true }
 
-        sections.filter { blockVisible(it) }.forEachIndexed { i, sec ->
+        // Главные кнопки (Sakai, почта…): блоком под «Домашкой», под погодой и автобусом или наверху (как iPhone 19.8)
+        val visible = sections.filter { blockVisible(it) && (it != HomeSection.QUICK || quickPlace == "top") }
+        val anchor: HomeSection? = when (quickPlace) {
+            "homework" -> visible.firstOrNull { it == HomeSection.HOMEWORK && ScheduleStore.isConfigured && !TeacherMode.isOn }
+                ?: visible.firstOrNull { it == HomeSection.NOW } ?: visible.firstOrNull()
+            "bottom" -> visible.lastOrNull { it == HomeSection.WEATHER || it == HomeSection.COMMUTE }
+                ?: visible.firstOrNull { it == HomeSection.HOMEWORK } ?: visible.firstOrNull { it == HomeSection.NOW } ?: visible.firstOrNull()
+            else -> null
+        }
+        visible.forEachIndexed { i, sec ->
             val draggable = sec !in listOf(HomeSection.SITES, HomeSection.TILES, HomeSection.QUICK, HomeSection.RECENTS)
             Box(Modifier.staggerIn(minOf(i, 8)).scrollFX().dragReorder(drag, sec, draggable) { a, b -> moveSection(a, b) }
                 .let { if (drag.target == sec && drag.dragging != null) it.graphicsLayer { alpha = 0.6f } else it }) {
@@ -262,6 +277,8 @@ fun HomeScreen() {
                         })
                 }
             }
+            // отдельным блоком — у кнопок своё перетаскивание, блок над ними двигается сам по себе
+            if (sec == anchor && ResourceStore.quick.isNotEmpty()) Box(Modifier.scrollFX()) { QuickActions { open(it) } }
         }
 
         if (HomeSection.parse(homeOrder).isEmpty()) {

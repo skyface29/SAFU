@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import ru.student.safuhub.ui.design.Haptics
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -46,6 +48,7 @@ fun PCSyncScreen() {
     val scope = rememberCoroutineScope()
     val p = PCSync.pairing
     var manual by remember { mutableStateOf("") }
+    var sendFiles by ru.student.safuhub.core.prefBool(PCFiles.ON_KEY, true)
     LaunchedEffect(p == null) { if (p == null && !PCSync.searched) PCSync.searchNearby() }
 
     FormScreen("Синхронизация с компьютером") {
@@ -73,6 +76,21 @@ fun PCSyncScreen() {
                 }
                 PCSync.problem?.let { msg -> raw { Text(msg, style = ft(Ts.footnote), color = Ios.orange, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) } }
                 button("Синхронизировать сейчас", "arrow.triangle.2.circlepath") { scope.launch { PCSync.syncNow() } }
+            }
+            FormSection(footer = "Идут только новые файлы: что уже есть на компьютере, второй раз не отправляется. Фото к ДЗ на компьютере прикрепляются к тому же заданию.") {
+                toggle("Файлы — на компьютер сами", sendFiles, { sendFiles = it; if (it) PCFiles.pushSoon(force = true) },
+                    subtitle = "Файлы предметов, фото доски, записи лекций и фото к ДЗ")
+                if (sendFiles) {
+                    val line = PCFiles.line
+                    val last = PCFiles.lastSent
+                    if (line != null) row {
+                        if (PCFiles.busy) { Spinner(); Spacer(Modifier.width(10.dp)) }
+                        Text(line, style = ft(Ts.footnote), color = Ios.secondaryLabel)
+                    } else if (last != null) row {
+                        Text("Все файлы на компьютере · проверено ${PCSync.ago(last)}", style = ft(Ts.footnote), color = Ios.secondaryLabel)
+                    }
+                    button("Отправить файлы сейчас", "arrow.up.doc", enabled = !PCFiles.busy) { Haptics.tap(); PCFiles.pushSoon(force = true) }
+                }
             }
             FormSection {
                 info("Адрес компьютера", p.hosts.firstOrNull()?.let { "$it:${p.port}" } ?: "—")
@@ -142,6 +160,40 @@ private fun PairPanel(step: PCSync.PairStep) {
             TextButton({ PCSync.cancelPairing() }) {
                 Text(if (step is PCSync.PairStep.Failed) "Понятно" else "Отмена", style = ft(Ts.body, FontWeight.SemiBold), color = Brand.color)
             }
+        }
+    }
+}
+
+/** Маленькая пометка на главной: компьютер на связи / был недавно / не связан. Нажал — экран синхронизации (как iPhone 19.6) */
+@Composable
+fun PCLinkChip(modifier: Modifier = Modifier, open: () -> Unit) {
+    PCSync.load()
+    // «на связи» гаснет само через полминуты — перерисовываемся раз в 10 секунд
+    var now by remember { mutableStateOf(java.time.Instant.now()) }
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(10_000); now = java.time.Instant.now() } }
+    val p = PCSync.pairing
+    val last = PCSync.lastSync
+    val online = p != null && last != null && PCSync.problem == null && java.time.Duration.between(last, now).seconds < 30
+    val text = when {
+        p == null -> "Компьютер не связан"
+        online -> "${p.name} · на связи"
+        last != null -> "${p.name} · ${PCSync.ago(last)}"
+        else -> "${p.name} · жду компьютер"
+    }
+    val dot = when {
+        p == null -> Ios.secondaryLabel.copy(alpha = 0.6f)
+        online -> Ios.green
+        else -> Ios.orange
+    }
+    ru.student.safuhub.ui.kit.Pressable({ Haptics.tap(); open() }, modifier) {
+        Row(Modifier.clip(CircleShape).background(Ios.label.copy(alpha = 0.06f)).padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            Box(Modifier.size(14.dp), contentAlignment = Alignment.Center) {
+                if (online) Box(Modifier.size(if (PCSync.syncing) 14.dp else 12.dp).clip(CircleShape).background(Ios.green.copy(alpha = 0.35f)))
+                Box(Modifier.size(7.dp).clip(CircleShape).background(dot))
+            }
+            SfIcon("laptopcomputer", size = 13.dp, tint = if (online) Ios.label else Ios.secondaryLabel)
+            Text(text, style = ft(Ts.caption, FontWeight.SemiBold), color = if (online) Ios.label else Ios.secondaryLabel, maxLines = 1)
         }
     }
 }

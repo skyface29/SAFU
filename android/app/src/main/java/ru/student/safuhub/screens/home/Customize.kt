@@ -85,6 +85,7 @@ fun HomeEditor() {
     var raw by prefString("home.order", HomeSection.defaultRaw)
     var columnsCount by prefInt("home.columns", 2)
     var quickRaw by prefString("quick.ids", "")
+    var quickPlace by prefString("home.quickPlace", "homework")
     val sections = HomeSection.parse(raw)
     val hidden = HomeSection.entries.filter { it.available && it !in sections }
     val quickIDs = quickRaw.split(",").filter { it.isNotEmpty() }
@@ -104,6 +105,10 @@ fun HomeEditor() {
     }
 
     Screen("Главный экран") {
+        FormSection(footer = "Sakai, почта, РУЗ и другие быстрые кнопки. «Под домашкой» и «Под погодой и автобусом» — блоком на главной, прокручиваются вместе с ней.") {
+            picker("Главные кнопки", listOf("homework" to "Под домашкой", "bottom" to "Под погодой и автобусом", "top" to "Наверху главной"),
+                quickPlace, { quickPlace = it; Haptics.tap() }, icon = "hand.tap.fill")
+        }
         EditableSection(sections, { it.raw }, onMove = { f, t -> raw = HomeSection.join(sections.moved(f, t)) },
             onDelete = { i -> raw = HomeSection.join(sections.filterIndexed { j, _ -> j != i }) },
             header = "На главной", footer = "Перетаскивай за ≡ для порядка, нажми «−», чтобы убрать блок.") { s ->

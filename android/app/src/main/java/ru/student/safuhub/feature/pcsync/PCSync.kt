@@ -303,6 +303,7 @@ object PCSync {
         savePairing(null)
         Defaults.remove(stateKey)
         Defaults.remove(lastKey)
+        PCFiles.forget()
         lastSync = null
         problem = null
     }
@@ -489,6 +490,8 @@ object PCSync {
             lastSync = Instant.now()
             Defaults.set(lastKey, System.currentTimeMillis().toDouble())
             problem = null
+            // новые файлы предметов, фото доски, лекции и фото к ДЗ — следом, тем же ключом
+            if (!background) PCFiles.pushSoon()
         } catch (e: LanHttp.Rejected) {
             lastError = e.toString()
             problem = if (e.status == 403 || e.status == 400) "Компьютер не узнаёт этот телефон: связку обновили или отключили. Свяжи их заново."
