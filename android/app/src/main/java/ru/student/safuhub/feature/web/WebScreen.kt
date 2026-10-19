@@ -131,7 +131,8 @@ object WebLauncher {
             val url = ResourceStore.lastURL(r) ?: r.url
             CustomTabs.open(ctx, url)
         } else {
-            opened.value = r
+            // сайт — вкладкой: свернул, а он остался открытым там же
+            SiteTabs.open(r)
         }
     }
 }
@@ -328,6 +329,8 @@ class WebModel(ctx: Context) {
     var pendingCredential by mutableStateOf<SiteCredential?>(null)
     var loginUser by mutableStateOf<String?>(null)
     var homeURL: String? = null
+    /** Сайт из списка (для памяти последней страницы) */
+    var resource: Resource? = null
     private var candidate: SiteCredential? = null
     private val autoAttempts = HashMap<String, List<Long>>()
     private var triedFallback = false
@@ -622,7 +625,7 @@ class WebModel(ctx: Context) {
                         .build()
                     http.newCall(req).execute().use { resp ->
                         if (!resp.isSuccessful) return@use null
-                        val dir = File(FileService.root, "Загрузки").apply { mkdirs() }
+                        val dir = downloadDir()
                         val dest = FileService.uniqueFile(dir, name)
                         resp.body?.byteStream()?.use { input -> dest.outputStream().use { input.copyTo(it) } }
                         dest.name
@@ -631,9 +634,28 @@ class WebModel(ctx: Context) {
             }
             if (ok != null) {
                 Haptics.success()
-                showToast("Скачано: $ok → Файлы › Загрузки")
+                showToast("Скачано: $ok → Файлы › ${downloadDir().name}")
             } else showToast("Не удалось скачать файл")
         }
+    }
+
+    /** Скачанное с курса Sakai — сразу в папку этого предмета, остальное — в «Загрузки» (как iPhone 19.8) */
+    fun downloadDir(): File {
+        val host = Uri.parse(webView.url ?: "").host?.lowercase() ?: ""
+        if (host.contains("sakai")) {
+            SiteFiles.bestSubject(title, ru.student.safuhub.data.ScheduleQuery.subjects(ScheduleStore.data))?.let { s ->
+                return ru.student.safuhub.data.SubjectFolders.url(s).apply { mkdirs() }
+            }
+        }
+        return File(FileService.root, "Загрузки").apply { mkdirs() }
+    }
+
+    /** Скачать файл по ссылке (из «Файлов на странице») */
+    fun downloadURL(u: String) = download(u, null, null, null)
+
+    /** Все файлы на странице: учебники, лекции, ресурсы Sakai */
+    fun findPageFiles(done: (List<SiteFiles.PageFile>) -> Unit) {
+        webView.evaluateJavascript(SiteFiles.findScript) { v -> done(SiteFiles.parse(v)) }
     }
 
     fun destroy() {
@@ -650,11 +672,13 @@ class WebModel(ctx: Context) {
 // MARK: - Экран сайта
 
 @Composable
-fun WebScreen(resource: Resource) {
+fun WebScreen(tab: SiteTab, model: WebModel) {
     val ctx = LocalContext.current
-    val dismiss = LocalDismiss.current
-    val model = remember { WebModel(ctx) }
+    val resource = tab.resource
+    // «закрыть» — вкладка закрывается; свернуть — стрелкой вниз или жестом «назад» на первой странице
+    val dismiss = { SiteTabs.close(tab.id) }
     var forceLight by prefBool("web.light", true)
+    var pageFiles by remember { mutableStateOf<List<SiteFiles.PageFile>?>(null) }
     var ruzConnected by remember { mutableStateOf(false) }
     val homeURL = resource.url
     val currentURL = model.url ?: homeURL
@@ -678,23 +702,24 @@ fun WebScreen(resource: Resource) {
     }
     fun close() { remember(); dismiss() }
 
-    LaunchedEffect(Unit) {
-        model.homeURL = homeURL
-        val start = ResourceStore.lastURL(resource) ?: homeURL
-        withContext(Dispatchers.IO) { SessionKeeper.restore() }
-        model.load(start)
-    }
     // сохраняем вход каждые 20 секунд, даже если приложение потом закроют смахиванием
     LaunchedEffect(Unit) {
         while (true) { delay(20_000); SessionKeeper.save() }
     }
-    DisposableEffect(Unit) {
-        onDispose {
-            remember()
-            model.destroy()
+    // «Назад»: по страницам сайта, а на первой странице — свернуть в плашку (страница остаётся загруженной)
+    BackHandler { if (model.canGoBack) model.back() else SiteTabs.minimize() }
+
+    pageFiles?.let { list ->
+        LaunchedEffect(list) {
+            pageFiles = null
+            if (list.isEmpty()) { model.showToast("На этой странице не нашлось файлов"); return@LaunchedEffect }
+            val actions = mutableListOf<AlertAction>()
+            if (list.size > 1) actions += AlertAction("Скачать все (${minOf(list.size, 30)})", AlertAction.Role.BOLD) { list.take(30).forEach { model.downloadURL(it.u) } }
+            for (f in list.take(8)) actions += AlertAction(SiteFiles.name(f).take(60)) { model.downloadURL(f.u) }
+            actions += AlertAction("Отмена", AlertAction.Role.CANCEL)
+            Dialogs.actionSheet("Файлы на странице", "Скачанное попадёт в «Файлы» — с курса Sakai сразу в папку предмета", *actions.toTypedArray())
         }
     }
-    BackHandler(enabled = model.canGoBack) { model.back() }
 
     model.pendingCredential?.let { c ->
         LaunchedEffect(c) {
@@ -711,7 +736,11 @@ fun WebScreen(resource: Resource) {
         NavBar(model.title.ifEmpty { resource.title },
             leading = { TextButton({ close() }) { SfIcon("xmark", size = 20.dp, tint = barTint()) } },
             trailing = {
+                TextButton({ remember(); SiteTabs.minimize() }) { SfIcon("chevron.down", size = 20.dp, tint = barTint()) }
                 IosMenu(items = {
+                    item("Файлы на странице…", "doc.on.doc") { model.findPageFiles { pageFiles = it } }
+                    if (SiteFiles.looksLikeFile(currentURL)) item("Сохранить этот файл в Файлы", "arrow.down.circle") { model.downloadURL(currentURL) }
+                    if (SiteTabs.tabs.size > 1) item("Все вкладки (${SiteTabs.tabs.size})", "square.on.square") { SiteTabs.minimize(); SiteTabs.stackOpen = true }
                     item("Открыть в браузере", "safari") { Share.url(ctx, currentURL) }
                     item("Скопировать ссылку", "link") { Share.copy(currentURL); Haptics.success() }
                     item("Вставить пароль", "key.fill") { model.fillPasswordNow() }
@@ -735,7 +764,8 @@ fun WebScreen(resource: Resource) {
                 }) { Box(Modifier.padding(8.dp)) { SfIcon("ellipsis.circle", size = 22.dp, tint = barTint()) } }
             })
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            AndroidView({ model.webView }, Modifier.fillMaxSize())
+            // одна и та же страница живёт между сворачиваниями — перед показом снимаем её со старого места
+            AndroidView({ model.webView.also { v -> (v.parent as? android.view.ViewGroup)?.removeView(v) } }, Modifier.fillMaxSize())
             if (model.isLoading) {
                 BoxWithConstraints(Modifier.fillMaxWidth().height(3.dp)) {
                     Box(Modifier.width(maxOf(24.dp, maxWidth * model.progress)).height(3.dp).clip(CircleShape).background(Brand.gradient))

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -406,7 +407,7 @@ fun RootView() {
         LaunchedEffect(widgetSubject.value) { if (widgetSubject.value == null) BoardRouter.subject = null }
         SheetItem(widgetSubject) { s -> ru.student.safuhub.screens.subjects.SubjectSheet(s) }
         ru.student.safuhub.screens.homework.HomeworkRoot()
-        SheetItem(ru.student.safuhub.feature.web.WebLauncher.opened, full = true) { r -> ru.student.safuhub.feature.web.WebScreen(r) }
+        // сайты — вкладками (SiteTabsLayer ниже), а не листом
         // запись лекции — поверх всего приложения, возвращается и после пересоздания экрана
         SheetBinding(ru.student.safuhub.feature.lectures.LectureRecorder.screen, full = true) { ru.student.safuhub.feature.lectures.RecorderScreen() }
         val registration = remember { mutableStateOf(false) }
@@ -435,6 +436,8 @@ fun RootView() {
                     }
                 }
             }
+            // сайты как мини-приложения: развёрнутый сайт и плашка свёрнутых над нижней панелью
+            ru.student.safuhub.feature.web.SiteTabsLayer(50.dp + androidx.compose.foundation.layout.WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
             SheetsLayer(sheets)
             ru.student.safuhub.feature.nuke.NukeLayer()
             CelebrationOverlay()

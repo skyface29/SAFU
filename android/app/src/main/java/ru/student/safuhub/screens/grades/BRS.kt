@@ -183,7 +183,8 @@ fun BRSScreen() {
 
     SheetItem(open) { g -> NavigationStack { BRSSubjectScreen(g.id) } }
     SheetBinding(showReport) { NavigationStack { SyncReportScreen() } }
-    SheetItem(login, full = true) { r -> WebScreen(r) }
+    // вход на сайт — вкладкой сайтов, как везде в приложении
+    LaunchedEffect(login.value) { login.value?.let { ru.student.safuhub.feature.web.SiteTabs.open(it); login.value = null } }
 }
 
 // MARK: входы
