@@ -10,6 +10,7 @@ import { usePref } from '../lib/kv'
 import { sync, LAST_KEY, type SyncLast } from '../lib/sync'
 import { relativeAgo } from '../lib/date'
 import { go } from '../lib/nav'
+import { isLinux } from '../lib/os'
 
 export default function SyncPage() {
   const [url, setUrl] = useState<string | null>(null)
@@ -129,6 +130,13 @@ function Point({ icon, title, sub }: { icon: React.ReactNode; title: string; sub
   )
 }
 
+/** Linux: ufw или firewalld. Правила там по портам, а не по программе */
+function linuxFirewallText(state: string, zone?: string) {
+  if (state === 'ok') return 'Порты Арктики для синхронизации открыты' + (zone ? ` (зона firewalld «${zone}»)` : '')
+  if (state === 'missing') return 'Брандмауэр включён и может не пускать телефон к компьютеру. Разреши один раз — откроются только порты Арктики, система спросит пароль'
+  return 'Брандмауэр включён, но проверить его правила без пароля нельзя. Если телефон не находит компьютер — разреши подключения'
+}
+
 /** Брандмауэр Windows: из-за него телефон в той же сети «не видит» компьютер. Проверка и починка в одно нажатие */
 function FirewallCard() {
   const [st, setSt] = useState<Awaited<ReturnType<typeof safu.sync.firewall>> | null>(null)
@@ -141,12 +149,12 @@ function FirewallCard() {
     const r = await safu.sync.firewallFix().catch(() => 'failed' as const)
     setBusy(false)
     if (r === 'ok') toast('Брандмауэр больше не мешает синхронизации')
-    else if (r === 'cancelled') toast('Нужно нажать «Да» в окне Windows', 'warn')
+    else if (r === 'cancelled') toast(isLinux ? 'Нужно ввести пароль компьютера в системном окне' : 'Нужно нажать «Да» в окне Windows', 'warn')
     else toast('Не вышло поменять настройки брандмауэра', 'warn')
     check()
   }
   const ok = st.state === 'ok'
-  const text = ok
+  const text = isLinux ? linuxFirewallText(st.state, st.network) : ok
     ? 'Входящие подключения от телефона разрешены' + (st.network === 'Public' ? ' — и в «общественной» сети тоже' : '')
     : st.state === 'blocked'
       ? 'Windows запрещает Арктике входящие подключения (наверное, когда-то закрыли окно «Разрешить доступ?»). Из-за этого телефон в той же сети не видит компьютер'
@@ -160,7 +168,7 @@ function FirewallCard() {
           {ok ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
         </div>
         <div className="grow">
-          <div className="bold">Брандмауэр Windows</div>
+          <div className="bold">{isLinux ? 'Брандмауэр' : 'Брандмауэр Windows'}</div>
           <div className="sub mt4">{text}</div>
           {!ok && (
             <button className="btn primary sm mt12" onClick={fix} disabled={busy}>
@@ -239,7 +247,9 @@ export function SyncFirewallAsk() {
       <div className="col" style={{ gap: 12, alignItems: 'center', padding: '4px 0' }}>
         <div className="icon-tile" style={{ width: 58, height: 58, borderRadius: 18, background: 'var(--grad)' }}><ArrowLeftRight size={26} /></div>
         <div className="muted tc" style={{ lineHeight: 1.55, maxWidth: 420 }}>
-          ДЗ, задачи, заметки и файлы с телефона приходят сюда сами по Wi‑Fi. Сейчас брандмауэр Windows не пускает iPhone к Арктике — поэтому телефон «не видит» компьютер. Нажми «Разрешить», и в окне Windows — «Да». Это один раз.
+          {isLinux
+            ? 'ДЗ, задачи, заметки и файлы с телефона приходят сюда сами по Wi‑Fi. Сейчас брандмауэр компьютера не пускает iPhone к Арктике — поэтому телефон «не видит» компьютер. Нажми «Разрешить» и введи пароль компьютера. Это один раз.'
+            : 'ДЗ, задачи, заметки и файлы с телефона приходят сюда сами по Wi‑Fi. Сейчас брандмауэр Windows не пускает iPhone к Арктике — поэтому телефон «не видит» компьютер. Нажми «Разрешить», и в окне Windows — «Да». Это один раз.'}
         </div>
         <div className="tiny faint tc">Разрешаются только порты Арктики для синхронизации. Всё, что идёт по сети, зашифровано</div>
       </div>

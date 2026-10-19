@@ -18,6 +18,7 @@ import { TOOLS } from './registry'
 import { useProfile } from '../../lib/profile'
 import { subjectFolder } from '../../lib/effects'
 import { toBase64 } from '../../lib/zip'
+import { OS } from '../../lib/os'
 
 // ---------- дорога ----------
 
@@ -195,7 +196,7 @@ export function Wake() {
           </motion.div>
         ))}
       </div>
-      <div className="tiny faint mt12">Уведомление придёт, если Арктика запущена (она живёт в трее). Для надёжности включи «Запускать вместе с Windows» в Профиле.</div>
+      <div className="tiny faint mt12">Уведомление придёт, если Арктика запущена (она живёт в трее). Для надёжности включи «Запускать вместе с {OS}» в Профиле.</div>
       {hours.length > 0 && plans[0].first && <div className="tiny faint">{weatherLine(weather.hourAt(plans[0].leave, hours) || hours[0])}{advice(weather.hourAt(plans[0].leave, hours) || hours[0]) ? ' · ' + advice(weather.hourAt(plans[0].leave, hours) || hours[0]) : ''}</div>}
     </>
   )

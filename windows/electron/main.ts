@@ -1,10 +1,10 @@
-// Арктика для Windows — главный процесс.
+// Арктика для Windows и Linux — главный процесс. Различия систем — в platform.ts.
 // Окно с материалом Mica, трей, мини-окно пары поверх всех окон (как Live Activity на iPhone),
 // уведомления по расписанию, файлы предметов в «Документах», сеть без CORS, пароли через DPAPI.
 
 import {
   app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, Notification, shell, dialog,
-  safeStorage, net, protocol, session, screen, nativeTheme, clipboard, powerMonitor, globalShortcut, webContents
+  net, protocol, session, screen, nativeTheme, clipboard, powerMonitor, globalShortcut, webContents
 } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
@@ -17,6 +17,8 @@ import { SyncServer, newPairing, syncLink, type SyncPairing } from './sync'
 import { PairBroker } from './syncpair'
 import { firewallStatus, firewallFix } from './firewall'
 import * as os from 'node:os'
+import { isLinux, OS_NAME, earlySetup, vault, loginItem, integrateDesktop, trayImage, cachedThumb } from './platform'
+import { LINUX_PORTS, freePort } from './linux'
 
 // Конспекты через Claude — отдельным файлом (claude.js), который грузится только при первом конспекте:
 // библиотека Claude — две трети главного процесса, и раньше она разбиралась при каждом запуске
@@ -30,6 +32,7 @@ const APP_ID = 'ru.student.safuhub'
 
 app.setAppUserModelId(APP_ID)
 app.setName('Арктика')
+earlySetup()
 app.setPath('userData', path.join(app.getPath('appData'), 'САФУ'))
 
 // ---------- один экземпляр и ссылки safu:// ----------
@@ -331,9 +334,9 @@ function saveKVNow() {
   }
 }
 
-// ---------- секреты (пароли сайтов) — шифруются Windows DPAPI через safeStorage ----------
+// ---------- секреты (пароли сайтов) — шифруются: Windows DPAPI, на Linux связка ключей или свой ключ (platform.ts) ----------
 
-// Открытым текстом секреты на диск не пишутся никогда: если шифрование Windows недоступно,
+// Открытым текстом секреты на диск не пишутся никогда: если шифрование недоступно,
 // они живут только в памяти до закрытия приложения.
 
 let secrets: Record<string, string> = {}
@@ -341,10 +344,10 @@ let secrets: Record<string, string> = {}
 function loadSecrets() {
   let raw: Buffer
   try { raw = fs.readFileSync(secretsFile()) } catch { secrets = {}; return }
-  const canEncrypt = safeStorage.isEncryptionAvailable()
-  if (canEncrypt) {
-    try { secrets = JSON.parse(safeStorage.decryptString(raw)); return } catch { /* не зашифрован — возможно, файл старой версии */ }
+  if (vault.available()) {
+    try { secrets = JSON.parse(vault.decrypt(raw)); return } catch { /* не зашифрован — возможно, файл старой версии */ }
   }
+  const canEncrypt = vault.available()
   // старые версии без шифрования могли записать открытый JSON — читаем и сразу перешифровываем
   try {
     const legacy = JSON.parse(raw.toString('utf8'))
@@ -373,11 +376,11 @@ function saveSecrets() {
 async function saveSecretsAsync() {
   if (secretsWriting) { secretsDirty = true; return }
   secretsDirty = false
-  if (!safeStorage.isEncryptionAvailable()) return
+  if (!vault.available()) return
   secretsWriting = true
   const gen = secretsSyncGen
   try {
-    const data = safeStorage.encryptString(JSON.stringify(secrets))
+    const data = vault.encrypt(JSON.stringify(secrets))
     const tmp = secretsFile() + '.tmp'
     await fs.promises.writeFile(tmp, data)
     if (gen === secretsSyncGen) await fs.promises.rename(tmp, secretsFile())
@@ -395,10 +398,10 @@ function saveSecretsNow() {
   if (!secretsDirty && !secretsWriting) return
   secretsDirty = false
   secretsSyncGen++
-  if (!safeStorage.isEncryptionAvailable()) return
+  if (!vault.available()) return
   try {
     const tmp = secretsFile() + '.now.tmp'
-    fs.writeFileSync(tmp, safeStorage.encryptString(JSON.stringify(secrets)))
+    fs.writeFileSync(tmp, vault.encrypt(JSON.stringify(secrets)))
     fs.renameSync(tmp, secretsFile())
   } catch (e) {
     logError('secrets save: ' + String(e))
@@ -513,7 +516,9 @@ function createWindow() {
       if (!kv['app.trayHintShown']) {
         kv['app.trayHintShown'] = true
         saveKVSoon()
-        showNotification({ title: 'Арктика работает в трее', body: 'Напомню о парах, заменах и новых письмах. Открыть — значок у часов.' })
+        showNotification({ title: 'Арктика работает в трее', body: isLinux
+          ? 'Напомню о парах, заменах и новых письмах. Открыть — значок в трее или снова запусти Арктику из меню.'
+          : 'Напомню о парах, заменах и новых письмах. Открыть — значок у часов.' })
       }
     }
   })
@@ -674,12 +679,13 @@ function toggleWidget(force?: boolean) {
 // ---------- трей ----------
 
 let trayState = { tooltip: 'Арктика', line: '' }
+let trayDot = false
 
 // Автозапуск читается из реестра Windows — один раз, дальше помним сами
 let autostartCache: boolean | null = null
-const autostartOn = () => (autostartCache ??= app.getLoginItemSettings().openAtLogin)
+const autostartOn = () => (autostartCache ??= loginItem.get())
 function setAutostart(on: boolean) {
-  app.setLoginItemSettings({ openAtLogin: on, args: ['--hidden'] })
+  loginItem.set(on)
   autostartCache = on
 }
 
@@ -696,7 +702,7 @@ function buildTrayMenu() {
     { label: 'Обновить расписание', click: () => win?.webContents.send('app:route', 'sync') },
     { type: 'separator' },
     {
-      label: 'Запускать вместе с Windows',
+      label: `Запускать вместе с ${OS_NAME}`,
       type: 'checkbox',
       checked: autostartOn(),
       click: item => { setAutostart(item.checked); refreshTray() }
@@ -721,7 +727,7 @@ function refreshTray() {
 
 function createTray() {
   const img = appIcon()
-  tray = new Tray(img ? img.resize({ width: 16, height: 16 }) : nativeImage.createEmpty())
+  tray = new Tray(trayImage(img))
   tray.on('click', () => showMain())
   refreshTray()
 }
@@ -924,8 +930,11 @@ async function fileThumb(rel: string, size: number): Promise<string | null> {
   }
   let url: string | null = null
   try {
-    const img = await nativeImage.createThumbnailFromPath(p, { width: size, height: size })
-    url = img.isEmpty() ? null : img.toDataURL()
+    if (isLinux) url = await cachedThumb(p, size) // Linux: готовые миниатюры файлового менеджера, остальное строит окно
+    else {
+      const img = await nativeImage.createThumbnailFromPath(p, { width: size, height: size })
+      url = img.isEmpty() ? null : img.toDataURL()
+    }
   } catch { /* у файла нет миниатюры */ }
   thumbCache.set(key, url)
   if (thumbCache.size > 400) thumbCache.delete(thumbCache.keys().next().value!)
@@ -1226,7 +1235,8 @@ function registerIPC() {
     chrome: process.versions.chrome,
     userData: userDir(),
     autostart: autostartOn(),
-    encryption: safeStorage.isEncryptionAvailable(),
+    encryption: vault.available(),
+    encryptionLabel: vault.label(),
     dark: nativeTheme.shouldUseDarkColors,
     // как сейчас рисуется окно: enabled — видеокартой, остальное — процессором (будет рывками)
     gpu: { safe: !!gpuState.safe, compositing: String((app.getGPUFeatureStatus() as any).gpu_compositing || ''), raster: String((app.getGPUFeatureStatus() as any).rasterization || ''), device: await gpuDevice() }
@@ -1248,6 +1258,8 @@ function registerIPC() {
       }
     } else {
       app.setBadgeCount(count)
+      // Linux: док показывает число не везде, поэтому ещё и точка на значке в трее
+      if (tray && isLinux && count > 0 !== trayDot) { trayDot = count > 0; tray.setImage(trayImage(appIcon(), trayDot)) }
     }
   })
   ipcMain.handle('app:titlebar', (_e, opts: { color: string; symbol: string }) => {
@@ -1260,7 +1272,11 @@ function registerIPC() {
   })
   ipcMain.handle('app:flash', () => { win?.flashFrame(true) })
   // интерфейс собрался — сторож больше не нужен
-  ipcMain.on('app:ready', () => { rendererReady = true; recoverTries = 0; if (watchdog) { clearTimeout(watchdog); watchdog = null } })
+  ipcMain.on('app:ready', () => {
+    rendererReady = true; recoverTries = 0; if (watchdog) { clearTimeout(watchdog); watchdog = null }
+    // проверка собранного пакета в CI: окно открылось и интерфейс собрался — выходим с кодом 0
+    if (process.env.ARKTIKA_SMOKE) { console.log('ARKTIKA_SMOKE_OK'); quitting = true; setTimeout(() => app.exit(0), 300) }
+  })
   ipcMain.on('app:log', (_e, text: string) => logError(`renderer: ${String(text).slice(0, 2000)}`))
   ipcMain.handle('app:recover', (_e, action: string) => runRecovery(action))
 
@@ -1328,6 +1344,8 @@ function registerIPC() {
   ipcMain.handle('transfer:start', async () => {
     transfer?.stop()
     const t = new TransferServer({
+      // Linux: порт из диапазона, который открывает «Разрешить синхронизацию» в брандмауэре
+      ...(isLinux ? { port: await freePort(LINUX_PORTS.transferFrom, LINUX_PORTS.to) } : {}),
       name: os.hostname(),
       version: app.getVersion(),
       root: filesRoot,
@@ -1462,6 +1480,7 @@ app.whenReady().then(() => {
   setupSiteSession()
   createWindow()
   createTray()
+  void integrateDesktop(iconPath())
   armAll()
   ensureSync().catch(e => console.error('sync server', e))
   if (kv['widget.open']) setTimeout(() => toggleWidget(true), 1500)

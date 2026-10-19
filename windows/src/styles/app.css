@@ -7,7 +7,7 @@
   --brand2-rgb: 77, 204, 250;
   --r: 1;
   --fs: 1;
-  --font: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --font: "Segoe UI Variable Display", "Segoe UI", "Inter", "Cantarell", "Ubuntu", "Noto Sans", system-ui, sans-serif;
   --grad: linear-gradient(135deg, var(--brand), var(--brand2));
   --ease: cubic-bezier(.2, .9, .25, 1);
   --spring: cubic-bezier(.34, 1.56, .64, 1);

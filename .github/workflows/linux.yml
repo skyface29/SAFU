@@ -1,0 +1,139 @@
+name: Build Linux
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, dev, 'claude/**' ]
+    paths: [ 'windows/**', '.github/workflows/linux.yml' ]
+  pull_request:
+    paths: [ 'windows/**', '.github/workflows/linux.yml' ]
+permissions:
+  contents: write
+jobs:
+  build:
+    # 22.04: старая glibc — AppImage запускается и на дистрибутивах постарше
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+      - run: npm ci
+      - name: Проверка типов и тесты
+        shell: bash
+        run: |
+          set +e
+          npx tsc --noEmit -p tsconfig.json > tsc.log 2>&1; t=$?
+          cat tsc.log
+          if [ $t -ne 0 ]; then
+            echo "::error::$(grep -E 'error TS' tsc.log | head -15 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+          npm test > test.log 2>&1; r=$?
+          cat test.log
+          if [ $r -ne 0 ]; then
+            echo "::error::$(grep -E -A16 'not ok' test.log | head -60 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+      - name: Сборка AppImage, .deb и .rpm
+        env:
+          NODE_ENV: production
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q rpm
+          npm run dist:linux -- --publish never
+      - name: Версия
+        run: echo "APP_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Arktika-Linux-${{ env.APP_VERSION }}
+          path: |
+            windows/release/*.AppImage
+            windows/release/*.deb
+            windows/release/*.rpm
+          if-no-files-found: error
+
+  # Собранные пакеты открываются по-настоящему: окно, интерфейс, выход с кодом 0 (ARKTIKA_SMOKE)
+  smoke:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu 24.04 (.deb и AppImage)
+            os: ubuntu-24.04
+          - name: Ubuntu 22.04 (.deb и AppImage)
+            os: ubuntu-22.04
+          - name: Fedora (.rpm)
+            os: ubuntu-24.04
+            container: fedora:41
+    name: Запуск — ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Arktika-Linux-*
+          merge-multiple: true
+          path: pkg
+      - name: Ubuntu — установка .deb
+        if: ${{ !matrix.container }}
+        run: |
+          cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || true
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb ./pkg/*.deb
+          ls -la "/opt/Арктика/chrome-sandbox"
+      - name: Ubuntu — запуск .deb
+        if: ${{ !matrix.container }}
+        run: |
+          set -o pipefail
+          ARKTIKA_SMOKE=1 timeout 120 xvfb-run -a arktika 2>&1 | tee deb.log
+          grep -q ARKTIKA_SMOKE_OK deb.log
+      - name: Ubuntu — запуск AppImage
+        if: ${{ !matrix.container }}
+        run: |
+          set -o pipefail
+          chmod +x pkg/*.AppImage
+          ARKTIKA_SMOKE=1 APPIMAGE_EXTRACT_AND_RUN=1 timeout 180 xvfb-run -a pkg/*.AppImage 2>&1 | tee appimage.log
+          grep -q ARKTIKA_SMOKE_OK appimage.log
+      - name: Fedora — установка и запуск .rpm
+        if: ${{ matrix.container }}
+        shell: bash
+        run: |
+          set -o pipefail
+          dnf install -y -q xorg-x11-server-Xvfb xorg-x11-xauth which ./pkg/*.rpm
+          useradd -m tester
+          # в Docker песочнице Chromium не дают создать namespaces (ни своей, ни через SUID chrome-sandbox) —
+          # это ограничение контейнера, не пакета; на настоящей Fedora песочница работает
+          runuser -u tester -- bash -c 'cd ~ && ARKTIKA_SMOKE=1 timeout 120 xvfb-run -a arktika --no-sandbox' 2>&1 | tee rpm.log
+          grep -q ARKTIKA_SMOKE_OK rpm.log
+
+  release:
+    needs: [ build, smoke ]
+    # dev и пулл-реквесты — проверочные сборки: только артефакт, без черновика релиза
+    if: github.event_name != 'pull_request' && github.ref != 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Arktika-Linux-*
+          merge-multiple: true
+          path: pkg
+      - name: Версия
+        run: echo "APP_VERSION=$(ls pkg/*.AppImage | sed -E 's/.*Arktika-(.*)-x86_64\.AppImage/\1/')" >> $GITHUB_ENV
+      - uses: softprops/action-gh-release@v2
+        with:
+          # черновик: виден только владельцу репозитория, публично не публикуется
+          draft: true
+          prerelease: true
+          tag_name: linux-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Арктика для Linux ${{ env.APP_VERSION }} (черновик, сборка ${{ github.run_number }})
+          files: |
+            pkg/*.AppImage
+            pkg/*.deb
+            pkg/*.rpm
+          make_latest: false

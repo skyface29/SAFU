@@ -10,6 +10,7 @@ import { subjects, nowAndNext } from '../../lib/schedule'
 import { safu, fileURL } from '../../lib/bridge'
 import { timer, dayMonth, hm, plural } from '../../lib/date'
 import { toBase64 } from '../../lib/zip'
+import { isLinux, VAULT } from '../../lib/os'
 
 type Segment = { start: number; end: number; text: string }
 
@@ -82,7 +83,7 @@ export function Lectures() {
       mr.start(5000)
       media.current = mr
       setRec({ start: Date.now(), paused: false, pausedTotal: 0, pauseAt: 0, marks: [], level: 0 })
-    } catch { toast('Нет доступа к микрофону — разреши его в Параметрах Windows → Конфиденциальность', 'warn') }
+    } catch { toast(isLinux ? 'Нет доступа к микрофону — проверь, что он подключён и включён в настройках звука' : 'Нет доступа к микрофону — разреши его в Параметрах Windows → Конфиденциальность', 'warn') }
   }
   const stop = async () => {
     const mr = media.current
@@ -270,7 +271,7 @@ function KeySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
       <span className="spacer" />
       <button className="btn primary" disabled={!key.trim().startsWith('sk-')} onClick={async () => { await safu.secret.set('claude.key', key.trim()); toast('Ключ сохранён'); onClose() }}>Сохранить</button>
     </>}>
-      <div className="sub mb12" style={{ lineHeight: 1.5 }}>Конспекты делает Claude (модель Claude Opus 5.5). Нужен свой ключ API с console.anthropic.com. Ключ хранится зашифрованным средствами Windows и отправляется только в Anthropic. Перед первой отправкой текста лекции приложение спросит разрешение. Без ключа приложение соберёт конспект само, проще.</div>
+      <div className="sub mb12" style={{ lineHeight: 1.5 }}>Конспекты делает Claude (модель Claude Opus 5.5). Нужен свой ключ API с console.anthropic.com. Ключ хранится зашифрованным {VAULT} и отправляется только в Anthropic. Перед первой отправкой текста лекции приложение спросит разрешение. Без ключа приложение соберёт конспект само, проще.</div>
       <div className="pill mb12">{has ? '✓ Ключ сохранён' : 'Ключ не задан'}</div>
       <Field label="Ключ Claude API"><input className="input" type="password" value={key} onChange={e => setKey(e.target.value)} placeholder="sk-ant-…" /></Field>
       <button className="btn ghost" onClick={() => safu.shell.open('https://console.anthropic.com/settings/keys')}>Получить ключ</button>

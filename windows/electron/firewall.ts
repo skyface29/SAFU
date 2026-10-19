@@ -8,6 +8,8 @@
 
 import { execFile } from 'node:child_process'
 import { SYNC_PORTS } from './sync'
+import * as fs from 'node:fs'
+import { LINUX_PORTS, portsCovered, ufwAllows, ufwEnabled, ufwDefaultAccepts } from './linux'
 
 export const RULE = 'Arktika SAFU sync'
 
@@ -37,6 +39,7 @@ export function portRange(): string {
 
 /** Проверить без прав администратора: есть ли наше правило и не запрещены ли Арктике входящие */
 export async function firewallStatus(exe: string): Promise<FirewallState> {
+  if (process.platform === 'linux') return linuxStatus()
   if (process.platform !== 'win32') return { state: 'na' }
   const script = `
 $ErrorActionPreference = 'SilentlyContinue'
@@ -63,6 +66,7 @@ Write-Output ("{0}|{1}|{2}" -f $ok, $block, $net)`
  * 'ok' — готово, 'cancelled' — в окне UAC нажали «Нет», 'failed' — не вышло
  */
 export async function firewallFix(exe: string): Promise<'ok' | 'cancelled' | 'failed' | 'na'> {
+  if (process.platform === 'linux') return linuxFix()
   if (process.platform !== 'win32') return 'na'
   const inner = `
 $ErrorActionPreference = 'SilentlyContinue'
@@ -83,4 +87,58 @@ try {
 } catch { exit 5 }`
   const { code } = await run(outer, 120_000)
   return code === 0 ? 'ok' : code === 5 ? 'cancelled' : 'failed'
+}
+
+// ---------- Linux: ufw (Ubuntu, Mint) и firewalld (Fedora, openSUSE) ----------
+// По умолчанию на Ubuntu и Mint ufw выключен, а у Fedora Workstation открыты порты выше 1024 — тогда
+// карточка не показывается вовсе. Если брандмауэр режет входящие, одно окно с паролем (pkexec) открывает
+// порты Арктики: синхронизация и перенос с iPhone. Сама программа в правилах Linux не указывается — только порты.
+
+function sh(cmd: string, args: string[], timeout = 15_000): Promise<{ code: number; out: string }> {
+  return new Promise(resolve => {
+    execFile(cmd, args, { timeout }, (err, stdout) => {
+      const code = err ? (typeof (err as any).code === 'number' ? (err as any).code : 127) : 0
+      resolve({ code, out: String(stdout || '').trim() })
+    })
+  })
+}
+
+const read = (f: string) => fs.promises.readFile(f, 'utf8').catch(() => null)
+const range = () => `${LINUX_PORTS.from}-${LINUX_PORTS.to}`
+
+async function firewalldRunning(): Promise<boolean> {
+  return (await sh('firewall-cmd', ['--state'])).out === 'running'
+}
+
+async function linuxStatus(): Promise<FirewallState> {
+  if (await firewalldRunning()) {
+    const zone = (await sh('firewall-cmd', ['--get-default-zone'])).out
+    const ports = await sh('firewall-cmd', ['--list-ports'])
+    if (ports.code !== 0) return { state: 'unknown', network: zone || undefined }
+    if (zone === 'trusted') return { state: 'ok', network: zone }
+    return { state: portsCovered(ports.out, LINUX_PORTS.from, LINUX_PORTS.to) ? 'ok' : 'missing', network: zone || undefined }
+  }
+  const conf = await read('/etc/ufw/ufw.conf')
+  if (conf != null && ufwEnabled(conf)) {
+    if (ufwDefaultAccepts((await read('/etc/default/ufw')) || '')) return { state: 'ok' }
+    // правила ufw обычно читает только root — тогда честно «не знаем», кнопка всё равно есть
+    const rules = await read('/etc/ufw/user.rules')
+    if (rules == null) return { state: 'unknown' }
+    return { state: ufwAllows(rules, LINUX_PORTS.from, LINUX_PORTS.to) ? 'ok' : 'missing' }
+  }
+  return { state: 'na' }
+}
+
+async function linuxFix(): Promise<'ok' | 'cancelled' | 'failed' | 'na'> {
+  let script: string
+  if (await firewalldRunning()) {
+    script = `firewall-cmd --permanent --add-port=${range()}/tcp && firewall-cmd --add-port=${range()}/tcp`
+  } else {
+    const conf = await read('/etc/ufw/ufw.conf')
+    if (conf == null || !ufwEnabled(conf)) return 'na'
+    script = `ufw allow ${LINUX_PORTS.from}:${LINUX_PORTS.to}/tcp comment '${RULE}'`
+  }
+  // pkexec показывает системное окно с паролем: 126 — его закрыли, 127 — нет прав или окна
+  const { code } = await sh('pkexec', ['/bin/sh', '-c', script], 180_000)
+  return code === 0 ? 'ok' : code === 126 ? 'cancelled' : 'failed'
 }

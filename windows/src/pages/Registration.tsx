@@ -20,6 +20,7 @@ import { restoreBackupInteractive } from '../lib/backup'
 import { toast, alertDialog, Sheet } from '../ui/kit'
 import { TransferPanel } from './Transfer'
 import { transfer } from '../lib/transfer'
+import { OS, isLinux } from '../lib/os'
 
 export const SCHOOLS = [
   { id: 3, short: 'ВШИТАС', full: 'Высшая школа информационных технологий и автоматизированных систем', about: 'ИТ, программирование, автоматизация, связь', Icon: Cpu },
@@ -151,9 +152,9 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
     setTask(2, subj.length ? 'done' : 'warn', subj.length ? `Предметов: ${subj.length} — в папке «Предметы»` : 'Появятся вместе с расписанием')
 
     setTask(3, 'running'); await sleep(300)
-    setTask(3, 'done', 'Напомню о парах, заменах и отменах — уведомлениями Windows')
+    setTask(3, 'done', `Напомню о парах, заменах и отменах — уведомлениями ${OS}`)
     setTask(4, 'running'); await sleep(300)
-    setTask(4, 'done', 'Значок у часов показывает текущую пару, а мини-окно висит поверх всех окон')
+    setTask(4, 'done', isLinux ? 'Значок в трее показывает текущую пару, а мини-окно висит поверх всех окон' : 'Значок у часов показывает текущую пару, а мини-окно висит поверх всех окон')
     setFinished(true)
     celebrations.welcome()
   }
