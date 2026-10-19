@@ -1,4 +1,4 @@
-// Оптимизации 19.8: в хранилище — только последние недели пар (прошлое — в архиве), бюджет живого фона со стеклом
+// Оптимизации 19.8: в хранилище — только последние недели пар (прошлое — в архиве), бюджет живого фона со стеклом, запомненная видеокарта
 import './setup'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -40,4 +40,15 @@ test('стекло на карточках: на встроенной графи
   assert.equal(backdropBudget('mid', true).fps, 30)
   assert.equal(backdropBudget('mid', true).pauseOnScroll, true)
   assert.equal(backdropBudget('low', true).fps, 30)
+})
+
+test('видеокарта запоминается: WebGL пробуем, только если её сменили или WebGL раньше не работал', async () => {
+  const { gpuFor } = await import('../src/fx/perf')
+  const saved = { gpu: 'ANGLE (Intel(R) UHD Graphics 620)', webgl: true, device: '32902:16032' }
+  assert.equal(gpuFor(saved, undefined), saved) // запуск: главный процесс ещё не ответил
+  assert.equal(gpuFor(saved, ''), saved) // главный процесс не узнал карту
+  assert.equal(gpuFor(saved, '32902:16032'), saved)
+  assert.equal(gpuFor(saved, '4318:9479'), null) // поставили другую видеокарту
+  assert.equal(gpuFor({ ...saved, webgl: false }, '32902:16032'), null)
+  assert.equal(gpuFor(null, undefined), null)
 })

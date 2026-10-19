@@ -1,10 +1,10 @@
-// Живой фон под всем приложением. «Свет» и «Сияние» — шейдер на видеокарте (ShaderBackdrop), снег,
+// Живой фон под всем приложением. «Свет» и «Сияние» — шейдер на видеокарте в своём потоке (ShaderBackdrop), снег,
 // листья и лепестки летят поверх переливов отдельным слоем; сетка, матрица и мастерская — рисунком на canvas.
 // Рисуется только пока окно на экране; качество — под железо (perf.ts).
 import { useEffect, useRef, useState } from 'react'
 import { usePref } from '../lib/kv'
 import { type Backdrop, currentBackdrop, rgba } from '../lib/theme'
-import { ShaderBackdrop, type ShaderMode } from './ShaderBackdrop'
+import { createBackdrop, canUseWorker, type LiveBackdrop, type ShaderMode } from './ShaderBackdrop'
 import { useFx, backdropBudget } from './perf'
 
 type P = { x: number; y: number; z: number; vx: number; vy: number; r: number; a: number; va: number; hue: number; life: number; ch?: string }
@@ -26,10 +26,10 @@ export function setAmbientPaused(p: boolean) {
   wakeAll()
 }
 if (typeof window !== 'undefined') {
-  window.addEventListener('blur', () => { pauseState.unfocused = true })
+  window.addEventListener('blur', () => { pauseState.unfocused = true; wakeAll() })
   window.addEventListener('focus', () => { pauseState.unfocused = false; wakeAll() })
   // на слабом железе фон замирает, пока листают: видеокарта целиком на прокрутку
-  const scrolling = () => { pauseState.scrollUntil = performance.now() + 350 }
+  const scrolling = () => { pauseState.scrollUntil = performance.now() + 350; if (!pauseState.paused) wakeAll() }
   window.addEventListener('wheel', scrolling, { passive: true, capture: true })
   window.addEventListener('scroll', scrolling, { passive: true, capture: true })
 }
@@ -46,37 +46,56 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
   void style; void seasonal
   const tier = useFx(s => s.tier)
   const shaderRef = useRef<HTMLCanvasElement>(null)
-  const [glFailed, setGlFailed] = useState(false)
-  const shaderMode: ShaderMode | null = glFailed ? null
+  // где рисовать шейдер: в своём потоке → не завёлся там — в интерфейсе → и там нет — без шейдера (2D)
+  const [gl, setGl] = useState<'worker' | 'main' | 'off'>(() => canUseWorker() ? 'worker' : 'main')
+  const shaderMode: ShaderMode | null = gl === 'off' ? null
     : mode === 'aurora' ? 'aurora' : mode === 'glow' || ON_LIQUID.has(mode) ? 'liquid' : null
   /** 2D-слой: весь фон (сетка, матрица…) или только частицы поверх шейдера */
   const overlay = !!shaderMode && ON_LIQUID.has(mode)
   const need2d = !shaderMode || overlay
 
-  // шейдер на видеокарте
+  // шейдер на видеокарте: создаётся один раз на холст, тема и качество меняются на ходу
+  const sbRef = useRef<{ cv: HTMLCanvasElement; sb: LiveBackdrop; kill: number } | null>(null)
+  const b = backdropBudget(tier, blur)
+  const shaderOpts = shaderMode && { mode: shaderMode, scale: b.scale, minScale: b.minScale, fps: b.fps }
+  const shaderColors = { base: dark ? '#0a0d14' : '#eef2f8', c1, c2, c3: dark ? '#7c3aed' : '#a78bfa', dark, k: Math.max(0.2, Math.min(2, intensity)) * (ON_LIQUID.has(mode) ? 0.75 : 1) }
+  const budgetNow = useRef(b)
+  budgetNow.current = b
   useEffect(() => {
-    if (!shaderMode) return
     const cv = shaderRef.current
-    if (!cv) return
-    const b = backdropBudget(tier, blur)
-    const k = Math.max(0.2, Math.min(2, intensity)) * (ON_LIQUID.has(mode) ? 0.75 : 1)
-    let sb: ShaderBackdrop
-    try {
-      sb = new ShaderBackdrop(cv, {
-        mode: shaderMode, scale: b.scale, minScale: b.minScale, fps: b.fps,
-        colors: { base: dark ? '#0a0d14' : '#eef2f8', c1, c2, c3: dark ? '#7c3aed' : '#a78bfa', dark, k },
-        state: () => ({ paused: pauseState.paused, unfocused: pauseState.unfocused, frozenUntil: b.pauseOnScroll ? pauseState.scrollUntil : 0 })
-      }, () => setGlFailed(true))
-    } catch {
-      setGlFailed(true)
-      return
+    if (!shaderOpts || !cv) return
+    const fallback = () => setGl(g => g === 'worker' ? 'main' : 'off')
+    let it = sbRef.current
+    // StrictMode в разработке снимает и ставит эффект заново на тот же холст: холст уже в потоке — берём тот же фон
+    if (it && it.cv === cv) clearTimeout(it.kill)
+    else {
+      try {
+        const sb = createBackdrop(cv, {
+          opts: shaderOpts, colors: shaderColors, still: reduce,
+          state: () => ({ paused: pauseState.paused, unfocused: pauseState.unfocused, frozenUntil: budgetNow.current.pauseOnScroll ? pauseState.scrollUntil : 0 })
+        }, fallback, gl === 'worker')
+        it = sbRef.current = { cv, sb, kill: 0 }
+      } catch {
+        fallback()
+        return
+      }
     }
-    if (reduce) { sb.still(); return () => sb.stop() }
-    sb.start()
-    const wake = () => sb.wake()
+    const cur = it
+    const wake = () => cur.sb.wake()
     wakers.add(wake)
-    return () => { wakers.delete(wake); sb.stop() }
-  }, [shaderMode, mode, tier, dark, c1, c2, intensity, reduce, blur])
+    return () => {
+      wakers.delete(wake)
+      cur.kill = window.setTimeout(() => { cur.sb.stop(); if (sbRef.current === cur) sbRef.current = null })
+    }
+  }, [!!shaderMode, gl])
+  useEffect(() => {
+    const sb = sbRef.current?.sb
+    if (!sb || !shaderOpts) return
+    sb.update(shaderOpts, shaderColors)
+    sb.setStill(reduce)
+    // бюджет поменялся (стекло, качество) — пауза при прокрутке могла включиться или выключиться
+    sb.wake()
+  }, [shaderMode, mode, tier, dark, c1, c2, intensity, reduce, blur, gl])
 
   useEffect(() => {
     const cv = ref.current
@@ -371,7 +390,7 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: dark ? '#0a0d14' : '#eef2f8' }}>
-      {shaderMode && <canvas ref={shaderRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />}
+      {shaderMode && <canvas key={gl} ref={shaderRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />}
       {need2d && <canvas ref={ref} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />}
       {cssLayer && <div style={{ position: 'absolute', inset: 0, ...cssLayer }} />}
     </div>

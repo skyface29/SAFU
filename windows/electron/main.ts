@@ -1209,7 +1209,17 @@ function registerIPC() {
   ipcMain.handle('clipboard:write', (_e, text: string) => { clipboard.writeText(text); return true })
   ipcMain.handle('clipboard:read', () => clipboard.readText())
 
-  ipcMain.handle('app:info', () => ({
+  /** Какая видеокарта работает (коды производителя и модели): интерфейс помнит её имя и пробует WebGL заново, только если карту сменили */
+  let gpuDeviceId = ''
+  const gpuDevice = async () => gpuDeviceId || (gpuDeviceId = await Promise.race([
+    app.getGPUInfo('basic').then((i: any) => {
+      const all: any[] = i?.gpuDevice || []
+      const list = all.some(d => d.active) ? all.filter(d => d.active) : all
+      return list.map(d => `${d.vendorId}:${d.deviceId}`).join(',')
+    }),
+    new Promise<string>(r => setTimeout(() => r(''), 800))
+  ]).catch(() => ''))
+  ipcMain.handle('app:info', async () => ({
     version: app.getVersion(),
     platform: process.platform,
     electron: process.versions.electron,
@@ -1219,7 +1229,7 @@ function registerIPC() {
     encryption: safeStorage.isEncryptionAvailable(),
     dark: nativeTheme.shouldUseDarkColors,
     // как сейчас рисуется окно: enabled — видеокартой, остальное — процессором (будет рывками)
-    gpu: { safe: !!gpuState.safe, compositing: String((app.getGPUFeatureStatus() as any).gpu_compositing || ''), raster: String((app.getGPUFeatureStatus() as any).rasterization || '') }
+    gpu: { safe: !!gpuState.safe, compositing: String((app.getGPUFeatureStatus() as any).gpu_compositing || ''), raster: String((app.getGPUFeatureStatus() as any).rasterization || ''), device: await gpuDevice() }
   }))
   ipcMain.handle('app:gpuSafe', (_e, safe: boolean) => { saveGpuState({ safe }); return safe })
   ipcMain.handle('app:autostart', (_e, on: boolean) => { setAutostart(on); refreshTray(); return on })

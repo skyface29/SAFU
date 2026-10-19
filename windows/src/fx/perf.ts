@@ -20,10 +20,12 @@ export const useFx = create<FxInfo & { tier: FxTier }>(() => ({ gpu: '', acceler
 /** Текущий уровень — для мест, где хук не нужен (быстрые обработчики мыши) */
 export const fxNow = () => useFx.getState().tier
 
-let probed: { gpu: string; webgl: boolean } | null = null
+type GpuProbe = { gpu: string; webgl: boolean }
+let probed: GpuProbe | null = null
+let probing = false
 
 /** Имя видеокарты из WebGL (один раз): «ANGLE (NVIDIA GeForce RTX 3060 …)», «Intel(R) UHD Graphics 620» */
-export function probeGpu(): { gpu: string; webgl: boolean } {
+export function probeGpu(): GpuProbe {
   if (probed) return probed
   try {
     const c = document.createElement('canvas')
@@ -53,10 +55,52 @@ export function classify(gpu: string, accelerated: boolean, cores: number, memor
   return 'mid'
 }
 
-/** Определить при запуске. gpuInfo — что знает главный процесс (безопасный режим, растр на видеокарте) */
-export function initFx(gpuInfo?: { safe?: boolean; compositing?: string } | null) {
-  const { gpu, webgl } = probeGpu()
-  const accelerated = webgl && !gpuInfo?.safe && !/disabled|software|unavailable/i.test(gpuInfo?.compositing || '')
+/** Запомненная видеокарта: пробный WebGL-контекст на каждом запуске держал интерфейс на старте
+ *  (на холодной видеокарте — до пары секунд). device — какую карту назвал главный процесс: сменилась — пробуем заново */
+type SavedGpu = { gpu: string; webgl: boolean; device: string }
+const GPU_KEY = 'fx.gpu'
+
+/** Запомненная карта, если ей можно верить (device не известен — '' или ещё не спросили — тоже верим); null — пробовать */
+export function gpuFor(saved: SavedGpu | null, device: string | undefined): SavedGpu | null {
+  return saved?.webgl && (!device || saved.device === device) ? saved : null
+}
+
+/** Первый запуск или карту сменили: WebGL пробуем в отдельном потоке, интерфейс видеокарту не ждёт.
+ *  Пока ответа нет — уровень по умолчанию (средний) */
+function probeInBackground(done: () => void) {
+  if (probing) return
+  probing = true
+  const here = () => { probeGpu(); done() }
+  if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined') return here()
+  try {
+    const w = new Worker(new URL('./gpuProbe.ts', import.meta.url), { type: 'module' })
+    // в потоке WebGL не завёлся — проверяем ещё и здесь, чтобы не записать компьютер в слабые зря
+    w.onmessage = (e: MessageEvent<GpuProbe>) => { w.terminate(); if (e.data?.webgl) { probed = e.data; done() } else here() }
+    w.onerror = () => { w.terminate(); here() }
+  } catch {
+    here()
+  }
+}
+
+type GpuInfo = { safe?: boolean; compositing?: string; device?: string }
+let lastInfo: GpuInfo | null = null
+
+/** Определить при запуске. gpuInfo — что знает главный процесс (безопасный режим, растр на видеокарте, какая карта) */
+export function initFx(gpuInfo?: GpuInfo | null) {
+  if (gpuInfo) lastInfo = gpuInfo
+  const info = lastInfo
+  const saved = kv.get<SavedGpu | null>(GPU_KEY, null)
+  const device = info?.device || undefined
+  const found = probed ?? gpuFor(saved, device)
+  if (!found) {
+    probeInBackground(() => initFx())
+    applyFx()
+    return
+  }
+  const { gpu, webgl } = found
+  // без WebGL не запоминаем: вдруг после обновления драйвера заработает
+  if (info && webgl) kv.set<SavedGpu>(GPU_KEY, { gpu, webgl, device: device ?? saved?.device ?? '' })
+  const accelerated = webgl && !info?.safe && !/disabled|software|unavailable/i.test(info?.compositing || '')
   const nav = navigator as Navigator & { deviceMemory?: number }
   const detected = classify(gpu, accelerated, nav.hardwareConcurrency || 0, nav.deviceMemory || 0)
   useFx.setState({ gpu, accelerated, detected })
