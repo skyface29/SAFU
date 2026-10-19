@@ -679,6 +679,7 @@ function toggleWidget(force?: boolean) {
 // ---------- трей ----------
 
 let trayState = { tooltip: 'Арктика', line: '' }
+let trayDot = false
 
 // Автозапуск читается из реестра Windows — один раз, дальше помним сами
 let autostartCache: boolean | null = null
@@ -1258,7 +1259,7 @@ function registerIPC() {
     } else {
       app.setBadgeCount(count)
       // Linux: док показывает число не везде, поэтому ещё и точка на значке в трее
-      if (tray && isLinux) tray.setImage(trayImage(appIcon(), count > 0))
+      if (tray && isLinux && count > 0 !== trayDot) { trayDot = count > 0; tray.setImage(trayImage(appIcon(), trayDot)) }
     }
   })
   ipcMain.handle('app:titlebar', (_e, opts: { color: string; symbol: string }) => {
