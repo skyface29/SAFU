@@ -82,6 +82,11 @@ jobs:
           kill $PID || true
           grep SMOKE smoke.log || true
           ls -la shots
+          # уменьшенные копии — текстом в журнал, чтобы их можно было посмотреть без скачивания артефактов
+          for F in shots/*.png; do
+            sips -s format jpeg -s formatOptions 55 -Z 1100 "$F" --out "${F%.png}.jpg" >/dev/null
+            echo "SHOT-BEGIN $(basename "$F")"; base64 -i "${F%.png}.jpg" | tr -d '\n'; echo; echo "SHOT-END"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
