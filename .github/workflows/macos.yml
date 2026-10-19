@@ -58,6 +58,36 @@ jobs:
           cp "$NAME" Arktika.dmg
           echo "DMG_NAME=$NAME" >> $GITHUB_ENV
           echo "APP_VERSION=$V" >> $GITHUB_ENV
+      - name: Smoke test (запуск и скриншоты)
+        shell: bash
+        run: |
+          set -u
+          APP="$PWD/dmg/Арктика.app"
+          mkdir -p shots
+          # без регистрации: сразу главный экран
+          defaults write ru.student.safuhub onboarded -bool true
+          "$APP/Contents/MacOS/Arktika" --smoke-tour > smoke.log 2>&1 &
+          PID=$!
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep 6
+            if ! kill -0 $PID 2>/dev/null; then
+              echo "::error::Приложение закрылось через $((i*6)) с после запуска"
+              cat smoke.log | tail -60
+              ls ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -i arktika && \
+                head -120 ~/Library/Logs/DiagnosticReports/*Arktika* 2>/dev/null
+              exit 1
+            fi
+            screencapture -x "shots/$(printf %02d $i).png" || true
+          done
+          kill $PID || true
+          grep SMOKE smoke.log || true
+          ls -la shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mac-screenshots
+          path: shots/
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.DMG_NAME }}
