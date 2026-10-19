@@ -17,7 +17,7 @@ import { TOOLS } from '../pages/tools/registry'
 import { resourcesStore } from '../lib/resources'
 import { openSite } from '../sites/sites'
 import { safu } from '../lib/bridge'
-import { LAST_KEY, type SyncLast } from '../lib/sync'
+import { useSyncLast } from '../lib/sync'
 import { relativeAgo } from '../lib/date'
 
 const TAB_ICONS: Record<string, React.ComponentType<any>> = {
@@ -84,7 +84,7 @@ export function Sidebar() {
 
 /** Маленькая пометка над профилем: на связи ли iPhone. Нажал — экран синхронизации */
 function PhoneLink({ collapsed }: { collapsed: boolean }) {
-  const [last] = usePref<SyncLast | null>(LAST_KEY, null)
+  const last = useSyncLast()
   const [paired, setPaired] = useState<boolean | null>(null)
   const [, tick] = useState(0)
   // связан ли телефон — при запуске, когда телефон связался сам и когда связку сменили или отключили

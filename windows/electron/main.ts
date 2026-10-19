@@ -13,7 +13,7 @@ import { checkMail, type MailAccount } from './mail'
 import * as zlib from 'node:zlib'
 import { promisify } from 'node:util'
 import { TransferServer } from './transfer'
-import { SyncServer, newPairing, syncLink, type SyncPairing } from './sync'
+import { SyncServer, newPairing, syncLink, skipRepeats, type SyncPairing } from './sync'
 import { PairBroker } from './syncpair'
 import { firewallStatus, firewallFix } from './firewall'
 import * as os from 'node:os'
@@ -163,6 +163,9 @@ function syncInRenderer(body: unknown): Promise<unknown> {
   })
 }
 
+/** Повторы телефона (то же, что в прошлый раз) не гоняем через интерфейс */
+const syncRepeats = skipRepeats(syncInRenderer)
+
 /** Телефон просит связаться без QR-кода: показываем окно с кодом, человек сверяет и решает */
 const pairAsks = new Map<string, (ok: boolean) => void>()
 function askPair(device: string, code: string): Promise<boolean> {
@@ -249,7 +252,7 @@ async function ensureSync(): Promise<SyncServer | null> {
       version: app.getVersion(),
       port: Number(kv['sync.port']) || SYNC_PORT,
       pairing: syncPairing,
-      handle: syncInRenderer,
+      handle: syncRepeats.handle,
       pair: pairBroker,
       files: pairedFilesHandler,
       onHello: from => { syncSeen.at = Date.now(); syncSeen.from = from }
@@ -1360,12 +1363,14 @@ function registerIPC() {
 
   // синхронизация с iPhone: новая связка (старый код перестаёт работать), показать код ещё раз, отвязать
   ipcMain.handle('sync:pair', async () => {
+    syncRepeats.reset()
     secrets['sync.pair'] = JSON.stringify(newPairing())
     saveSecrets()
     return currentSyncLink()
   })
   ipcMain.handle('sync:link', () => currentSyncLink())
   ipcMain.handle('sync:unpair', () => {
+    syncRepeats.reset()
     delete secrets['sync.pair']
     saveSecrets()
     return true

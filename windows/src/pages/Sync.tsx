@@ -7,7 +7,7 @@ import { PageHeader, Card, Sheet, softSpring, confirmDialog, toast } from '../ui
 import { safu } from '../lib/bridge'
 import { encodeQr, qrPath } from '../lib/qr'
 import { usePref } from '../lib/kv'
-import { sync, LAST_KEY, type SyncLast } from '../lib/sync'
+import { sync, useSyncLast } from '../lib/sync'
 import { relativeAgo } from '../lib/date'
 import { go } from '../lib/nav'
 
@@ -15,7 +15,6 @@ export default function SyncPage() {
   const [url, setUrl] = useState<string | null>(null)
   const [paired, setPaired] = useState<boolean | null>(null)
   const [showQr, setShowQr] = useState(false)
-  const [last] = usePref<SyncLast | null>(LAST_KEY, null)
 
   useEffect(() => {
     const load = (first: boolean) => sync.link().then(u => { setPaired(!!u); setUrl(u); if (first) setShowQr(false) })
@@ -42,7 +41,7 @@ export default function SyncPage() {
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <Card style={{ padding: 26, overflow: 'hidden' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(600px 260px at 10% 0%, rgba(var(--brand-rgb), .16), transparent)', pointerEvents: 'none' }} />
-          <SyncStatus paired={paired} last={last} />
+          <SyncStatus paired={paired} />
           <AnimatePresence initial={false}>
             {showQr && url && (
               <motion.div key="qr" className="col" style={{ alignItems: 'center', gap: 12, marginTop: 20 }}
@@ -85,7 +84,9 @@ export default function SyncPage() {
   )
 }
 
-function SyncStatus({ paired, last }: { paired: boolean | null; last: SyncLast | null }) {
+function SyncStatus({ paired }: { paired: boolean | null }) {
+  // время захода телефона читаем здесь: по своему таймеру карточка видит свежее, а не то, что было при открытии экрана
+  const last = useSyncLast()
   const [, tick] = useState(0)
   useEffect(() => { const t = setInterval(() => tick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
   const fresh = !!last && Date.now() - last.at < 90_000
@@ -285,7 +286,7 @@ export function SyncPairAsk() {
 
 /** Пометка в шапке «Домашки»: синхронизировано с iPhone N минут назад */
 export function SyncBadge() {
-  const [last] = usePref<SyncLast | null>(LAST_KEY, null)
+  const last = useSyncLast()
   const [, tick] = useState(0)
   useEffect(() => { const t = setInterval(() => tick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
   if (!last) return null

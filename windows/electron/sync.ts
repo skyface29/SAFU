@@ -15,6 +15,7 @@ import * as http from 'node:http'
 import * as crypto from 'node:crypto'
 import { seal, open, lanAddresses } from './transfer'
 import { PairBroker, PairError, pairTag } from './syncpair'
+import { sameJson } from '../src/lib/syncmerge'
 
 export type SyncPairing = { id: string; key: string; created: number }
 
@@ -49,6 +50,30 @@ export function newPairing(): SyncPairing {
 export function syncLink(p: SyncPairing, hosts: string[], port: number, name: string): string {
   const q = new URLSearchParams({ v: '1', h: hosts.join(','), p: String(port), i: p.id, k: p.key, n: name.slice(0, 40) })
   return `arktika://sync?${q.toString()}`
+}
+
+/**
+ * Телефон заходит раз в 10 секунд и обычно присылает то же, что в прошлый раз. Тогда его данные интерфейсу
+ * не пересылаем (копирование между процессами тоже стоит интерфейсу времени), а спрашиваем, меняли ли там
+ * что-то с ответа seq. Не меняли — телефону уходит прежний ответ; меняли — сводим как обычно.
+ * Помним ответы двум телефонам: связку можно отдать и второму
+ */
+export function skipRepeats(ask: (body: any) => Promise<any>, keep = 2) {
+  let recent: { data: unknown; seq: number; result: unknown }[] = []
+  return {
+    async handle(body: any): Promise<unknown> {
+      const prev = recent.find(r => sameJson(r.data, body?.data))
+      if (prev) {
+        const r = await ask({ device: body?.device, same: true, seq: prev.seq })
+        if (r?.same) return prev.result
+      }
+      const { seq, ...result } = (await ask(body)) || {}
+      recent = recent.filter(r => r !== prev)
+      if (typeof seq === 'number') recent = [{ data: body?.data, seq, result }, ...recent].slice(0, keep)
+      return result
+    },
+    reset() { recent = [] }
+  }
 }
 
 export class SyncServer {
