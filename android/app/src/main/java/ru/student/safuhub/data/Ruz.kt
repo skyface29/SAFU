@@ -216,6 +216,7 @@ object RuzClient {
 
     suspend fun load(groupID: String): RuzResult {
         val html = fetch(timetableURL(groupID))
+        RuzLecturers.remember(html)
         // 1. Страница РУЗ — в ней есть тип пары (лекция/практика/лаба) и преподаватель
         val page = parseHTML(html)
 

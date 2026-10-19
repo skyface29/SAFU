@@ -418,10 +418,15 @@ fun RootView() {
         }
         SheetBinding(registration, full = true) {
             RegistrationScreen(canClose = onboardingAgain && !registering) {
+                // первая регистрация — потом короткая инструкция (один раз)
+                if (registering) ru.student.safuhub.feature.tour.TourRouter.requestOnce()
                 onboarded = true
                 registering = false
                 onboardingAgain = false
             }
+        }
+        SheetBinding(ru.student.safuhub.feature.tour.TourRouter.show, full = true) {
+            ru.student.safuhub.feature.tour.OnboardingTour { ru.student.safuhub.feature.tour.TourRouter.show.value = false }
         }
 
         Box(Modifier.fillMaxSize().background(Ios.background)) {

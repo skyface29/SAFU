@@ -1,7 +1,12 @@
 package ru.student.safuhub.screens.teachers
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import ru.student.safuhub.data.RuzLecturers
+import ru.student.safuhub.ui.kit.Spinner
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -288,15 +293,74 @@ private fun EventRow(e: RuzEvent, highlight: Boolean, onMap: (String) -> Unit) {
     }
 }
 
-/** Студенту: пары этого преподавателя только в своём расписании — без сбора расписаний всей школы */
+private data class TeacherRowData(
+    val start: Instant, val end: Instant, val kind: String, val subject: String,
+    val groups: String, val room: String, val address: String, val mine: Boolean,
+)
+
+/** Студенту: все пары преподавателя по всему вузу — со страницы преподавателя в РУЗ (как iPhone 19.8).
+ *  Пока она грузится (или если РУЗ не ответил) — пары этого преподавателя из своего расписания. */
 @Composable
 private fun MyTeacher(name: String) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     val data = ScheduleStore.data
+    val school = SchoolTimetable
     val slots = remember(data.lastSync, data) { ScheduleQuery.slots(data, from = 0, days = 60).filter { it.lesson.teacher == name } }
+    var everywhere by remember(name) { mutableStateOf<List<RuzEvent>?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var scanning by remember { mutableStateOf(false) }
+    var problem by remember { mutableStateOf<String?>(null) }
+    val myGroup = data.ruzGroupNumber.trim()
+
+    // Запасной путь: пары преподавателя из расписания всех групп вуза (собирается один раз)
+    suspend fun loadFromSchool(force: Boolean) {
+        val inst = if (data.ruzInstitution > 0) data.ruzInstitution else 3
+        school.load(inst)
+        fun take(): Boolean {
+            val found = TeacherMode.merge(school.events(name))
+            if (found.isEmpty()) return false
+            everywhere = found
+            problem = null
+            return true
+        }
+        val had = take()
+        if (had && !force && school.isFresh(inst)) return
+        scanning = true
+        try { school.ensure(inst, force) { _, _ -> take() } } catch (_: Throwable) {}
+        scanning = false
+        if (!take() && everywhere == null) problem = "В РУЗ не нашлось пар этого преподавателя — показаны пары вашей группы"
+    }
+
+    // Сначала с диска, потом свежие из РУЗ (не чаще раза в 3 часа)
+    suspend fun loadEverywhere(force: Boolean) {
+        var id = RuzLecturers.knownID(name)
+        if (id != null && everywhere == null) RuzLecturers.cached(id)?.let { (ev, at) ->
+            everywhere = ev
+            if (!force && java.time.Duration.between(at, Instant.now()).seconds < 3 * 3600) return
+        }
+        loading = true
+        try {
+            if (id == null) id = RuzLecturers.findID(name, data.ruzGroupID)
+            if (id == null) { loadFromSchool(force); return }
+            val list = try { RuzLecturers.load(id) } catch (_: Throwable) { emptyList() }
+            if (list.isNotEmpty()) { everywhere = list; problem = null } else loadFromSchool(force)
+        } finally { loading = false }
+    }
+
+    LaunchedEffect(name, data.lastSync) { loadEverywhere(false) }
+
+    val rows = everywhere?.map { e ->
+        TeacherRowData(e.start, e.end, e.kind, e.subject, e.teacher, e.room, e.address,
+            myGroup.isNotEmpty() && myGroup in TeacherMode.groups(e.teacher))
+    } ?: slots.map {
+        TeacherRowData(it.start, it.end, it.lesson.kind, it.lesson.subject, if (myGroup.isEmpty()) "" else "Группа $myGroup",
+            it.lesson.room, it.address, true)
+    }
     val now = Instant.now()
-    val days = slots.filter { it.end > now }.take(60).groupBy { Cal.startOfDay(it.start) }.toSortedMap()
-    val subjects = slots.map { it.lesson.subject }.toSet().sorted()
+    val days = rows.filter { it.end > now }.sortedBy { it.start }.take(120).groupBy { Cal.startOfDay(it.start) }.toSortedMap()
+    val subjects = rows.map { it.subject }.filter { it.isNotEmpty() }.toSet().sorted()
+    val busy = loading || scanning
 
     Screen("Преподаватель") {
         FormColumn {
@@ -305,13 +369,26 @@ private fun MyTeacher(name: String) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(name, style = ft(Ts.title3, FontWeight.Bold, Design.ROUNDED), color = Ios.label)
                         if (subjects.isNotEmpty()) Text(subjects.joinToString(", "), style = ft(Ts.subheadline), color = Ios.secondaryLabel)
-                        TextButton({ Share.copy(name); Haptics.success() }, padding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                            IconLabel("Скопировать ФИО", "doc.on.doc", style = ft(Ts.caption, FontWeight.SemiBold), color = Brand.color, spacing = 4.dp)
+                        if (busy) TeacherLoadingCard(if (scanning) school.progress else null)
+                        else NowStatus(rows, everywhere != null) { openMap(ctx, it) }
+                        if (!busy) {
+                            when {
+                                everywhere != null -> IconLabel("Все пары по вузу из РУЗ", "building.columns", style = ft(Ts.caption), color = Ios.secondaryLabel, spacing = 6.dp)
+                                problem != null -> IconLabel(problem!!, "exclamationmark.circle", style = ft(Ts.caption), color = Ios.secondaryLabel, spacing = 6.dp)
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            TextButton({ Share.copy(name); Haptics.success() }, padding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                                IconLabel("Скопировать ФИО", "doc.on.doc", style = ft(Ts.caption, FontWeight.SemiBold), color = Brand.color, spacing = 4.dp)
+                            }
+                            if (!busy) TextButton({ scope.launch { loadEverywhere(true) } }, padding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                                IconLabel("Обновить", "arrow.clockwise", style = ft(Ts.caption, FontWeight.SemiBold), color = Brand.color, spacing = 4.dp)
+                            }
                         }
                     }
                 }
             }
-            if (days.isEmpty()) FormSection { row { Text("Пар с этим преподавателем впереди нет", style = ft(Ts.body), color = Ios.secondaryLabel) } }
+            if (days.isEmpty() && !busy) FormSection { row { Text("Пар с этим преподавателем впереди нет", style = ft(Ts.body), color = Ios.secondaryLabel) } }
             for ((day, items) in days) {
                 FormSection(dayTitle(day)) {
                     for (s in items) raw {
@@ -324,10 +401,15 @@ private fun MyTeacher(name: String) {
                                 Text(LiveFormat.hmText(s.end), style = ft(Ts.caption, mono = true), color = Ios.secondaryLabel)
                             }
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                KindBadge(s.lesson.kind, 9f)
-                                Text(s.lesson.subject, style = ft(Ts.subheadline, FontWeight.SemiBold), color = Ios.label)
-                                if (s.lesson.room.isNotEmpty() || s.address.isNotEmpty()) {
-                                    IconLabel(listOf(if (s.lesson.room.isEmpty()) "" else "ауд. ${s.lesson.room}", AddressFormat.full(s.address))
+                                KindBadge(s.kind, 9f)
+                                Text(s.subject, style = ft(Ts.subheadline, FontWeight.SemiBold), color = Ios.label)
+                                if (everywhere != null && s.groups.isNotEmpty()) {
+                                    IconLabel(if (s.mine) "${s.groups} · ваша" else s.groups, "person.3",
+                                        style = ft(Ts.caption, if (s.mine) FontWeight.SemiBold else FontWeight.Normal),
+                                        color = if (s.mine) Brand.color else Ios.secondaryLabel, spacing = 4.dp)
+                                }
+                                if (s.room.isNotEmpty() || s.address.isNotEmpty()) {
+                                    IconLabel(listOf(if (s.room.isEmpty()) "" else "ауд. ${s.room}", AddressFormat.full(s.address))
                                         .filter { it.isNotEmpty() }.joinToString(" · "), "mappin.and.ellipse", style = ft(Ts.caption),
                                         color = Ios.secondaryLabel, spacing = 4.dp)
                                 }
@@ -336,6 +418,58 @@ private fun MyTeacher(name: String) {
                     }
                 }
             }
+        }
+    }
+}
+
+/** Крупная понятная плашка, пока РУЗ собирает пары преподавателя */
+@Composable
+private fun TeacherLoadingCard(progress: Double?) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Brand.color.copy(alpha = 0.1f))
+        .border(1.dp, Brand.color.copy(alpha = 0.25f), RoundedCornerShape(18.dp)).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Spinner(20.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Загружаю расписание из РУЗ", style = ft(Ts.headline, FontWeight.SemiBold), color = Ios.label)
+                Text("Подожди немного — собираю все пары преподавателя по вузу", style = ft(Ts.subheadline), color = Ios.secondaryLabel)
+            }
+        }
+        if (progress != null) {
+            ProgressBar(progress.toFloat(), Brand.color)
+            Row {
+                Text("${(progress * 100).toInt()}%", style = ft(Ts.subheadline, FontWeight.Bold, mono = true), color = Brand.color)
+                Spacer(Modifier.weight(1f))
+                Text("в первый раз — около минуты, потом сразу", style = ft(Ts.caption), color = Ios.secondaryLabel)
+            }
+        }
+        Text("Пока загружается, ниже — пары только с вашей группой", style = ft(Ts.caption), color = Ios.secondaryLabel)
+    }
+}
+
+/** Где преподаватель сейчас: на паре (аудитория, до скольки) или свободен до следующей */
+@Composable
+private fun NowStatus(rows: List<TeacherRowData>, full: Boolean, onMap: (String) -> Unit) {
+    val now = Instant.now()
+    val cur = rows.firstOrNull { it.start <= now && now < it.end }
+    val next = rows.filter { it.start > now && Cal.isToday(it.start) }.minByOrNull { it.start }
+    when {
+        cur != null -> StatusLine("dot.radiowaves.left.and.right", Ios.green, "Сейчас на паре до ${LiveFormat.hmText(cur.end)}",
+            listOf(if (cur.room.isEmpty()) "" else "ауд. ${cur.room}", AddressFormat.full(cur.address), cur.groups).filter { it.isNotEmpty() }.joinToString(" · ")) { onMap(cur.address) }
+        next != null -> StatusLine("clock", Brand.color, "Сейчас свободен · следующая пара в ${LiveFormat.hmText(next.start)}",
+            listOf(if (next.room.isEmpty()) "" else "ауд. ${next.room}", AddressFormat.full(next.address)).filter { it.isNotEmpty() }.joinToString(" · ")) { onMap(next.address) }
+        full -> StatusLine("moon.zzz", Ios.secondaryLabel, "Сегодня пар больше нет", "") {}
+    }
+}
+
+@Composable
+private fun StatusLine(icon: String, color: Color, title: String, detail: String, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.1f)).clickable { onClick() }.padding(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        SfIcon(icon, Modifier.padding(horizontal = 3.dp), size = 16.dp, tint = color)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = ft(Ts.subheadline, FontWeight.SemiBold), color = Ios.label)
+            if (detail.isNotEmpty()) Text(detail, style = ft(Ts.caption), color = Ios.secondaryLabel)
         }
     }
 }
