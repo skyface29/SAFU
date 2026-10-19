@@ -458,10 +458,15 @@ fun BoardSearchScreen() {
     val scope = rememberCoroutineScope()
     SheetItem(open) { e -> NavigationStack { BoardDetail(e) } }
     LaunchedEffect(Unit) { BoardIndex.prune() }
-    val results = BoardIndex.search(query)
-    Screen("Доски", background = { ru.student.safuhub.ui.design.AmbientBackground() },
+    val results = if (query.isEmpty()) emptyList() else BoardIndex.search(query)
+    var reload by remember { mutableStateOf(0) }
+    val importer = rememberBoardImport(null) { reload++ }
+    Screen("Фото доски", background = { ru.student.safuhub.ui.design.AmbientBackground() },
         trailing = {
+            ru.student.safuhub.ui.kit.BarButton("Из галереи") { importer() }
             IosMenu(items = {
+                item("Из галереи — разложить по парам", "photo.on.rectangle") { importer() }
+                item("Все фото по парам", "photo.stack") { nav?.push { BoardBatchesListScreen(null) } }
                 item("Распознать старые фото", "text.viewfinder") { Haptics.tap(); BoardScan.indexExisting() }
             }) { Box(Modifier.padding(8.dp)) { SfIcon("ellipsis.circle", size = 22.dp, tint = barTint()) } }
         }) {
@@ -492,27 +497,12 @@ fun BoardSearchScreen() {
                     Row(Modifier.padding(14.dp)) { ProgressLabel("Распознаю доски: ${BoardIndex.working}") }
                 }
             }
-            if (BoardIndex.entries.isEmpty()) {
-                EmptyState("text.viewfinder", "Сфоткай доску",
-                    "На главной в карточке пары — «Фото доски в папку предмета». Приложение распознает текст, а здесь по нему можно будет искать.",
-                    Modifier.padding(top = 30.dp))
+            if (query.isEmpty()) {
+                // предметы → даты → фото
+                BoardSubjectsGrid(reload)
             } else if (results.isEmpty()) {
                 Text("Ничего не нашлось по «$query»", style = ft(Ts.subheadline), color = Ios.secondaryLabel, textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(top = 30.dp))
-            }
-            if (query.isEmpty()) {
-                Pressable({ nav?.push { BoardBatchesListScreen(null) } }, Modifier.fillMaxWidth()) {
-                    Glass(18.dp, Modifier.fillMaxWidth()) {
-                        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            SfGradientIcon("photo.stack.fill", size = 20.dp)
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("Фото по парам", style = ft(Ts.subheadline, FontWeight.SemiBold), color = Ios.label)
-                                Text("По порядку съёмки, отправка одним PDF", style = ft(Ts.caption), color = Ios.secondaryLabel)
-                            }
-                            SfIcon("chevron.right", size = 13.dp, tint = Ios.tertiaryLabel)
-                        }
-                    }
-                }
             }
             for (e in results.take(200)) {
                 Pressable({ Haptics.tap(); open.value = e }, Modifier.fillMaxWidth()) { BoardRow(e, query) }

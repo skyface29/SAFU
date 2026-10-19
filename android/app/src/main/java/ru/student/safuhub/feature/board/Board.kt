@@ -121,10 +121,55 @@ object LessonPhotos {
         return groups.values.map { BoardBatch(subject, it.first, it.second, it.third) }.sortedByDescending { it.start }
     }
 
+    /** Папка называется почти как предмет (без «/» и «:») — настоящее название из расписания, иначе фото не находят свою пару */
+    private fun realNames(data: ScheduleData): Map<String, String> =
+        ru.student.safuhub.data.ScheduleQuery.subjects(data).associateBy { SubjectFolders.url(it).name }
+
+    private fun subjectDirs() = (SubjectFolders.base.listFiles() ?: emptyArray()).filter { it.isDirectory && !it.name.startsWith(".") }
+
     /** Все пары с фото по всем предметам */
-    fun allBatches(data: ScheduleData, limit: Int = 30): List<BoardBatch> =
-        (SubjectFolders.base.listFiles() ?: emptyArray()).filter { it.isDirectory && !it.name.startsWith(".") }
-            .flatMap { batches(it.name, data) }.sortedByDescending { it.start }.take(limit)
+    fun allBatches(data: ScheduleData, limit: Int = 30): List<BoardBatch> {
+        val real = realNames(data)
+        return subjectDirs().flatMap { batches(real[it.name] ?: it.name, data) }.sortedByDescending { it.start }.take(limit)
+    }
+
+    /** Фото предмета по дням: все снимки дня вместе (две пары подряд — один день), новые дни сверху */
+    fun dayBatches(subject: String, data: ScheduleData): List<BoardBatch> {
+        val map = LinkedHashMap<Instant, MutableList<BoardShot>>()
+        for (s in shots(subject)) map.getOrPut(Cal.startOfDay(s.date)) { mutableListOf() } += s
+        return map.map { (day, list) ->
+            val sorted = list.sortedBy { it.date }
+            // все снимки дня с одной пары — подпишем пару; иначе просто день
+            val slots = sorted.map { slot(it.date, subject, data) }
+            val first = slots.firstOrNull()
+            val one = if (first != null && slots.all { it?.key == first.key }) first else null
+            BoardBatch(subject, one, day, sorted)
+        }.sortedByDescending { it.day }
+    }
+
+    data class SubjectSummary(val subject: String, val photos: Int, val days: Int, val latest: BoardShot?) {
+        /** «сегодня», «вчера», «12 окт» */
+        val lastText: String
+            get() {
+                val d = latest?.date ?: return ""
+                return when {
+                    Cal.isToday(d) -> "сегодня"
+                    Cal.isYesterday(d) -> "вчера"
+                    else -> Fmt.format(d, "d MMM")
+                }
+            }
+    }
+
+    /** Предметы с фото доски: сколько снимков и дат, последний снимок — обложка. Свежие сверху */
+    fun subjectSummaries(data: ScheduleData): List<SubjectSummary> {
+        val real = realNames(data)
+        return subjectDirs().mapNotNull { dir ->
+            val name = real[dir.name] ?: dir.name
+            val list = shots(name)
+            if (list.isEmpty()) null
+            else SubjectSummary(name, list.size, list.map { Cal.startOfDay(it.date) }.toSet().size, list.last())
+        }.sortedByDescending { it.latest?.date ?: Instant.EPOCH }
+    }
 
     /** Пара «сейчас» для кнопки камеры: идёт, скоро начнётся или только что закончилась */
     fun currentSlot(data: ScheduleData, now: Instant = Instant.now()): LessonSlot? {
@@ -142,6 +187,62 @@ object LessonPhotos {
         t.start?.let { start -> list.firstOrNull { kotlin.math.abs(it.start.epochSecond - start.epochSecond) < 120 }?.let { return it } }
         return list.firstOrNull() ?: BoardBatch(t.subject, null, Instant.now(), emptyList())
     }
+}
+
+// MARK: - Разложить фото из галереи по парам
+// Сфоткал доску обычной камерой — не беда: по времени съёмки находим пару в расписании и кладём снимок
+// в папку её предмета, а в названии — время съёмки, чтобы он встал в свою пару по порядку.
+
+object BoardImport {
+    /** Время съёмки из самого снимка (EXIF) */
+    fun captureDate(f: File): Instant? = try {
+        val e = androidx.exifinterface.media.ExifInterface(f.path)
+        val s = e.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME_ORIGINAL)
+            ?: e.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME_DIGITIZED)
+            ?: e.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME)
+        s?.let { java.time.LocalDateTime.parse(it, java.time.format.DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss")).atZone(Cal.zone).toInstant() }
+    } catch (_: Throwable) { null }
+
+    /** Пара любого предмета, во время которой (или сразу после) сделан снимок */
+    fun slot(date: Instant, data: ScheduleData): LessonSlot? =
+        ScheduleEngine.slots(Cal.startOfDay(date), data).firstOrNull { date >= it.start.minusSeconds(15 * 60) && date <= it.end.plusSeconds(30 * 60) }
+
+    /** Положить снимок в папку предмета, в названии — время съёмки */
+    fun save(src: File, subject: String, date: Instant): File? {
+        val dir = SubjectFolders.url(subject).apply { mkdirs() }
+        val dest = FileService.uniqueFile(dir, "Доска ${Fmt.format(date, "dd.MM HH-mm-ss")}.jpg")
+        return try {
+            val bmp = Thumbs.decodeSampled(src, 3000)
+            if (bmp != null) FileOutputStream(dest).use { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) } else src.copyTo(dest, overwrite = true)
+            BoardScan.process(dest, subject, date)
+            dest
+        } catch (_: Throwable) { null }
+    }
+
+    /** Снимок без пары ждёт, куда его положить, во временной папке */
+    data class Pending(val file: File, val date: Instant)
+
+    data class Result(val placed: Int, val pending: List<Pending>)
+
+    /** Разложить выбранные в галерее снимки: что сняли на паре — по предметам, остальное — ждёт выбора предмета */
+    fun importAll(ctx: android.content.Context, uris: List<android.net.Uri>, data: ScheduleData, subject: String?): Result {
+        val tmpDir = File(ctx.cacheDir, "board-import").apply { mkdirs() }
+        var placed = 0
+        val pending = mutableListOf<Pending>()
+        for (u in uris) {
+            val tmp = File(tmpDir, java.util.UUID.randomUUID().toString())
+            runCatching { ctx.contentResolver.openInputStream(u)?.use { i -> tmp.outputStream().use { i.copyTo(it) } } }
+            if (!tmp.exists() || tmp.length() == 0L) continue
+            val date = captureDate(tmp) ?: Instant.now()
+            val target = subject ?: slot(date, data)?.lesson?.subject
+            if (target != null) { if (save(tmp, target, date) != null) placed++; tmp.delete() }
+            else pending += Pending(tmp, date)
+        }
+        return Result(placed, pending)
+    }
+
+    fun place(p: Pending, subject: String) { save(p.file, subject, p.date); p.file.delete() }
+    fun drop(list: List<Pending>) = list.forEach { it.file.delete() }
 }
 
 object BoardPhoto {
