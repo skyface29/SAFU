@@ -1,0 +1,73 @@
+name: Build macOS
+# Mac-версия «Арктики»: тот же Swift-код, что у iPhone (Mac Catalyst), собирается в Арктика.dmg.
+# Сертификат не нужен: приложение подписывается локальной подписью. Первый запуск на Mac —
+# правый клик по «Арктика» → «Открыть» (или Системные настройки → Конфиденциальность и безопасность → «Всё равно открыть»).
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, dev, 'claude/**' ]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Unpack
+        run: |
+          if [ -f SAFU.zip ]; then unzip -o -q SAFU.zip; fi
+          if [ -d SAFU ]; then cp -R SAFU/. .; fi
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - name: Build
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project SAFU.xcodeproj -scheme SAFUMac \
+            -configuration Release \
+            -destination 'generic/platform=macOS,variant=Mac Catalyst' \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
+            SYMROOT="$PWD/build" CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build.log
+      - name: Show compile errors
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "error:" build.log | sort -u | head -40 | while IFS= read -r L; do
+            F=$(echo "$L" | sed -E 's#^.*/(Sources|Shared|Widget)/#\1/#' | cut -c1-300)
+            echo "::error::$F"
+          done
+          exit 1
+      - name: Package
+        shell: bash
+        run: |
+          set -e
+          APP=build/Release-maccatalyst/Arktika.app
+          test -d "$APP" || { echo "Сборка не создала Arktika.app"; ls build; exit 1; }
+          rm -rf dmg && mkdir dmg
+          ditto --norsrc --noextattr --noacl "$APP" "dmg/Арктика.app"
+          xattr -cr dmg
+          # локальная подпись: без неё Mac на Apple Silicon не запустит приложение
+          codesign --force --deep --sign - --entitlements Mac.entitlements "dmg/Арктика.app"
+          codesign --verify --deep --strict "dmg/Арктика.app"
+          lipo -info "dmg/Арктика.app/Contents/MacOS/Arktika"
+          ln -s /Applications dmg/Applications
+          V=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "dmg/Арктика.app/Contents/Info.plist")
+          NAME="Arktika-mac-v${V}-build${{ github.run_number }}.dmg"
+          hdiutil create -volname "Арктика" -srcfolder dmg -ov -format UDZO "$NAME"
+          cp "$NAME" Arktika.dmg
+          echo "DMG_NAME=$NAME" >> $GITHUB_ENV
+          echo "APP_VERSION=$V" >> $GITHUB_ENV
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.DMG_NAME }}
+          path: ${{ env.DMG_NAME }}
+      - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: mac-build-${{ github.run_number }}
+          name: Арктика для Mac ${{ env.APP_VERSION }} (сборка ${{ github.run_number }})
+          files: |
+            ${{ env.DMG_NAME }}
+            Arktika.dmg
+          make_latest: false
