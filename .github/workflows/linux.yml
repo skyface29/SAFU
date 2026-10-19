@@ -101,10 +101,14 @@ jobs:
           grep -q ARKTIKA_SMOKE_OK appimage.log
       - name: Fedora — установка и запуск .rpm
         if: ${{ matrix.container }}
+        shell: bash
         run: |
+          set -o pipefail
           dnf install -y -q xorg-x11-server-Xvfb xorg-x11-xauth which ./pkg/*.rpm
           useradd -m tester
-          runuser -u tester -- bash -c 'cd ~ && ARKTIKA_SMOKE=1 timeout 120 xvfb-run -a arktika' 2>&1 | tee rpm.log
+          # в Docker песочнице Chromium не дают создать namespaces (ни своей, ни через SUID chrome-sandbox) —
+          # это ограничение контейнера, не пакета; на настоящей Fedora песочница работает
+          runuser -u tester -- bash -c 'cd ~ && ARKTIKA_SMOKE=1 timeout 120 xvfb-run -a arktika --no-sandbox' 2>&1 | tee rpm.log
           grep -q ARKTIKA_SMOKE_OK rpm.log
 
   release:
