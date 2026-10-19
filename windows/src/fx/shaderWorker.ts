@@ -13,7 +13,8 @@ export type ToWorker =
   | { type: 'update'; opts: CoreOpts; colors: GlColors }
   | { type: 'still'; still: boolean }
 
-const post = (m: { type: 'lost' | 'ready' }) => (self as unknown as Worker).postMessage(m)
+export type FromWorker = { type: 'lost' | 'ready' } | { type: 'quality'; scale: number; out: number }
+const post = (m: FromWorker) => (self as unknown as Worker).postMessage(m)
 let core: ShaderCore | null = null
 let size = { w: 1, h: 1 }
 const st: BackdropState = { paused: false, unfocused: false, frozenUntil: 0 }
@@ -30,7 +31,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     size = m.size
     setState(m.state)
     try {
-      core = new ShaderCore(m.canvas, m.opts, m.colors, () => size, () => st, () => post({ type: 'lost' }), m.visible)
+      core = new ShaderCore(m.canvas, m.opts, m.colors, () => size, () => st, () => post({ type: 'lost' }), m.visible, (scale, out) => post({ type: 'quality', scale, out }))
     } catch {
       post({ type: 'lost' })
       return

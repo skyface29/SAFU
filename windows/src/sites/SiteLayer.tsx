@@ -49,8 +49,8 @@ useSites.subscribe(st => {
 const autoAttempts = new Map<string, number[]>()
 /** Карточка готовится уехать: снимает полноразмерный снимок страницы и прячет живую страницу */
 const preparers = new Map<string, () => Promise<void>>()
-/** Последний снимок страницы (из него же — маленький для плашки и стопки) */
-const lastImages = new Map<string, any>()
+/** Маленький снимок последней страницы — для стопки (большой живёт в карточке) */
+const lastImages = new Map<string, string>()
 
 function prepare(id: string | null) {
   const f = id ? preparers.get(id) : null
@@ -119,8 +119,8 @@ export function minimizeWithSnapshot() {
   if (!id) return
   // маленький снимок для стопки — после того, как карточка доехала, чтобы не попасть на анимацию
   setTimeout(() => {
-    const img = lastImages.get(id)
-    try { if (img) sites.update(id, { snapshot: img.resize({ width: 420 }).toDataURL() }) } catch { /* страница ещё не загрузилась */ }
+    const thumb = lastImages.get(id)
+    if (thumb) sites.update(id, { snapshot: thumb })
   }, 600)
 }
 
@@ -173,13 +173,11 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
     if (!force && performance.now() - lastGrab.current < 1500) return
     lastGrab.current = performance.now()
     try {
-      let img = await wv.capturePage()
-      if (!img || img.isEmpty()) return
       // на экранах с масштабом — до размера окна: меньше кодировать и раскодировать
-      const dpr = window.devicePixelRatio || 1
-      if (dpr > 1.2) img = img.resize({ width: Math.round(img.getSize().width / dpr), quality: 'good' })
-      lastImages.set(tab.id, img)
-      const url = URL.createObjectURL(new Blob([img.toJPEG(84)], { type: 'image/jpeg' }))
+      const snap = await safu.sites.capture(wv.getWebContentsId(), wv.clientWidth)
+      if (!snap || !liveRef.current) return
+      lastImages.set(tab.id, snap.thumb)
+      const url = URL.createObjectURL(new Blob([snap.jpeg], { type: 'image/jpeg' }))
       // раскодировать заранее: в начале анимации картинка уже готова
       const probe = new Image()
       probe.src = url

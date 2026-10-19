@@ -133,7 +133,9 @@ const api = {
     clear: () => ipcRenderer.invoke('sites:clear'),
     preload: (): Promise<string> => ipcRenderer.invoke('sites:preload'),
     /** Скачанное с этой страницы класть в папку (относительно «Файлов»); null — в «Загрузки» */
-    downloadHint: (webContentsId: number, rel: string | null) => ipcRenderer.send('sites:downloadHint', webContentsId, rel)
+    downloadHint: (webContentsId: number, rel: string | null) => ipcRenderer.send('sites:downloadHint', webContentsId, rel),
+    /** Снимок страницы: JPEG шириной width (CSS-пиксели окна) и маленький — для стопки */
+    capture: (webContentsId: number, width: number): Promise<{ jpeg: Uint8Array; thumb: string } | null> => ipcRenderer.invoke('sites:capture', webContentsId, width)
   }
 }
 

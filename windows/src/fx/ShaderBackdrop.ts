@@ -3,7 +3,7 @@
 // недоступен, тот же шейдер (shaderCore.ts) рисуется прямо в интерфейсе — как раньше.
 import { hexToRgb } from '../lib/theme'
 import { ShaderCore, type BackdropState, type CoreOpts, type GlColors } from './shaderCore'
-import type { ToWorker, WireState } from './shaderWorker'
+import type { FromWorker, ToWorker, WireState } from './shaderWorker'
 
 export { UNFOCUSED_FPS, type BackdropState, type ShaderMode } from './shaderCore'
 
@@ -25,6 +25,8 @@ const vec = (hex: string): [number, number, number] => {
 }
 const glColors = (c: Colors): GlColors => ({ base: vec(c.base), c1: vec(c.c1), c2: vec(c.c2), c3: vec(c.c3), dark: c.dark, k: c.k })
 const visibleNow = () => document.visibilityState === 'visible'
+/** Текущее качество — на холсте (data-q="переливы/холст"): видно в отладке и в проверках */
+const markQuality = (canvas: HTMLCanvasElement) => (scale: number, out: number) => { canvas.dataset.q = scale.toFixed(2) + '/' + out.toFixed(2) }
 
 /** Можно ли рисовать фон в отдельном потоке */
 export const canUseWorker = () =>
@@ -44,7 +46,11 @@ class WorkerBackdrop implements LiveBackdrop {
     this.w = new Worker(new URL('./shaderWorker.ts', import.meta.url), { type: 'module' })
     let lost = false
     const fail = () => { if (!lost) { lost = true; onLost() } }
-    this.w.onmessage = e => { if (e.data?.type === 'lost') fail() }
+    const mark = markQuality(canvas)
+    this.w.onmessage = (e: MessageEvent<FromWorker>) => {
+      if (e.data?.type === 'lost') fail()
+      else if (e.data?.type === 'quality') mark(e.data.scale, e.data.out)
+    }
     this.w.onerror = fail
     this.still = init.still
     const st = init.state()
@@ -98,7 +104,7 @@ class MainBackdrop implements LiveBackdrop {
   private core: ShaderCore
 
   constructor(canvas: HTMLCanvasElement, init: Init, onLost: () => void) {
-    this.core = new ShaderCore(canvas, init.opts, glColors(init.colors), () => ({ w: canvas.clientWidth, h: canvas.clientHeight }), init.state, onLost, visibleNow())
+    this.core = new ShaderCore(canvas, init.opts, glColors(init.colors), () => ({ w: canvas.clientWidth, h: canvas.clientHeight }), init.state, onLost, visibleNow(), markQuality(canvas))
     this.core.setStill(init.still)
     this.core.start()
     window.addEventListener('mousemove', this.onMove, { passive: true })

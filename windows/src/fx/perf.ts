@@ -118,13 +118,15 @@ export function applyFx() {
   document.documentElement.dataset.fx = tier
 }
 
-/** Параметры живого фона для уровня: доля разрешения окна и потолок кадров.
+/** Параметры живого фона для уровня. scale — картинка переливов (тяжёлая часть, она плавная), out — сам холст
+ *  с мелочами (лёгкий проход), оба — доли от размера окна; min* — до скольки можно снизить, если кадры не успевают.
  *  glass — включено стекло на карточках: каждый кадр фона заставляет пересчитать размытие всех карточек.
  *  Мощная видеокарта тянет это как есть; встроенной фон рисуется в 30 кадров (на глаз мягкие переливы
  *  не меняются) и стоит, пока листают, — иначе прокрутка со стеклом дёргается */
-export function backdropBudget(tier: FxTier, glass = false): { scale: number; minScale: number; fps: number; pauseOnScroll: boolean } {
-  const b = tier === 'high' ? { scale: 0.6, minScale: 0.3, fps: 60, pauseOnScroll: false }
-    : tier === 'mid' ? { scale: 0.42, minScale: 0.22, fps: 60, pauseOnScroll: false }
-      : { scale: 0.28, minScale: 0.16, fps: 30, pauseOnScroll: true }
+export type BackdropBudget = { scale: number; minScale: number; out: number; minOut: number; fps: number; pauseOnScroll: boolean }
+export function backdropBudget(tier: FxTier, glass = false): BackdropBudget {
+  const b = tier === 'high' ? { scale: 0.42, minScale: 0.24, out: 1, minOut: 0.7, fps: 60, pauseOnScroll: false }
+    : tier === 'mid' ? { scale: 0.34, minScale: 0.2, out: 0.85, minOut: 0.6, fps: 60, pauseOnScroll: false }
+      : { scale: 0.24, minScale: 0.15, out: 0.6, minOut: 0.45, fps: 30, pauseOnScroll: true }
   return glass && tier !== 'high' ? { ...b, fps: Math.min(b.fps, 30), pauseOnScroll: true } : b
 }
