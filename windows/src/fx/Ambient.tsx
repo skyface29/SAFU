@@ -57,7 +57,7 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
   // шейдер на видеокарте: создаётся один раз на холст, тема и качество меняются на ходу
   const sbRef = useRef<{ cv: HTMLCanvasElement; sb: LiveBackdrop; kill: number } | null>(null)
   const b = backdropBudget(tier, blur)
-  const shaderOpts = shaderMode && { mode: shaderMode, scale: b.scale, minScale: b.minScale, fps: b.fps }
+  const shaderOpts = shaderMode && { mode: shaderMode, scale: b.scale, minScale: b.minScale, out: b.out, minOut: b.minOut, fps: b.fps }
   const shaderColors = { base: dark ? '#0a0d14' : '#eef2f8', c1, c2, c3: dark ? '#7c3aed' : '#a78bfa', dark, k: Math.max(0.2, Math.min(2, intensity)) * (ON_LIQUID.has(mode) ? 0.75 : 1) }
   const budgetNow = useRef(b)
   budgetNow.current = b

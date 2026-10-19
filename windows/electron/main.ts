@@ -4,7 +4,7 @@
 
 import {
   app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, Notification, shell, dialog,
-  safeStorage, net, protocol, session, screen, nativeTheme, clipboard, powerMonitor, globalShortcut
+  safeStorage, net, protocol, session, screen, nativeTheme, clipboard, powerMonitor, globalShortcut, webContents
 } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
@@ -1397,6 +1397,22 @@ function registerIPC() {
     else downloadHints.delete(id)
   })
   ipcMain.handle('sites:preload', () => pathToFileURL(path.join(__dirname, 'site-preload.js')).toString())
+  // снимок открытого сайта для анимации сворачивания и стопки. Снимаем здесь, а не в окне: webview.capturePage()
+  // в окне роняло его целиком (V8 «Empty MaybeLocal» в песочнице) — приложение «вылетало и запускалось заново».
+  // Заодно уменьшение и JPEG больше не занимают интерфейс
+  ipcMain.handle('sites:capture', async (e, id: number, width: number) => {
+    const wc = typeof id === 'number' ? webContents.fromId(id) : undefined
+    // только страницы из этого же окна
+    if (!wc || wc.isDestroyed() || wc.hostWebContents !== e.sender) return null
+    try {
+      let img = await wc.capturePage()
+      if (img.isEmpty()) return null
+      if (width > 0 && img.getSize().width > width * 1.2) img = img.resize({ width: Math.round(width), quality: 'good' })
+      return { jpeg: img.toJPEG(84), thumb: 'data:image/jpeg;base64,' + img.resize({ width: Math.min(800, img.getSize().width), quality: 'good' }).toJPEG(82).toString('base64') }
+    } catch {
+      return null
+    }
+  })
 }
 
 /** Красный кружок с числом для значка в панели задач */
