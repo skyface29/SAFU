@@ -75,7 +75,8 @@ jobs:
         run: echo "APP_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
-          name: Arktika-Windows-${{ env.APP_VERSION }}
+          # номер сборки в имени — архивы одной версии не путаются
+          name: Arktika-Windows-${{ env.APP_VERSION }}-build${{ github.run_number }}
           path: |
             windows/release/*.exe
       - uses: softprops/action-gh-release@v2

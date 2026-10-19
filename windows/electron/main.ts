@@ -4,7 +4,7 @@
 
 import {
   app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, Notification, shell, dialog,
-  safeStorage, net, protocol, session, screen, nativeTheme, clipboard, powerMonitor, globalShortcut, webContents
+  safeStorage, net, protocol, session, screen, nativeTheme, clipboard, powerMonitor, globalShortcut, webContents, crashReporter
 } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
@@ -31,6 +31,13 @@ const APP_ID = 'ru.student.safuhub'
 app.setAppUserModelId(APP_ID)
 app.setName('Арктика')
 app.setPath('userData', path.join(app.getPath('appData'), 'САФУ'))
+// дампы падений — только на этом компьютере (никуда не отправляются), рядом с журналом ошибок: если окно всё же
+// упадёт, по дампу видно, что именно упало, а не только «crashed». Храним последние 5
+const CRASH_DIR = path.join(app.getPath('userData'), 'logs', 'crashes')
+try {
+  app.setPath('crashDumps', CRASH_DIR)
+  crashReporter.start({ uploadToServer: false })
+} catch { /* без дампов — не страшно */ }
 
 // ---------- один экземпляр и ссылки safu:// ----------
 
@@ -474,7 +481,11 @@ function createWindow() {
   // интерфейс упал — перезагружаем сами; не помогает — экран восстановления вместо чёрного окна
   win.webContents.on('render-process-gone', (_e, d) => {
     if (d.reason === 'clean-exit') return
-    logError(`renderer gone: ${d.reason} (${d.exitCode})`)
+    // сколько было открыто сайтов и сколько оставалось памяти — чтобы отличить нехватку памяти от ошибки
+    const sites = webContents.getAllWebContents().filter(w => w.getType() === 'webview').length
+    let freeMb = -1
+    try { freeMb = Math.round(process.getSystemMemoryInfo().free / 1024) } catch { /* нет данных */ }
+    logError(`renderer gone: ${d.reason} (${d.exitCode}), сайтов: ${sites}, свободно памяти: ${freeMb} МБ`)
     recoverOrReload(`Окно приложения упало (${d.reason})`)
   })
   win.webContents.on('did-fail-load', (_e, code, desc, _url, isMain) => {
@@ -1440,6 +1451,23 @@ function handleDeepLink(argv: string[]) {
 app.on('second-instance', (_e, argv) => handleDeepLink(argv))
 app.on('open-url', (e, url) => { e.preventDefault(); handleDeepLink([url]) })
 
+/** Старые дампы падений — прочь, кроме последних 5 (Windows кладёт их в reports, Linux — в pending и completed) */
+async function pruneCrashDumps() {
+  const files: { p: string; t: number }[] = []
+  for (const sub of ['reports', 'pending', 'completed']) {
+    const dir = path.join(CRASH_DIR, sub)
+    for (const n of await fs.promises.readdir(dir).catch(() => [] as string[])) {
+      if (!n.endsWith('.dmp')) continue
+      const p = path.join(dir, n)
+      files.push({ p, t: (await fs.promises.stat(p).catch(() => null))?.mtimeMs ?? 0 })
+    }
+  }
+  for (const f of files.sort((a, b) => b.t - a.t).slice(5)) {
+    await fs.promises.rm(f.p, { force: true }).catch(() => undefined)
+    await fs.promises.rm(f.p.replace(/\.dmp$/, '.meta'), { force: true }).catch(() => undefined)
+  }
+}
+
 app.whenReady().then(() => {
   loadKV()
   loadSecrets()
@@ -1464,6 +1492,7 @@ app.whenReady().then(() => {
   createTray()
   armAll()
   ensureSync().catch(e => console.error('sync server', e))
+  setTimeout(() => void pruneCrashDumps(), 30_000)
   if (kv['widget.open']) setTimeout(() => toggleWidget(true), 1500)
 
   // глобальная горячая клавиша: Ctrl+Alt+S — показать Арктику откуда угодно
