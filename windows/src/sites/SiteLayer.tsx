@@ -20,6 +20,7 @@ import { useSchedule } from '../lib/scheduleStore'
 import { subjects } from '../lib/schedule'
 import { subjectFolder } from '../lib/effects'
 import { bestSubject, looksLikeFile, FIND_FILES_SCRIPT, pageFileName, type PageFile } from '../lib/downloads'
+import { isLinux } from '../lib/os'
 
 
 let preloadURL = ''
@@ -627,7 +628,7 @@ function FileView({ tab }: { tab: SiteTab }) {
         <motion.div initial={{ scale: 0.6, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 14 }}
           className="icon-tile" style={{ width: 96, height: 96, borderRadius: 26, background: 'var(--grad)' }}><FileText size={46} /></motion.div>
         <div className="h-card">{tab.title}</div>
-        <div className="sub">Этот файл откроется в программе Windows ({ext.toUpperCase() || 'файл'})</div>
+        <div className="sub">Этот файл откроется в программе {isLinux ? 'компьютера' : 'Windows'} ({ext.toUpperCase() || 'файл'})</div>
         <div className="row">
           <button className="btn primary" onClick={() => tab.fileRel && safu.fs.open(tab.fileRel)}><ExternalLink size={16} /> Открыть</button>
           <button className="btn" onClick={() => tab.fileRel && safu.fs.reveal(tab.fileRel)}><FolderOpen size={16} /> В папке</button>

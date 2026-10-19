@@ -27,6 +27,7 @@ import { tasksStore, notesStore } from '../lib/study'
 import { gradesStore } from '../lib/grades'
 import { openSite } from '../sites/sites'
 import { celebrations } from '../fx/Celebrations'
+import { OS, isLinux, VAULT } from '../lib/os'
 
 export default function Profile() {
   const p = useProfile()
@@ -43,7 +44,7 @@ export default function Profile() {
   const sections: { id: any; title: string; sub: string; Icon: any; color: string }[] = [
     { id: 'appearance', title: 'Оформление', sub: 'Темы, живые фоны, карточки, шрифты', Icon: Palette, color: 'linear-gradient(135deg,#ec4899,#8b5cf6)' },
     { id: 'customize', title: 'Главная и меню', sub: 'Блоки главной, разделы, быстрые кнопки', Icon: LayoutDashboard, color: 'linear-gradient(135deg,#3b82f6,#06b6d4)' },
-    { id: 'settings', title: 'Приложение и Windows', sub: 'Трей, автозапуск, мини-окно, уведомления', Icon: Monitor, color: 'linear-gradient(135deg,#0ea5e9,#2563eb)' },
+    { id: 'settings', title: `Приложение и ${OS}`, sub: 'Трей, автозапуск, мини-окно, уведомления', Icon: Monitor, color: 'linear-gradient(135deg,#0ea5e9,#2563eb)' },
     { id: 'passwords', title: 'Пароли и сайты', sub: 'Вход на сайты вуза, список сайтов', Icon: KeyRound, color: 'linear-gradient(135deg,#f59e0b,#ef4444)' },
     { id: 'mailnotify', title: 'Уведомления о почте', sub: 'Новые письма в почте САФУ', Icon: Mail, color: 'linear-gradient(135deg,#0ea5e9,#6366f1)' },
     { id: 'sync', title: 'Синхронизация с iPhone', sub: 'ДЗ, задачи и заметки — одинаковые на телефоне и тут', Icon: RefreshCw, color: 'linear-gradient(135deg,#22c55e,#0ea5e9)' },
@@ -152,7 +153,7 @@ export function Appearance() {
       </div>
       <div className="h-sec">Тема</div>
       <Card>
-        <div className="row mb12"><Segmented value={scheme} onChange={setScheme} options={[{ value: 'system', label: 'Как в Windows' }, { value: 'light', label: 'Светлая' }, { value: 'dark', label: 'Тёмная' }]} /></div>
+        <div className="row mb12"><Segmented value={scheme} onChange={setScheme} options={[{ value: 'system', label: isLinux ? 'Как в системе' : 'Как в Windows' }, { value: 'light', label: 'Светлая' }, { value: 'dark', label: 'Тёмная' }]} /></div>
         <div className="tiny faint mb8">ЯРКИЕ</div>
         <div className="row wrap-row gap8 mb12">{ACCENTS.filter(a => !a.strict).map(a => <Swatch key={a.id} a={a} />)}</div>
         <div className="tiny faint mb8">СТРОГИЕ</div>
@@ -169,7 +170,7 @@ export function Appearance() {
           ))}
         </div>
         <div className="row mt12"><span className="small grow">Насыщенность</span><input type="range" min={0.3} max={1.8} step={0.1} value={intensity} onChange={e => setIntensity(+e.target.value)} style={{ width: 240, accentColor: 'var(--brand)' }} /></div>
-        {isDesktop && <div className="row mt12"><div className="grow"><b>Материал Mica (Windows 11)</b><div className="tiny muted">Окно просвечивает обоями рабочего стола вместо живого фона</div></div><Toggle on={mica} onChange={v => { setMica(v); safu.app.mica(v) }} /></div>}
+        {isDesktop && !isLinux && <div className="row mt12"><div className="grow"><b>Материал Mica (Windows 11)</b><div className="tiny muted">Окно просвечивает обоями рабочего стола вместо живого фона</div></div><Toggle on={mica} onChange={v => { setMica(v); safu.app.mica(v) }} /></div>}
       </Card>
       <div className="h-sec">Карточки</div>
       <Card>
@@ -274,13 +275,13 @@ export function AppSettings() {
   }
   return (
     <>
-      <PageHeader title="Приложение и Windows" />
+      <PageHeader title={`Приложение и ${OS}`} />
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <div>
           <div className="h-sec" style={{ marginTop: 0 }}>Работа в фоне</div>
           <Card className="list" style={{ padding: 0 }}>
             <ToggleRow icon={<AppWindow size={16} />} color="#0ea5e9" title="Сворачивать в трей при закрытии" sub="Напоминания о парах, замены и почта работают дальше" on={tray} onChange={setTray} />
-            {info && <ToggleRow icon={<Power size={16} />} color="#22c55e" title="Запускать вместе с Windows" sub="Тихо, сразу в трей" on={info.autostart} onChange={async v => { await safu.app.autostart(v); setInfo({ ...info, autostart: v }) }} />}
+            {info && <ToggleRow icon={<Power size={16} />} color="#22c55e" title={`Запускать вместе с ${OS}`} sub="Тихо, сразу в трей" on={info.autostart} onChange={async v => { await safu.app.autostart(v); setInfo({ ...info, autostart: v }) }} />}
             <ToggleRow icon={<Monitor size={16} />} color="#8b5cf6" title="Мини-окно пары поверх окон" sub="Текущая пара с таймером — как Live Activity на iPhone" on={widget} onChange={async v => setWidget(await safu.widget.toggle(v))} />
             <Row title="Вид мини-окна" right={<Segmented value={liveTheme} onChange={v => { setLiveTheme(v); if (widget) { safu.widget.toggle(false).then(() => safu.widget.toggle(true)) } }} options={[{ value: 'night', label: 'Ночь' }, { value: 'light', label: 'День' }, { value: 'brand', label: 'Цвет темы' }]} />} />
           </Card>
@@ -296,11 +297,11 @@ export function AppSettings() {
           <div className="h-sec" style={{ marginTop: 0 }}>Файлы</div>
           <Card className="list" style={{ padding: 0 }}>
             <Row icon={<FolderOpen size={16} />} color="#f59e0b" title="Папка файлов" sub={root} right={<button className="btn sm" onClick={async () => { const r = await safu.fs.chooseRoot(); if (r) { setRoot(r); toast('Папка изменена') } }}>Сменить</button>} />
-            <Row title="Открыть в Проводнике" onClick={() => safu.fs.openRoot('')} />
+            <Row title={isLinux ? 'Открыть в файловом менеджере' : 'Открыть в Проводнике'} onClick={() => safu.fs.openRoot('')} />
           </Card>
           <div className="h-sec">Сайты</div>
           <Card className="list" style={{ padding: 0 }}>
-            <ToggleRow title="Запоминать пароли" sub="Вошёл один раз — пароль сохранится сам, зашифрованный Windows" on={savePass} onChange={setSavePass} />
+            <ToggleRow title="Запоминать пароли" sub={`Вошёл один раз — пароль сохранится сам, зашифрованный ${VAULT}`} on={savePass} onChange={setSavePass} />
             <ToggleRow title="Подставлять сохранённый пароль" on={autoFill} onChange={setAutoFill} />
             <ToggleRow title="И сразу входить" sub="Нажимать «Войти» за тебя (если пароль не подошёл — не больше двух попыток)" on={autoLogin} onChange={setAutoLogin} />
             <Row title="Выйти со всех сайтов" sub="Удалить cookie и данные сайтов" danger onClick={async () => { if (await confirmDialog('Выйти со всех сайтов?', 'Сохранённые пароли останутся.', 'Выйти', true)) { await safu.sites.clear(); toast('Готово') } }} />
@@ -309,7 +310,7 @@ export function AppSettings() {
           <Card className="col gap6 small">
             {[['Ctrl+K', 'Поиск по всему'], ['Ctrl+N', 'Записать ДЗ'], ['Ctrl+1…8', 'Разделы'], ['Ctrl+,', 'Оформление'], ['Esc', 'Свернуть сайт или закрыть окно'], ['Ctrl+W', 'Закрыть вкладку сайта'], ['Ctrl+Alt+S', 'Показать Арктику из любого окна']].map(([k, t]) => <div key={k} className="row"><span className="kbd" style={{ minWidth: 90, textAlign: 'center' }}>{k}</span><span>{t}</span></div>)}
           </Card>
-          {info && <div className="tiny faint mt12">Арктика {info.version} · Electron {info.electron} · шифрование паролей: {info.encryption ? 'Windows DPAPI' : 'недоступно — пароли не сохраняются на диск'}</div>}
+          {info && <div className="tiny faint mt12">Арктика {info.version} · Electron {info.electron} · шифрование паролей: {info.encryption ? (info.encryptionLabel || 'Windows DPAPI') : 'недоступно — пароли не сохраняются на диск'}</div>}
         </div>
       </div>
     </>
@@ -326,7 +327,7 @@ export function Passwords() {
   useEffect(() => { creds.load() }, [])
   return (
     <>
-      <PageHeader title="Пароли и сайты" subtitle="Пароли хранятся зашифрованными средствами Windows только на этом компьютере" right={<button className="btn primary" onClick={async () => {
+      <PageHeader title="Пароли и сайты" subtitle={`Пароли хранятся зашифрованными ${VAULT} только на этом компьютере`} right={<button className="btn primary" onClick={async () => {
         const host = await promptDialog('Сайт', 'edu.narfu.ru', 'адрес сайта'); if (!host) return
         const user = await promptDialog('Логин', ''); if (user == null) return
         const pass = await promptDialog('Пароль', ''); if (!pass) return
@@ -516,6 +517,13 @@ export function Backup() {
 // ---------- автор ----------
 
 const CHANGELOG: { version: string; items: string[] }[] = [
+  { version: '19.9 — Арктика для Linux', items: [
+    'Арктика теперь есть для Linux: AppImage для любого дистрибутива, пакеты .deb (Ubuntu, Mint, Debian) и .rpm (Fedora, openSUSE). Всё как на Windows: живой фон, анимации, сайты, почта, синхронизация и перенос с iPhone',
+    'Пароли на Linux хранятся в связке ключей (GNOME Keyring, KWallet), а без неё — шифруются своим ключом, доступным только твоей учётной записи',
+    'Значок в трее с точкой, когда есть новые письма; ярлык в меню приложений, ссылки safu:// и автозапуск через стандартные файлы .desktop',
+    'Фото в «Файлах» на Linux показываются лёгкими миниатюрами: готовые берутся у файлового менеджера, остальные уменьшаются в фоне',
+    'Брандмауэр ufw и firewalld: «Синхронизация с iPhone» видит, пускает ли он телефон, и открывает порты Арктики одним вводом пароля'
+  ] },
   { version: '19.8 для Windows', items: [
     'Работа с файлами больше не подвешивает приложение: открытие папок, поиск, добавление и перетаскивание файлов, восстановление копии идут в фоне — окно и сайты не замирают',
     'Папка с фотографиями открывается мгновенно: в плитках — миниатюры Windows, а не снимки целиком, памяти уходит в разы меньше; большие папки листаются плавно',
@@ -660,9 +668,11 @@ export function Legal() {
       <PageHeader title="Конфиденциальность" />
       <Card className="col gap12" style={{ lineHeight: 1.6, maxWidth: 820 }}>
         <p style={{ margin: 0 }}>Арктика — неофициальное студенческое приложение для САФУ. Оно не связано с администрацией университета.</p>
-        <p style={{ margin: 0 }}><b>Где хранятся данные.</b> Всё — расписание, ДЗ, файлы, оценки, пароли — хранится только на твоём компьютере. У приложения нет своего сервера. Пароли сайтов шифруются средствами Windows (DPAPI) и привязаны к твоей учётной записи Windows. Открытым текстом они не сохраняются никогда, а в резервную копию попадают только зашифрованными паролем копии.</p>
+        <p style={{ margin: 0 }}><b>Где хранятся данные.</b> Всё — расписание, ДЗ, файлы, оценки, пароли — хранится только на твоём компьютере. У приложения нет своего сервера. {isLinux
+          ? 'Пароли сайтов шифруются связкой ключей системы (GNOME Keyring или KWallet), а если её нет — своим ключом AES-256, который доступен только твоей учётной записи.'
+          : 'Пароли сайтов шифруются средствами Windows (DPAPI) и привязаны к твоей учётной записи Windows.'} Открытым текстом они не сохраняются никогда, а в резервную копию попадают только зашифрованными паролем копии.</p>
         <p style={{ margin: 0 }}><b>Куда приложение обращается.</b> К открытым сайтам университета (РУЗ и сайты, которые ты открываешь сам), к сервису погоды Open-Meteo. Если включены уведомления о почте — к серверу почты САФУ, только чтобы узнать отправителя и тему новых писем; письма не скачиваются и не помечаются прочитанными. Если ты добавил ключ Claude API и разрешил отправку — расшифровка лекции уходит в Anthropic для конспекта. Яндекс Карты, библиотеки и другие сайты открываются только по твоему нажатию. Модель распознавания речи скачивается один раз с Hugging Face, а сама запись лекции никуда не отправляется.</p>
-        <p style={{ margin: 0 }}><b>Удаление.</b> Удали приложение, его папку с файлами в «Документах» и папку данных приложения в %APPDATA% — и данных не останется. Резервную копию можно сделать вручную: Профиль → Резервная копия.</p>
+        <p style={{ margin: 0 }}><b>Удаление.</b> Удали приложение, его папку с файлами в «Документах» и папку данных приложения {isLinux ? 'в ~/.config/САФУ' : 'в %APPDATA%'} — и данных не останется. Резервную копию можно сделать вручную: Профиль → Резервная копия.</p>
         <p style={{ margin: 0 }} className="faint small">Расписание из РУЗ показывается как есть; сверяйся с официальным расписанием перед экзаменами.</p>
       </Card>
     </>

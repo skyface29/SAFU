@@ -60,10 +60,10 @@ export const CARD_STYLES: { id: CardStyle; title: string }[] = [
 
 export type AppFont = 'rounded' | 'standard' | 'mono' | 'serif'
 export const FONTS: { id: AppFont; title: string; css: string }[] = [
-  { id: 'rounded', title: 'Круглый', css: '"Segoe UI Variable Display", "Nunito", "Segoe UI", system-ui, sans-serif' },
-  { id: 'standard', title: 'Строгий', css: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif' },
-  { id: 'mono', title: 'Код', css: '"Cascadia Code", "Cascadia Mono", Consolas, monospace' },
-  { id: 'serif', title: 'Книжный', css: 'Georgia, "Cambria", "Times New Roman", serif' }
+  { id: 'rounded', title: 'Круглый', css: '"Segoe UI Variable Display", "Nunito", "Segoe UI", "Inter", "Cantarell", "Ubuntu", "Noto Sans", system-ui, sans-serif' },
+  { id: 'standard', title: 'Строгий', css: '"Segoe UI Variable Text", "Segoe UI", "Inter", "Noto Sans", "Ubuntu", "Cantarell", system-ui, sans-serif' },
+  { id: 'mono', title: 'Код', css: '"Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Ubuntu Mono", "DejaVu Sans Mono", monospace' },
+  { id: 'serif', title: 'Книжный', css: 'Georgia, "Cambria", "Times New Roman", "Noto Serif", "DejaVu Serif", serif' }
 ]
 
 export type Scheme = 'system' | 'light' | 'dark'

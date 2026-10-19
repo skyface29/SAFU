@@ -21,6 +21,7 @@ import { mapsURL, routeURL } from '../lib/maps'
 import { hw, homeworkStore, hwTitle, chip } from '../lib/homework'
 import { openURL } from '../sites/sites'
 import { subjectFolder } from '../lib/effects'
+import { OS, isLinux } from '../lib/os'
 
 export default function Schedule({ day: dayParam, changes: changesParam }: { day?: number; changes?: number }) {
   const data = useSchedule(s => s.data)
@@ -260,7 +261,7 @@ function ScheduleSettings({ open, onClose, onAdd }: { open: boolean; onClose: ()
 
       <div className="h-sec">Уведомления</div>
       <Card className="list" style={{ padding: 0 }}>
-        <ToggleRow icon={<Bell size={16} />} color="#3b82f6" title="Напоминать перед парой" sub="Уведомление Windows" on={notifyPairs} onChange={setNotifyPairs} />
+        <ToggleRow icon={<Bell size={16} />} color="#3b82f6" title="Напоминать перед парой" sub={`Уведомление ${OS}`} on={notifyPairs} onChange={setNotifyPairs} />
         {notifyPairs && <Row title="За сколько минут" right={<Segmented value={mins} onChange={setMins} options={[5, 10, 15, 30].map(v => ({ value: v, label: `${v}` }))} />} />}
         <ToggleRow icon={<RefreshCw size={16} />} color="#f59e0b" title="Замены и отмены" sub="Когда РУЗ изменит расписание" on={notifyChanges} onChange={setNotifyChanges} />
         <ToggleRow icon={<CalendarDays size={16} />} color="#8b5cf6" title="Итоги недели" sub="В воскресенье в 19:00" on={digest} onChange={setDigest} />
@@ -382,9 +383,9 @@ function ExportSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
     <Sheet open={open} onClose={onClose} title="Экспорт в календарь"
       footer={<button className="btn primary" disabled={!slots.length} onClick={async () => {
         const p = await safu.dialog.save({ name: 'САФУ-пары.ics', text: buildICS(slots), filters: [{ name: 'Календарь', extensions: ['ics'] }] })
-        if (p) { toast('Файл сохранён — открой его, чтобы добавить в Outlook или Календарь Windows'); onClose() }
+        if (p) { toast(isLinux ? 'Файл сохранён — открой его, чтобы добавить в Календарь GNOME, Thunderbird или KOrganizer' : 'Файл сохранён — открой его, чтобы добавить в Outlook или Календарь Windows'); onClose() }
       }}><Download size={15} /> Сохранить .ics</button>}>
-      <div className="sub mb12">Файл .ics открывается в Outlook, Календаре Windows и Google Календаре. Повторный экспорт обновит пары без дублей. За 15 минут до пары будет напоминание.</div>
+      <div className="sub mb12">Файл .ics открывается в {isLinux ? 'Календаре GNOME, Thunderbird, KOrganizer' : 'Outlook, Календаре Windows'} и Google Календаре. Повторный экспорт обновит пары без дублей. За 15 минут до пары будет напоминание.</div>
       <Field label="На сколько недель вперёд"><Segmented value={weeks} onChange={setWeeks} options={[1, 2, 4, 8, 16].map(v => ({ value: v, label: `${v}` }))} /></Field>
       <div className="pill">Пар в файле: {slots.length}</div>
     </Sheet>

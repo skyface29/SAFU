@@ -8,6 +8,7 @@ import { encodeQr, qrPath } from '../lib/qr'
 import { safu } from '../lib/bridge'
 import { go } from '../lib/nav'
 import { plural } from '../lib/date'
+import { isLinux } from '../lib/os'
 
 export default function TransferPage() {
   return (
@@ -121,8 +122,9 @@ function Waiting() {
           <Step n={2} warn icon={<Wifi size={20} />} title="Компьютер не подключён к сети"
             sub="Подключи его к Wi‑Fi (к той же сети, что и телефон) или включи на iPhone «Режим модема» и подключи к нему компьютер — и нажми «Новый код»" />
         )}
-        <Step n={3} icon={<ShieldCheck size={20} />} title="Windows спросит про доступ к сети — нажми «Разрешить»"
-          sub="Файлы идут напрямую, по воздуху, и шифруются AES‑256. Ключ есть только в этом QR-коде и меняется каждый раз — в общей сети их никто не подсмотрит" />
+        <Step n={3} icon={<ShieldCheck size={20} />} title={isLinux ? 'Файлы идут напрямую и зашифрованы' : 'Windows спросит про доступ к сети — нажми «Разрешить»'}
+          sub={'Файлы идут напрямую, по воздуху, и шифруются AES‑256. Ключ есть только в этом QR-коде и меняется каждый раз — в общей сети их никто не подсмотрит' +
+            (isLinux ? '. Если включён брандмауэр (ufw, firewalld) и телефон не подключается — разреши порты Арктики в «Синхронизации с iPhone»' : '')} />
         <div className="row gap8">
           <button className="btn sm" onClick={() => transfer.start()}><RefreshCw size={14} /> Новый код</button>
           <span className="tiny faint">Код работает 15 минут{s.pc ? ` · ${s.pc}` : ''}</span>

@@ -1,12 +1,18 @@
 {
   "name": "safu-desktop",
   "productName": "Арктика",
-  "version": "19.8.0",
-  "description": "Арктика для Windows — расписание, ДЗ, файлы, почта и сайты университета САФУ",
+  "version": "19.9.0",
+  "description": "Арктика — расписание, ДЗ, файлы, почта и сайты университета САФУ для Windows и Linux",
   "author": "Зарубин Кирилл (студент группы 151621)",
+  "homepage": "https://github.com/skyface29/SAFU",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skyface29/SAFU.git"
+  },
   "license": "UNLICENSED",
   "private": true,
   "main": "dist-electron/main.js",
+  "desktopName": "arktika.desktop",
   "scripts": {
     "dev": "node scripts/build-electron.mjs --dev && concurrently -k \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV=1 electron .\"",
     "build:renderer": "vite build",
@@ -14,7 +20,8 @@
     "build": "tsc --noEmit -p tsconfig.json && npm run build:renderer && npm run build:electron",
     "start": "electron .",
     "dist": "npm run build && electron-builder --win --x64",
-    "test": "node scripts/test.mjs"
+    "test": "node scripts/test.mjs",
+    "dist:linux": "npm run build && electron-builder --linux --x64"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.132.0",
@@ -89,6 +96,75 @@
           "safu"
         ]
       }
-    ]
+    ],
+    "afterPack": "scripts/linux-after-pack.cjs",
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "executableName": "arktika",
+      "icon": "build/icons",
+      "category": "Education",
+      "synopsis": "Расписание, ДЗ, файлы, почта и сайты САФУ",
+      "description": "Неофициальное приложение для студентов и преподавателей САФУ: расписание из РУЗ, домашка, файлы и фото доски по предметам, почта и учебные сайты, синхронизация с iPhone.",
+      "maintainer": "Зарубин Кирилл <238922952+skyface29@users.noreply.github.com>",
+      "vendor": "Зарубин Кирилл",
+      "desktop": {
+        "Name": "Арктика",
+        "GenericName": "Расписание и учёба САФУ",
+        "Comment": "Расписание, ДЗ, файлы, почта и сайты университета САФУ",
+        "Keywords": "САФУ;НАрФУ;расписание;пары;ДЗ;домашка;Sakai;safu;narfu;schedule;",
+        "StartupWMClass": "arktika"
+      },
+      "artifactName": "Arktika-${version}-${arch}.${ext}"
+    },
+    "appImage": {
+      "artifactName": "Arktika-${version}-x86_64.AppImage"
+    },
+    "deb": {
+      "packageName": "arktika",
+      "depends": [
+        "libgtk-3-0 | libgtk-3-0t64",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0 | libatspi2.0-0t64",
+        "libuuid1",
+        "libsecret-1-0",
+        "libasound2 | libasound2t64",
+        "libgbm1"
+      ],
+      "recommends": [
+        "libayatana-appindicator3-1 | libappindicator3-1",
+        "gnome-keyring | kwalletmanager",
+        "fonts-noto-color-emoji"
+      ],
+      "artifactName": "arktika_${version}_amd64.${ext}",
+      "afterInstall": "build/linux/after-install.tpl"
+    },
+    "rpm": {
+      "packageName": "arktika",
+      "artifactName": "arktika-${version}.x86_64.${ext}",
+      "afterInstall": "build/linux/after-install.tpl"
+    }
   }
 }

@@ -14,6 +14,7 @@ import { relativeAgo, dayMon } from '../lib/date'
 import { useSchedule } from '../lib/scheduleStore'
 import { subjects } from '../lib/schedule'
 import { subjectFolder } from '../lib/effects'
+import { isLinux, imageThumb } from '../lib/os'
 
 export const fileKind = (ext: string) => {
   if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'svg'].includes(ext)) return { Icon: FileImage, color: '#10b981', label: 'Изображение' }
@@ -54,14 +55,22 @@ function loadThumb(f: FileInfo): Promise<string | null> {
   return new Promise(resolve => {
     const run = () => {
       thumbsBusy++
-      safu.fs.thumb(f.rel, 256).catch(() => null).then((d: string | null) => {
-        thumbs.set(key, d)
-        if (thumbs.size > 600) thumbs.delete(thumbs.keys().next().value!)
-        resolve(d)
-      }).finally(() => {
-        thumbsBusy--
-        thumbQueue.shift()?.()
-      })
+      safu.fs.thumb(f.rel, 256).catch(() => null)
+        // Linux: системной миниатюры нет — уменьшаем фото сами, не раскодируя его целиком в окне
+        .then((d: string | null) => d ?? (isLinux && IMAGE_EXT.includes(f.ext) ? imageThumb(fileURL(f.rel), 256) : null))
+        .then((d: string | null) => {
+          thumbs.set(key, d)
+          if (thumbs.size > 600) {
+            const old = thumbs.keys().next().value!
+            const url = thumbs.get(old)
+            if (url?.startsWith('blob:')) URL.revokeObjectURL(url)
+            thumbs.delete(old)
+          }
+          resolve(d)
+        }).finally(() => {
+          thumbsBusy--
+          thumbQueue.shift()?.()
+        })
     }
     if (thumbsBusy < 4) run(); else thumbQueue.push(run)
   })
@@ -188,7 +197,7 @@ export default function Files({ path: startPath }: { path?: string }) {
     { label: 'Переименовать', icon: <Pencil size={15} />, run: async () => { const n = await promptDialog('Новое имя', f.name); if (n && n !== f.name) { await safu.fs.rename(f.rel, n); load() } } },
     { label: 'Переместить в предмет…', icon: <MoveRight size={15} />, run: () => openMenu(e, subjects(data).slice(0, 20).map(s => ({ label: s, run: async () => { await safu.fs.move(f.rel, subjectFolder(s)); toast(`Перемещено в «${s}»`); load() } }))) },
     { sep: true, label: '' },
-    { label: 'В корзину', icon: <Trash2 size={15} />, danger: true, run: async () => { if (await confirmDialog(`Удалить «${f.name}»?`, 'Файл попадёт в корзину Windows.', 'Удалить', true)) { await safu.fs.trash(f.rel); load() } } }
+    { label: 'В корзину', icon: <Trash2 size={15} />, danger: true, run: async () => { if (await confirmDialog(`Удалить «${f.name}»?`, isLinux ? 'Файл попадёт в корзину.' : 'Файл попадёт в корзину Windows.', 'Удалить', true)) { await safu.fs.trash(f.rel); load() } } }
   ])
 
   return (

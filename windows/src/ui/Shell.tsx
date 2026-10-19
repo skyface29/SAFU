@@ -19,6 +19,7 @@ import { openSite } from '../sites/sites'
 import { safu } from '../lib/bridge'
 import { LAST_KEY, type SyncLast } from '../lib/sync'
 import { relativeAgo } from '../lib/date'
+import { OS } from '../lib/os'
 
 const TAB_ICONS: Record<string, React.ComponentType<any>> = {
   home: Home, schedule: CalendarDays, homework: BookMarked, tasks: ListChecks, files: Folder, subjects: Library,
@@ -155,7 +156,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, type: 'spring', stiffness: 300, damping: 24 }}
           style={{ fontSize: '2.6rem', fontWeight: 900, letterSpacing: '-.03em' }}>Арктика</motion.div>
         <motion.div className="muted" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>всё для учёбы в одном месте</motion.div>
-        <motion.div className="tiny faint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>для Windows · версия {version}</motion.div>
+        <motion.div className="tiny faint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>для {OS} · версия {version}</motion.div>
         <motion.div style={{ width: 160, height: 3, borderRadius: 3, background: 'var(--fill2)', overflow: 'hidden', marginTop: 10 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
           <motion.div style={{ height: '100%', background: 'var(--grad)' }} initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 1, ease: 'easeInOut' }} />
         </motion.div>
