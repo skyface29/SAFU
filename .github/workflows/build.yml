@@ -3,7 +3,8 @@ on:
   workflow_dispatch:
   push:
     # dev — проверочные сборки: .ipa в артефактах, без релиза
-    branches: [ main, dev ]
+    # claude/** — проверка сборки веток с правками, тоже без релиза
+    branches: [ main, dev, 'claude/**' ]
 permissions:
   contents: write
 jobs:
