@@ -103,12 +103,22 @@ const toVec = (hex: string): [number, number, number] => {
   return [r / 255, g / 255, b / 255]
 }
 
+/** paused — открыт сайт (фон стоит совсем), unfocused — окно не в фокусе, frozenUntil — листают (на слабом железе) */
+export type BackdropState = { paused: boolean; unfocused: boolean; frozenUntil: number }
+
+/** Кадров в секунду, когда окно на экране, но не в фокусе (как и раньше) — теперь без пустых кадров между ними */
+export const UNFOCUSED_FPS = 20
+
 export class ShaderBackdrop {
   private gl: WebGLRenderingContext
   private prog: WebGLProgram
   private u: Record<string, WebGLUniformLocation | null> = {}
   private raf = 0
+  /** Ждём следующего кадра по таймеру (когда кадров нужно меньше, чем умеет экран) */
+  private timer = 0
   private running = false
+  /** Когда фон встал (открыт сайт): время шейдера тоже стоит, и после паузы он не «прыгает» */
+  private idleSince = 0
   private last = 0
   private t0 = performance.now()
   private mx = 0.5
@@ -124,7 +134,7 @@ export class ShaderBackdrop {
 
   constructor(
     private canvas: HTMLCanvasElement,
-    private opts: { mode: ShaderMode; scale: number; minScale: number; fps: number; colors: Colors; state: () => { paused: boolean; unfocused: boolean; frozen: boolean } },
+    private opts: { mode: ShaderMode; scale: number; minScale: number; fps: number; colors: Colors; state: () => BackdropState },
     private onLost: () => void
   ) {
     const gl = canvas.getContext('webgl', { antialias: false, depth: false, stencil: false, alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: false, powerPreference: 'low-power' })
@@ -172,7 +182,7 @@ export class ShaderBackdrop {
     gl.uniform1f(this.u.uK, Math.max(0.2, Math.min(2, c.k)))
     gl.uniform1f(this.u.uMode, this.opts.mode === 'aurora' ? 1 : 0)
     this.opts.colors = c
-    if (!this.running) this.draw(performance.now())
+    if (!this.running || (!this.raf && !this.timer)) this.draw(performance.now())
   }
 
   private onContextLost = (e: Event) => {
@@ -195,12 +205,14 @@ export class ShaderBackdrop {
   resize = () => {
     const w = Math.max(1, Math.round(this.canvas.clientWidth * this.scale))
     const h = Math.max(1, Math.round(this.canvas.clientHeight * this.scale))
-    if (this.canvas.width !== w || this.canvas.height !== h) {
+    // новый размер стирает холст — кадр рисуем сразу, даже если фон сейчас стоит
+    const changed = this.canvas.width !== w || this.canvas.height !== h
+    if (changed) {
       this.canvas.width = w
       this.canvas.height = h
       this.gl.viewport(0, 0, w, h)
     }
-    if (!this.running) this.draw(performance.now())
+    if (changed || !this.running || (!this.raf && !this.timer)) this.draw(this.idleSince || performance.now())
   }
 
   private draw(now: number) {
@@ -214,19 +226,35 @@ export class ShaderBackdrop {
     gl.drawArrays(gl.TRIANGLES, 0, 3)
   }
 
+  /** Следующий кадр: сразу по кадру экрана, если нужно 50+ кадров, иначе — подождать таймером (без пустых
+   *  кадров экрана: раньше фон просыпался 60–144 раза в секунду, даже когда рисовал 8) */
+  private schedule(wait: number) {
+    if (!this.running || this.raf || this.timer) return
+    if (wait <= 4) { this.raf = requestAnimationFrame(this.frame); return }
+    this.timer = window.setTimeout(() => {
+      this.timer = 0
+      if (this.running) this.raf = requestAnimationFrame(this.frame)
+    }, wait)
+  }
+
   private frame = (now: number) => {
+    this.raf = 0
     if (!this.running) return
-    this.raf = requestAnimationFrame(this.frame)
     const st = this.opts.state()
-    if (st.frozen && this.last > 0) return
-    const fps = st.paused ? 8 : st.unfocused ? 20 : this.opts.fps
+    // открыт сайт — фон стоит на последнем кадре и не тратит ничего; wake() запустит его снова
+    if (st.paused) { if (!this.idleSince) this.idleSince = now; this.last = 0; return }
+    if (this.idleSince) { this.t0 += now - this.idleSince; this.idleSince = 0; this.resetMeter(now) }
+    if (st.frozenUntil > now && this.last > 0) { this.schedule(st.frozenUntil - now); return }
+    const fps = st.unfocused ? UNFOCUSED_FPS : this.opts.fps
     const interval = 1000 / fps
-    if (now - this.last < interval - 2) return
+    if (fps >= 50) {
+      if (now - this.last < interval - 2) { this.schedule(0); return }
+    }
     const dt = this.last ? now - this.last : interval
     this.last = now
     this.draw(now)
     // кадры не успевают (больше чем в полтора раза дольше нужного) — рисуем в меньшем разрешении
-    if (!st.paused && !st.unfocused) {
+    if (!st.unfocused) {
       this.acc += dt
       this.frames++
       if (now > this.checkAt) {
@@ -235,11 +263,18 @@ export class ShaderBackdrop {
           this.scale = Math.max(this.opts.minScale, this.scale * 0.8)
           this.resize()
         }
-        this.acc = 0
-        this.frames = 0
-        this.checkAt = now + 2500
+        this.resetMeter(now)
       }
+    } else {
+      this.resetMeter(now)
     }
+    this.schedule(fps >= 50 ? 0 : interval - 8)
+  }
+
+  private resetMeter(now: number) {
+    this.acc = 0
+    this.frames = 0
+    this.checkAt = now + 2500
   }
 
   start() {
@@ -247,12 +282,20 @@ export class ShaderBackdrop {
     this.running = true
     this.last = 0
     this.checkAt = performance.now() + 3000
-    this.raf = requestAnimationFrame(this.frame)
+    this.schedule(0)
+  }
+
+  /** Состояние поменялось (сайт закрыли, окно в фокусе) — проснуться, если стояли */
+  wake() {
+    if (this.running && !this.raf && !this.timer) this.schedule(0)
   }
 
   stop(final = true) {
     this.running = false
     cancelAnimationFrame(this.raf)
+    window.clearTimeout(this.timer)
+    this.raf = 0
+    this.timer = 0
     if (final) {
       window.removeEventListener('mousemove', this.onMove)
       window.removeEventListener('resize', this.resize)

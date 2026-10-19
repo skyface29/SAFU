@@ -11,14 +11,21 @@ import * as fs from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { checkMail, type MailAccount } from './mail'
 import * as zlib from 'node:zlib'
-import { summarizeLecture } from './claude'
+import { promisify } from 'node:util'
 import { TransferServer } from './transfer'
 import { SyncServer, newPairing, syncLink, type SyncPairing } from './sync'
 import { PairBroker } from './syncpair'
 import { firewallStatus, firewallFix } from './firewall'
 import * as os from 'node:os'
 
+// Конспекты через Claude — отдельным файлом (claude.js), который грузится только при первом конспекте:
+// библиотека Claude — две трети главного процесса, и раньше она разбиралась при каждом запуске
+type ClaudeModule = typeof import('./claude')
+let claudeModule: ClaudeModule | null = null
+const claude = (): ClaudeModule => (claudeModule ??= require(path.join(__dirname, 'claude.js')) as ClaudeModule)
+
 const isDev = !!process.env.VITE_DEV
+const inflateRaw = promisify(zlib.inflateRaw)
 const APP_ID = 'ru.student.safuhub'
 
 app.setAppUserModelId(APP_ID)
@@ -40,15 +47,23 @@ if (process.defaultApp && process.argv.length >= 2) {
 // ---------- видеокарта ----------
 // Рисуем на видеокарте, даже если драйвер в «чёрном списке» Chromium: без этого на многих ноутбуках всё
 // окно рисуется процессором — прокрутка и анимации идут рывками, как в 30 кадров (так было в 19.0).
-// Если видеокарта при этом падает дважды за запуск, следующий запуск идёт в безопасном режиме (gpu.json),
-// а сломанный кеш шейдеров не копится на диске — с ним окно могло открываться чёрным
+// Если видеокарта при этом падает дважды за запуск, следующий запуск идёт в безопасном режиме (gpu.json).
+// Кеш шейдеров снова хранится на диске: без него каждый запуск видеокарта собирала шейдеры заново, и первые
+// секунды после открытия шли рывками. Сломанный кеш (с ним окно могло открываться чёрным) не копится:
+// после падения видеокарты или неудачного запуска он удаляется до старта следующего запуска
 const gpuFile = () => path.join(app.getPath('userData'), 'gpu.json')
-const gpuState: { safe?: boolean } = (() => { try { return JSON.parse(fs.readFileSync(gpuFile(), 'utf8')) } catch { return {} } })()
-function saveGpuState(s: { safe: boolean }) {
-  try { fs.mkdirSync(app.getPath('userData'), { recursive: true }); fs.writeFileSync(gpuFile(), JSON.stringify(s)) } catch { /* не страшно */ }
+type GpuState = { safe?: boolean; clearShaders?: boolean }
+const gpuState: GpuState = (() => { try { return JSON.parse(fs.readFileSync(gpuFile(), 'utf8')) } catch { return {} } })()
+function saveGpuState(patch: GpuState) {
+  Object.assign(gpuState, patch)
+  try { fs.mkdirSync(app.getPath('userData'), { recursive: true }); fs.writeFileSync(gpuFile(), JSON.stringify(gpuState)) } catch { /* не страшно */ }
+}
+const SHADER_CACHES = ['GPUCache', 'ShaderCache', 'GrShaderCache', 'GraphiteDawnCache', 'DawnCache', 'DawnGraphiteCache', 'DawnWebGPUCache', path.join('Partitions', 'sites', 'GPUCache')]
+if (gpuState.clearShaders) {
+  for (const d of SHADER_CACHES) { try { fs.rmSync(path.join(app.getPath('userData'), d), { recursive: true, force: true }) } catch { /* занят — удалим в следующий раз */ } }
+  saveGpuState({ clearShaders: false })
 }
 app.commandLine.appendSwitch('enable-gpu-rasterization')
-app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 if (!gpuState.safe) {
   app.commandLine.appendSwitch('ignore-gpu-blocklist')
   app.commandLine.appendSwitch('enable-zero-copy')
@@ -58,7 +73,7 @@ app.on('child-process-gone', (_e, d) => {
   if (d.type !== 'GPU' || d.reason === 'clean-exit') return
   gpuCrashes += 1
   logError(`GPU process gone: ${d.reason} (${d.exitCode})`)
-  if (gpuCrashes >= 2 && !gpuState.safe) saveGpuState({ safe: true })
+  saveGpuState(gpuCrashes >= 2 && !gpuState.safe ? { safe: true, clearShaders: true } : { clearShaders: true })
 })
 
 // ---------- журнал ошибок: чтобы по нему понять, почему окно не открылось ----------
@@ -83,17 +98,25 @@ const storeFile = () => path.join(userDir(), 'store.json')
 const secretsFile = () => path.join(userDir(), 'secrets.bin')
 const notifFile = () => path.join(userDir(), 'scheduled.json')
 
+// Папка файлов вычисляется и создаётся один раз (и заново — только если её сменили в настройках):
+// раньше это делалось на каждый файл списка — сотни обращений к диску на одну папку
+let rootCache: { custom: string; root: string } | null = null
 function filesRoot(): string {
-  const custom = kv['files.root']
-  let root = typeof custom === 'string' && custom ? custom : ''
+  const custom = typeof kv['files.root'] === 'string' ? kv['files.root'] as string : ''
+  if (rootCache && rootCache.custom === custom) return rootCache.root
+  let root = custom
   if (!root) {
     // у тех, кто ставил приложение до переименования, файлы остаются в старой папке
     const old = path.join(app.getPath('documents'), 'САФУ')
     root = fs.existsSync(old) ? old : path.join(app.getPath('documents'), 'Арктика')
   }
   fs.mkdirSync(root, { recursive: true })
+  rootCache = { custom, root }
   return root
 }
+
+/** Путь от корня файлов — с прямыми слешами, как его видит интерфейс */
+const relOf = (root: string, full: string) => path.relative(root, full).split(path.sep).join('/')
 
 /** Путь внутри папки файлов. Выйти за её пределы нельзя */
 function inRoot(rel: string): string {
@@ -334,11 +357,59 @@ function loadSecrets() {
   secrets = {}
 }
 
+// Секреты пишутся так же, как хранилище: пачкой и в фоне. Раньше каждая запись (а вход на сайтах меняет
+// cookie постоянно — запоминаем их раз в 5 секунд) останавливала главный процесс вместе с сайтами
+let secretsTimer: NodeJS.Timeout | null = null
+let secretsWriting = false
+let secretsDirty = false
+let secretsSyncGen = 0
+
 function saveSecrets() {
+  secretsDirty = true
+  if (secretsTimer) clearTimeout(secretsTimer)
+  secretsTimer = setTimeout(() => { secretsTimer = null; void saveSecretsAsync() }, 300)
+}
+
+async function saveSecretsAsync() {
+  if (secretsWriting) { secretsDirty = true; return }
+  secretsDirty = false
   if (!safeStorage.isEncryptionAvailable()) return
-  const tmp = secretsFile() + '.tmp'
-  fs.writeFileSync(tmp, safeStorage.encryptString(JSON.stringify(secrets)))
-  fs.renameSync(tmp, secretsFile())
+  secretsWriting = true
+  const gen = secretsSyncGen
+  try {
+    const data = safeStorage.encryptString(JSON.stringify(secrets))
+    const tmp = secretsFile() + '.tmp'
+    await fs.promises.writeFile(tmp, data)
+    if (gen === secretsSyncGen) await fs.promises.rename(tmp, secretsFile())
+  } catch (e) {
+    logError('secrets save: ' + String(e))
+  } finally {
+    secretsWriting = false
+    if (secretsDirty) saveSecrets()
+  }
+}
+
+/** Сразу и синхронно — перед выходом, перезапуском и при полной замене */
+function saveSecretsNow() {
+  if (secretsTimer) { clearTimeout(secretsTimer); secretsTimer = null }
+  if (!secretsDirty && !secretsWriting) return
+  secretsDirty = false
+  secretsSyncGen++
+  if (!safeStorage.isEncryptionAvailable()) return
+  try {
+    const tmp = secretsFile() + '.now.tmp'
+    fs.writeFileSync(tmp, safeStorage.encryptString(JSON.stringify(secrets)))
+    fs.renameSync(tmp, secretsFile())
+  } catch (e) {
+    logError('secrets save: ' + String(e))
+  }
+}
+
+/** Всё, что ещё не дописано на диск, — перед app.exit (перезапуск): он не вызывает before-quit */
+function flushAll() {
+  saveKVNow()
+  saveSecretsNow()
+  saveScheduledNow()
 }
 
 // ---------- окна ----------
@@ -354,7 +425,11 @@ function rendererURL(hash = ''): string {
   return pathToFileURL(path.join(__dirname, '../dist/index.html')).toString() + (hash ? '#' + hash : '')
 }
 
+let iconPathCache = ''
 function iconPath(): string {
+  return iconPathCache ||= findIcon()
+}
+function findIcon(): string {
   const candidates = [
     path.join(__dirname, '../build/icon.png'),
     path.join(process.resourcesPath || '', 'icon.png'),
@@ -476,6 +551,7 @@ function armWatchdog() {
   watchdog = setTimeout(() => {
     if (rendererReady || !win || win.isDestroyed()) return
     logError('renderer did not report ready in 20s')
+    saveGpuState({ clearShaders: true })
     recoverOrReload('Интерфейс не загрузился за 20 секунд')
   }, 20_000)
 }
@@ -517,11 +593,12 @@ ${btn('logs', 'Открыть папку с журналом ошибок')}
 
 async function runRecovery(action: string) {
   logError(`recovery: ${action}`)
-  if (action === 'safe-gpu') { saveGpuState({ safe: true }); quitting = true; app.relaunch(); app.exit(0); return }
+  if (action === 'safe-gpu') { saveGpuState({ safe: true, clearShaders: true }); quitting = true; flushAll(); app.relaunch(); app.exit(0); return }
   if (action === 'logs') { void shell.openPath(path.join(app.getPath('userData'), 'logs')); return }
   if (action === 'reset') {
     delete kv['sites.saved.v1']
     saveKVNow()
+    saveGpuState({ clearShaders: true })
     await win?.webContents.session.clearCache().catch(() => null)
     await session.fromPartition(SITES_PARTITION).clearCache().catch(() => null)
   }
@@ -589,7 +666,7 @@ function toggleWidget(force?: boolean) {
     kv['widget.pos'] = { x: b.x, y: b.y }
     saveKVSoon()
   })
-  widget.on('closed', () => { widget = null })
+  widget.on('closed', () => { widget = null; refreshTray() })
   kv['widget.open'] = true
   saveKVSoon()
 }
@@ -597,6 +674,14 @@ function toggleWidget(force?: boolean) {
 // ---------- трей ----------
 
 let trayState = { tooltip: 'Арктика', line: '' }
+
+// Автозапуск читается из реестра Windows — один раз, дальше помним сами
+let autostartCache: boolean | null = null
+const autostartOn = () => (autostartCache ??= app.getLoginItemSettings().openAtLogin)
+function setAutostart(on: boolean) {
+  app.setLoginItemSettings({ openAtLogin: on, args: ['--hidden'] })
+  autostartCache = on
+}
 
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
@@ -613,16 +698,24 @@ function buildTrayMenu() {
     {
       label: 'Запускать вместе с Windows',
       type: 'checkbox',
-      checked: app.getLoginItemSettings().openAtLogin,
-      click: item => app.setLoginItemSettings({ openAtLogin: item.checked, args: ['--hidden'] })
+      checked: autostartOn(),
+      click: item => { setAutostart(item.checked); refreshTray() }
     },
     { label: 'Выход', click: () => { quitting = true; app.quit() } }
   ])
 }
 
+// Интерфейс присылает строку для трея раз в 20 секунд. Меню собирается заново, только когда в нём что-то
+// поменялось (пара сменилась, открыли мини-окно), — раньше оно пересобиралось и читало реестр каждый раз
+let trayTip = ''
+let trayMenuKey = ''
 function refreshTray() {
   if (!tray) return
-  tray.setToolTip(trayState.tooltip.slice(0, 120))
+  const tip = trayState.tooltip.slice(0, 120)
+  if (tip !== trayTip) { trayTip = tip; tray.setToolTip(tip) }
+  const key = `${trayState.line}|${!!widget}|${autostartOn()}`
+  if (key === trayMenuKey) return
+  trayMenuKey = key
   tray.setContextMenu(buildTrayMenu())
 }
 
@@ -745,38 +838,45 @@ async function doFetch(r: FetchReq) {
 
 type FileInfo = { name: string; rel: string; dir: boolean; size: number; mtime: number; ext: string }
 
-function listDir(rel: string): FileInfo[] {
+// Вся работа с файлами — в фоне (fs.promises): пока главный процесс ждёт диск, окно перетаскивается,
+// а сайты отвечают. Раньше большая папка или поиск по файлам подвешивали всё приложение
+async function listDir(rel: string, create = true): Promise<FileInfo[]> {
+  const root = filesRoot()
   const dir = inRoot(rel)
-  fs.mkdirSync(dir, { recursive: true })
-  return fs.readdirSync(dir, { withFileTypes: true })
-    .filter(d => !d.name.startsWith('.') && d.name !== 'desktop.ini' && d.name !== 'Thumbs.db')
-    .map(d => {
-      const full = path.join(dir, d.name)
-      let st: fs.Stats | null = null
-      try { st = fs.statSync(full) } catch { /* файл исчез */ }
-      return {
-        name: d.name,
-        rel: path.relative(filesRoot(), full).split(path.sep).join('/'),
-        dir: d.isDirectory(),
-        size: st?.size ?? 0,
-        mtime: st?.mtimeMs ?? 0,
-        ext: d.isDirectory() ? '' : path.extname(d.name).slice(1).toLowerCase()
-      }
-    })
+  if (create) await fs.promises.mkdir(dir, { recursive: true })
+  let entries: fs.Dirent[]
+  try { entries = await fs.promises.readdir(dir, { withFileTypes: true }) } catch { return [] }
+  const visible = entries.filter(d => !d.name.startsWith('.') && d.name !== 'desktop.ini' && d.name !== 'Thumbs.db')
+  return Promise.all(visible.map(async d => {
+    const full = path.join(dir, d.name)
+    const st = await fs.promises.stat(full).catch(() => null)
+    return {
+      name: d.name,
+      rel: relOf(root, full),
+      dir: d.isDirectory(),
+      size: st?.size ?? 0,
+      mtime: st?.mtimeMs ?? 0,
+      ext: d.isDirectory() ? '' : path.extname(d.name).slice(1).toLowerCase()
+    }
+  }))
 }
 
-function walkFiles(rel: string, depth = 4): FileInfo[] {
+/** Все файлы в папке (до 4 уровней вложенности и не больше 20 000 — поиску этого хватает) */
+async function walkFiles(rel: string, depth = 4, limit = 20_000): Promise<FileInfo[]> {
   const out: FileInfo[] = []
-  const step = (r: string, d: number) => {
-    if (d < 0) return
-    for (const f of listDir(r)) {
-      if (f.dir) step(f.rel, d - 1)
+  const step = async (r: string, d: number, create: boolean) => {
+    if (d < 0 || out.length >= limit) return
+    for (const f of await listDir(r, create)) {
+      if (out.length >= limit) return
+      if (f.dir) await step(f.rel, d - 1, false)
       else out.push(f)
     }
   }
-  step(rel, depth)
+  await step(rel, depth, true)
   return out
 }
+
+const exists = (p: string) => fs.promises.access(p).then(() => true, () => false)
 
 function uniquePath(target: string): string {
   if (!fs.existsSync(target)) return target
@@ -789,22 +889,47 @@ function uniquePath(target: string): string {
   return `${base}-${Date.now()}${ext}`
 }
 
-function copyInto(rel: string, sources: string[]): string[] {
+async function copyInto(rel: string, sources: string[]): Promise<string[]> {
+  const root = filesRoot()
   const dir = inRoot(rel)
-  fs.mkdirSync(dir, { recursive: true })
+  await fs.promises.mkdir(dir, { recursive: true })
   const out: string[] = []
   for (const src of sources) {
     try {
       const target = uniquePath(path.join(dir, path.basename(src)))
-      const st = fs.statSync(src)
-      if (st.isDirectory()) fs.cpSync(src, target, { recursive: true })
-      else fs.copyFileSync(src, target)
-      out.push(path.relative(filesRoot(), target).split(path.sep).join('/'))
+      const st = await fs.promises.stat(src)
+      if (st.isDirectory()) await fs.promises.cp(src, target, { recursive: true })
+      else await fs.promises.copyFile(src, target)
+      out.push(relOf(root, target))
     } catch (e) {
       console.error('copy failed', src, e)
     }
   }
   return out
+}
+
+// Миниатюры файлов: Windows строит их сама, а мы запоминаем готовые — при возврате в папку они не
+// строятся и не кодируются заново. Ключ — путь, размер и время изменения: поменялся файл — новая миниатюра
+const thumbCache = new Map<string, string | null>()
+async function fileThumb(rel: string, size: number): Promise<string | null> {
+  const p = inRoot(rel)
+  const st = await fs.promises.stat(p).catch(() => null)
+  if (!st || st.isDirectory()) return null
+  const key = `${p}|${size}|${st.size}|${st.mtimeMs}`
+  const hit = thumbCache.get(key)
+  if (hit !== undefined) {
+    thumbCache.delete(key)
+    thumbCache.set(key, hit)
+    return hit
+  }
+  let url: string | null = null
+  try {
+    const img = await nativeImage.createThumbnailFromPath(p, { width: size, height: size })
+    url = img.isEmpty() ? null : img.toDataURL()
+  } catch { /* у файла нет миниатюры */ }
+  thumbCache.set(key, url)
+  if (thumbCache.size > 400) thumbCache.delete(thumbCache.keys().next().value!)
+  return url
 }
 
 // ---------- сайты в карточках (webview) ----------
@@ -949,26 +1074,29 @@ function registerIPC() {
   ipcMain.handle('secret:replace', (_e, all: Record<string, string>) => {
     secrets = all || {}
     saveSecrets()
+    saveSecretsNow()
     return true
   })
 
   ipcMain.handle('net:fetch', (_e, r: FetchReq) => doFetch(r))
 
   // большие кеши (архив пар, расписание всей школы) — отдельными файлами, не в общем хранилище
+  let cacheDirReady = false
   const cacheFile = (name: string) => {
     const dir = path.join(userDir(), 'cache')
-    fs.mkdirSync(dir, { recursive: true })
+    if (!cacheDirReady) { fs.mkdirSync(dir, { recursive: true }); cacheDirReady = true }
     return path.join(dir, name.replace(/[^\w.-]/g, '_') + '.json')
   }
-  // в фоне: архив пар и расписание всей школы бывают по несколько мегабайт
+  // в фоне: архив пар и расписание всей школы бывают по несколько мегабайт. Здесь кеш — просто текст:
+  // разбирает и собирает JSON интерфейс, а не главный процесс (иначе он стоял бы, пока разбирает мегабайты)
   ipcMain.handle('cache:get', async (_e, name: string) => {
-    try { return JSON.parse(await fs.promises.readFile(cacheFile(name), 'utf8')) } catch { return null }
+    try { return await fs.promises.readFile(cacheFile(name), 'utf8') } catch { return null }
   })
-  ipcMain.handle('cache:set', async (_e, name: string, value: unknown) => {
+  ipcMain.handle('cache:set', async (_e, name: string, text: string | null) => {
     const f = cacheFile(name)
-    if (value == null) { try { await fs.promises.unlink(f) } catch { /* нет файла */ } return true }
+    if (text == null) { try { await fs.promises.unlink(f) } catch { /* нет файла */ } return true }
     const tmp = f + '.' + Math.random().toString(36).slice(2) + '.tmp'
-    await fs.promises.writeFile(tmp, JSON.stringify(value))
+    await fs.promises.writeFile(tmp, typeof text === 'string' ? text : JSON.stringify(text))
     await fs.promises.rename(tmp, f)
     return true
   })
@@ -985,9 +1113,18 @@ function registerIPC() {
   ipcMain.handle('fs:root', () => filesRoot())
   ipcMain.handle('fs:list', (_e, rel: string) => listDir(rel))
   ipcMain.handle('fs:walk', (_e, rel: string) => walkFiles(rel))
-  ipcMain.handle('fs:mkdir', (_e, rel: string) => { fs.mkdirSync(inRoot(rel), { recursive: true }); return true })
-  ipcMain.handle('fs:ensureDirs', (_e, rels: string[]) => {
-    for (const r of rels) { try { fs.mkdirSync(inRoot(r), { recursive: true }) } catch { /* имя с запрещёнными символами */ } }
+  ipcMain.handle('fs:mkdir', async (_e, rel: string) => { await fs.promises.mkdir(inRoot(rel), { recursive: true }); return true })
+  // папки предметов: создаём только те, которых ещё нет на этом запуске (список приходит после каждой синхронизации)
+  const madeDirs = new Set<string>()
+  ipcMain.handle('fs:ensureDirs', async (_e, rels: string[]) => {
+    await Promise.all(rels.map(async r => {
+      try {
+        const p = inRoot(r)
+        if (madeDirs.has(p)) return
+        await fs.promises.mkdir(p, { recursive: true })
+        madeDirs.add(p)
+      } catch { /* имя с запрещёнными символами */ }
+    }))
     return true
   })
   ipcMain.handle('fs:import', async (_e, rel: string, folders = false) => {
@@ -1005,45 +1142,38 @@ function registerIPC() {
   ipcMain.handle('fs:revealPath', (_e, abs: string) => { shell.showItemInFolder(abs); return true })
   ipcMain.handle('fs:openRoot', async (_e, rel = '') => { await shell.openPath(inRoot(rel)); return true })
   ipcMain.handle('fs:trash', async (_e, rel: string) => { await shell.trashItem(inRoot(rel)); return true })
-  ipcMain.handle('fs:rename', (_e, rel: string, name: string) => {
+  ipcMain.handle('fs:rename', async (_e, rel: string, name: string) => {
     const from = inRoot(rel)
     const safe = name.replace(/[\\/:*?"<>|]/g, '_').trim()
     if (!safe) throw new Error('Пустое имя')
     const to = uniquePath(path.join(path.dirname(from), safe))
-    fs.renameSync(from, to)
-    return path.relative(filesRoot(), to).split(path.sep).join('/')
+    await fs.promises.rename(from, to)
+    return relOf(filesRoot(), to)
   })
-  ipcMain.handle('fs:move', (_e, rel: string, toDirRel: string) => {
+  ipcMain.handle('fs:move', async (_e, rel: string, toDirRel: string) => {
     const from = inRoot(rel)
     const dir = inRoot(toDirRel)
-    fs.mkdirSync(dir, { recursive: true })
+    await fs.promises.mkdir(dir, { recursive: true })
     const to = uniquePath(path.join(dir, path.basename(from)))
-    fs.renameSync(from, to)
-    return path.relative(filesRoot(), to).split(path.sep).join('/')
+    await fs.promises.rename(from, to)
+    return relOf(filesRoot(), to)
   })
-  ipcMain.handle('fs:readText', (_e, rel: string) => fs.readFileSync(inRoot(rel), 'utf8'))
-  ipcMain.handle('fs:writeText', (_e, rel: string, text: string) => {
+  ipcMain.handle('fs:readText', (_e, rel: string) => fs.promises.readFile(inRoot(rel), 'utf8'))
+  ipcMain.handle('fs:writeText', async (_e, rel: string, text: string) => {
     const p = inRoot(rel)
-    fs.mkdirSync(path.dirname(p), { recursive: true })
-    fs.writeFileSync(p, text, 'utf8')
+    await fs.promises.mkdir(path.dirname(p), { recursive: true })
+    await fs.promises.writeFile(p, text, 'utf8')
     return true
   })
-  ipcMain.handle('fs:writeBase64', (_e, rel: string, b64: string) => {
+  ipcMain.handle('fs:writeBase64', async (_e, rel: string, b64: string) => {
     const p = inRoot(rel)
-    fs.mkdirSync(path.dirname(p), { recursive: true })
-    fs.writeFileSync(p, Buffer.from(b64, 'base64'))
+    await fs.promises.mkdir(path.dirname(p), { recursive: true })
+    await fs.promises.writeFile(p, Buffer.from(b64, 'base64'))
     return true
   })
-  ipcMain.handle('fs:readBase64', (_e, rel: string) => fs.readFileSync(inRoot(rel)).toString('base64'))
-  ipcMain.handle('fs:exists', (_e, rel: string) => { try { return fs.existsSync(inRoot(rel)) } catch { return false } })
-  ipcMain.handle('fs:thumb', async (_e, rel: string, size = 256) => {
-    try {
-      const img = await nativeImage.createThumbnailFromPath(inRoot(rel), { width: size, height: size })
-      return img.isEmpty() ? null : img.toDataURL()
-    } catch {
-      return null
-    }
-  })
+  ipcMain.handle('fs:readBase64', async (_e, rel: string) => (await fs.promises.readFile(inRoot(rel))).toString('base64'))
+  ipcMain.handle('fs:exists', async (_e, rel: string) => { try { return await exists(inRoot(rel)) } catch { return false } })
+  ipcMain.handle('fs:thumb', (_e, rel: string, size = 256) => fileThumb(rel, size).catch(() => null))
   ipcMain.handle('fs:chooseRoot', async () => {
     const r = await dialog.showOpenDialog(win!, { title: 'Папка для файлов Арктики', properties: ['openDirectory', 'createDirectory'] })
     if (r.canceled || !r.filePaths[0]) return null
@@ -1064,15 +1194,15 @@ function registerIPC() {
       filters: opts.filters
     })
     if (r.canceled || !r.filePath) return null
-    if (opts.base64 != null) fs.writeFileSync(r.filePath, Buffer.from(opts.base64, 'base64'))
-    else fs.writeFileSync(r.filePath, opts.text ?? '', 'utf8')
+    if (opts.base64 != null) await fs.promises.writeFile(r.filePath, Buffer.from(opts.base64, 'base64'))
+    else await fs.promises.writeFile(r.filePath, opts.text ?? '', 'utf8')
     return r.filePath
   })
   ipcMain.handle('dialog:open', async (_e, opts: { filters?: Electron.FileFilter[]; base64?: boolean }) => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], filters: opts.filters })
     if (r.canceled || !r.filePaths[0]) return null
     const p = r.filePaths[0]
-    return { path: p, name: path.basename(p), data: opts.base64 ? fs.readFileSync(p).toString('base64') : fs.readFileSync(p, 'utf8') }
+    return { path: p, name: path.basename(p), data: opts.base64 ? (await fs.promises.readFile(p)).toString('base64') : await fs.promises.readFile(p, 'utf8') }
   })
 
   ipcMain.handle('shell:open', (_e, url: string) => { if (/^(https?|mailto|tel|yandexmaps):/i.test(url)) shell.openExternal(url); return true })
@@ -1085,16 +1215,16 @@ function registerIPC() {
     electron: process.versions.electron,
     chrome: process.versions.chrome,
     userData: userDir(),
-    autostart: app.getLoginItemSettings().openAtLogin,
+    autostart: autostartOn(),
     encryption: safeStorage.isEncryptionAvailable(),
     dark: nativeTheme.shouldUseDarkColors,
     // как сейчас рисуется окно: enabled — видеокартой, остальное — процессором (будет рывками)
     gpu: { safe: !!gpuState.safe, compositing: String((app.getGPUFeatureStatus() as any).gpu_compositing || ''), raster: String((app.getGPUFeatureStatus() as any).rasterization || '') }
   }))
   ipcMain.handle('app:gpuSafe', (_e, safe: boolean) => { saveGpuState({ safe }); return safe })
-  ipcMain.handle('app:autostart', (_e, on: boolean) => { app.setLoginItemSettings({ openAtLogin: on, args: ['--hidden'] }); return on })
+  ipcMain.handle('app:autostart', (_e, on: boolean) => { setAutostart(on); refreshTray(); return on })
   ipcMain.handle('app:quit', () => { quitting = true; app.quit() })
-  ipcMain.handle('app:relaunch', () => { quitting = true; app.relaunch(); app.exit(0) })
+  ipcMain.handle('app:relaunch', () => { quitting = true; flushAll(); app.relaunch(); app.exit(0) })
   ipcMain.handle('app:show', (_e, route?: string) => { showMain(route); return true })
   ipcMain.handle('app:badge', (_e, count: number) => {
     // число на значке в панели задач (как бейдж непрочитанных на iPhone)
@@ -1147,7 +1277,7 @@ function registerIPC() {
       if (r.canceled || !r.filePaths[0]) return null
       file = r.filePaths[0]
     }
-    const buf = fs.readFileSync(file)
+    const buf = await fs.promises.readFile(file)
     if (buf[0] !== 0x50 || buf[1] !== 0x4b) return { kind: 'text', name: path.basename(file), text: buf.toString('utf8') }
     let eocd = -1
     for (let i = buf.length - 22; i >= Math.max(0, buf.length - 70000); i--) if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break }
@@ -1168,12 +1298,17 @@ function registerIPC() {
       const lNameLen = buf.readUInt16LE(local + 26), lExtra = buf.readUInt16LE(local + 28)
       const start = local + 30 + lNameLen + lExtra
       const raw = buf.subarray(start, start + csize)
-      const data = method === 8 ? zlib.inflateRawSync(raw) : raw
+      const isFile = name.startsWith('files/') && !name.includes('..') && !name.endsWith('/')
+      if (name !== 'data.plist' && !isFile) continue
+      const dest = isFile ? path.join(root, ...name.slice(6).split('/')) : ''
+      // распаковка — в фоне, и только того, чего ещё нет
+      if (isFile && await exists(dest)) continue
+      const data = method === 8 ? await inflateRaw(raw) : raw
       if (name === 'data.plist') plist = Buffer.from(data).toString('base64')
-      else if (name.startsWith('files/') && !name.includes('..') && !name.endsWith('/')) {
-        const dest = path.join(root, ...name.slice(6).split('/'))
-        fs.mkdirSync(path.dirname(dest), { recursive: true })
-        if (!fs.existsSync(dest)) { fs.writeFileSync(dest, data); files++ }
+      else {
+        await fs.promises.mkdir(path.dirname(dest), { recursive: true })
+        await fs.promises.writeFile(dest, data)
+        files++
       }
     }
     return { kind: 'ios', name: path.basename(file), plist, files }
@@ -1234,7 +1369,7 @@ function registerIPC() {
   ipcMain.handle('ai:summarize', async (_e, r: { subject: string; minutes: number; style: string; transcript: string }) => {
     const apiKey = secrets['claude.key']
     if (!apiKey) return { ok: false, error: 'Добавь ключ Claude API в настройках лекций' }
-    return summarizeLecture({ ...r, apiKey })
+    return claude().summarizeLecture({ ...r, apiKey })
   })
 
   ipcMain.handle('mail:check', (_e, acc: MailAccount) => checkMail(acc))
@@ -1332,8 +1467,7 @@ app.on('before-quit', e => {
   quitting = true
   transfer?.stop()
   syncServer?.stop()
-  saveKVNow()
-  saveScheduledNow()
+  flushAll()
 })
 
 app.on('will-quit', () => globalShortcut.unregisterAll())

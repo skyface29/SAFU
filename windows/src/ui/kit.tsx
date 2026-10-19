@@ -33,6 +33,9 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card(
     (local as React.MutableRefObject<HTMLDivElement | null>).current = el
     if (typeof ref === 'function') ref(el); else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el
   }
+  // перспектива — только у карточек, которые наклоняются: с ней карточка навсегда становится отдельным
+  // 3D-слоем видеокарты (лишняя память, а текст в таком слое рисуется без сглаживания ClearType)
+  const tilts = !!tilt || ((hover || press) && fxNow() === 'high')
   return (
     <motion.div
       ref={setRef}
@@ -40,7 +43,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card(
       initial={{ opacity: 0, y: 18, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ ...softSpring, delay }}
-      style={{ ...style, rotateX: tilt || hover || press ? rx : undefined, rotateY: tilt || hover || press ? ry : undefined, transformPerspective: 900 }}
+      style={{ ...style, rotateX: tilts ? rx : undefined, rotateY: tilts ? ry : undefined, transformPerspective: tilts ? 900 : undefined }}
       onMouseMove={e => {
         const el = local.current
         if (el && !(el as any).__raf) {

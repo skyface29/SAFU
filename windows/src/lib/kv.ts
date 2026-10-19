@@ -14,6 +14,10 @@ const anyListeners = new Set<() => void>()
 function same(a: unknown, b: unknown): boolean {
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return Object.is(a, b)
   if (a === b) return false
+  // быстрые отличия — без перевода обоих значений в текст (списки ДЗ и расписание бывают большими)
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a) && a.length !== (b as unknown[]).length) return false
+  if (!Array.isArray(a) && Object.keys(a).length !== Object.keys(b).length) return false
   try { return JSON.stringify(a) === JSON.stringify(b) } catch { return false }
 }
 

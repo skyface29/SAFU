@@ -2,6 +2,7 @@
 // Все страницы остаются загруженными: свернул — и вернулся на то же место.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { create } from 'zustand'
 import { CardMotion, REST, OPEN, CLOSE, BACK, fadeTo, type Pose } from './cardMotion'
 import { setAmbientPaused } from '../fx/Ambient'
 import {
@@ -122,8 +123,14 @@ export function minimizeWithSnapshot() {
   }, 600)
 }
 
-/** Свёрнутый сайт, который не открывали 10 минут, выгружается из памяти (снимок и адрес остаются) */
-const UNLOAD_AFTER = 10 * 60_000
+/** Свёрнутый сайт, который не открывали 5 минут, выгружается из памяти (снимок и адрес остаются).
+ *  Каждый сайт — отдельный процесс на 150–400 МБ; окно убрали в трей — свёрнутые выгружаются через минуту */
+const UNLOAD_AFTER = 5 * 60_000
+const UNLOAD_HIDDEN = 60_000
+
+/** Видно ли окно приложения (или оно в трее) */
+const useAppVisible = create<{ visible: boolean }>(() => ({ visible: true }))
+safu.app.on('app:visible', (v: boolean) => useAppVisible.setState({ visible: !!v }))
 
 // одна вкладка обновилась (загрузка, заголовок) — перерисовывается только её карточка
 const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: SiteTab; visible: boolean; preload: string }) {
@@ -320,16 +327,21 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
   }
 
   // долго свёрнута — отпускаем память; развернёшь — загрузится там же
+  const appVisible = useAppVisible(s => s.visible)
   useEffect(() => {
     if (visible || !live || tab.kind !== 'site') return
     const t = setTimeout(() => {
       const cur = useSites.getState().tabs.find(x => x.id === tab.id)
       setLive(false)
       liveRef.current = false
+      lastImages.delete(tab.id)
       sites.update(tab.id, { dormant: true, loading: false, url: cur?.currentURL || cur?.url || tab.url })
-    }, UNLOAD_AFTER)
+    }, appVisible ? UNLOAD_AFTER : UNLOAD_HIDDEN)
     return () => clearTimeout(t)
-  }, [visible, live])
+  }, [visible, live, appVisible])
+
+  // вкладку закрыли — её снимок больше не нужен (раньше снимки всех закрытых сайтов копились в памяти)
+  useEffect(() => () => { lastImages.delete(tab.id) }, [tab.id])
 
   useEffect(() => {
     const wv = ref.current

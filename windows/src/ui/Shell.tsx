@@ -87,13 +87,18 @@ function PhoneLink({ collapsed }: { collapsed: boolean }) {
   const [last] = usePref<SyncLast | null>(LAST_KEY, null)
   const [paired, setPaired] = useState<boolean | null>(null)
   const [, tick] = useState(0)
+  // связан ли телефон — при запуске, когда телефон связался сам и когда связку сменили или отключили
+  // (тогда сбрасывается «последний раз на связи»). Раньше главный процесс опрашивался каждые 10 секунд
   useEffect(() => {
     const load = () => safu.sync.link().then(u => setPaired(!!u)).catch(() => undefined)
     load()
-    const off = safu.sync.onChanged(load)
-    // раз в 10 секунд: «на связи» сменится на «был N минут назад», а отвязку видно и без событий
-    const t = setInterval(() => { tick(x => x + 1); load() }, 10_000)
-    return () => { off(); clearInterval(t) }
+    return safu.sync.onChanged(load)
+  }, [])
+  useEffect(() => { if (!last) safu.sync.link().then(u => setPaired(!!u)).catch(() => undefined) }, [last])
+  // раз в 10 секунд: «на связи» сменится на «был N минут назад»
+  useEffect(() => {
+    const t = setInterval(() => tick(x => x + 1), 10_000)
+    return () => clearInterval(t)
   }, [])
   if (paired === null) return null
   const online = !!paired && !!last && Date.now() - last.at < 30_000

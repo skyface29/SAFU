@@ -15,12 +15,19 @@ const STATIC = new Set(['plain', 'linen', 'soft', 'wash'])
 /** Частицы, которые летят поверх переливов шейдера */
 const ON_LIQUID = new Set(['snow', 'leaves', 'petals', 'summer'])
 
-/** Фон замирает, пока открыт сайт или окно не в фокусе (меньше кадров) — вся мощность интерфейсу */
+/** Фон стоит совсем, пока открыт сайт, и почти не рисуется, пока окно не в фокусе — вся мощность интерфейсу */
 const pauseState = { paused: false, unfocused: false, scrollUntil: 0 }
-export function setAmbientPaused(p: boolean) { pauseState.paused = p }
+/** Остановившиеся фоны просыпаются, когда сайт закрыли или окно снова в фокусе */
+const wakers = new Set<() => void>()
+const wakeAll = () => wakers.forEach(f => f())
+export function setAmbientPaused(p: boolean) {
+  if (pauseState.paused === p) return
+  pauseState.paused = p
+  wakeAll()
+}
 if (typeof window !== 'undefined') {
   window.addEventListener('blur', () => { pauseState.unfocused = true })
-  window.addEventListener('focus', () => { pauseState.unfocused = false })
+  window.addEventListener('focus', () => { pauseState.unfocused = false; wakeAll() })
   // на слабом железе фон замирает, пока листают: видеокарта целиком на прокрутку
   const scrolling = () => { pauseState.scrollUntil = performance.now() + 350 }
   window.addEventListener('wheel', scrolling, { passive: true, capture: true })
@@ -33,6 +40,8 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
   const [seasonal] = usePref('theme.seasonal', false)
   const [intensity] = usePref('bg.intensity', 1)
   const [reduce] = usePref('ui.reduceMotion', false)
+  // стекло на карточках пересчитывает размытие на каждом кадре фона (см. backdropBudget)
+  const [blur] = usePref('ui.blur', false)
   const mode: Backdrop = currentBackdrop()
   void style; void seasonal
   const tier = useFx(s => s.tier)
@@ -49,22 +58,25 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
     if (!shaderMode) return
     const cv = shaderRef.current
     if (!cv) return
-    const b = backdropBudget(tier)
+    const b = backdropBudget(tier, blur)
     const k = Math.max(0.2, Math.min(2, intensity)) * (ON_LIQUID.has(mode) ? 0.75 : 1)
     let sb: ShaderBackdrop
     try {
       sb = new ShaderBackdrop(cv, {
         mode: shaderMode, scale: b.scale, minScale: b.minScale, fps: b.fps,
         colors: { base: dark ? '#0a0d14' : '#eef2f8', c1, c2, c3: dark ? '#7c3aed' : '#a78bfa', dark, k },
-        state: () => ({ paused: pauseState.paused, unfocused: pauseState.unfocused, frozen: b.pauseOnScroll && performance.now() < pauseState.scrollUntil })
+        state: () => ({ paused: pauseState.paused, unfocused: pauseState.unfocused, frozenUntil: b.pauseOnScroll ? pauseState.scrollUntil : 0 })
       }, () => setGlFailed(true))
     } catch {
       setGlFailed(true)
       return
     }
-    if (reduce) sb.still(); else sb.start()
-    return () => sb.stop()
-  }, [shaderMode, mode, tier, dark, c1, c2, intensity, reduce])
+    if (reduce) { sb.still(); return () => sb.stop() }
+    sb.start()
+    const wake = () => sb.wake()
+    wakers.add(wake)
+    return () => { wakers.delete(wake); sb.stop() }
+  }, [shaderMode, mode, tier, dark, c1, c2, intensity, reduce, blur])
 
   useEffect(() => {
     const cv = ref.current
@@ -72,6 +84,7 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
     const ctx = cv.getContext('2d')!
     let W = 0, H = 0, dpr = 1
     let raf = 0
+    let timer = 0
     let running = true
     let mx = 0.5, my = 0.5, tmx = 0.5, tmy = 0.5
     const parts: P[] = []
@@ -110,12 +123,21 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
     if (mode === 'matrix') cols = Array.from({ length: Math.ceil(W / fontSize) }, () => rnd(-50, 0))
 
     const onMove = (e: MouseEvent) => { tmx = e.clientX / W; tmy = e.clientY / H }
+    /** Следующий кадр: по кадру экрана или (если кадров нужно меньше) по таймеру — без пустых пробуждений */
+    const schedule = (wait: number) => {
+      if (!running || raf || timer) return
+      if (wait <= 4) { raf = requestAnimationFrame(frame); return }
+      timer = window.setTimeout(() => { timer = 0; if (running) raf = requestAnimationFrame(frame) }, wait)
+    }
     const onVis = () => {
       const vis = document.visibilityState === 'visible'
-      if (vis && !running) { running = true; raf = requestAnimationFrame(frame) }
+      if (vis && !running) { running = true; schedule(0) }
       if (!vis) running = false
     }
-    const onResize = () => { resize(); if (STATIC.has(mode)) { last = 0; raf = requestAnimationFrame(frame) } }
+    // новый размер стирает холст — перерисовываем сразу, даже если фон стоит
+    const onResize = () => { resize(); last = 0; if (STATIC.has(mode) || pauseState.paused || reduce) frame(performance.now(), true) }
+    const wake = () => schedule(0)
+    wakers.add(wake)
     window.addEventListener('resize', onResize)
     window.addEventListener('mousemove', onMove)
     document.addEventListener('visibilitychange', onVis)
@@ -131,13 +153,20 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
     }
 
     let last = 0
-    const budget = backdropBudget(tier)
+    const budget = backdropBudget(tier, blur)
     const baseInterval = PARTICLES.has(mode) ? 1000 / budget.fps : 1000 / 30
-    function frame(now: number) {
+    let interval = baseInterval
+    /** once — один кадр вне цикла (после смены размера, пока фон стоит): следующий не планирует */
+    function frame(now: number, once = false) {
+      if (!once) raf = 0
       if (!running) return
-      if (budget.pauseOnScroll && now < pauseState.scrollUntil && last > 0) { raf = requestAnimationFrame(frame); return }
-      const interval = pauseState.paused ? 500 : pauseState.unfocused ? 1000 / 15 : baseInterval
-      if (now - last < interval - 2) { raf = requestAnimationFrame(frame); return }
+      if (!once) {
+        // открыт сайт — стоим на последнем кадре; закроют — wake() запустит снова
+        if (pauseState.paused && last > 0) return
+        if (budget.pauseOnScroll && now < pauseState.scrollUntil && last > 0) { schedule(pauseState.scrollUntil - now); return }
+        interval = pauseState.unfocused ? 1000 / 15 : baseInterval
+        if (interval < 20 && now - last < interval - 2) { schedule(0); return }
+      }
       last = now
       const t = (now - t0) / 1000
       mx += (tmx - mx) * 0.04; my += (tmy - my) * 0.04
@@ -155,7 +184,7 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
           if (y > H && Math.random() > 0.975) cols[i] = 0
           cols[i] += 0.5 + (i % 3) * 0.15
         }
-        raf = requestAnimationFrame(frame)
+        if (!once) schedule(interval < 20 ? 0 : interval - 8)
         return
       }
 
@@ -317,18 +346,20 @@ export function Ambient({ dark, c1, c2 }: { dark: boolean; c1: string; c2: strin
         }
       }
 
-      if (!reduce && !STATIC.has(mode)) raf = requestAnimationFrame(frame)
+      if (!once && !reduce && !STATIC.has(mode)) schedule(interval < 20 ? 0 : interval - 8)
     }
-    raf = requestAnimationFrame(frame)
+    schedule(0)
 
     return () => {
       running = false
+      wakers.delete(wake)
       cancelAnimationFrame(raf)
+      window.clearTimeout(timer)
       window.removeEventListener('resize', onResize)
       window.removeEventListener('mousemove', onMove)
       document.removeEventListener('visibilitychange', onVis)
     }
-  }, [mode, dark, c1, c2, intensity, reduce, tier, need2d, overlay])
+  }, [mode, dark, c1, c2, intensity, reduce, tier, need2d, overlay, blur])
 
   const cssLayer = mode === 'wash'
     ? { background: `linear-gradient(120deg, ${rgba(c1, dark ? 0.35 : 0.25)}, ${rgba(c2, dark ? 0.3 : 0.22)}, ${rgba(c1, dark ? 0.2 : 0.15)})`, backgroundSize: '300% 300%', animation: 'gradient-move 18s ease infinite' }

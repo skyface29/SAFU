@@ -38,23 +38,78 @@ export function openFile(f: FileInfo, inCard = true) {
   else safu.fs.open(f.rel)
 }
 
+// ---------- миниатюры ----------
+// Фото показываем уменьшенными (Windows строит миниатюру сама): раньше снимок с телефона в плитке 120 px
+// раскодировался целиком — десятки мегабайт памяти на плитку, и папка с фото подвисала. Миниатюры
+// запрашиваются, только когда плитка видна, не больше четырёх за раз, и запоминаются до перезапуска
+
+const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp']
+const thumbs = new Map<string, string | null>()
+const thumbQueue: (() => void)[] = []
+let thumbsBusy = 0
+
+function loadThumb(f: FileInfo): Promise<string | null> {
+  const key = `${f.rel}|${f.mtime}`
+  if (thumbs.has(key)) return Promise.resolve(thumbs.get(key)!)
+  return new Promise(resolve => {
+    const run = () => {
+      thumbsBusy++
+      safu.fs.thumb(f.rel, 256).catch(() => null).then((d: string | null) => {
+        thumbs.set(key, d)
+        if (thumbs.size > 600) thumbs.delete(thumbs.keys().next().value!)
+        resolve(d)
+      }).finally(() => {
+        thumbsBusy--
+        thumbQueue.shift()?.()
+      })
+    }
+    if (thumbsBusy < 4) run(); else thumbQueue.push(run)
+  })
+}
+
+/** Видна ли плитка (с запасом в один экран) — миниатюры грузим только для видимых */
+function useInView<T extends Element>(): [React.RefObject<T>, boolean] {
+  const ref = useRef<T>(null)
+  const [seen, setSeen] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || seen) return
+    if (typeof IntersectionObserver === 'undefined') { setSeen(true); return }
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { setSeen(true); io.disconnect() } }, { rootMargin: '100% 0px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [seen])
+  return [ref, seen]
+}
+
 export function Thumb({ f, size = 140 }: { f: FileInfo; size?: number }) {
-  const [src, setSrc] = useState<string | null>(null)
+  const cached = thumbs.get(`${f.rel}|${f.mtime}`)
+  const isImage = IMAGE_EXT.includes(f.ext)
+  const [src, setSrc] = useState<string | null>(cached ?? null)
+  const [box, inView] = useInView<HTMLDivElement>()
   const k = fileKind(f.ext)
   useEffect(() => {
+    if (f.dir) return
     let alive = true
-    if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(f.ext)) setSrc(fileURL(f.rel))
-    else if (isDesktop && !f.dir) safu.fs.thumb(f.rel, 256).then((d: string | null) => { if (alive && d) setSrc(d) })
+    const key = `${f.rel}|${f.mtime}`
+    if (thumbs.has(key)) { const d = thumbs.get(key)!; setSrc(d ?? (isImage ? fileURL(f.rel) : null)); return }
+    if (!isDesktop) { setSrc(isImage ? fileURL(f.rel) : null); return }
+    if (!inView) return
+    // нет миниатюры у картинки — показываем сам файл (браузер раскодирует его в фоне)
+    loadThumb(f).then(d => { if (alive) setSrc(d ?? (isImage ? fileURL(f.rel) : null)) })
     return () => { alive = false }
-  }, [f.rel, f.mtime])
+  }, [f.rel, f.mtime, inView])
   if (f.dir) return <FolderIcon name={f.name} size={size * 0.5} />
   return src
-    ? <img src={src} draggable={false} style={{ width: '100%', height: size, objectFit: 'cover', borderRadius: 12, display: 'block', background: 'var(--fill)' }} />
-    : <div className="center" style={{ height: size, borderRadius: 12, background: `linear-gradient(160deg, ${k.color}33, ${k.color}10)` }}>
+    ? <img src={src} draggable={false} decoding="async" loading="lazy" style={{ width: '100%', height: size, objectFit: 'cover', borderRadius: 12, display: 'block', background: 'var(--fill)' }} />
+    : <div ref={box} className="center" style={{ height: size, borderRadius: 12, background: `linear-gradient(160deg, ${k.color}33, ${k.color}10)` }}>
       <k.Icon size={size * 0.32} color={k.color} strokeWidth={1.8} />
       <span className="tiny heavy" style={{ color: k.color, marginTop: 6 }}>{f.ext.toUpperCase()}</span>
     </div>
 }
+
+const LAZY_TILE: React.CSSProperties = { contentVisibility: 'auto', containIntrinsicSize: 'auto 190px' }
+const LAZY_ROW: React.CSSProperties = { contentVisibility: 'auto', containIntrinsicSize: 'auto 52px' }
 
 export function FolderIcon({ name, size = 60 }: { name: string; size?: number }) {
   let h = 0
@@ -85,19 +140,27 @@ export default function Files({ path: startPath }: { path?: string }) {
 
   const load = async () => {
     setLoading(true)
+    allFiles.current = null
     try { setItems(await safu.fs.list(path)) } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [path])
   useEffect(() => { safu.fs.root().then(setRoot) }, [])
+  // поиск: все файлы читаются с диска один раз на поиск, дальше каждая буква ищет по готовому списку
+  const allFiles = useRef<Promise<FileInfo[]> | null>(null)
   useEffect(() => {
-    if (!q.trim()) { setFound(null); return }
+    if (!q.trim()) { setFound(null); allFiles.current = null; return }
+    let alive = true
     const t = setTimeout(async () => {
-      const all: FileInfo[] = await safu.fs.walk('')
-      setFound(all.filter(f => f.name.toLowerCase().includes(q.toLowerCase())).slice(0, 200))
-    }, 250)
-    return () => clearTimeout(t)
+      allFiles.current ??= safu.fs.walk('')
+      const all = await allFiles.current
+      const needle = q.trim().toLowerCase()
+      if (alive) setFound(all.filter(f => f.name.toLowerCase().includes(needle)).slice(0, 200))
+    }, 200)
+    return () => { alive = false; clearTimeout(t) }
   }, [q])
-  useEffect(() => { safu.fs.ensureDirs(['Предметы', ...subjects(data).map(subjectFolder)]) }, [data])
+  // папки предметов — только когда поменялся сам список предметов, а не при каждом обновлении расписания
+  const subjectKey = useMemo(() => subjects(data).join('\n'), [data])
+  useEffect(() => { safu.fs.ensureDirs(['Предметы', ...subjectKey.split('\n').filter(Boolean).map(subjectFolder)]) }, [subjectKey])
   useEffect(() => safu.app.on('download:progress', (p: any) => { if (p.state === 'completed') load() }), [path])
 
   const sorted = useMemo(() => {
@@ -163,10 +226,12 @@ export default function Files({ path: startPath }: { path?: string }) {
         {view === 'grid' ? (
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14 }}>
             <AnimatePresence>
+              {/* большие папки: без перестановки плиток анимацией (она пересчитывает каждую плитку) и
+                  без отрисовки плиток за краем экрана — прокрутка остаётся плавной и на сотнях файлов */}
               {sorted.map((f, i) => (
-                <motion.div key={f.rel} layout initial={{ opacity: 0, scale: 0.9, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+                <motion.div key={f.rel} layout={sorted.length <= 60} initial={i < 24 ? { opacity: 0, scale: 0.9, y: 10 } : false} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ delay: Math.min(i, 20) * 0.015, type: 'spring', stiffness: 300, damping: 26 }}
-                  whileHover={{ y: -4 }} className="card hover" style={{ padding: 8, cursor: 'pointer' }}
+                  whileHover={{ y: -4 }} className="card hover" style={{ padding: 8, cursor: 'pointer', ...(sorted.length > 60 ? LAZY_TILE : null) }}
                   draggable={!f.dir} onDragStart={e => { e.preventDefault(); safu.fs.dragOut(f.rel) }}
                   onDoubleClick={() => f.dir ? setPath(f.rel) : openFile(f)} onClick={() => f.dir ? setPath(f.rel) : openFile(f)} onContextMenu={e => menu(e, f)}>
                   <Thumb f={f} size={120} />
@@ -182,7 +247,7 @@ export default function Files({ path: startPath }: { path?: string }) {
             {sorted.map(f => {
               const k = fileKind(f.ext)
               return (
-                <div key={f.rel} className="list-row click" onClick={() => f.dir ? setPath(f.rel) : openFile(f)} onContextMenu={e => menu(e, f)} draggable={!f.dir} onDragStart={e => { e.preventDefault(); safu.fs.dragOut(f.rel) }}>
+                <div key={f.rel} className="list-row click" style={sorted.length > 60 ? LAZY_ROW : undefined} onClick={() => f.dir ? setPath(f.rel) : openFile(f)} onContextMenu={e => menu(e, f)} draggable={!f.dir} onDragStart={e => { e.preventDefault(); safu.fs.dragOut(f.rel) }}>
                   <div className="icon-tile" style={{ background: f.dir ? 'linear-gradient(135deg,#fbbf24,#f59e0b)' : k.color }}>{f.dir ? <Folder size={16} /> : <k.Icon size={16} />}</div>
                   <div className="grow"><div className="bold small ellipsis">{f.name}</div>{found && <div className="tiny faint">{f.rel}</div>}</div>
                   <span className="tiny muted" style={{ width: 90 }}>{f.dir ? '' : fmtSize(f.size)}</span>

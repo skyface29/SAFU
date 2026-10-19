@@ -1,5 +1,5 @@
 // Корень приложения: фон, каркас, страницы с анимированными переходами, слой сайтов, окна поверх
-import React, { useEffect, useState, useSyncExternalStore } from 'react'
+import React, { Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { kv, usePref } from './lib/kv'
 import { safu, isDesktop } from './lib/bridge'
@@ -18,12 +18,7 @@ import { Titlebar, Sidebar, Splash, CommandPalette } from './ui/Shell'
 import { DialogHost, ToastHost, MenuHost, toast } from './ui/kit'
 import { SiteLayer } from './sites/SiteLayer'
 import { openSiteByKey, openFileCard } from './sites/sites'
-import { PAGES } from './pages'
-import { Registration } from './pages/Registration'
-import { SubjectSheet } from './pages/Subjects'
-import { HomeworkEditor } from './pages/HomeworkEditor'
-import { HomeworkView } from './pages/HomeworkView'
-import { LessonSheet } from './pages/Schedule'
+import { PAGES, preloadPages } from './pages'
 import { CelebrationOverlay, celebrations } from './fx/Celebrations'
 import { LockGate, appLock } from './pages/AppLock'
 import { Tour } from './pages/Tour'
@@ -36,6 +31,18 @@ function useDark() {
 }
 
 firstLook()
+
+// Окна поверх и знакомство — отдельными кусками: при запуске они не нужны
+const loadRegistration = () => import('./pages/Registration')
+const loadSubjects = () => import('./pages/Subjects')
+const loadEditor = () => import('./pages/HomeworkEditor')
+const loadView = () => import('./pages/HomeworkView')
+const loadSchedule = () => import('./pages/Schedule')
+const Registration = React.lazy(() => loadRegistration().then(m => ({ default: m.Registration })))
+const SubjectSheet = React.lazy(() => loadSubjects().then(m => ({ default: m.SubjectSheet })))
+const HomeworkEditor = React.lazy(() => loadEditor().then(m => ({ default: m.HomeworkEditor })))
+const HomeworkView = React.lazy(() => loadView().then(m => ({ default: m.HomeworkView })))
+const LessonSheet = React.lazy(() => loadSchedule().then(m => ({ default: m.LessonSheet })))
 
 export default function App() {
   const dark = useDark()
@@ -89,8 +96,11 @@ export default function App() {
     const syncTimer = setInterval(() => scheduleStore.sync(), 20 * 60_000)
     const mailTimer = setInterval(() => mailWatch.checkIfEnabled(), 60_000)
     setTimeout(() => mailWatch.checkIfEnabled(), 5000)
-    const celebTimer = setInterval(() => celebrations.checkOnOpen(scheduleStore.data), 60_000)
-    return () => { clearTimeout(t1); clearInterval(syncTimer); clearInterval(mailTimer); clearInterval(celebTimer) }
+    // салюты — только когда окно на экране: в трее они рисовались впустую, и их было не увидеть
+    const celebrate = () => { if (!document.hidden) celebrations.checkOnOpen(scheduleStore.data) }
+    const celebTimer = setInterval(celebrate, 60_000)
+    const offVisible = safu.app.on('app:visible', (v: boolean) => { if (v) setTimeout(celebrate, 400) })
+    return () => { clearTimeout(t1); clearInterval(syncTimer); clearInterval(mailTimer); clearInterval(celebTimer); offVisible() }
   }, [])
 
   // связанный iPhone заходит сам и сводит ДЗ, задачи и заметки — отвечаем, пока приложение запущено
@@ -98,6 +108,12 @@ export default function App() {
 
   // интерфейс собрался — сторож в главном процессе не будет показывать экран восстановления
   useEffect(() => { (safu.app as any).ready?.() }, [])
+
+  // остальные страницы и окна — заранее, когда приложение запустилось и интерфейс свободен
+  useEffect(() => {
+    const t = setTimeout(() => preloadPages([loadEditor, loadView, loadSubjects, loadSchedule]), 2500)
+    return () => clearTimeout(t)
+  }, [])
 
   // переходы из уведомлений, трея и ссылок safu://
   useEffect(() => safu.app.on('app:route', (route: string) => handleRoute(route)), [])
@@ -146,7 +162,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 * dir }}
               transition={{ type: 'spring', stiffness: 420, damping: 38, mass: 0.7 }}>
-              <div className="page"><Page {...params} /></div>
+              <div className="page"><Suspense fallback={null}><Page {...params} /></Suspense></div>
             </motion.div>
           </AnimatePresence>
         </main>
@@ -161,7 +177,7 @@ export default function App() {
       <CelebrationOverlay />
       <Tour />
       <AnimatePresence>
-        {showRegistration && <Registration key="reg" canClose={again} onDone={() => { kv.set('onboarded', true); setAgain(false) }} />}
+        {showRegistration && <Suspense key="reg" fallback={null}><Registration canClose={again} onDone={() => { kv.set('onboarded', true); setAgain(false) }} /></Suspense>}
       </AnimatePresence>
       <LockGate />
       <AnimatePresence>{splash && <Splash key="splash" onDone={() => setSplash(false)} />}</AnimatePresence>
@@ -180,12 +196,20 @@ function ModalHost() {
   const lesson = useModals(s => s.lesson)
   return (
     <>
-      <SubjectSheet name={subject} onClose={() => closeModal({ subject: null })} />
-      <HomeworkEditor req={hwEdit} onClose={() => closeModal({ hwEdit: null })} />
-      <HomeworkView id={hwView} onClose={() => closeModal({ hwView: null })} />
-      <LessonSheet slot={lesson} onClose={() => closeModal({ lesson: null })} />
+      <OnceOpened open={!!subject}><SubjectSheet name={subject} onClose={() => closeModal({ subject: null })} /></OnceOpened>
+      <OnceOpened open={!!hwEdit}><HomeworkEditor req={hwEdit} onClose={() => closeModal({ hwEdit: null })} /></OnceOpened>
+      <OnceOpened open={!!hwView}><HomeworkView id={hwView} onClose={() => closeModal({ hwView: null })} /></OnceOpened>
+      <OnceOpened open={!!lesson}><LessonSheet slot={lesson} onClose={() => closeModal({ lesson: null })} /></OnceOpened>
     </>
   )
+}
+
+/** Окно появляется в дереве, когда его впервые открыли, и дальше остаётся (чтобы закрывалось с анимацией).
+ *  До этого оно не грузится и не перерисовывается на каждое изменение ДЗ и расписания */
+function OnceOpened({ open, children }: { open: boolean; children: React.ReactNode }) {
+  const ever = useRef(false)
+  if (open) ever.current = true
+  return ever.current ? <Suspense fallback={null}>{children}</Suspense> : null
 }
 
 /** Число на значке в панели задач: ДЗ к сдаче + непрочитанные письма. Отдельно, чтобы правка ДЗ не перерисовывала всё */

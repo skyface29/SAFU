@@ -74,9 +74,13 @@ export function applyFx() {
   document.documentElement.dataset.fx = tier
 }
 
-/** Параметры живого фона для уровня: доля разрешения окна и потолок кадров */
-export function backdropBudget(tier: FxTier): { scale: number; minScale: number; fps: number; pauseOnScroll: boolean } {
-  if (tier === 'high') return { scale: 0.6, minScale: 0.3, fps: 60, pauseOnScroll: false }
-  if (tier === 'mid') return { scale: 0.42, minScale: 0.22, fps: 60, pauseOnScroll: false }
-  return { scale: 0.28, minScale: 0.16, fps: 30, pauseOnScroll: true }
+/** Параметры живого фона для уровня: доля разрешения окна и потолок кадров.
+ *  glass — включено стекло на карточках: каждый кадр фона заставляет пересчитать размытие всех карточек.
+ *  Мощная видеокарта тянет это как есть; встроенной фон рисуется в 30 кадров (на глаз мягкие переливы
+ *  не меняются) и стоит, пока листают, — иначе прокрутка со стеклом дёргается */
+export function backdropBudget(tier: FxTier, glass = false): { scale: number; minScale: number; fps: number; pauseOnScroll: boolean } {
+  const b = tier === 'high' ? { scale: 0.6, minScale: 0.3, fps: 60, pauseOnScroll: false }
+    : tier === 'mid' ? { scale: 0.42, minScale: 0.22, fps: 60, pauseOnScroll: false }
+      : { scale: 0.28, minScale: 0.16, fps: 30, pauseOnScroll: true }
+  return glass && tier !== 'high' ? { ...b, fps: Math.min(b.fps, 30), pauseOnScroll: true } : b
 }
