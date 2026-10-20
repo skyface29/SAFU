@@ -37,6 +37,26 @@ export function canon(v: unknown): string {
   return '{' + Object.keys(o).filter(k => o[k] !== undefined).sort().map(k => JSON.stringify(k) + ':' + canon(o[k])).join(',') + '}'
 }
 
+const has = Object.prototype.hasOwnProperty
+/**
+ * Одинаковы ли значения (порядок ключей не важен: словари отметок телефон присылает в любом порядке).
+ * Быстрее canon: одни и те же объекты внутри не обходит
+ */
+export function sameJson(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false
+    for (let i = 0; i < a.length; i++) if (!sameJson(a[i], b[i])) return false
+    return true
+  }
+  if (Array.isArray(b)) return false
+  const ka = Object.keys(a)
+  if (ka.length !== Object.keys(b).length) return false
+  for (const k of ka) if (!has.call(b, k) || !sameJson((a as any)[k], (b as any)[k])) return false
+  return true
+}
+
 /** Короткий отпечаток (cyrb53) */
 export function fingerprint(v: unknown): string {
   const s = canon(v)

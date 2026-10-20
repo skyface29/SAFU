@@ -1,6 +1,5 @@
 // «Предметы»: список с ближайшей парой, ДЗ и файлами; лист предмета — всё о нём в одном месте
 import React, { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
 import { Search, FolderOpen, Upload, Plus, Link2, X, User, Clock, BookMarked, StickyNote, ExternalLink, Pin, Star } from 'lucide-react'
 import { PageHeader, Card, Sheet, Empty, openMenu, promptDialog, toast, KindBadge, Segmented } from '../ui/kit'
 import { useSchedule } from '../lib/scheduleStore'
@@ -45,7 +44,7 @@ export default function Subjects() {
             <Card key={s} press tilt delay={Math.min(i, 16) * 0.03} onClick={() => openSubject(s)} style={{ overflow: 'hidden' }}>
               <div style={{ position: 'absolute', right: -20, top: -20, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle, ${color}33, transparent 70%)` }} />
               <div className="row top">
-                <motion.div className="icon-tile" whileHover={{ rotate: 12, scale: 1.1 }} style={{ width: 46, height: 46, borderRadius: 14, background: `linear-gradient(135deg, ${color}, ${color}aa)` }}><SubjectGlyph subject={s} size={22} /></motion.div>
+                <div className="icon-tile hov-turn" style={{ width: 46, height: 46, borderRadius: 14, background: `linear-gradient(135deg, ${color}, ${color}aa)` }}><SubjectGlyph subject={s} size={22} /></div>
                 <div className="grow">
                   <div className="bold clamp2" style={{ lineHeight: 1.25 }}>{s}</div>
                   <div className="tiny muted ellipsis mt4">{teachersOf(data, s).slice(0, 2).join(', ') || 'Преподаватель не указан'}</div>
@@ -146,10 +145,10 @@ export function SubjectSheet({ name, onClose }: { name: string | null; onClose: 
           {!subjPins.length && <div className="sub">Курс в Sakai, методичка, чат группы — всё под рукой</div>}
           <div className="row wrap-row gap6">
             {subjPins.map(p => (
-              <motion.div key={p.id} className="chip" whileHover={{ y: -2 }} onClick={() => p.isFile ? safu.fs.open(p.value) : openURL(p.value, p.title)}
+              <div key={p.id} className="chip hov-up" onClick={() => p.isFile ? safu.fs.open(p.value) : openURL(p.value, p.title)}
                 onContextMenu={e => openMenu(e, [{ label: 'Открыть в браузере', icon: <ExternalLink size={15} />, run: () => safu.shell.open(p.value) }, { label: 'Убрать', danger: true, run: () => pins.remove(s, p.id) }])}>
                 <Link2 size={13} />{p.title}<X size={12} onClick={e => { e.stopPropagation(); pins.remove(s, p.id) }} />
-              </motion.div>
+              </div>
             ))}
           </div>
           <div className="h-sec">Файлы <span className="pill">{files.length}</span><span className="spacer" />
@@ -158,11 +157,11 @@ export function SubjectSheet({ name, onClose }: { name: string | null; onClose: 
           {!files.length && <div className="sub clickable" onClick={addFiles}>Папка пустая — добавь методички и лекции</div>}
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
             {files.slice(0, 12).map(f => (
-              <motion.div key={f.rel} whileHover={{ y: -3 }} className="clickable" onClick={() => openFile(f)} title={`${f.name} · ${fmtSize(f.size)}`}
+              <div key={f.rel} className="clickable hov-up" onClick={() => openFile(f)} title={`${f.name} · ${fmtSize(f.size)}`}
                 onContextMenu={e => openMenu(e, [{ label: 'Открыть в программе', run: () => safu.fs.open(f.rel) }, { label: 'Показать в Проводнике', run: () => safu.fs.reveal(f.rel) }, { label: 'Закрепить', run: () => pins.add(s, { title: f.name, value: f.rel, isFile: true }) }])}>
                 <Thumb f={f} size={76} />
                 <div className="tiny ellipsis mt4">{f.name}</div>
-              </motion.div>
+              </div>
             ))}
           </div>
           {files.length > 12 && <button className="btn sm ghost mt8" onClick={() => { onClose(); go('files', { path: folder }) }}>Все файлы ({files.length})</button>}

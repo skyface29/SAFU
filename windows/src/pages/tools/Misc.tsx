@@ -524,7 +524,7 @@ export function ToolsPage() {
         {TOOLS.filter(t => !t.headOnly || p.head).map((t, i) => (
           <Card key={t.id} press tilt delay={i * 0.025} onClick={() => go(t.page)} style={{ overflow: 'hidden' }}>
             <div style={{ position: 'absolute', right: -24, bottom: -24, opacity: 0.12 }}><t.Icon size={110} color={t.color} /></div>
-            <motion.div whileHover={{ rotate: 10, scale: 1.1 }} className="icon-tile" style={{ width: 46, height: 46, borderRadius: 14, background: t.color }}><t.Icon size={22} /></motion.div>
+            <div className="icon-tile hov-turn" style={{ width: 46, height: 46, borderRadius: 14, background: t.color }}><t.Icon size={22} /></div>
             <div className="h-card mt12">{t.title}</div>
             <div className="sub">{t.subtitle}</div>
           </Card>

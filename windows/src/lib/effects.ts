@@ -121,18 +121,37 @@ export function trayLine(d: ScheduleData): { tooltip: string; line: string } {
   return { line: 'Ближайших пар нет', tooltip: 'Арктика — ближайших пар нет' }
 }
 
+// В трей и мини-окно уходит только то, что поменялось: раньше одно и то же отправлялось каждые 20 секунд
+let lastTray = ''
+let lastWidget = ''
+function pushTray(d: ScheduleData) {
+  const t = trayLine(d)
+  const k = t.tooltip + '\n' + t.line
+  if (k === lastTray) return
+  lastTray = k
+  safu.tray.update(t)
+}
+function pushWidget(d: ScheduleData, force = false) {
+  const p = widgetPayload(d)
+  const k = JSON.stringify(p)
+  if (!force && k === lastWidget) return
+  lastWidget = k
+  safu.widget.push(p)
+}
+
 let tickTimer: number | undefined
 let tickerWired = false
 export function startTicker() {
   const tick = () => {
     const d = scheduleStore.data
-    safu.tray.update(trayLine(d))
-    safu.widget.push(widgetPayload(d))
+    pushTray(d)
+    pushWidget(d)
   }
   tick()
   window.clearInterval(tickTimer)
   tickTimer = window.setInterval(tick, 20_000)
-  if (!tickerWired) { tickerWired = true; safu.app.on('widget:wants', tick) }
+  // мини-окно открылось заново — ему нужно всё, даже если не поменялось
+  if (!tickerWired) { tickerWired = true; safu.app.on('widget:wants', () => { pushTray(scheduleStore.data); pushWidget(scheduleStore.data, true) }) }
 }
 
 let effectsInstalled = false
@@ -148,8 +167,8 @@ export function installEffects() {
     scheduleAsk(d)
     commute.scheduleNotifications(d)
     celebrations.scheduleNotifications(d)
-    safu.tray.update(trayLine(d))
-    safu.widget.push(widgetPayload(d))
+    pushTray(d)
+    pushWidget(d)
     void monday
   })
 }

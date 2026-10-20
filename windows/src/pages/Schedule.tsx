@@ -91,21 +91,23 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
       </div>
 
       <AnimatePresence mode="wait">
-        <motion.div key={weekStart + view} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }}>
+        {/* смена недели — сдвиг через transform: framer-motion отдаёт его видеокарте */}
+        <motion.div key={weekStart + view} initial={{ opacity: 0, transform: 'translateX(30px)' }} animate={{ opacity: 1, transform: 'translateX(0px)', transitionEnd: { transform: 'none' } }}
+          exit={{ opacity: 0, transform: 'translateX(-30px)' }} transition={{ type: 'spring', stiffness: 300, damping: 30 }}>
           {view === 'week' ? (
             <div className="grid" style={{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(0, 1fr))`, gap: 10 }}>
               {visibleDays.map((d, i) => {
                 const list = slotsOn(d, data)
                 const today = isToday(d)
                 return (
-                  <motion.div key={d} className="col gap8" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                  <div key={d} className="col gap8 rise-in" style={{ animationDelay: `${i * 0.04}s` }}>
                     <div className="tc" style={{ padding: '8px 4px', borderRadius: 14, background: today ? 'var(--grad)' : 'var(--fill)', color: today ? '#fff' : undefined, boxShadow: today ? '0 6px 20px rgba(var(--brand-rgb),.35)' : undefined }}>
                       <div className="heavy">{DAY_NAMES[weekday(d) - 1]}</div>
                       <div className="tiny" style={{ opacity: 0.8 }}>{dayMon(d)}</div>
                     </div>
                     {!list.length && <div className="tc tiny faint" style={{ padding: 20 }}>нет пар</div>}
                     {groupParallel(list).map(g => <WeekCell key={g.slot.key} s={g.slot} alts={g.alts} now={now} />)}
-                  </motion.div>
+                  </div>
                 )
               })}
             </div>
@@ -147,7 +149,7 @@ function WeekCell({ s, now, alts = [] }: { s: Slot; now: number; alts?: Slot[] }
   const live = s.start <= now && now < s.end
   const due = hw.dueAt(s).filter(h => !h.done).length
   return (
-    <motion.div whileHover={{ y: -3, scale: 1.02 }} whileTap={{ scale: 0.97 }}
+    <div className="hov-pop"
       onClick={() => useModals.getState().set({ lesson: alts.length ? { ...s, alts } : s })}
       onContextMenu={e => openMenu(e, [
         { label: 'Предмет: файлы и заметки', run: () => openSubject(s.subject) },
@@ -165,7 +167,7 @@ function WeekCell({ s, now, alts = [] }: { s: Slot; now: number; alts?: Slot[] }
       <div className="bold clamp3" style={{ fontSize: '.84rem', lineHeight: 1.22, margin: '5px 0' }}>{s.subject}</div>
       <div className="tiny" style={{ color: st.color, fontWeight: 800 }}>{st.label}</div>
       {alts.length > 0 ? <div className="tiny muted ellipsis">{alts.length + 1} подгрупп · выбери свою</div> : s.room && <div className="tiny muted ellipsis">ауд. {s.room}</div>}
-    </motion.div>
+    </div>
   )
 }
 
@@ -221,10 +223,9 @@ function ChangesSheet({ open, onClose }: { open: boolean; onClose: () => void })
         {changes.map((c, i) => {
           const color = c.text.startsWith('Отменена') ? '#ef4444' : c.text.startsWith('Добавлена') ? '#22c55e' : '#f59e0b'
           return (
-            <motion.div key={c.id} className="row top" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-              style={{ padding: 12, borderRadius: 12, background: 'var(--fill)', borderLeft: `3px solid ${color}` }}>
+            <div key={c.id} className="row top slide-in" style={{ padding: 12, borderRadius: 12, background: 'var(--fill)', borderLeft: `3px solid ${color}`, animationDelay: `${i * 0.03}s` }}>
               <div className="grow small">{c.text}</div>
-            </motion.div>
+            </div>
           )
         })}
       </div>

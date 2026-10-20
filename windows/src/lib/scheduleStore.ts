@@ -28,22 +28,57 @@ const archiveName = (d: ScheduleData) => {
   return g ? `ruz-archive-${g}` : null
 }
 
+// Архив читается с диска один раз и дальше живёт в памяти: раньше после каждого изменения расписания
+// он целиком (мегабайты за годы учёбы) читался и разбирался заново, только чтобы проверить, что дописать
+type ArchiveMem = { name: string; events: RuzEvent[]; days: Set<number> }
+let archiveMem: ArchiveMem | null = null
+let archiveLoading: Promise<void> | null = null
+
+async function archiveOpen(n: string): Promise<ArchiveMem> {
+  if (archiveMem?.name === n) return archiveMem
+  if (!archiveLoading) {
+    archiveLoading = (async () => {
+      const events = ((await safu.cache.get(n)) as RuzEvent[] | null) || []
+      archiveMem = { name: n, events, days: new Set(events.map(e => startOfDay(e.start))) }
+    })().finally(() => { archiveLoading = null })
+  }
+  await archiveLoading
+  return archiveMem?.name === n ? archiveMem : archiveOpen(n)
+}
+
 async function archiveLoad(d: ScheduleData): Promise<RuzEvent[]> {
   const n = archiveName(d)
   if (!n) return []
-  return ((await safu.cache.get(n)) as RuzEvent[] | null) || []
+  return (await archiveOpen(n)).events
 }
 
-async function archiveSave(d: ScheduleData) {
-  if (!usesRuz(d) || teacherMode.isOn() || !d.ruzEvents.length) return
+/** Дописать в архив прошедшие дни, которых в нём ещё нет. Возвращает дни, которые точно лежат в архиве */
+async function archiveSave(d: ScheduleData): Promise<Set<number> | null> {
+  if (!usesRuz(d) || teacherMode.isOn() || !d.ruzEvents.length) return null
   const n = archiveName(d)
-  if (!n) return
+  if (!n) return null
   const today = startOfDay(Date.now())
-  const archive = await archiveLoad(d)
-  const archived = new Set(archive.map(e => startOfDay(e.start)))
-  const add = d.ruzEvents.filter(e => { const day = startOfDay(e.start); return day < today && !archived.has(day) })
-  if (!add.length) return
-  await safu.cache.set(n, [...archive, ...add].sort((a, b) => a.start - b.start))
+  const a = await archiveOpen(n)
+  const add = d.ruzEvents.filter(e => { const day = startOfDay(e.start); return day < today && !a.days.has(day) })
+  if (!add.length) return a.days
+  const events = [...a.events, ...add].sort((x, y) => x.start - y.start)
+  await safu.cache.set(n, events)
+  archiveMem = { name: n, events, days: new Set(events.map(e => startOfDay(e.start))) }
+  return archiveMem.days
+}
+
+// В общем хранилище — только пары последних недель и будущие: прошлое лежит в архиве и при запуске
+// возвращается в память (scheduleStore.init). Раньше там копились пары за все годы учёбы, и хранилище
+// читалось при запуске и переписывалось на каждое изменение целиком
+const KEEP_PAST_DAYS = 56
+
+export function forStore(d: ScheduleData, archived: Set<number> | null): ScheduleData {
+  if (!archived || !d.ruzEvents.length) return d
+  const cutoff = startOfDay(Date.now()) - KEEP_PAST_DAYS * 86_400_000
+  if (d.ruzEvents[0].start >= cutoff) return d
+  // убираем только дни, которые уже точно в архиве
+  const ruzEvents = d.ruzEvents.filter(e => e.start >= cutoff || !archived.has(startOfDay(e.start)))
+  return ruzEvents.length === d.ruzEvents.length ? d : { ...d, ruzEvents }
 }
 
 // ---------- режим преподавателя ----------
@@ -243,9 +278,12 @@ function setData(next: ScheduleData) {
   }
   useSchedule.setState({ data: next })
   window.clearTimeout(persistTimer)
-  persistTimer = window.setTimeout(() => {
-    kv.set(KEY, next)
-    archiveSave(next)
+  persistTimer = window.setTimeout(async () => {
+    let archived: Set<number> | null = null
+    try { archived = await archiveSave(next) } catch { /* архив не записался — в хранилище остаётся всё */ }
+    // пока архив дописывался, расписание могло поменяться ещё раз — тогда запишет следующий таймер
+    if (useSchedule.getState().data !== next) return
+    kv.set(KEY, forStore(next, archived))
   }, 400)
   window.clearTimeout(sideTimer)
   sideTimer = window.setTimeout(() => sideEffects.forEach(f => { try { f(next) } catch (e) { console.error(e) } }), 1000)
@@ -345,6 +383,7 @@ export const scheduleStore = {
     const d = useSchedule.getState().data
     const n = archiveName(d)
     if (n) await safu.cache.set(n, null)
+    archiveMem = null
     setData({ ...d, ruzEvents: [], lastSync: null, syncInfo: '' })
   },
 

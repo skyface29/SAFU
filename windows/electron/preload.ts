@@ -19,9 +19,11 @@ const api = {
     set: (key: string, value: string | null) => ipcRenderer.invoke('secret:set', key, value),
     replace: (all: Record<string, string>) => ipcRenderer.invoke('secret:replace', all)
   },
-  cache: {
-    get: (name: string) => ipcRenderer.invoke('cache:get', name),
-    set: (name: string, value: unknown) => ipcRenderer.invoke('cache:set', name, value)
+  // Большие кеши ходят текстом: JSON разбирает и собирает сам интерфейс (bridge.ts), а не главный процесс —
+  // мегабайтный архив пар не останавливает окно и не копируется лишний раз между процессами
+  cacheText: {
+    get: (name: string): Promise<string | null> => ipcRenderer.invoke('cache:get', name),
+    set: (name: string, text: string | null) => ipcRenderer.invoke('cache:set', name, text)
   },
   net: {
     fetch: (r: { url: string; method?: string; headers?: Record<string, string>; body?: string; timeout?: number; partition?: string }) =>
@@ -131,7 +133,9 @@ const api = {
     clear: () => ipcRenderer.invoke('sites:clear'),
     preload: (): Promise<string> => ipcRenderer.invoke('sites:preload'),
     /** Скачанное с этой страницы класть в папку (относительно «Файлов»); null — в «Загрузки» */
-    downloadHint: (webContentsId: number, rel: string | null) => ipcRenderer.send('sites:downloadHint', webContentsId, rel)
+    downloadHint: (webContentsId: number, rel: string | null) => ipcRenderer.send('sites:downloadHint', webContentsId, rel),
+    /** Снимок страницы: JPEG шириной width (CSS-пиксели окна) и маленький — для стопки */
+    capture: (webContentsId: number, width: number): Promise<{ jpeg: Uint8Array; thumb: string } | null> => ipcRenderer.invoke('sites:capture', webContentsId, width)
   }
 }
 

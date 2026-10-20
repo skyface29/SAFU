@@ -100,12 +100,12 @@ function Hero({ name, week, syncing }: { name: string; week: number | null; sync
   const today = groupParallel(slotsOn(Date.now(), data)).map(g => g.slot)
   const left = today.filter(s => s.end > Date.now()).length
   return (
-    <motion.div className="row top" style={{ margin: '12px 4px 18px' }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+    <div className="row top fall-in" style={{ margin: '12px 4px 18px' }}>
       <div className="grow">
         <div className="muted" style={{ fontSize: '.95rem' }}>{cap(fullDay(Date.now()))}{week ? ` · ${week}-я учебная неделя` : ''}</div>
         <h1 className="h-page" style={{ marginTop: 4 }}>
           {greeting()}{name ? ', ' : ''}<span className="grad-text">{name}</span>
-          <motion.span style={{ display: 'inline-block', marginLeft: 10, transformOrigin: '70% 80%' }} animate={{ rotate: [0, 18, -8, 18, 0] }} transition={{ duration: 1.6, delay: 0.6 }}>👋</motion.span>
+          <span className="wave" style={{ marginLeft: 10 }}>👋</span>
         </h1>
         <div className="muted" style={{ marginTop: 6 }}>
           {today.length === 0 ? 'Сегодня пар нет — отдыхай 😌' : left === 0 ? 'Пары на сегодня закончились 🎉' : `Сегодня ${today.length} ${plural(today.length, 'пара', 'пары', 'пар')}, осталось ${left}`}
@@ -116,7 +116,7 @@ function Hero({ name, week, syncing }: { name: string; week: number | null; sync
           <RefreshCw size={14} className={syncing ? 'spin' : ''} /> {syncing ? 'Обновляю…' : scheduleStore.lastSyncText()}
         </button>
       )}
-    </motion.div>
+    </div>
   )
 }
 
@@ -130,36 +130,31 @@ function QuickSites() {
     <div className="col" style={{ gap: 12 }}>
     <div className="grid" style={{ gridTemplateColumns: `repeat(${quick.length + 1}, minmax(0, 1fr))`, gap: 12 }}>
       {quick.map((r, i) => (
-        <motion.div key={r.id} className="card hover press tight row" style={{ gap: 12, padding: '12px 14px' }}
-          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, type: 'spring', stiffness: 300, damping: 24 }}
-          whileHover={{ y: -3 }} whileTap={{ scale: 0.96 }} onClick={() => openSite(r)}
+        <div key={r.id} className="card hover press tight row rise-in hov-up tap" style={{ gap: 12, padding: '12px 14px', animationDelay: `${i * 0.05}s` }} onClick={() => openSite(r)}
           onContextMenu={e => openMenu(e, [{ label: 'Открыть с главной страницы', run: () => openSite(r, { fresh: true }) }, { label: 'Открыть в браузере', run: () => safu.shell.open(r.url) }, { label: 'Выбрать кнопки…', run: () => go('customize') }])}>
-          <motion.div className="icon-tile" style={{ width: 42, height: 42, borderRadius: 13, background: siteColor(r.url, r.title), position: 'relative' }}
-            whileHover={{ rotate: [0, -8, 8, 0] }} transition={{ duration: 0.4 }}>
+          <div className="icon-tile wiggle" style={{ width: 42, height: 42, borderRadius: 13, background: siteColor(r.url, r.title), position: 'relative' }}>
             <SiteGlyph icon={r.icon} size={20} />
             {mailOn && unseen > 0 && r.url.includes('edu.narfu') && (
               <motion.span className="side-badge" style={{ position: 'absolute', top: -6, right: -6, margin: 0 }} initial={{ scale: 0 }} animate={{ scale: 1 }}>{unseen}</motion.span>
             )}
-          </motion.div>
+          </div>
           <div className="grow">
             <div className="bold ellipsis">{r.title}</div>
             <div className="tiny muted ellipsis">{r.subtitle}</div>
           </div>
-        </motion.div>
+        </div>
       ))}
       {/* отдельная кнопка: все электронные библиотеки */}
-      <motion.div className="card hover press tight row" style={{ gap: 12, padding: '12px 14px', outline: libsOpen ? '2px solid var(--brand)' : undefined }}
-        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: quick.length * 0.05, type: 'spring', stiffness: 300, damping: 24 }}
-        whileHover={{ y: -3 }} whileTap={{ scale: 0.96 }} onClick={() => setLibsOpen(!libsOpen)}>
-        <motion.div className="icon-tile" style={{ width: 42, height: 42, borderRadius: 13, background: 'var(--grad)' }}
-          whileHover={{ rotate: [0, -8, 8, 0] }} transition={{ duration: 0.4 }}>
+      <div className="card hover press tight row rise-in hov-up tap" onClick={() => setLibsOpen(!libsOpen)}
+        style={{ gap: 12, padding: '12px 14px', outline: libsOpen ? '2px solid var(--brand)' : undefined, animationDelay: `${quick.length * 0.05}s` }}>
+        <div className="icon-tile wiggle" style={{ width: 42, height: 42, borderRadius: 13, background: 'var(--grad)' }}>
           <SiteGlyph icon="books.vertical.fill" size={20} />
-        </motion.div>
+        </div>
         <div className="grow">
           <div className="bold ellipsis">Библиотеки</div>
           <div className="tiny muted ellipsis">Знаниум, Лань, Юрайт…</div>
         </div>
-      </motion.div>
+      </div>
     </div>
     <AnimatePresence initial={false}>
       {libsOpen && (
@@ -172,15 +167,14 @@ function QuickSites() {
             </div>
             <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10 }}>
               {LIBRARIES.map(l => (
-                <motion.div key={l.url} className="card hover press tight row" style={{ gap: 10, padding: '10px 12px' }}
-                  whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} onClick={() => openSite({ title: l.title, url: l.url, icon: l.icon })}
+                <div key={l.url} className="card hover press tight row hov-up tap" style={{ gap: 10, padding: '10px 12px' }} onClick={() => openSite({ title: l.title, url: l.url, icon: l.icon })}
                   onContextMenu={e => openMenu(e, [{ label: 'Открыть в браузере', run: () => safu.shell.open(l.url) }])}>
                   <div className="icon-tile" style={{ width: 36, height: 36, borderRadius: 11, background: 'var(--grad)' }}><SiteGlyph icon={l.icon} size={17} /></div>
                   <div className="grow" style={{ minWidth: 0 }}>
                     <div className="bold ellipsis">{l.title}</div>
                     <div className="tiny muted ellipsis">{l.about}</div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
             <div className="tiny faint mt12">Подписку на ЭБС оплачивает университет: зарегистрируйся в нужной библиотеке из сети САФУ — потом вход по своему логину работает и из дома. Что подключено сейчас — на сайте «Библиотека САФУ».</div>
@@ -224,7 +218,8 @@ function NowCard() {
     <Card tilt style={{ overflow: 'hidden', minHeight: 230 }}>
       <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(600px 300px at 0% 0%, ${st.color}33, transparent 60%)`, pointerEvents: 'none' }} />
       <AnimatePresence mode="wait">
-        <motion.div key={s.key} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        <motion.div key={s.key} initial={{ opacity: 0, transform: 'translateX(20px)' }} animate={{ opacity: 1, transform: 'translateX(0px)', transitionEnd: { transform: 'none' } }}
+          exit={{ opacity: 0, transform: 'translateX(-20px)' }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}
           className="row top" style={{ gap: 20, position: 'relative' }}>
           <div className="grow">
             <div className="row gap8">
@@ -317,7 +312,7 @@ function HomeworkCard({ delay }: { delay: number }) {
           {active.slice(0, 5).map(h => (
             <motion.div key={h.id} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, x: 40, height: 0 }}
               className="row" style={{ padding: '9px 10px', borderRadius: 12, background: 'var(--fill)', cursor: 'pointer' }} onClick={() => openHomework(h.id)}>
-              <motion.button whileTap={{ scale: 0.8 }} onClick={e => { e.stopPropagation(); burst(e.clientX, e.clientY); hw.toggle(h.id); celebrations.taskDone(hwTitle(h), hw.active().length) }}
+              <button className="tap-hard" onClick={e => { e.stopPropagation(); burst(e.clientX, e.clientY); hw.toggle(h.id); celebrations.taskDone(hwTitle(h), hw.active().length) }}
                 style={{ width: 22, height: 22, borderRadius: 7, border: `2px solid ${hwKind(h.kind).color}`, background: 'none', cursor: 'pointer', flexShrink: 0, display: 'grid', placeItems: 'center' }} />
               <span style={{ fontSize: '1.05rem' }}>{hwKind(h.kind).emoji}</span>
               <div className="grow">
@@ -351,10 +346,13 @@ function WeekCard({ delay }: { delay: number }) {
         {days.map((d, i) => (
           <div key={d} className="col grow clickable" style={{ alignItems: 'center', gap: 6 }} onClick={() => go('schedule', { day: d })}>
             <div className="tiny bold" style={{ color: deadlines[i] ? '#f59e0b' : 'transparent' }}>{deadlines[i] ? `ДЗ ${deadlines[i]}` : '·'}</div>
-            <motion.div initial={{ height: 0 }} animate={{ height: `${(counts[i] / max) * 80 + 4}px` }} transition={{ delay: delay + i * 0.05, type: 'spring', stiffness: 200, damping: 20 }}
-              style={{ width: '100%', maxWidth: 40, borderRadius: 10, background: i === 0 ? 'var(--grad)' : 'var(--fill2)', boxShadow: i === 0 ? '0 6px 18px rgba(var(--brand-rgb),.4)' : undefined, display: 'grid', placeItems: 'end center', paddingBottom: 4 }}>
-              {counts[i] > 0 && <span className="tiny heavy" style={{ color: i === 0 ? '#fff' : 'var(--text2)' }}>{counts[i]}</span>}
-            </motion.div>
+            <div style={{ position: 'relative', width: '100%', maxWidth: 40, height: (counts[i] / max) * 80 + 4 }}>
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: 10, background: i === 0 ? 'var(--grad)' : 'var(--fill2)', boxShadow: i === 0 ? '0 6px 18px rgba(var(--brand-rgb),.4)' : undefined,
+                transformOrigin: '50% 100%', animation: `bar-grow .53s var(--spring-tilt) ${delay + i * 0.05}s backwards`
+              }} />
+              {counts[i] > 0 && <span className="tiny heavy" style={{ position: 'absolute', left: 0, right: 0, bottom: 4, textAlign: 'center', color: i === 0 ? '#fff' : 'var(--text2)' }}>{counts[i]}</span>}
+            </div>
             <div className="tiny" style={{ fontWeight: i === 0 ? 800 : 600, color: i === 0 ? 'var(--brand)' : 'var(--text2)' }}>{DAY_NAMES[weekday(d) - 1]}</div>
           </div>
         ))}
@@ -375,12 +373,10 @@ function ToolsCard({ delay }: { delay: number }) {
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
         {list.map((t, i) => (
-          <motion.div key={t.id} className="col" style={{ gap: 8, padding: 12, borderRadius: 16, background: 'var(--fill)', cursor: 'pointer', border: '1px solid var(--line)' }}
-            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: delay + i * 0.025 }}
-            whileHover={{ y: -3, background: 'var(--fill2)' }} whileTap={{ scale: 0.95 }} onClick={() => go(t.page)}>
+          <div key={t.id} className="mini-tile zoom-in hov-up tap" style={{ animationDelay: `${delay + i * 0.025}s` }} onClick={() => go(t.page)}>
             <div className="icon-tile" style={{ background: t.color, width: 32, height: 32 }}><t.Icon size={16} /></div>
             <div><div className="bold small">{t.title}</div><div className="tiny muted ellipsis">{t.subtitle}</div></div>
-          </motion.div>
+          </div>
         ))}
       </div>
     </Card>
@@ -401,12 +397,12 @@ function SitesCard({ delay }: { delay: number }) {
           <div className="tiny faint bold mb8" style={{ textTransform: 'uppercase', letterSpacing: '.06em' }}>{c}</div>
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 8 }}>
             {list.filter(r => r.category === c).map(r => (
-              <motion.div key={r.id} className="row" whileHover={{ x: 3 }} onClick={() => openSite(r)}
+              <div key={r.id} className="row hov-right" onClick={() => openSite(r)}
                 onContextMenu={e => openMenu(e, [{ label: 'Открыть в браузере', run: () => safu.shell.open(r.url) }, { label: r.pinned ? 'Открепить' : 'Закрепить', run: () => resources.togglePin(r.id) }])}
                 style={{ padding: 8, borderRadius: 12, cursor: 'pointer', background: 'var(--fill)', gap: 10 }}>
                 <div className="icon-tile" style={{ width: 30, height: 30, borderRadius: 9, background: siteColor(r.url, r.title) }}><SiteGlyph icon={r.icon} size={15} /></div>
                 <div className="grow"><div className="bold small ellipsis">{r.title}</div><div className="tiny muted ellipsis">{r.subtitle}</div></div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -451,9 +447,9 @@ function WeatherCard({ delay }: { delay: number }) {
       </div>
       <div className="col gap6 mt12">
         {outfit(now, soon).map((o, i) => (
-          <motion.div key={i} className="row small" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: delay + 0.1 + i * 0.06 }}>
+          <div key={i} className="row small slide-in" style={{ animationDelay: `${delay + 0.1 + i * 0.06}s` }}>
             <span>{o.emoji}</span><span>{o.text}</span>
-          </motion.div>
+          </div>
         ))}
       </div>
       <div className="row mt12" style={{ gap: 6, overflowX: 'auto', paddingBottom: 4 }}>

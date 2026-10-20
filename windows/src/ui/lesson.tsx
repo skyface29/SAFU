@@ -19,9 +19,8 @@ export function SlotRow({ s, now, compact, showDay, alts = [] }: { s: Slot; now:
   const progress = live ? (now - s.start) / (s.end - s.start) : 0
   return (
     <motion.div
-      className="row top"
+      className="row top hov-right"
       layout="position"
-      whileHover={{ x: 3 }}
       onClick={() => useModals.getState().set({ lesson: alts.length ? { ...s, alts } : s })}
       onContextMenu={e => openMenu(e, [
         { label: 'Подробнее', run: () => useModals.getState().set({ lesson: s }) },
@@ -34,7 +33,11 @@ export function SlotRow({ s, now, compact, showDay, alts = [] }: { s: Slot; now:
         background: live ? `linear-gradient(90deg, ${st.color}26, transparent)` : 'var(--fill)',
         border: `1px solid ${live ? st.color + '66' : 'var(--line)'}`, opacity: past ? 0.55 : 1, overflow: 'hidden'
       }}>
-      {live && <motion.div style={{ position: 'absolute', left: 0, bottom: 0, height: 3, background: st.color, boxShadow: `0 0 10px ${st.color}` }} initial={{ width: 0 }} animate={{ width: `${progress * 100}%` }} transition={{ duration: 1 }} />}
+      {/* полоска хода пары растёт сжатием по ширине на видеокарте, а не шириной (перекладка на каждом кадре) */}
+      {live && <div style={{
+        position: 'absolute', left: 0, bottom: 0, width: '100%', height: 3, background: st.color, boxShadow: `0 0 10px ${st.color}`,
+        transform: `scaleX(${progress})`, transformOrigin: '0 50%', transition: 'transform 1s ease-in-out', animation: 'grow-x 1s ease-in-out backwards'
+      }} />}
       <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: st.color, flexShrink: 0, boxShadow: live ? `0 0 12px ${st.color}` : undefined }} />
       <div style={{ width: 62, flexShrink: 0 }}>
         <div className="bold mono" style={{ fontSize: '1.02rem' }}>{hm(s.start)}</div>

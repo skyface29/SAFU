@@ -2,11 +2,15 @@
 // подставляется заглушка на localStorage — приложение открывается и там.
 import type { SafuAPI } from '../../electron/preload'
 
+/** Кеш больших данных (архив пар, расписание всей школы): объект на входе и на выходе */
+type CacheAPI = { get: (name: string) => Promise<unknown>; set: (name: string, value: unknown) => Promise<unknown> }
+type Bridge = SafuAPI & { cache: CacheAPI }
+
 declare global {
   interface Window { safu?: SafuAPI }
 }
 
-function browserFallback(): SafuAPI {
+function browserFallback(): Bridge {
   const LS = 'safu.kv'
   const read = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}') } catch { return {} } }
   const secrets: Record<string, string> = (() => { try { return JSON.parse(localStorage.getItem('safu.secrets') || '{}') } catch { return {} } })()
@@ -71,11 +75,25 @@ function browserFallback(): SafuAPI {
     mail: { check: async () => ({ ok: false, error: 'Почта проверяется только в приложении для Windows' }) },
     sites: { clear: noop, preload: async () => '', downloadHint: () => undefined }
   }
-  return api as SafuAPI
+  return api as Bridge
+}
+
+function desktop(raw: SafuAPI): Bridge {
+  return {
+    ...raw,
+    cache: {
+      get: async name => {
+        const text = await raw.cacheText.get(name)
+        if (text == null) return null
+        try { return JSON.parse(text) } catch { return null }
+      },
+      set: (name, value) => raw.cacheText.set(name, value == null ? null : JSON.stringify(value))
+    }
+  }
 }
 
 const w: any = typeof window !== 'undefined' ? window : {}
-export const safu: SafuAPI = w.safu ?? browserFallback()
+export const safu: Bridge = w.safu ? desktop(w.safu) : browserFallback()
 export const isDesktop = !!w.safu
 export const isWidget = typeof location !== 'undefined' && location.hash === '#widget'
 

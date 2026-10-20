@@ -37,8 +37,8 @@ export default function Notes({ subject }: { subject?: string }) {
 export function NoteCard({ n, i, onOpen }: { n: Note; i: number; onOpen: () => void }) {
   const c = NOTE_COLORS[n.color] || 'transparent'
   return (
-    <motion.div layout initial={{ opacity: 0, y: 14, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: Math.min(i, 12) * 0.025 }}
-      className="card hover press" style={{ breakInside: 'avoid', marginBottom: 14, padding: 16, background: c !== 'transparent' ? `linear-gradient(160deg, ${c}38, ${c}12)` : undefined, borderColor: c !== 'transparent' ? `${c}66` : undefined }}
+    <motion.div layout exit={{ opacity: 0, scale: 0.9 }}
+      className="card hover press note-in" style={{ breakInside: 'avoid', marginBottom: 14, padding: 16, background: c !== 'transparent' ? `linear-gradient(160deg, ${c}38, ${c}12)` : undefined, borderColor: c !== 'transparent' ? `${c}66` : undefined, animationDelay: `${Math.min(i, 12) * 0.025}s` }}
       onClick={onOpen}
       onContextMenu={e => openMenu(e, [
         { label: n.pinned ? 'Открепить' : 'Закрепить', icon: <Pin size={15} />, run: () => notes.togglePin(n.id) },
