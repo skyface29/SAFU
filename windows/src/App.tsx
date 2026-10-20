@@ -1,5 +1,5 @@
 // Корень приложения: фон, каркас, страницы с анимированными переходами, слой сайтов, окна поверх
-import React, { Suspense, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import React, { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { kv, usePref } from './lib/kv'
 import { safu, isDesktop } from './lib/bridge'
@@ -12,10 +12,10 @@ import { creds } from './lib/creds'
 import { mailWatch } from './lib/mail'
 import { serveSync } from './lib/sync'
 import { SyncPairAsk, SyncFirewallAsk } from './pages/Sync'
-import { Ambient } from './fx/Ambient'
+import { Ambient, holdAmbient } from './fx/Ambient'
 import { initFx, applyFx } from './fx/perf'
 import { Titlebar, Sidebar, Splash, CommandPalette } from './ui/Shell'
-import { DialogHost, ToastHost, MenuHost, toast } from './ui/kit'
+import { DialogHost, ToastHost, MenuHost, toast, pageShown } from './ui/kit'
 import { SiteLayer } from './sites/SiteLayer'
 import { openSiteByKey, openFileCard } from './sites/sites'
 import { PAGES, preloadPages } from './pages'
@@ -182,13 +182,33 @@ const pageMotion = {
 }
 const pageSpring = { type: 'spring' as const, stiffness: 420, damping: 38, mass: 0.7 }
 
-/** Разделы. Боковая панель отвечает на клик сразу (подсветка, иконка), а новый раздел собирается следом,
- *  не задерживая её кадры: React строит его по частям между кадрами и показывает целиком, когда готов */
+/** Новое значение — после кадра, в котором показано то, что уже изменилось (боковая панель ответила на клик).
+ *  Раздел собирается одним проходом: по частям между кадрами (useDeferredValue) он на слабом ноутбуке появлялся
+ *  вдвое позже. Пока он собирается, подсветка и уход старого раздела едут на видеокарте и не ждут его.
+ *  Несколько кликов подряд — собирается только последний */
+function useAfterPaint<T>(value: T): T {
+  const [shown, setShown] = useState(value)
+  const latest = useRef(value)
+  latest.current = value
+  useEffect(() => {
+    if (Object.is(value, shown)) return
+    holdAmbient(700)
+    const show = () => { pageShown.at = performance.now(); setShown(latest.current) }
+    // окно свёрнуто — кадров нет, ждать нечего
+    if (document.visibilityState === 'hidden') { show(); return }
+    let t = 0
+    const raf = requestAnimationFrame(() => { t = window.setTimeout(show) })
+    return () => { cancelAnimationFrame(raf); clearTimeout(t) }
+  }, [value, shown])
+  return shown
+}
+
+/** Разделы. Боковая панель отвечает на клик сразу (подсветка, иконка), а новый раздел — следующим кадром */
 function Pages() {
   const page = useNav(s => s.page)
   const params = useNav(s => s.params)
   const dir = useNav(s => s.dir)
-  const shown = useDeferredValue(useMemo(() => ({ page, params, dir }), [page, params, dir]))
+  const shown = useAfterPaint(useMemo(() => ({ page, params, dir }), [page, params, dir]))
   const Page = (PAGES[shown.page] || PAGES.home)!
   // Пока крутят колесо, раздел накрыт прозрачной шторкой: карточки под неподвижным курсором не подсвечиваются
   // и не приподнимаются одна за другой (их перерисовка на каждом кадре прокрутки). Колесо шторка пропускает
@@ -208,7 +228,8 @@ function Pages() {
     document.addEventListener('scroll', onScroll, { capture: true, passive: true })
     return () => { document.removeEventListener('scroll', onScroll, true); clearTimeout(t) }
   }, [])
-  return (
+  // клик меняет nav сразу, а раздел — позже: в этот момент старый раздел не перерисовывается зря
+  return useMemo(() => (
     <AnimatePresence mode="popLayout" initial={false} custom={shown.dir}>
       <motion.div key={shown.page + JSON.stringify(shown.params)} className="page-scroll" custom={shown.dir}
         variants={pageMotion} initial="enter" animate="show" exit="leave" transition={pageSpring}>
@@ -216,7 +237,7 @@ function Pages() {
         <div className="page"><Suspense fallback={null}><Page {...shown.params} /></Suspense></div>
       </motion.div>
     </AnimatePresence>
-  )
+  ), [shown, Page])
 }
 
 // Окна поверх: подписаны только они — открытие листа не перерисовывает всё приложение

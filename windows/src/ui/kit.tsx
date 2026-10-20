@@ -434,6 +434,41 @@ export function useNow(every = 1000) {
   return now
 }
 
+/** Когда показан текущий раздел (ставит App). Строкам, появившимся в разделе позже, ждать незачем */
+export const pageShown = { at: 0 }
+
+/** Очередь дорисовки длинных списков: порция за порцией, по одной на задачу. Между порциями браузер успевает
+ *  ответить на клик и показать кадр, а порции не ждут кадров — на медленной видеокарте список не тянется */
+let laterQueue: { turn: number; go: () => void }[] = []
+let laterBusy = false
+function laterDrain() {
+  if (!laterQueue.length) { laterBusy = false; return }
+  const turn = Math.min(...laterQueue.map(q => q.turn))
+  const now = laterQueue.filter(q => q.turn === turn)
+  laterQueue = laterQueue.filter(q => q.turn !== turn)
+  now.forEach(q => q.go())
+  setTimeout(laterDrain)
+}
+
+/** Очередь строки длинного списка: первые 14 (больше в окно не влезает) — сразу, дальше порциями по 20 */
+export const revealTurn = (index: number) => index < 14 ? 0 : 1 + Math.floor((index - 14) / 20)
+
+/** Содержимое — в свою очередь после открытия раздела, пока на его месте пустышка высотой hold. Раздел
+ *  с сотней ДЗ открывается, как с десятком: то, что ниже края окна, дорисовывается следом порциями, не держа
+ *  ни открытие, ни анимацию. Уже показанное при этом не перерисовывается. Раздел открыт давно — сразу */
+export function Later({ turn, hold = 0, children }: { turn: number; hold?: number; children: React.ReactNode }) {
+  const [on, setOn] = useState(() => turn <= 0 || performance.now() - pageShown.at > 800)
+  useEffect(() => {
+    if (on) return
+    const item = { turn, go: () => setOn(true) }
+    laterQueue.push(item)
+    // первая порция — после кадра, в котором раздел уже показан
+    if (!laterBusy) { laterBusy = true; requestAnimationFrame(() => setTimeout(laterDrain)) }
+    return () => { laterQueue = laterQueue.filter(q => q !== item) }
+  }, [on, turn])
+  return on ? <>{children}</> : hold ? <div style={{ height: hold }} /> : null
+}
+
 export function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className="field">

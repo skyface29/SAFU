@@ -10,10 +10,19 @@ import SyncPage from './Sync'
 type Loader = () => Promise<any>
 const loaders: Loader[] = []
 
-/** Страница из отдельного куска: pick — какая из выгруженных в нём (в одном файле их бывает несколько) */
+/** Страница из отдельного куска: pick — какая из выгруженных в нём (в одном файле их бывает несколько).
+ *  Кусок уже подгружен заранее — страница рисуется сразу, тем же проходом. Через React.lazy она бы сначала
+ *  «подождала» пустой и показалась отдельным проходом позже — на слабом ноутбуке это заметная пауза */
 function page<M>(load: () => Promise<M>, pick: (m: M) => React.ComponentType<any>): React.ComponentType<any> {
-  loaders.push(load)
-  return React.lazy(() => load().then(m => ({ default: pick(m) })))
+  let ready: React.ComponentType<any> | null = null
+  const get = () => load().then(m => (ready = pick(m)))
+  loaders.push(get)
+  const Lazy = React.lazy(() => get().then(c => ({ default: c })))
+  return function LazyPage(props: Record<string, unknown>) {
+    // решаем при появлении: страница не меняет себя на лету, когда кусок догрузится
+    const [Ready] = React.useState(() => ready)
+    return Ready ? <Ready {...props} /> : <Lazy {...props} />
+  }
 }
 
 const profile = () => import('./Profile')

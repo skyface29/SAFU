@@ -25,6 +25,12 @@ export function setAmbientPaused(p: boolean) {
   pauseState.paused = p
   wakeAll()
 }
+/** Переход между разделами: на слабом железе фон на это время замирает, как при прокрутке, — видеокарта целиком
+ *  на въезд раздела. Переливы медленные, полсекунды остановки на глаз не видно */
+export function holdAmbient(ms: number) {
+  pauseState.scrollUntil = Math.max(pauseState.scrollUntil, performance.now() + ms)
+  if (!pauseState.paused) wakeAll()
+}
 if (typeof window !== 'undefined') {
   window.addEventListener('blur', () => { pauseState.unfocused = true; wakeAll() })
   window.addEventListener('focus', () => { pauseState.unfocused = false; wakeAll() })

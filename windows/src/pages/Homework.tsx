@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Settings2, Search, Star, Clock, ArrowRightCircle, Copy, Trash2, Pencil, AlertTriangle, X, Image, ListChecks, BookMarked, Send } from 'lucide-react'
-import { PageHeader, Card, Segmented, Empty, Ring, AnimatedNumber, openMenu, burst, Row, ToggleRow, toast, confirmDialog, Field } from '../ui/kit'
+import { PageHeader, Card, Segmented, Empty, Ring, AnimatedNumber, openMenu, burst, Row, ToggleRow, toast, confirmDialog, Field, Later, revealTurn } from '../ui/kit'
 import { SyncBadge } from './Sync'
 import { homeworkStore, hw, hwTitle, hwKind, chip, urgency, dayTime, type Homework, HW_KINDS } from '../lib/homework'
 import { useSchedule } from '../lib/scheduleStore'
@@ -50,6 +50,8 @@ export default function HomeworkPage() {
       return { title: b.title, items, subject: false }
     }).filter(g => g.items.length)
   }, [list, mode])
+  // номер первой строки каждой группы в общем списке: длинный список дорисовывается порциями (Later)
+  const starts = groups.reduce<number[]>((a, g, i) => (a.push(i ? a[i - 1] + groups[i - 1].items.length : 0), a), [])
 
   return (
     <>
@@ -94,7 +96,7 @@ export default function HomeworkPage() {
         : <Empty emoji="🎉" title={q || kind ? 'Ничего не нашлось' : 'Домашки нет'} text="Записывай ДЗ прямо с пары — срок встанет к следующему занятию и сам подстроится, если РУЗ перенесёт пару." action={<button className="btn primary" onClick={() => openHomeworkEditor({})}><Plus size={16} /> Записать ДЗ</button>} />)}
 
       <div className="col gap18">
-        {groups.map(g => (
+        {groups.map((g, gi) => (
           <motion.div key={g.title} layout>
             <div className="row" style={{ margin: '0 4px 10px' }}>
               {g.subject && <div className="icon-tile" style={{ width: 28, height: 28, borderRadius: 9, background: subjectColor(g.title) }}><SubjectGlyph subject={g.title} size={14} /></div>}
@@ -103,7 +105,7 @@ export default function HomeworkPage() {
             </div>
             <div className="col gap8">
               <AnimatePresence initial={false}>
-                {g.items.map(h => <HWRow key={h.id} h={h} showSubject={!g.subject} data={data} />)}
+                {g.items.map((h, i) => <HWRow key={h.id} h={h} showSubject={!g.subject} data={data} later={revealTurn(starts[gi] + i)} />)}
               </AnimatePresence>
             </div>
           </motion.div>
@@ -134,14 +136,14 @@ function Stat({ label, value, color, delay }: { label: string; value: number; co
   )
 }
 
-export function HWRow({ h, showSubject, data }: { h: Homework; showSubject?: boolean; data: any }) {
+export function HWRow({ h, showSubject, data, later = 0 }: { h: Homework; showSubject?: boolean; data: any; later?: number }) {
   const k = hwKind(h.kind)
   const steps = h.steps.length
   const done = h.steps.filter(s => s.done).length
   return (
     <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 60, height: 0, marginTop: -8 }}
       transition={{ type: 'spring', stiffness: 400, damping: 34 }}
-      className="card hover" style={{ padding: '12px 14px', cursor: 'pointer' }}
+      className="card hover lazy-row" style={{ padding: '12px 14px', cursor: 'pointer' }}
       onClick={() => openHomework(h.id)}
       onContextMenu={e => openMenu(e, [
         { label: 'Изменить', icon: <Pencil size={15} />, run: () => openHomeworkEditor({ id: h.id }) },
@@ -152,40 +154,42 @@ export function HWRow({ h, showSubject, data }: { h: Homework; showSubject?: boo
         { sep: true, label: '' },
         { label: 'Удалить', icon: <Trash2 size={15} />, danger: true, run: () => { hw.remove(h.id); toast('ДЗ удалено', 'info') } }
       ])}>
-      <div className="row top" style={{ gap: 14 }}>
-        <button className="tap-hard" onClick={e => {
-          e.stopPropagation()
-          if (!h.done) burst(e.clientX, e.clientY, [k.color, '#fff', '#22c55e'])
-          const nowDone = hw.toggle(h.id)
-          if (nowDone) celebrations.taskDone(hwTitle(h), hw.active().length)
-        }}
-          style={{ width: 26, height: 26, borderRadius: 9, border: `2.4px solid ${k.color}`, background: h.done ? k.color : 'transparent', cursor: 'pointer', flexShrink: 0, display: 'grid', placeItems: 'center', marginTop: 1 }}>
-          {h.done && <motion.svg initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} width="14" height="14" viewBox="0 0 24 24"><motion.path d="M4 12l5 5L20 6" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} /></motion.svg>}
-        </button>
-        <div className="grow">
-          <div className="row gap6" style={{ marginBottom: 3 }}>
-            <span className="badge" style={{ background: `${k.color}26`, color: k.color }}>{k.emoji} {k.title}</span>
-            {h.important && <Star size={13} fill="#f59e0b" color="#f59e0b" />}
-            {showSubject && <span className="tiny muted ellipsis">{h.subject}</span>}
-          </div>
-          <div className="bold" style={{ textDecoration: h.done ? 'line-through' : undefined, opacity: h.done ? 0.6 : 1 }}>{hwTitle(h)}</div>
-          {h.note && <div className="tiny muted clamp2 mt4">{h.note}</div>}
-          <div className="row wrap-row gap8 mt8">
-            <span className="pill" style={{ color: urgency(h.due, h.done) }}><Clock size={11} /> {chip(h.due, h.done)}</span>
-            {h.dueKind && <span className="tiny muted">{dayTime(h.due)}{h.dueRoom ? ` · ауд. ${h.dueRoom}` : ''}</span>}
-            {steps > 0 && <span className="pill"><ListChecks size={11} /> {done}/{steps}</span>}
-            {h.photos.length > 0 && <span className="pill"><Image size={11} /> {h.photos.length}</span>}
-            {h.dueEstimated && <span className="tiny" style={{ color: '#f59e0b' }}>по прошлым неделям</span>}
-          </div>
-          {h.shiftNote && (
-            <div className="row tiny mt8" style={{ padding: '6px 10px', borderRadius: 10, background: 'rgba(245,158,11,.12)', color: '#f59e0b' }}>
-              <AlertTriangle size={12} /> <span className="grow">{h.shiftNote}</span>
-              <X size={12} className="clickable" onClick={e => { e.stopPropagation(); hw.dismissShift(h.id) }} />
+      <Later turn={later} hold={72}>
+        <div className="row top" style={{ gap: 14 }}>
+          <button className="tap-hard" onClick={e => {
+            e.stopPropagation()
+            if (!h.done) burst(e.clientX, e.clientY, [k.color, '#fff', '#22c55e'])
+            const nowDone = hw.toggle(h.id)
+            if (nowDone) celebrations.taskDone(hwTitle(h), hw.active().length)
+          }}
+            style={{ width: 26, height: 26, borderRadius: 9, border: `2.4px solid ${k.color}`, background: h.done ? k.color : 'transparent', cursor: 'pointer', flexShrink: 0, display: 'grid', placeItems: 'center', marginTop: 1 }}>
+            {h.done && <motion.svg initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} width="14" height="14" viewBox="0 0 24 24"><motion.path d="M4 12l5 5L20 6" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} /></motion.svg>}
+          </button>
+          <div className="grow">
+            <div className="row gap6" style={{ marginBottom: 3 }}>
+              <span className="badge" style={{ background: `${k.color}26`, color: k.color }}>{k.emoji} {k.title}</span>
+              {h.important && <Star size={13} fill="#f59e0b" color="#f59e0b" />}
+              {showSubject && <span className="tiny muted ellipsis">{h.subject}</span>}
             </div>
-          )}
+            <div className="bold" style={{ textDecoration: h.done ? 'line-through' : undefined, opacity: h.done ? 0.6 : 1 }}>{hwTitle(h)}</div>
+            {h.note && <div className="tiny muted clamp2 mt4">{h.note}</div>}
+            <div className="row wrap-row gap8 mt8">
+              <span className="pill" style={{ color: urgency(h.due, h.done) }}><Clock size={11} /> {chip(h.due, h.done)}</span>
+              {h.dueKind && <span className="tiny muted">{dayTime(h.due)}{h.dueRoom ? ` · ауд. ${h.dueRoom}` : ''}</span>}
+              {steps > 0 && <span className="pill"><ListChecks size={11} /> {done}/{steps}</span>}
+              {h.photos.length > 0 && <span className="pill"><Image size={11} /> {h.photos.length}</span>}
+              {h.dueEstimated && <span className="tiny" style={{ color: '#f59e0b' }}>по прошлым неделям</span>}
+            </div>
+            {h.shiftNote && (
+              <div className="row tiny mt8" style={{ padding: '6px 10px', borderRadius: 10, background: 'rgba(245,158,11,.12)', color: '#f59e0b' }}>
+                <AlertTriangle size={12} /> <span className="grow">{h.shiftNote}</span>
+                <X size={12} className="clickable" onClick={e => { e.stopPropagation(); hw.dismissShift(h.id) }} />
+              </div>
+            )}
+          </div>
+          {steps > 0 && <Ring value={done / steps} size={38} stroke={4} color={k.color}><span className="tiny bold">{done}</span></Ring>}
         </div>
-        {steps > 0 && <Ring value={done / steps} size={38} stroke={4} color={k.color}><span className="tiny bold">{done}</span></Ring>}
-      </div>
+      </Later>
     </motion.div>
   )
 }

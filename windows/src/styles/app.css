@@ -198,6 +198,9 @@ a { color: var(--brand); text-decoration: none; }
 .card.hover:hover { translate: 0 -2px; border-color: var(--line2); }
 .card.press { cursor: pointer; }
 .card.press:active { scale: .985; }
+/* длинные списки (ДЗ, задачи): карточки за краем окна не раскладываются и не рисуются, пока до них не долистали —
+   раздел открывается в разы быстрее на слабом ноутбуке. Размер до первого показа — примерный, потом запоминается */
+.lazy-row { content-visibility: auto; contain-intrinsic-size: auto 96px; }
 .card.tight { padding: 12px; }
 .card.flush { padding: 0; overflow: hidden; }
 /* подсветка под курсором — как Reveal в Fluent */
