@@ -40,7 +40,9 @@ if (DEMO) fakeTelegram(bot.api, true)
 else bot.api.config.use(autoRetry({ maxRetryAttempts: 3, maxDelaySeconds: 120 }))
 await bot.init()
 
-const hub = new Hub(store, bot.api, { bot: bot.botInfo.username, webappUrl: webappUrl.startsWith('https://') || DEMO ? webappUrl : '', appName: env.APP_NAME ?? '' })
+// мини-приложение — только по настоящему https-адресу с доменом («https://» без домена из пустого DOMAIN не годится)
+const httpsUrl = (u: string) => { try { const x = new URL(u); return x.protocol === 'https:' && x.hostname.includes('.') } catch { return false } }
+const hub = new Hub(store, bot.api, { bot: bot.botInfo.username, webappUrl: DEMO || httpsUrl(webappUrl) ? webappUrl : '', appName: env.APP_NAME ?? '' })
 setupBot(bot, hub)
 
 // ---------- HTTP: API, мини-приложение, вебхук ----------
