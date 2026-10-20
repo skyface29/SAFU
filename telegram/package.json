@@ -1,0 +1,39 @@
+{
+  "name": "arktika-bot",
+  "productName": "Арктика — бот домашки",
+  "version": "1.0.0",
+  "description": "Telegram-бот и мини-приложение домашки САФУ: один записал — у всей группы появилось",
+  "author": "Зарубин Кирилл (студент группы 151621)",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "node scripts/build.mjs && concurrently -k \"vite\" \"node --env-file-if-exists=.env dist/server.mjs\"",
+    "demo": "node scripts/build.mjs && vite build && cross-env DEMO=1 DEV_USER=1 node dist/server.mjs",
+    "build": "tsc --noEmit -p tsconfig.json && vite build && node scripts/build.mjs",
+    "start": "node --env-file-if-exists=.env dist/server.mjs",
+    "test": "node scripts/test.mjs"
+  },
+  "dependencies": {
+    "@grammyjs/auto-retry": "2.0.2",
+    "@hono/node-server": "1.19.17",
+    "grammy": "1.46.0",
+    "hono": "4.6.20"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "4.3.4",
+    "concurrently": "9.1.0",
+    "cross-env": "7.0.3",
+    "esbuild": "0.24.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.7.2",
+    "vite": "5.4.11"
+  }
+}

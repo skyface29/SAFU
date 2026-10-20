@@ -1,0 +1,26 @@
+# Запуск на своём сервере: docker compose up -d
+# Caddy сам получает HTTPS-сертификат для DOMAIN (мини-приложениям Telegram нужен https)
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WEBAPP_URL: https://${DOMAIN}
+    volumes:
+      - ./data:/data
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    depends_on:
+      - bot
+volumes:
+  caddy: {}
