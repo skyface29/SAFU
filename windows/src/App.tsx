@@ -1,5 +1,5 @@
 // Корень приложения: фон, каркас, страницы с анимированными переходами, слой сайтов, окна поверх
-import React, { Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import React, { Suspense, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { kv, usePref } from './lib/kv'
 import { safu, isDesktop } from './lib/bridge'
@@ -47,9 +47,6 @@ const LessonSheet = React.lazy(() => loadSchedule().then(m => ({ default: m.Less
 export default function App() {
   const dark = useDark()
   const [, force] = useState(0)
-  const page = useNav(s => s.page)
-  const params = useNav(s => s.params)
-  const dir = useNav(s => s.dir)
   const [splash, setSplash] = useState(true)
   const [onboarded] = usePref('onboarded', false)
   const [again, setAgain] = usePref('onboarding.again', false)
@@ -143,7 +140,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', h)
   }, [])
 
-  const Page = (PAGES[page] || PAGES.home)!
   const accent = currentAccent()
   const showRegistration = !splash && ((!onboarded && !scheduleStore.isConfigured()) || again)
 
@@ -154,18 +150,7 @@ export default function App() {
       <div className="shell" style={{ transformOrigin: '50% 30%' }}>
         <Titlebar />
         <Sidebar />
-        <main className="shell-main">
-          <AnimatePresence mode="popLayout" initial={false} custom={dir}>
-            <motion.div key={page + JSON.stringify(params)} className="page-scroll"
-              custom={dir}
-              initial={{ opacity: 0, y: 18 * dir }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 * dir }}
-              transition={{ type: 'spring', stiffness: 420, damping: 38, mass: 0.7 }}>
-              <div className="page"><Suspense fallback={null}><Page {...params} /></Suspense></div>
-            </motion.div>
-          </AnimatePresence>
-        </main>
+        <main className="shell-main"><Pages /></main>
       </div>
 
       <SiteLayer />
@@ -184,6 +169,53 @@ export default function App() {
       <ToastHost />
       <MenuHost />
     </DialogHost>
+  )
+}
+
+// Переход между разделами — прозрачность и сдвиг через transform: такие анимации framer-motion отдаёт видеокарте
+// (как у окон), и кадры не ждут, пока соберётся новый раздел. Раньше сдвиг шёл кадрами в JavaScript.
+// В конце transform снимается: со сдвигом внутри раздела съехали бы окна с position: fixed (просмотр фото, «Отпусти файл»)
+const pageMotion = {
+  enter: (dir: number) => ({ opacity: 0, transform: `translateY(${18 * dir}px)` }),
+  show: { opacity: 1, transform: 'translateY(0px)', transitionEnd: { transform: 'none' } },
+  leave: (dir: number) => ({ opacity: 0, transform: `translateY(${-10 * dir}px)` }),
+}
+const pageSpring = { type: 'spring' as const, stiffness: 420, damping: 38, mass: 0.7 }
+
+/** Разделы. Боковая панель отвечает на клик сразу (подсветка, иконка), а новый раздел собирается следом,
+ *  не задерживая её кадры: React строит его по частям между кадрами и показывает целиком, когда готов */
+function Pages() {
+  const page = useNav(s => s.page)
+  const params = useNav(s => s.params)
+  const dir = useNav(s => s.dir)
+  const shown = useDeferredValue(useMemo(() => ({ page, params, dir }), [page, params, dir]))
+  const Page = (PAGES[shown.page] || PAGES.home)!
+  // Пока крутят колесо, раздел накрыт прозрачной шторкой: карточки под неподвижным курсором не подсвечиваются
+  // и не приподнимаются одна за другой (их перерисовка на каждом кадре прокрутки). Колесо шторка пропускает
+  // разделу — она внутри него. Показ шторки — смена visibility у одного элемента, без пересчёта всего раздела
+  useEffect(() => {
+    let t = 0
+    let on: HTMLElement | null = null
+    const onScroll = (e: Event) => {
+      const s = e.target
+      if (!(s instanceof HTMLElement) || !s.classList.contains('page-scroll')) return
+      const shield = s.firstElementChild as HTMLElement | null
+      if (!shield?.classList.contains('scroll-shield')) return
+      if (on !== shield) { on?.classList.remove('on'); on = shield; shield.classList.add('on') }
+      clearTimeout(t)
+      t = window.setTimeout(() => { on?.classList.remove('on'); on = null }, 160)
+    }
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    return () => { document.removeEventListener('scroll', onScroll, true); clearTimeout(t) }
+  }, [])
+  return (
+    <AnimatePresence mode="popLayout" initial={false} custom={shown.dir}>
+      <motion.div key={shown.page + JSON.stringify(shown.params)} className="page-scroll" custom={shown.dir}
+        variants={pageMotion} initial="enter" animate="show" exit="leave" transition={pageSpring}>
+        <div className="scroll-shield" />
+        <div className="page"><Suspense fallback={null}><Page {...shown.params} /></Suspense></div>
+      </motion.div>
+    </AnimatePresence>
   )
 }
 

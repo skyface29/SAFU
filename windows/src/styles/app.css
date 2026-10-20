@@ -11,6 +11,14 @@
   --grad: linear-gradient(135deg, var(--brand), var(--brand2));
   --ease: cubic-bezier(.2, .9, .25, 1);
   --spring: cubic-bezier(.34, 1.56, .64, 1);
+  /* пружины интерфейса кривыми CSS — те же жёсткость и затухание, что раньше считал JavaScript (framer-motion),
+     только кадры теперь считает видеокарта, и они не ждут, пока соберётся раздел */
+  --spring-soft: linear(0, .0274, .0949, .1847, .2844, .3854, .482, .5709, .6502, .7193, .7783, .8277, .8684, .9014, .9278, .9485, .9645, .9767, .9857, .9923, .9969, 1.0001, 1.0021, 1.0033, 1.0039, 1.0041, 1.004, 1.0038, 1.0034, 1.003, 1.0026, 1.0022, 1); /* 260/28 — 0.5 с */
+  --spring-snappy: linear(0, .0285, .0987, .1926, .2969, .4025, .5032, .5956, .6774, .7481, .8077, .8569, .8966, .9281, .9525, .971, .9846, .9944, 1.001, 1.0053, 1.0078, 1.0091, 1.0094, 1.0091, 1.0084, 1.0076, 1.0066, 1.0056, 1.0046, 1.0038, 1.003, 1.0023, 1); /* 420/34 — 0.4 с */
+  --spring-quick: linear(0, .0385, .1333, .2586, .3949, .5288, .6514, .7577, .8455, .9148, .9668, 1.0036, 1.0277, 1.0417, 1.0479, 1.0486, 1.0455, 1.0402, 1.0338, 1.0271, 1.0208, 1.015, 1.0102, 1.0062, 1.0031, 1.0009, .9993, .9983, .9978, .9976, .9977, .9979, 1); /* 300/24 — 0.55 с */
+  --spring-pop: linear(0, .0413, .1518, .3101, .4949, .6866, .8685, 1.0281, 1.1564, 1.249, 1.3049, 1.3263, 1.3177, 1.2852, 1.2359, 1.1766, 1.1139, 1.0535, .9998, .9558, .9233, .9029, .8939, .895, .9043, .9196, .9386, .959, .979, .997, 1.0121, 1.0234, 1.0308, 1.0344, 1.0346, 1.032, 1.0273, 1.0213, 1.0146, 1.008, 1.002, .9969, .9929, .9903, .9889, .9886, .9893, .9908, .9927, .9948, .997, .999, 1.0007, 1.0021, 1.003, 1.0036, 1.0037, 1.0035, 1.0031, 1.0025, 1); /* 500/15 — 0.8 с */
+  --spring-hover: linear(0, .0275, .0996, .2017, .3213, .4479, .5731, .6906, .7962, .8871, .9621, 1.0211, 1.0648, 1.0945, 1.1122, 1.1196, 1.119, 1.1123, 1.1013, 1.0876, 1.0726, 1.0574, 1.0428, 1.0294, 1.0178, 1.008, 1.0001, .9941, .9899, .9872, .9858, .9856, .9861, .9872, .9888, .9905, .9924, .9942, .9958, .9973, 1); /* 500/25 — 0.44 с: наведение и нажатие */
+  --spring-tilt: linear(0, .0245, .0875, .1751, .2764, .3827, .4878, .587, .6775, .7575, .8261, .8835, .9302, .9669, .9948, 1.0151, 1.0289, 1.0375, 1.042, 1.0432, 1.0421, 1.0393, 1.0355, 1.0311, 1.0265, 1.022, 1.0177, 1.0138, 1.0104, 1.0074, 1.005, 1.003, 1); /* 200/20 — 0.53 с */
   --titlebar: 40px;
   --sidebar: 236px;
 }
@@ -100,6 +108,13 @@ a { color: var(--brand); text-decoration: none; }
   padding: 10px 28px 60px 22px; scroll-behavior: smooth;
 }
 .page { max-width: 1240px; margin: 0 auto; }
+/* шторка на время прокрутки (показывает App): места не занимает, стоит поверх видимой части раздела */
+.scroll-shield {
+  position: sticky; top: 0; z-index: 50; visibility: hidden;
+  /* высота видимой части раздела; −10px сверху — шторка начинается у края прокрутки и не удлиняет короткие разделы */
+  height: calc(100vh - var(--titlebar)); margin: -10px 0 calc(10px - 100vh + var(--titlebar));
+}
+.scroll-shield.on { visibility: visible; }
 
 /* ---------- боковая панель ---------- */
 
@@ -112,14 +127,25 @@ a { color: var(--brand); text-decoration: none; }
 .side-item {
   position: relative; display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 10px;
   cursor: pointer; color: var(--text2); font-weight: 600; font-size: .92rem; white-space: nowrap; overflow: hidden;
-  transition: color .2s, background .2s;
+  transition: color .2s, background .2s, transform .25s var(--spring-snappy);
 }
 .side-item:hover { background: var(--fill); color: var(--text); }
+.side-item:active { transform: scale(.96); transition-duration: .2s, .2s, .12s; }
 .side-item.active { color: var(--text); }
 .side-item .ico { position: relative; z-index: 1; width: 22px; display: grid; place-items: center; flex-shrink: 0; }
+.side-item .ico > span { display: grid; }
+/* иконка выбранного пункта подпрыгивает и докручивается */
+@keyframes side-pop { from { transform: scale(.6) rotate(-15deg); } }
+.side-item.active .ico > span { animation: side-pop .8s var(--spring-pop); }
 .side-item .lbl { position: relative; z-index: 1; transition: opacity .25s; }
 .sidebar.collapsed .side-item .lbl { opacity: 0; }
-.side-pill { position: absolute; inset: 0; border-radius: 10px; background: var(--fill2); box-shadow: inset 0 0 0 1px var(--line); }
+/* подсветка выбранного пункта одна на всю панель и переезжает сдвигом на видеокарте */
+.side-pill {
+  position: absolute; left: 12px; right: 10px; top: 0; height: 40px; border-radius: 10px; pointer-events: none;
+  background: var(--fill2); box-shadow: inset 0 0 0 1px var(--line);
+  transition: transform .4s var(--spring-snappy), opacity .2s;
+}
+.side-pill.off { opacity: 0; }
 .side-pill::before {
   content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--grad);
   box-shadow: 0 0 12px rgba(var(--brand-rgb), .8);
@@ -154,7 +180,7 @@ a { color: var(--brand); text-decoration: none; }
   position: relative; border-radius: calc(22px * var(--r)); padding: 18px;
   background: var(--glass); border: 1px solid var(--line);
   box-shadow: var(--shadow);
-  transition: transform .35s var(--spring), box-shadow .3s, border-color .3s, background .3s;
+  transition: transform .35s var(--spring), translate .35s var(--spring), scale .35s var(--spring), box-shadow .3s, border-color .3s, background .3s;
   isolation: isolate; contain: layout paint;
 }
 /* размытие под карточками — по желанию (Оформление → «Настоящее стекло»): каждое размытие пересчитывается вместе с фоном */
@@ -162,9 +188,16 @@ a { color: var(--brand); text-decoration: none; }
 :root[data-blur="true"][data-scheme="dark"] .card { background: rgba(22, 27, 40, .58); }
 :root[data-blur="true"][data-scheme="light"] .card { background: rgba(255, 255, 255, .62); }
 :root[data-blur="true"] .card { backdrop-filter: blur(22px) saturate(1.4); }
-.card.hover:hover { transform: translateY(-2px); border-color: var(--line2); }
+/* появление — анимацией CSS на видеокарте (задержка — в style), раньше у каждой карточки была своя пружина в JavaScript */
+@keyframes card-in { from { opacity: 0; transform: translateY(18px) scale(.98); } }
+.card.in { animation: card-in .5s var(--spring-soft) backwards; }
+/* наклон за курсором: поворот задаётся сразу, а догоняет его переход на видеокарте; ушёл курсор — карточка пружинит назад */
+.card.tilts { transition: transform .53s var(--spring-tilt), translate .35s var(--spring), scale .35s var(--spring), box-shadow .3s, border-color .3s, background .3s; }
+.card.tilts.tilting { transition: transform .22s var(--ease), translate .35s var(--spring), scale .35s var(--spring), box-shadow .3s, border-color .3s, background .3s; }
+/* подъём и нажатие — отдельными свойствами translate и scale: они складываются с наклоном и не перебиваются им */
+.card.hover:hover { translate: 0 -2px; border-color: var(--line2); }
 .card.press { cursor: pointer; }
-.card.press:active { transform: scale(.985); }
+.card.press:active { scale: .985; }
 .card.tight { padding: 12px; }
 .card.flush { padding: 0; overflow: hidden; }
 /* подсветка под курсором — как Reveal в Fluent */
@@ -295,7 +328,11 @@ h1, h2, h3, h4 { margin: 0; letter-spacing: -.02em; }
 .seg { position: relative; display: inline-flex; padding: 3px; border-radius: 12px; background: var(--fill); border: 1px solid var(--line); gap: 2px; }
 .seg button { position: relative; z-index: 1; height: 30px; padding: 0 14px; border: none; background: none; border-radius: 9px; cursor: pointer; font-weight: 650; font-size: .85rem; color: var(--text2); transition: color .2s; white-space: nowrap; }
 .seg button.on { color: var(--text); }
-.seg .seg-pill { position: absolute; z-index: 0; inset: 0; border-radius: 9px; background: var(--bg2); box-shadow: 0 2px 8px rgba(0,0,0,.18), 0 0 0 1px var(--line); }
+.seg .seg-pill {
+  position: absolute; z-index: 0; top: 0; left: 0; width: 0; height: 30px; border-radius: 9px; pointer-events: none;
+  background: var(--bg2); box-shadow: 0 2px 8px rgba(0,0,0,.18), 0 0 0 1px var(--line);
+  transition: transform .4s var(--spring-snappy), width .4s var(--spring-snappy), opacity .2s;
+}
 :root[data-scheme="dark"] .seg .seg-pill { background: rgba(255,255,255,.12); }
 
 /* строка списка настроек */
@@ -367,6 +404,45 @@ h1, h2, h3, h4 { margin: 0; letter-spacing: -.02em; }
 @keyframes gradient-move { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 @keyframes wobble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
 @keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(var(--brand-rgb), .0); } 50% { box-shadow: 0 0 0 8px rgba(var(--brand-rgb), .18); } }
+
+/* появления и отклики на мышь — анимациями CSS на видеокарте вместо кадров в JavaScript (framer-motion).
+   Задержка, если нужна, — в style (animation-delay) */
+@keyframes rise-in { from { opacity: 0; transform: translateY(14px); } }
+@keyframes fall-in { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes pop-in { from { opacity: 0; transform: scale(.95); } }
+@keyframes zoom-in { from { opacity: 0; transform: scale(.9); } }
+@keyframes slide-in { from { opacity: 0; transform: translateX(-8px); } }
+@keyframes tile-in { from { opacity: 0; transform: translateY(10px) scale(.9); } }
+@keyframes note-in { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+@keyframes grow-x { from { transform: scaleX(0); } }
+@keyframes bar-grow { from { transform: scaleY(0); } }
+@keyframes tile-wiggle { 33% { transform: rotate(-8deg); } 66% { transform: rotate(8deg); } }
+@keyframes wave { 25% { transform: rotate(18deg); } 50% { transform: rotate(-8deg); } 75% { transform: rotate(18deg); } }
+.rise-in { animation: rise-in .55s var(--spring-quick) backwards; }
+.fall-in { animation: fall-in .5s var(--spring-soft) backwards; }
+.pop-in { animation: pop-in .5s var(--spring-soft) backwards; }
+.zoom-in { animation: zoom-in .4s var(--spring-snappy) backwards; }
+.slide-in { animation: slide-in .44s var(--spring-hover) backwards; }
+.tile-in { animation: tile-in .55s var(--spring-quick) backwards; }
+.note-in { animation: note-in .44s var(--spring-hover) backwards; }
+.wiggle:hover { animation: tile-wiggle .4s ease-in-out; }
+.wave { display: inline-block; transform-origin: 70% 80%; animation: wave 1.6s ease-in-out .6s; }
+/* наведение и нажатие: hov-up — приподнять, hov-pop — приподнять и чуть увеличить, hov-right — сдвинуть вправо,
+   hov-turn — повернуть и увеличить, tap / tap-hard — сжать при нажатии. Свойства translate, scale и rotate
+   складываются с transform, поэтому не спорят ни с появлением, ни с анимацией раскладки framer-motion */
+.hov-up, .hov-pop, .hov-right, .hov-turn, .hov-grow, .tap, .tap-hard { transition: translate .44s var(--spring-hover), scale .44s var(--spring-hover), rotate .44s var(--spring-hover), background-color .2s, border-color .3s, box-shadow .3s; }
+.hov-up:hover, .card.hov-up:hover { translate: 0 -3px; }
+.hov-pop:hover { translate: 0 -3px; scale: 1.02; }
+.hov-pop:active { scale: .97; }
+.hov-right:hover { translate: 3px 0; }
+.hov-turn:hover { rotate: 12deg; scale: 1.1; }
+.hov-turn.back:hover { rotate: -8deg; }
+.hov-grow:hover { scale: 1.05; }
+.tap:active, .card.tap:active { scale: .96; }
+.tap-hard:active { scale: .78; }
+/* плитка в карточке (инструменты на главной) */
+.mini-tile { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 16px; background: var(--fill); border: 1px solid var(--line); cursor: pointer; }
+.mini-tile:hover { background: var(--fill2); }
 
 :root[data-motion="reduce"] *, :root[data-motion="reduce"] *::before, :root[data-motion="reduce"] *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
 

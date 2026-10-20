@@ -1,7 +1,7 @@
 // Набор элементов интерфейса: карточки, кнопки, листы, меню, уведомления внутри приложения.
-import React, { useEffect, useId, useRef, useState, createContext, useContext, useCallback } from 'react'
+import React, { useEffect, useId, useLayoutEffect, useRef, useState, createContext, useContext, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence, useSpring, useMotionValue, useTransform, animate } from 'framer-motion'
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion'
 import { X, Check, Info, AlertTriangle } from 'lucide-react'
 import { kindStyle } from '../lib/schedule'
 import { KindIcon } from './icons'
@@ -24,49 +24,60 @@ type CardProps = React.HTMLAttributes<HTMLDivElement> & {
 }
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card(
-  { hover, press, tight, flush, delay = 0, tilt, className = '', children, onMouseMove, onMouseLeave, style, ...rest }, ref
+  { hover, press, tight, flush, delay = 0, tilt, as: Tag = 'div', className = '', children, onMouseMove, onMouseLeave, style, ...rest }, ref
 ) {
-  const local = useRef<HTMLDivElement>(null)
-  const rx = useSpring(0, { stiffness: 200, damping: 20 })
-  const ry = useSpring(0, { stiffness: 200, damping: 20 })
+  // Всё движение карточки — на видеокарте (CSS): появление, наклон и возврат. Раньше у каждой карточки была
+  // своя пружина в JavaScript, и при входе в раздел их запускались десятки, пока тот же поток собирал раздел
+  const local = useRef<HTMLDivElement | null>(null)
+  const spot = useRef<HTMLDivElement>(null)
+  const edge = useRef<HTMLDivElement>(null)
+  const frame = useRef(0)
+  const at = useRef({ x: 0, y: 0 })
+  useEffect(() => () => cancelAnimationFrame(frame.current), [])
   const setRef = (el: HTMLDivElement | null) => {
-    (local as React.MutableRefObject<HTMLDivElement | null>).current = el
+    local.current = el
     if (typeof ref === 'function') ref(el); else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el
   }
-  // перспектива — только у карточек, которые наклоняются: с ней карточка навсегда становится отдельным
+  // перспектива — только у карточек, которые наклоняются: с ней карточка становится отдельным
   // 3D-слоем видеокарты (лишняя память, а текст в таком слое рисуется без сглаживания ClearType)
   const tilts = !!tilt || ((hover || press) && fxNow() === 'high')
   return (
-    <motion.div
+    <Tag
       ref={setRef}
-      className={`card ${hover || press ? 'hover' : ''} ${press ? 'press' : ''} ${tight ? 'tight' : ''} ${flush ? 'flush' : ''} ${className}`}
-      initial={{ opacity: 0, y: 18, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ ...softSpring, delay }}
-      style={{ ...style, rotateX: tilts ? rx : undefined, rotateY: tilts ? ry : undefined, transformPerspective: tilts ? 900 : undefined }}
-      onMouseMove={e => {
-        const el = local.current
-        if (el && !(el as any).__raf) {
-          (el as any).__raf = requestAnimationFrame(() => { (el as any).__raf = 0 })
+      className={`card in ${hover || press ? 'hover' : ''} ${press ? 'press' : ''} ${tight ? 'tight' : ''} ${flush ? 'flush' : ''} ${tilts ? 'tilts' : ''} ${className}`}
+      style={delay ? { ...style, animationDelay: `${delay}s` } : style}
+      onMouseMove={(e: React.MouseEvent<HTMLDivElement>) => {
+        at.current = { x: e.clientX, y: e.clientY }
+        if (!frame.current) frame.current = requestAnimationFrame(() => {
+          frame.current = 0
+          const el = local.current
+          if (!el) return
           const r = el.getBoundingClientRect()
-          el.style.setProperty('--mx', `${e.clientX - r.left}px`)
-          el.style.setProperty('--my', `${e.clientY - r.top}px`)
+          const x = at.current.x - r.left, y = at.current.y - r.top
+          // координаты — только двум слоям подсветки: заданные у карточки, они пересчитывали стиль всего, что внутри
+          for (const s of [spot.current, edge.current]) { s?.style.setProperty('--mx', `${x}px`); s?.style.setProperty('--my', `${y}px`) }
           // наклон за курсором: у карточек с наклоном — всегда, у нажимаемых — на мощном железе и чуть-чуть
-          const amp = tilt ? 6 : (hover || press) && fxNow() === 'high' && r.width < 900 ? 2.5 : 0
+          const amp = tilt ? 6 : tilts && r.width < 900 ? 2.5 : 0
           if (amp) {
-            rx.set(((e.clientY - r.top) / r.height - 0.5) * -amp)
-            ry.set(((e.clientX - r.left) / r.width - 0.5) * amp)
+            el.classList.add('tilting')
+            el.style.transform = `perspective(900px) rotateX(${((y / r.height - 0.5) * -amp).toFixed(2)}deg) rotateY(${((x / r.width - 0.5) * amp).toFixed(2)}deg)`
           }
-        }
+        })
         onMouseMove?.(e)
       }}
-      onMouseLeave={e => { rx.set(0); ry.set(0); onMouseLeave?.(e) }}
+      onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
+        cancelAnimationFrame(frame.current)
+        frame.current = 0
+        const el = local.current
+        if (el?.classList.contains('tilting')) { el.classList.remove('tilting'); el.style.transform = '' }
+        onMouseLeave?.(e)
+      }}
       {...(rest as any)}
     >
-      <div className="spot" />
-      <div className="spot-border" />
+      <div className="spot" ref={spot} />
+      <div className="spot-border" ref={edge} />
       {children}
-    </motion.div>
+    </Tag>
   )
 })
 
@@ -80,12 +91,35 @@ export function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: 
 export function Segmented<T extends string | number>({ value, options, onChange, size }: {
   value: T; options: { value: T; label: React.ReactNode }[]; onChange: (v: T) => void; size?: 'sm'
 }) {
-  const id = useId()
+  // Подложка выбранного варианта одна на весь переключатель и переезжает переходом CSS (как подсветка в боковой
+  // панели). Раньше это была общая анимация раскладки framer-motion: она замеряла подложку при появлении раздела,
+  // пока раздел ещё въезжал, и потом подложка без причины подпрыгивала
+  const box = useRef<HTMLDivElement>(null)
+  const pill = useRef<HTMLDivElement>(null)
+  const place = useCallback((glide: boolean) => {
+    const el = pill.current, on = box.current?.querySelector<HTMLElement>(':scope > button.on')
+    if (!el) return
+    if (!on) { el.style.opacity = '0'; return }
+    if (!glide) el.style.transition = 'none'
+    el.style.opacity = ''
+    el.style.width = `${on.offsetWidth}px`
+    el.style.height = `${on.offsetHeight}px`
+    el.style.transform = `translate(${on.offsetLeft}px, ${on.offsetTop}px)`
+    if (!glide) { el.getBoundingClientRect(); el.style.transition = '' }
+  }, [])
+  const placed = useRef(false)
+  useLayoutEffect(() => { place(placed.current); placed.current = true }, [value, place])
+  // подписи меняют ширину (счётчики, шрифт) — подложка подстраивается без проезда
+  useEffect(() => {
+    const ro = new ResizeObserver(() => place(false))
+    box.current?.querySelectorAll(':scope > button').forEach(b => ro.observe(b))
+    return () => ro.disconnect()
+  }, [options.length, place])
   return (
-    <div className="seg" style={size === 'sm' ? { transform: 'scale(.92)', transformOrigin: 'left center' } : undefined}>
+    <div ref={box} className="seg" style={size === 'sm' ? { transform: 'scale(.92)', transformOrigin: 'left center' } : undefined}>
+      <div ref={pill} className="seg-pill" />
       {options.map(o => (
         <button key={String(o.value)} className={o.value === value ? 'on' : ''} onClick={() => onChange(o.value)}>
-          {o.value === value && <motion.div layoutId={`seg-${id}`} className="seg-pill" transition={spring} />}
           <span style={{ position: 'relative' }}>{o.label}</span>
         </button>
       ))}
@@ -111,13 +145,13 @@ export function Chips<T extends string | number>({ value, options, onChange }: {
 
 export function PageHeader({ title, subtitle, right, emoji }: { title: React.ReactNode; subtitle?: React.ReactNode; right?: React.ReactNode; emoji?: string }) {
   return (
-    <motion.div className="row top" style={{ margin: '14px 4px 18px' }} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={softSpring}>
+    <div className="row top fall-in" style={{ margin: '14px 4px 18px' }}>
       <div className="grow">
         <h1 className="h-page">{emoji && <span style={{ marginRight: 10 }}>{emoji}</span>}{title}</h1>
         {subtitle && <div className="muted" style={{ marginTop: 6, fontSize: '.95rem' }}>{subtitle}</div>}
       </div>
       {right && <div className="row gap8" style={{ paddingTop: 6 }}>{right}</div>}
-    </motion.div>
+    </div>
   )
 }
 
@@ -132,12 +166,12 @@ export function Section({ title, right, children, icon }: { title: React.ReactNo
 
 export function Empty({ emoji, title, text, action }: { emoji: string; title: string; text?: string; action?: React.ReactNode }) {
   return (
-    <motion.div className="empty" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={softSpring}>
+    <div className="empty pop-in">
       <span className="em">{emoji}</span>
       <div className="h-card" style={{ color: 'var(--text)' }}>{title}</div>
       {text && <div className="sub mt8" style={{ maxWidth: 420, margin: '8px auto 0' }}>{text}</div>}
       {action && <div className="mt16">{action}</div>}
-    </motion.div>
+    </div>
   )
 }
 

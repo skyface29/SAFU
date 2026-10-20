@@ -153,7 +153,7 @@ export function HWRow({ h, showSubject, data }: { h: Homework; showSubject?: boo
         { label: 'Удалить', icon: <Trash2 size={15} />, danger: true, run: () => { hw.remove(h.id); toast('ДЗ удалено', 'info') } }
       ])}>
       <div className="row top" style={{ gap: 14 }}>
-        <motion.button whileTap={{ scale: 0.75 }} onClick={e => {
+        <button className="tap-hard" onClick={e => {
           e.stopPropagation()
           if (!h.done) burst(e.clientX, e.clientY, [k.color, '#fff', '#22c55e'])
           const nowDone = hw.toggle(h.id)
@@ -161,7 +161,7 @@ export function HWRow({ h, showSubject, data }: { h: Homework; showSubject?: boo
         }}
           style={{ width: 26, height: 26, borderRadius: 9, border: `2.4px solid ${k.color}`, background: h.done ? k.color : 'transparent', cursor: 'pointer', flexShrink: 0, display: 'grid', placeItems: 'center', marginTop: 1 }}>
           {h.done && <motion.svg initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} width="14" height="14" viewBox="0 0 24 24"><motion.path d="M4 12l5 5L20 6" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} /></motion.svg>}
-        </motion.button>
+        </button>
         <div className="grow">
           <div className="row gap6" style={{ marginBottom: 3 }}>
             <span className="badge" style={{ background: `${k.color}26`, color: k.color }}>{k.emoji} {k.title}</span>

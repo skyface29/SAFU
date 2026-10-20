@@ -55,10 +55,10 @@ export default function Profile() {
     <>
       <Card tilt className="row" style={{ gap: 22, padding: 24, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(600px 240px at 0% 0%, rgba(var(--brand-rgb), .25), transparent)' }} />
-        <motion.div whileHover={{ scale: 1.05 }} className="clickable" onClick={pickAvatar} style={{ position: 'relative' }} title="Сменить фото">
+        <div className="clickable hov-grow" onClick={pickAvatar} style={{ position: 'relative' }} title="Сменить фото">
           <Avatar size={96} />
           <div className="icon-tile" style={{ position: 'absolute', right: -4, bottom: -4, width: 30, height: 30, borderRadius: 15, background: 'var(--bg2)', color: 'var(--text)', border: '1px solid var(--line2)' }}><Camera size={14} /></div>
-        </motion.div>
+        </div>
         <div className="grow" style={{ position: 'relative' }}>
           <div className="row"><div style={{ fontSize: '2rem', fontWeight: 900 }}>{p.first || 'Студент'} {p.last}</div><button className="btn icon sm ghost" onClick={() => setEditName(true)}><Pencil size={15} /></button></div>
           <div className="muted">{p.teacher ? `Преподаватель · ${kv.get('teacher.query', '')}` : `${p.group ? `Группа ${p.group}` : 'Группа не указана'} · ${ROLE_TITLES[p.role]}`}</div>
@@ -76,7 +76,7 @@ export default function Profile() {
       <div className="grid mt16" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
         {sections.map((s, i) => (
           <Card key={s.id} press delay={0.05 + i * 0.03} onClick={() => go(s.id)} className="row">
-            <motion.div className="icon-tile" whileHover={{ rotate: -8, scale: 1.1 }} style={{ width: 46, height: 46, borderRadius: 14, background: s.color }}><s.Icon size={21} /></motion.div>
+            <div className="icon-tile hov-turn back" style={{ width: 46, height: 46, borderRadius: 14, background: s.color }}><s.Icon size={21} /></div>
             <div className="grow"><div className="bold">{s.title}</div><div className="tiny muted">{s.sub}</div></div>
           </Card>
         ))}
@@ -527,7 +527,11 @@ const CHANGELOG: { version: string; items: string[] }[] = [
     'Живой фон выглядит так же, но под открытым сайтом и в окне без фокуса не тратит видеокарту впустую; со стеклом на встроенной графике прокрутка стала плавной',
     'Свёрнутые сайты быстрее отпускают память (а когда Арктика в трее — через минуту), снимки закрытых сайтов больше не копятся; в стопке вкладок снимки чётче',
     'Меньше работы в трее: меню, мини-окно пары и статус iPhone обновляются, только когда что-то поменялось; салюты ждут, пока откроешь окно',
-    'Синхронизация с iPhone больше не подтормаживает окно: телефон заходит раз в 10 секунд, и если ни там, ни здесь ничего не меняли, компьютер отвечает сразу, без пересчёта всех ДЗ, задач и заметок и без перезаписи файла данных; когда изменения есть, они сводятся вдвое быстрее'
+    'Синхронизация с iPhone больше не подтормаживает окно: телефон заходит раз в 10 секунд, и если ни там, ни здесь ничего не меняли, компьютер отвечает сразу, без пересчёта всех ДЗ, задач и заметок и без перезаписи файла данных; когда изменения есть, они сводятся вдвое быстрее',
+    'Весь интерфейс двигается так же плавно, как окна: переход между разделами, появление карточек, подсветка в боковой панели и переключателях, наклон, наведение и нажатия теперь ведёт видеокарта, а не кадры в JavaScript. Анимации те же, с теми же пружинами, но больше не дёргаются, пока приложение собирает новый раздел',
+    'Боковая панель отвечает на клик в тот же миг: подсветка уезжает к пункту сразу, а раздел собирается следом и въезжает целиком',
+    'Прокрутка легче: карточки под неподвижным курсором не подсвечиваются и не приподнимаются одна за другой, пока крутишь колесо',
+    'Если видеокарта когда-то упала и приложение перешло в безопасный режим, новая версия снова пробует полное ускорение, а не остаётся в нём навсегда'
   ] },
   { version: '19.7 для Windows', items: [
     'Всё, что скачиваешь с сайтов, теперь попадает в «Файлы» приложения: с курса Sakai — сразу в папку предмета, остальное — в «Загрузки»',

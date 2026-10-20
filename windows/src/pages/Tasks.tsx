@@ -40,11 +40,11 @@ export default function Tasks() {
             <div className="grid gauto">
               <AnimatePresence>
                 {g.items.map(t => (
-                  <motion.div key={t.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                    className="card hover press" style={{ padding: 14 }} onClick={() => setEdit(t)}
+                  <motion.div key={t.id} layout exit={{ opacity: 0, scale: 0.9 }}
+                    className="card hover press pop-in" style={{ padding: 14 }} onClick={() => setEdit(t)}
                     onContextMenu={e => openMenu(e, [{ label: 'Удалить', danger: true, icon: <Trash2 size={15} />, run: () => tasks.remove(t.id) }])}>
                     <div className="row top">
-                      <motion.button whileTap={{ scale: 0.75 }} onClick={e => { e.stopPropagation(); if (!t.done) burst(e.clientX, e.clientY); if (tasks.toggle(t.id)) celebrations.taskDone(t.title, tasksStore.get().filter(x => !x.done).length) }}
+                      <button className="tap-hard" onClick={e => { e.stopPropagation(); if (!t.done) burst(e.clientX, e.clientY); if (tasks.toggle(t.id)) celebrations.taskDone(t.title, tasksStore.get().filter(x => !x.done).length) }}
                         style={{ width: 24, height: 24, borderRadius: 12, border: '2.4px solid var(--brand)', background: t.done ? 'var(--brand)' : 'transparent', cursor: 'pointer', flexShrink: 0 }} />
                       <div className="grow">
                         <div className="bold" style={{ textDecoration: t.done ? 'line-through' : undefined, opacity: t.done ? 0.6 : 1 }}>{t.title || 'Без названия'}</div>

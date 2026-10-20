@@ -208,7 +208,7 @@ export default function Files({ path: startPath }: { path?: string }) {
           {crumbs.map((c, i) => (
             <React.Fragment key={i}>
               <ChevronRight size={14} className="faint" />
-              <motion.button initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} className="btn sm ghost" onClick={() => setPath(crumbs.slice(0, i + 1).join('/'))}>{c}</motion.button>
+              <button className="btn sm ghost slide-in" onClick={() => setPath(crumbs.slice(0, i + 1).join('/'))}>{c}</button>
             </React.Fragment>
           ))}
         </div>
@@ -229,9 +229,8 @@ export default function Files({ path: startPath }: { path?: string }) {
               {/* большие папки: без перестановки плиток анимацией (она пересчитывает каждую плитку) и
                   без отрисовки плиток за краем экрана — прокрутка остаётся плавной и на сотнях файлов */}
               {sorted.map((f, i) => (
-                <motion.div key={f.rel} layout={sorted.length <= 60} initial={i < 24 ? { opacity: 0, scale: 0.9, y: 10 } : false} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: Math.min(i, 20) * 0.015, type: 'spring', stiffness: 300, damping: 26 }}
-                  whileHover={{ y: -4 }} className="card hover" style={{ padding: 8, cursor: 'pointer', ...(sorted.length > 60 ? LAZY_TILE : null) }}
+                <motion.div key={f.rel} layout={sorted.length <= 60} exit={{ opacity: 0, scale: 0.9 }}
+                  className={`card hover hov-up ${i < 24 ? 'tile-in' : ''}`} style={{ padding: 8, cursor: 'pointer', ...(sorted.length > 60 ? LAZY_TILE : null), animationDelay: i < 24 ? `${Math.min(i, 20) * 0.015}s` : undefined }}
                   draggable={!f.dir} onDragStart={e => { e.preventDefault(); safu.fs.dragOut(f.rel) }}
                   onDoubleClick={() => f.dir ? setPath(f.rel) : openFile(f)} onClick={() => f.dir ? setPath(f.rel) : openFile(f)} onContextMenu={e => menu(e, f)}>
                   <Thumb f={f} size={120} />

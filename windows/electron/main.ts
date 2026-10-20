@@ -54,17 +54,20 @@ if (process.defaultApp && process.argv.length >= 2) {
 // ---------- видеокарта ----------
 // Рисуем на видеокарте, даже если драйвер в «чёрном списке» Chromium: без этого на многих ноутбуках всё
 // окно рисуется процессором — прокрутка и анимации идут рывками, как в 30 кадров (так было в 19.0).
-// Если видеокарта при этом падает дважды за запуск, следующий запуск идёт в безопасном режиме (gpu.json).
+// Если видеокарта при этом падает дважды за запуск, следующий запуск идёт в безопасном режиме (gpu.json) —
+// до следующей версии: раньше один неудачный день драйвера навсегда оставлял окно без полного ускорения.
+// Безопасный режим, выбранный на экране восстановления, остаётся, пока его не выключат.
 // Кеш шейдеров снова хранится на диске: без него каждый запуск видеокарта собирала шейдеры заново, и первые
 // секунды после открытия шли рывками. Сломанный кеш (с ним окно могло открываться чёрным) не копится:
 // после падения видеокарты или неудачного запуска он удаляется до старта следующего запуска
 const gpuFile = () => path.join(app.getPath('userData'), 'gpu.json')
-type GpuState = { safe?: boolean; clearShaders?: boolean }
+type GpuState = { safe?: boolean; clearShaders?: boolean; safeIn?: string }
 const gpuState: GpuState = (() => { try { return JSON.parse(fs.readFileSync(gpuFile(), 'utf8')) } catch { return {} } })()
 function saveGpuState(patch: GpuState) {
   Object.assign(gpuState, patch)
   try { fs.mkdirSync(app.getPath('userData'), { recursive: true }); fs.writeFileSync(gpuFile(), JSON.stringify(gpuState)) } catch { /* не страшно */ }
 }
+if (gpuState.safe && gpuState.safeIn && gpuState.safeIn !== app.getVersion()) saveGpuState({ safe: false, safeIn: undefined })
 const SHADER_CACHES = ['GPUCache', 'ShaderCache', 'GrShaderCache', 'GraphiteDawnCache', 'DawnCache', 'DawnGraphiteCache', 'DawnWebGPUCache', path.join('Partitions', 'sites', 'GPUCache')]
 if (gpuState.clearShaders) {
   for (const d of SHADER_CACHES) { try { fs.rmSync(path.join(app.getPath('userData'), d), { recursive: true, force: true }) } catch { /* занят — удалим в следующий раз */ } }
@@ -80,7 +83,7 @@ app.on('child-process-gone', (_e, d) => {
   if (d.type !== 'GPU' || d.reason === 'clean-exit') return
   gpuCrashes += 1
   logError(`GPU process gone: ${d.reason} (${d.exitCode})`)
-  saveGpuState(gpuCrashes >= 2 && !gpuState.safe ? { safe: true, clearShaders: true } : { clearShaders: true })
+  saveGpuState(gpuCrashes >= 2 && !gpuState.safe ? { safe: true, clearShaders: true, safeIn: app.getVersion() } : { clearShaders: true })
 })
 
 // ---------- журнал ошибок: чтобы по нему понять, почему окно не открылось ----------

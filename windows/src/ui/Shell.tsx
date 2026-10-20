@@ -1,5 +1,5 @@
 // Каркас окна: заголовок с поиском, боковая панель, заставка, палитра команд
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, CalendarDays, BookMarked, ListChecks, Folder, Library, UserCheck, Code2, UserCircle2, Search, Snowflake,
@@ -56,8 +56,30 @@ export function Sidebar() {
   const tabs = parseTabs(tabsRaw).filter(t => t !== 'profile')
   const hwBadge = badgeOn ? hw.badgeCount() : 0
 
+  // Подсветка выбранного пункта — одна на всю панель: переезжает сдвигом (CSS) на видеокарте и стартует в том же
+  // кадре, что и клик. Раньше её вела общая анимация раскладки framer-motion: замер панели и кадры в JavaScript,
+  // которые ждали, пока соберётся новый раздел
+  const nav = useRef<HTMLElement>(null)
+  const pill = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = pill.current
+    const item = nav.current?.querySelector<HTMLElement>('.side-item.active')
+    if (!el) return
+    if (!item) { el.classList.add('off'); return }
+    const y = `translateY(${item.offsetTop}px)`
+    if (el.classList.contains('off')) {
+      // появляется (запуск, возврат из профиля) — сразу на месте, без проезда через всю панель
+      el.style.transition = 'opacity .2s'
+      el.style.transform = y
+      el.getBoundingClientRect()
+      el.style.transition = ''
+      el.classList.remove('off')
+    } else el.style.transform = y
+  }, [page, tabsRaw])
+
   return (
-    <nav className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+    <nav ref={nav} className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+      <div ref={pill} className="side-pill off" />
       {tabs.map(t => (
         <SideItem key={t} id={t as PageId} title={TAB_META[t].title} Icon={TAB_ICONS[t]} active={page === t} collapsed={collapsed}
           badge={t === 'homework' ? hwBadge : t === 'schedule' ? unseen : 0} />
@@ -118,19 +140,17 @@ function PhoneLink({ collapsed }: { collapsed: boolean }) {
 const SideItem = React.memo(function SideItem({ id, title, Icon, badge, active, collapsed }: {
   id: PageId; title: string; Icon: React.ComponentType<any>; badge?: number; active: boolean; collapsed: boolean
 }) {
+  // нажатие и прыжок иконки — анимациями CSS (app.css: .side-item:active, side-pop)
   return (
-    <motion.div className={`side-item ${active ? 'active' : ''}`} onClick={() => go(id)} whileTap={{ scale: 0.96 }} title={collapsed ? title : undefined}>
-      {active && <motion.div layoutId="side-pill" className="side-pill" transition={spring} />}
+    <div className={`side-item ${active ? 'active' : ''}`} onClick={() => go(id)} title={collapsed ? title : undefined}>
       <span className="ico">
-        <motion.span key={active ? 'a' : 'b'} initial={active ? { scale: 0.6, rotate: -15 } : false} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 15 }} style={{ display: 'grid' }}>
-          <Icon size={19} strokeWidth={active ? 2.5 : 2} color={active ? 'var(--brand)' : undefined} />
-        </motion.span>
+        <span><Icon size={19} strokeWidth={active ? 2.5 : 2} color={active ? 'var(--brand)' : undefined} /></span>
       </span>
       <span className="lbl">{title}</span>
       <AnimatePresence>
         {!!badge && <motion.span className="side-badge" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 18 }}>{badge}</motion.span>}
       </AnimatePresence>
-    </motion.div>
+    </div>
   )
 })
 
