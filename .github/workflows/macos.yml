@@ -1,0 +1,113 @@
+name: Build macOS
+# Mac-версия «Арктики»: тот же Swift-код, что у iPhone (Mac Catalyst), собирается в Арктика.dmg.
+# Сертификат не нужен: приложение подписывается локальной подписью. Первый запуск на Mac —
+# правый клик по «Арктика» → «Открыть» (или Системные настройки → Конфиденциальность и безопасность → «Всё равно открыть»).
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, dev, 'claude/**' ]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Unpack
+        run: |
+          if [ -f SAFU.zip ]; then unzip -o -q SAFU.zip; fi
+          if [ -d SAFU ]; then cp -R SAFU/. .; fi
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - name: Build
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project SAFU.xcodeproj -scheme SAFUMac \
+            -configuration Release \
+            -destination 'generic/platform=macOS,variant=Mac Catalyst' \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
+            SYMROOT="$PWD/build" CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build.log
+      - name: Show compile errors
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "error:" build.log | sort -u | head -40 | while IFS= read -r L; do
+            F=$(echo "$L" | sed -E 's#^.*/(Sources|Shared|Widget)/#\1/#' | cut -c1-300)
+            echo "::error::$F"
+          done
+          exit 1
+      - name: Package
+        shell: bash
+        run: |
+          set -e
+          APP=build/Release-maccatalyst/Arktika.app
+          test -d "$APP" || { echo "Сборка не создала Arktika.app"; ls build; exit 1; }
+          rm -rf dmg && mkdir dmg
+          ditto --norsrc --noextattr --noacl "$APP" "dmg/Арктика.app"
+          xattr -cr dmg
+          # локальная подпись: без неё Mac на Apple Silicon не запустит приложение
+          codesign --force --deep --sign - --entitlements Mac.entitlements "dmg/Арктика.app"
+          codesign --verify --deep --strict "dmg/Арктика.app"
+          lipo -info "dmg/Арктика.app/Contents/MacOS/Arktika"
+          ln -s /Applications dmg/Applications
+          V=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "dmg/Арктика.app/Contents/Info.plist")
+          NAME="Arktika-mac-v${V}-build${{ github.run_number }}.dmg"
+          # размер тома задаём сами с запасом: автоматическая оценка hdiutil иногда мала («No space left on device»)
+          SIZE=$(du -sm dmg | cut -f1)
+          hdiutil create -volname "Арктика" -srcfolder dmg -size $((SIZE * 2 + 40))m -fs HFS+ -ov -format UDZO "$NAME"
+          cp "$NAME" Arktika.dmg
+          echo "DMG_NAME=$NAME" >> $GITHUB_ENV
+          echo "APP_VERSION=$V" >> $GITHUB_ENV
+      - name: Smoke test (запуск и скриншоты)
+        shell: bash
+        run: |
+          set -u
+          APP="$PWD/dmg/Арктика.app"
+          mkdir -p shots
+          # без регистрации: сразу главный экран
+          defaults write ru.student.safuhub onboarded -bool true
+          open -n "$APP" --stdout "$PWD/smoke.log" --stderr "$PWD/smoke.log" --args --smoke-tour
+          sleep 3
+          PID=$(pgrep -x Arktika | head -1)
+          test -n "$PID" || { echo "::error::Приложение не запустилось"; cat smoke.log; exit 1; }
+          osascript -e 'tell application id "ru.student.safuhub" to activate' || true
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep 6
+            if ! kill -0 $PID 2>/dev/null; then
+              echo "::error::Приложение закрылось через $((i*6)) с после запуска"
+              cat smoke.log | tail -60
+              ls ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -i arktika && \
+                head -120 ~/Library/Logs/DiagnosticReports/*Arktika* 2>/dev/null
+              exit 1
+            fi
+            screencapture -x "shots/$(printf %02d $i).png" || true
+          done
+          kill $PID || true
+          echo "--- журнал приложения ---"; tail -80 smoke.log || true
+          ls -la shots
+          # уменьшенные копии — текстом в журнал, чтобы их можно было посмотреть без скачивания артефактов
+          for F in shots/*.png; do
+            sips -s format jpeg -s formatOptions 55 -Z 1100 "$F" --out "${F%.png}.jpg" >/dev/null
+            echo "SHOT-BEGIN $(basename "$F")"; base64 -i "${F%.png}.jpg" | tr -d '\n'; echo; echo "SHOT-END"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mac-screenshots
+          path: shots/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.DMG_NAME }}
+          path: ${{ env.DMG_NAME }}
+      - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: mac-build-${{ github.run_number }}
+          name: Арктика для Mac ${{ env.APP_VERSION }} (сборка ${{ github.run_number }})
+          files: |
+            ${{ env.DMG_NAME }}
+            Arktika.dmg
+          make_latest: false
