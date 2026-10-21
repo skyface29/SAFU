@@ -52,13 +52,14 @@ tap_text() {
 monkey() { # имя seed событий задержка
     local name=$1 seed=$2 count=$3 throttle=$4 f="$OUT/monkey_$1.txt"
     log "   monkey $name: $count событий, seed $seed, пауза ${throttle} мс"
+    # когда заданы все виды событий, monkey требует ровно 100%
     adb shell monkey -p "$PKG" -s "$seed" --throttle "$throttle" \
-        --pct-touch 46 --pct-motion 22 --pct-pinchzoom 3 --pct-nav 5 --pct-majornav 10 \
+        --pct-touch 49 --pct-motion 22 --pct-pinchzoom 3 --pct-nav 5 --pct-majornav 10 \
         --pct-appswitch 4 --pct-rotation 3 --pct-syskeys 4 --pct-anyevent 0 --pct-flip 0 --pct-trackball 0 \
         --ignore-crashes --ignore-timeouts --ignore-security-exceptions --monitor-native-crashes \
         -v -v "$count" > "$f" 2>&1
     if ! grep -q "Events injected" "$f"; then
-        log "   monkey не принял ключи — запуск с ключами по умолчанию"
+        log "   monkey не принял ключи ($(grep -m1 -E 'Error|\*\*' "$f" | tr -d '\r')) — запуск с ключами по умолчанию"
         adb shell monkey -p "$PKG" -s "$seed" --throttle "$throttle" \
             --ignore-crashes --ignore-timeouts --ignore-security-exceptions --monitor-native-crashes \
             -v -v "$count" > "$f" 2>&1
@@ -75,6 +76,17 @@ cold_starts() { # имя
         sleep 3
     done
     log "   холодный запуск ($1): $(grep "^$1 " "$OUT/startup.txt" | awk '{print $2}' | tr '\n' ' ')мс"
+}
+# много холодных запусков подряд: гонки при старте (главный экран рисуется, фон уже считает уведомления)
+cold_storm() { # сколько
+    local dead=0
+    for i in $(seq 1 "$1"); do
+        stop; sleep 0.5
+        adb shell am start -n "$ACT" >/dev/null 2>&1
+        sleep 2.5
+        [ -n "$(pid)" ] || dead=$(( dead + 1 ))
+    done
+    log "   $1 холодных запусков, приложения нет после: $dead"
 }
 
 # ── подготовка ─────────────────────────────────────────────────────────────────────────
@@ -110,6 +122,9 @@ seed
 cold_starts seeded
 shot 03_home
 check "холодные запуски"
+mark cold-storm
+cold_storm 25
+check "25 холодных запусков подряд"
 
 # ── 3. monkey по всему приложению: 4 круга, перед каждым — свежее состояние ─────────────
 PER=$(( EVENTS / 4 ))
@@ -189,6 +204,9 @@ for u in "file:///sdcard/Download/bad.safubackup" "content://nope.provider/copy.
     sleep 2
     if tap_text "Восстановить"; then log "   нажато «Восстановить» ($u)"; sleep 4; else log "   кнопка «Восстановить» не найдена ($u)"; fi
     shot "08_bad_backup_$(echo "$u" | cut -c1-4)"
+    # закрыть «Не получилось», чтобы следующий диалог был сверху
+    tap_text "OK" || tap_text "ОК" || adb shell input keyevent KEYCODE_BACK
+    sleep 1
 done
 check "восстановление из битой копии"
 for w in Night Aurora Graphite Bordeaux Forest Sunset Light Clear; do

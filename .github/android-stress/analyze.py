@@ -98,7 +98,7 @@ while i < len(logcat):
         why = re.sub(r"\d+", "#", msg)
         deaths[(phase, why[:140])] += 1
     if pid in app_pids:
-        if lvl in "EF" and tag not in ("AndroidRuntime",):
+        if lvl in "EF" and tag not in ("AndroidRuntime",) and not msg.lstrip().startswith(("at ", "...", "Caused by")):
             key = (tag, norm(msg)[:120])
             errors[key] += 1
             error_example.setdefault(key, (phase, msg[:300]))
