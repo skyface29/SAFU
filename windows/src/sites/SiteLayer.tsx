@@ -457,22 +457,24 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
 
   const menu = (e: React.MouseEvent) => {
     const wv = ref.current
+    // методы <webview> бросают исключение, пока страница не готова: сайт ещё грузится или без сети не открылся
+    const ready = (f: () => unknown) => { try { f() } catch { toast('Сайт ещё открывается — попробуй через пару секунд', 'info') } }
     const subj = subjects(useSchedule.getState().data)
     openMenu(e, tab.kind === 'site' ? [
       { label: 'Открыть в браузере', icon: <ExternalLink size={15} />, run: () => safu.shell.open(tab.currentURL || tab.url) },
       { label: 'Копировать ссылку', icon: <Copy size={15} />, run: () => { safu.clipboard.write(tab.currentURL || tab.url); toast('Ссылка скопирована') } },
-      { label: 'На главную сайта', icon: <Home size={15} />, run: () => { if (res) resources.clearLastURL(res); wv?.loadURL(res?.url || tab.url).catch(() => {}) } },
+      { label: 'На главную сайта', icon: <Home size={15} />, run: () => { if (res) resources.clearLastURL(res); ready(() => wv?.loadURL(res?.url || tab.url).catch(() => {})) } },
       { sep: true, label: '' },
-      { label: dark ? 'Обычные цвета' : 'Тёмная тема для сайта', icon: <Moon size={15} />, run: () => { wv?.send('safu:dark', !dark); setDark(!dark) } },
-      { label: 'Крупнее', icon: <ZoomIn size={15} />, run: () => { const z = Math.min(2, zoom + 0.1); setZoom(z); wv?.setZoomFactor(z) } },
-      { label: 'Мельче', icon: <ZoomOut size={15} />, run: () => { const z = Math.max(0.5, zoom - 0.1); setZoom(z); wv?.setZoomFactor(z) } },
-      { label: 'Печать', icon: <Printer size={15} />, run: () => wv?.print() },
+      { label: dark ? 'Обычные цвета' : 'Тёмная тема для сайта', icon: <Moon size={15} />, run: () => ready(() => { wv?.send('safu:dark', !dark); setDark(!dark) }) },
+      { label: 'Крупнее', icon: <ZoomIn size={15} />, run: () => ready(() => { const z = Math.min(2, zoom + 0.1); wv?.setZoomFactor(z); setZoom(z) }) },
+      { label: 'Мельче', icon: <ZoomOut size={15} />, run: () => ready(() => { const z = Math.max(0.5, zoom - 0.1); wv?.setZoomFactor(z); setZoom(z) }) },
+      { label: 'Печать', icon: <Printer size={15} />, run: () => ready(() => wv?.print()) },
       { sep: true, label: '' },
-      ...(looksLikeFile(tab.currentURL || '') ? [{ label: 'Сохранить этот файл в Файлы', icon: <Download size={15} />, run: () => wv?.downloadURL(tab.currentURL || '') }] : []),
+      ...(looksLikeFile(tab.currentURL || '') ? [{ label: 'Сохранить этот файл в Файлы', icon: <Download size={15} />, run: () => ready(() => wv?.downloadURL(tab.currentURL || '')) }] : []),
       { label: 'Файлы на странице…', icon: <FileText size={15} />, run: () => { if (wv) void showPageFiles(e, wv) } },
       { sep: true, label: '' },
       { label: kv.get('download.target', '') ? 'Скачивать в «Загрузки»' : 'Скачивать в папку предмета…', icon: <Download size={15} />, run: () => chooseDownloadTarget(e, subj) },
-      ...(saved ? [{ label: 'Вставить пароль', icon: <KeyRound size={15} />, run: () => wv?.send('safu:fill', saved.user, saved.pass, false) }] : []),
+      ...(saved ? [{ label: 'Вставить пароль', icon: <KeyRound size={15} />, run: () => ready(() => wv?.send('safu:fill', saved.user, saved.pass, false)) }] : []),
       { sep: true, label: '' },
       { label: 'Все вкладки', icon: <Layers size={15} />, run: () => sites.stack() },
       { label: 'Закрыть', icon: <X size={15} />, danger: true, run: () => closeWithSnapshot(tab.id) }

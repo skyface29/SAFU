@@ -459,7 +459,7 @@ export function MailNotify() {
               <button className="btn" onClick={() => openSite({ title: 'Почта', url: 'https://edu.narfu.ru', icon: 'envelope.fill' })}><ExternalLink size={15} /> Открыть почту</button>
             </div>
             <div className="tiny faint mt12">Последняя проверка: {lastCheck ? relativeAgo(lastCheck) : 'не было'} · удачная: {lastSuccess ? relativeAgo(lastSuccess) : 'не было'}</div>
-            {lastError && <div className="small mt8" style={{ color: '#f59e0b' }}>{lastError}</div>}
+            {typeof lastError === 'string' && lastError && <div className="small mt8" style={{ color: '#f59e0b' }}>{lastError}</div>}
           </Card>
           <Card className="list" style={{ padding: 0 }}>
             <ToggleRow title="Число писем на значке в панели задач" on={badge} onChange={setBadge} />
@@ -522,6 +522,8 @@ const CHANGELOG: { version: string; items: string[] }[] = [
     'Настройки неподходящего вида (после копии с iPhone, синхронизации или старой версии) больше не роняют приложение в «Что-то сломалось» — вместо них берутся обычные',
     'Окно открывается, даже если файл настроек испорчен так, что в нём не список настроек, а пустое значение',
     'Закреп-ссылка в предмете: если оставить только «https://», ссылка не добавляется молча — приложение подскажет',
+    'Испорченный список сайтов больше не мешает открыться приложению',
+    'Меню сайта (масштаб, печать, тёмная тема), пока страница ещё грузится или не открылась без сети, — подсказка вместо ошибки',
   ] },
   { version: '19.7 для Windows', items: [
     'Всё, что скачиваешь с сайтов, теперь попадает в «Файлы» приложения: с курса Sakai — сразу в папку предмета, остальное — в «Загрузки»',

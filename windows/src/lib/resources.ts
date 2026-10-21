@@ -26,8 +26,10 @@ export const teacherResources = (): Resource[] => [
 ]
 
 const initial = (() => {
-  const saved = kv.get<Resource[] | null>('resources.v1', null)
-  let list = saved && saved.length ? saved : defaultResources()
+  const raw = kv.get<Resource[] | null>('resources.v1', null)
+  // не список или записи без ссылки — берём обычный набор: этот код выполняется до первой отрисовки
+  const saved = Array.isArray(raw) ? raw.filter(r => r && typeof r === 'object' && typeof r.url === 'string') : []
+  let list = saved.length ? saved : defaultResources()
   list = list.filter(r => !r.url.includes('modeus'))
   if (!list.some(r => r.url.includes('lk.narfu.ru'))) list.push(R('Личный кабинет', 'Зачётная книжка', 'https://lk.narfu.ru', 'person.text.rectangle.fill', 'Университет'))
   kv.set('resources.v1', list)
