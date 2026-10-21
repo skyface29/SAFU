@@ -85,12 +85,16 @@ def parse_ips(path):
 
 
 crashes = collections.OrderedDict()
+harness = collections.Counter()   # падения раннера XCTest и xcodebuild — сбой теста, не приложения
 cdir = os.path.join(OUT, "crashes")
 for name in sorted(os.listdir(cdir)) if os.path.isdir(cdir) else []:
     if not name.endswith(".ips"):
         continue
     c = parse_ips(os.path.join(cdir, name))
     if not c or c["bug"] not in ("309", 309):
+        continue
+    if c["proc"] != "SAFU":
+        harness[f"{c['proc']}: {c['type']} в {next((x for x in c['stack'] if 'Monkey' in x), c['stack'][0] if c['stack'] else '?').strip()}"] += 1
         continue
     e = crashes.setdefault(c["sig"], dict(c, count=0, phases=set()))
     e["count"] += 1
@@ -131,7 +135,14 @@ p(f"| Падения, уникальных | **{len(crashes)}** (всего {sum
 p(f"| «Обезьяна» нашла приложение закрытым | {relaunch} раз |")
 p(f"| Приложение не работало после шага | {len(dead)} |")
 p(f"| Ошибки в системном журнале приложения, разных | {len(errors)} |")
+if harness:
+    p(f"| Сбои самого теста (раннер XCTest) | {sum(harness.values())} — это не падения приложения |")
 p("")
+if harness:
+    p("<details><summary>Сбои самого теста</summary>\n")
+    for k, v in harness.most_common():
+        p(f"- {v}× {k}")
+    p("\n</details>\n")
 for n, c in enumerate(crashes.values(), 1):
     p(f"### {n}. {c['type']}" + (f" — {c['asi'][0][:160]}" if c["asi"] else ""))
     p(f"\nРаз: **{c['count']}** · этапы: {', '.join(sorted(c['phases']))}\n")
@@ -189,6 +200,11 @@ if steps:
     p("<details><summary>Шаги</summary>\n\n```")
     p(steps)
     p("```\n</details>")
+
+unfinished = [r[0] for r in monkey_rows if r[5] != "да"]
+if unfinished:
+    with open(os.path.join(OUT, "INCOMPLETE"), "w") as f:
+        f.write("«Обезьяна» не дошла до конца: " + ", ".join(unfinished) + "\n")
 
 if crashes or fatal:
     with open(os.path.join(OUT, "FAILED"), "w") as f:

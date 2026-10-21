@@ -22,17 +22,14 @@ struct SeededGenerator: RandomNumberGenerator {
 /// анимируется всегда — ожидание шло бы до тайм-аута на каждом касании. Отключаем его.
 enum Quiescence {
     static func disable() {
-        var count: UInt32 = 0
-        guard let classes = objc_copyClassList(&count) else { return }
+        // только известные классы: перебор всех классов рантайма роняет раннер на «чужих» классах
         var done = 0
-        for i in 0..<Int(count) {
-            let cls: AnyClass = classes[i]
-            let cname = NSStringFromClass(cls)
-            guard cname.hasPrefix("XC") else { continue }
-            var mc: UInt32 = 0
-            guard let methods = class_copyMethodList(cls, &mc) else { continue }
-            for j in 0..<Int(mc) {
-                let m = methods[j]
+        for cname in ["XCUIApplicationProcess", "XCUIApplicationImpl"] {
+            guard let cls = NSClassFromString(cname) else { continue }
+            var count: UInt32 = 0
+            guard let methods = class_copyMethodList(cls, &count) else { continue }
+            for i in 0..<Int(count) {
+                let m = methods[i]
                 let name = NSStringFromSelector(method_getName(m))
                 guard name.hasPrefix("waitForQuiescence") || name.hasPrefix("_waitForQuiescence") else { continue }
                 let block: @convention(block) (AnyObject) -> Bool = { _ in true }

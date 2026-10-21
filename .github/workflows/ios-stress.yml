@@ -82,4 +82,5 @@ jobs:
         run: |
           test -d stress-out || { echo "::error::Стресс-тест не дошёл до симулятора"; exit 1; }
           if [ -f stress-out/FAILED ]; then echo "::error::$(cat stress-out/FAILED)"; exit 1; fi
+          if [ -f stress-out/INCOMPLETE ]; then echo "::error::Проверка неполная — $(cat stress-out/INCOMPLETE)"; exit 1; fi
           echo "Падений не найдено"

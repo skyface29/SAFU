@@ -49,6 +49,8 @@ monkey() { # имя seed событий
         grep -v "Ignoring failure to get hierarchy" "$OUT/monkey_$1.txt" |
             grep -iE "error:|failed|crash|exited|not running|lost connection|unexpected|Test Case|terminat|Restarting" |
             sort | uniq -c | sort -rn | head -12 | while IFS= read -r l; do log "      $(echo "$l" | cut -c1-300)"; done
+        grep -v "Ignoring failure to get hierarchy" "$OUT/monkey_$1.txt" | grep -vE "^\s*$|Automation type mismatch" | tail -15 |
+            while IFS= read -r l; do log "      … $(echo "$l" | cut -c1-240)"; done
     fi
 }
 storm() { # сколько, режим (cold | fresh)
