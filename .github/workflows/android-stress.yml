@@ -44,6 +44,7 @@ jobs:
         if: matrix.variant == 'fix'
         run: |
           for p in .github/android-stress/fix-*.patch; do
+            [ -e "$p" ] || { echo "Исправлений-кандидатов нет — вариант fix совпадает с as-is"; break; }
             echo "::group::$p"; cat "$p"; echo "::endgroup::"
             git -C app-src apply "$PWD/$p"
           done

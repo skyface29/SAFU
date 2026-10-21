@@ -70,10 +70,10 @@ test('перенос: план, докачка после обрыва, проп
   assert.equal((await call(l, 'POST', '/v1/hello', js({ device: 'x' }), { session: 'nope' })).status, 403)
   assert.equal((await call(l, 'POST', '/v1/hello', js({ device: 'x' }), { key: Buffer.alloc(32, 1) })).status, 400)
 
-  const hello = await call(l, 'POST', '/v1/hello', js({ device: 'iPhone Кирилла', app: '18.2' }))
+  const hello = await call(l, 'POST', '/v1/hello', js({ device: 'iPhone Ивана', app: '18.2' }))
   assert.equal(hello.status, 200)
   assert.equal(hello.json.pc, 'ТЕСТ-ПК')
-  assert.ok(events.some(e => e.type === 'connected' && e.device === 'iPhone Кирилла'))
+  assert.ok(events.some(e => e.type === 'connected' && e.device === 'iPhone Ивана'))
 
   const pdf = Buffer.alloc(3 * 1024 * 1024 + 123, 5)
   const photo = Buffer.from('jpeg-bytes')

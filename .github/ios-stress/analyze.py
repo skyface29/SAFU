@@ -123,7 +123,7 @@ for line in read("errors.txt").splitlines():
 
 p = print
 p("# Стресс-тест Арктики для iPhone\n")
-p(f"Версия **{os.environ.get('APP_VERSION', '?')}** · коммит `{os.environ.get('APP_SHA', '?')}` · ветка `main`  ")
+p(f"Версия **{os.environ.get('APP_VERSION', '?')}** · коммит `{os.environ.get('APP_SHA', '?')}` · ветка `{os.environ.get('GITHUB_REF_NAME', '?')}`  ")
 for e in read("env.txt").strip().splitlines():
     p(e + "  ")
 p("")

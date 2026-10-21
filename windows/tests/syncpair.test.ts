@@ -28,7 +28,7 @@ test('оба видят один код, после «Разрешить» те�
   let shown = ''
   const broker = new PairBroker({ ask: async (_d, code) => { shown = code; return true }, grant: async () => grant })
   const ph = phone()
-  const st = broker.start('iPhone Кирилла')
+  const st = broker.start('iPhone Ивана')
   ph.setCommit(st.commit)
   const k = broker.key(st.sid, ph.pub)
   const mine = ph.finish(k.pub)

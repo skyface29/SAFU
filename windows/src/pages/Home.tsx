@@ -472,6 +472,17 @@ function WeatherCard({ delay }: { delay: number }) {
 function CommuteCard({ now }: { now: number }) {
   const data = useSchedule(s => s.data)
   busStore.use()
+  // встроенных автобусов нет: пока своего нет — предлагаем добавить
+  if (!bus.has()) return (
+    <Card className="press" onClick={() => go('bus')}>
+      <div className="row mb8">
+        <div className="icon-tile heavy" style={{ background: 'var(--brand)', width: 44 }}><Bus size={16} /></div>
+        <div className="grow"><div className="h-card">Дорога</div><div className="tiny muted">Своего автобуса пока нет</div></div>
+        <ChevronRight size={16} />
+      </div>
+      <div className="sub">Добавь свой автобус — подскажу, когда выезжать, чтобы успеть к паре</div>
+    </Card>
+  )
   const r = bus.active()
   let day = startOfDay(now)
   let first = commute.firstPair(day, data)
