@@ -573,6 +573,37 @@ phase('main', 'Основной прогон по всему приложени�
   return r.done
 })
 
+// случайные нажатия до редких инструментов почти не доходят — обходим каждый экран по очереди
+const TOOL_TITLES = ['БРС', 'Сессия', 'Предметы', 'Преподаватели', 'Свободные', 'Карта корпусов', 'Дорога', 'Заметки', 'Доски', 'Лекции',
+  'Фокус', 'Титульник', 'Матрицы', 'Картинкой', 'Статистика', 'Подъём', 'Посещаемость', 'Рассылка', 'Опросы', 'Праздники', 'Автобус 150']
+phase('screens', 'Каждый экран по очереди', async () => {
+  const home = newHome('screens', seededStore())
+  let s = await launch(home)
+  let done = 0
+  const targets = [...TOOL_TITLES.map(text => ({ key: 'Control+7', text })),
+    ...['Control+1', 'Control+2', 'Control+3', 'Control+4', 'Control+5', 'Control+6', 'Control+8', 'Control+Comma'].map(key => ({ key }))]
+  for (const t of targets) {
+    if (!s) break
+    if (s.exited) { s = await afterExit(s); if (!s) break }
+    const name = t.text || t.key
+    did(`экран «${name}»`)
+    await within(s.page.keyboard.press('Escape'), 5000)
+    await within(s.page.keyboard.press(t.key), 5000)
+    await sleep(500)
+    if (t.text) {
+      const r = await within(s.page.getByText(t.text, { exact: true }).first().click({ timeout: 6000 }), 9000)
+      if (r === TIMEOUT || r?.__error) R.notes.push(`этап «экраны»: не нашёл плитку «${t.text}»`)
+    }
+    await sleep(800)
+    if (await health(s, name) === 'hang') { s = await restart(s, {}, 'зависание'); continue }
+    await shot(s, name.replace(/[^\p{L}\p{N}]+/gu, '_'))
+    const r = await monkey(s, Math.max(30, Math.round(EVENTS * 0.025)), { label: name })
+    done += r.done; s = r.s
+  }
+  await close(s)
+  return done
+})
+
 phase('offline', 'Без сети', async () => {
   const home = newHome('offline', seededStore())
   let s = await launch(home)

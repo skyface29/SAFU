@@ -42,10 +42,10 @@ jobs:
           cache-dependency-path: app/windows/package-lock.json
       - name: Сборка .deb
         working-directory: app/windows
-        env:
-          NODE_ENV: production
         run: |
+          # NODE_ENV=production только для сборки: с ним npm ci не ставит инструменты сборки
           npm ci
+          export NODE_ENV=production
           npm run build
           npx electron-builder --linux deb --x64 --publish never
           ls -la release
