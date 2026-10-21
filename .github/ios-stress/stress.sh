@@ -53,6 +53,18 @@ monkey() { # имя seed событий
             while IFS= read -r l; do log "      … $(echo "$l" | cut -c1-240)"; done
     fi
 }
+# отчёты о падениях — сразу, чтобы не потерять при остановке задания по времени
+reports() {
+    mkdir -p "$OUT/crashes"
+    for d in "$HOME/Library/Logs/DiagnosticReports" "/Library/Logs/DiagnosticReports" \
+             "$HOME/Library/Developer/CoreSimulator/Devices/$SIM/data/Library/Logs/CrashReporter"; do
+        [ -d "$d" ] || continue
+        find "$d" -newer "$OUT/start.marker" -type f 2>/dev/null | while IFS= read -r f; do
+            grep -qxF "$f" "$OUT/reports_found.txt" 2>/dev/null || echo "$f" >> "$OUT/reports_found.txt"
+            case "$(basename "$f" | tr '[:upper:]' '[:lower:]')" in *safu*) cp -n "$f" "$OUT/crashes/" 2>/dev/null ;; esac
+        done
+    done
+}
 storm() { # сколько, режим (cold | fresh)
     local dead=0
     for i in $(seq 1 "$1"); do
@@ -105,6 +117,7 @@ for s in 1 2 3; do
     monkey "main-$s" $(( 1000 + s * 7 )) "$EVENTS"
     shot "04_monkey_$s"
     check "«обезьяна» круг $s"
+    sleep 10; reports
 done
 
 # ── 5. жизненный цикл ──────────────────────────────────────────────────────────────────
@@ -166,15 +179,7 @@ mark collect
 sleep 5
 sleep 15   # ReportCrash пишет отчёты с задержкой
 kill "$LOGSTREAM" >/dev/null 2>&1
-mkdir -p "$OUT/crashes"
-for d in "$HOME/Library/Logs/DiagnosticReports" "/Library/Logs/DiagnosticReports" \
-         "$HOME/Library/Developer/CoreSimulator/Devices/$SIM/data/Library/Logs/CrashReporter"; do
-    [ -d "$d" ] || continue
-    find "$d" -newer "$OUT/start.marker" -type f 2>/dev/null | while IFS= read -r f; do
-        echo "$f" >> "$OUT/reports_found.txt"
-        case "$(basename "$f" | tr '[:upper:]' '[:lower:]')" in *safu*) cp "$f" "$OUT/crashes/" ;; esac
-    done
-done
+reports
 log "   отчёты в системе за прогон: $(wc -l < "$OUT/reports_found.txt" 2>/dev/null | xargs || echo 0); $(sed 's#.*/##' "$OUT/reports_found.txt" 2>/dev/null | head -8 | tr '\n' ' ')"
 grep -h -m3 -E "Fatal error|fatal error|Terminating app" "$OUT"/stderr/*.txt 2>/dev/null | sort | uniq -c | head -8 | while IFS= read -r l; do log "   stderr: $l"; done
 xcrun simctl spawn "$SIM" log show --last 2h --style compact \

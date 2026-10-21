@@ -19,7 +19,7 @@ concurrency:
 jobs:
   stress:
     runs-on: macos-15
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       EVENTS: ${{ inputs.events || '1000' }}
     steps:

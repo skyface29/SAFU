@@ -160,12 +160,22 @@ for line in read("sim_log.txt").splitlines():
     if "safuhub" in line or "SAFU[" in line:
         if re.search(r"(?i)termination|exited|crash|signal|fatal|exception", line):
             ends[re.sub(r"\d{2}:\d{2}:\d{2}\.\d+|\b\d+\b|0x[0-9a-f]+", "#", line.split(" ", 2)[-1])[:220]] += 1
+# как завершался сам процесс приложения: force-quit — это тест (terminate, переустановка), signal — падение
+exits = collections.Counter()
+for line in read("sim_log.txt").splitlines():
+    m = re.search(r"\[app<ru\.student\.safuhub>:\d+\] Process exited: .*?domain:(\w+)\(\d+\) code:([\w-]+)", line)
+    if m:
+        exits[f"{m.group(1)} {m.group(2)}"] += 1
 fatal = collections.Counter()
 sdir = os.path.join(OUT, "stderr")
 for name in os.listdir(sdir) if os.path.isdir(sdir) else []:
     for line in read(os.path.join("stderr", name)).splitlines():
         if re.search(r"Fatal error|fatal error|Terminating app|libc\+\+abi", line):
             fatal[line.strip()[:300]] += 1
+if exits:
+    p("Как завершался процесс приложения: " + ", ".join(f"{k} ×{v}" for k, v in exits.most_common())
+      + " (force-quit — это сам тест; signal — падение)\n")
+signals = sum(v for k, v in exits.items() if k.startswith("signal"))
 if fatal:
     p("## Фатальные ошибки (stderr приложения)\n")
     p("```")
@@ -206,7 +216,7 @@ if unfinished:
     with open(os.path.join(OUT, "INCOMPLETE"), "w") as f:
         f.write("«Обезьяна» не дошла до конца: " + ", ".join(unfinished) + "\n")
 
-if crashes or fatal:
+if crashes or fatal or signals:
     with open(os.path.join(OUT, "FAILED"), "w") as f:
         f.write(f"Падений: {len(crashes)} уникальных, всего {sum(c['count'] for c in crashes.values())}; "
-                f"фатальных ошибок в stderr: {sum(fatal.values())}\n")
+                f"фатальных ошибок в stderr: {sum(fatal.values())}; завершений по сигналу: {signals}\n")
