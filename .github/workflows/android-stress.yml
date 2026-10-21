@@ -1,0 +1,87 @@
+# Стресс-тест Арктики для Android на эмуляторе: monkey по всему приложению, повороты, тема, шрифт,
+# убийство процесса, путешествия во времени, без сети, битые ссылки и интенты.
+# Отчёт — в сводке запуска, логи и снимки экрана — в артефакте stress-….
+name: Android stress test
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ветка с приложением для Android'
+        default: 'claude/arktika-windows-android'
+      events:
+        description: 'Событий monkey в основном прогоне'
+        default: '30000'
+  push:
+    branches: [ 'claude/android-stress-test-*' ]
+    paths: [ '.github/workflows/android-stress.yml', '.github/android-stress/**' ]
+permissions:
+  contents: read
+concurrency:
+  group: android-stress-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  APP_REF: ${{ inputs.ref || 'claude/arktika-windows-android' }}
+  EVENTS: ${{ inputs.events || '30000' }}
+jobs:
+  stress:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.APP_REF }}
+          path: app-src
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Сборка debug APK (с x86_64 для эмулятора)
+        working-directory: app-src/android
+        env:
+          YANDEX_MAPKIT_KEY: ${{ secrets.YANDEX_MAPKIT_KEY }}
+        run: |
+          # в релизе только ARM — эмулятору нужен x86_64
+          sed -i 's/include("arm64-v8a", "armeabi-v7a")/include("arm64-v8a", "armeabi-v7a", "x86_64")/' app/build.gradle.kts
+          grep -n 'include(' app/build.gradle.kts
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace :app:assembleDebug
+          ls -la app/build/outputs/apk/debug
+          {
+            echo "APK=$PWD/app/build/outputs/apk/debug/app-x86_64-debug.apk"
+            echo "APP_SHA=$(git rev-parse --short HEAD)"
+            echo "APP_VERSION=$(grep -m1 'versionName = ' app/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')"
+          } >> "$GITHUB_ENV"
+      - name: KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Стресс-тест на эмуляторе
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
+          disk-size: 6000M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none -camera-front none -timezone Europe/Moscow
+          script: bash .github/android-stress/stress.sh "$APK" "$PWD/stress-out"
+      - name: Отчёт
+        if: always()
+        run: python3 .github/android-stress/analyze.py stress-out | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stress-${{ github.run_number }}
+          path: stress-out
+      - name: Итог
+        if: always()
+        run: |
+          test -d stress-out || { echo "::error::Стресс-тест не дошёл до эмулятора"; exit 1; }
+          if [ -f stress-out/FAILED ]; then echo "::error::$(cat stress-out/FAILED)"; exit 1; fi
+          echo "Падений и зависаний не найдено"
