@@ -143,7 +143,9 @@ p = print
 p("# Стресс-тест Арктики для Android\n")
 env = read("env.txt").strip()
 version = os.environ.get("APP_VERSION", "?")
-p(f"Версия **{version}** · коммит `{os.environ.get('APP_SHA', '?')}` · ветка `{os.environ.get('APP_REF', '?')}`  ")
+variant = os.environ.get("VARIANT", "")
+p(f"Версия **{version}** · коммит `{os.environ.get('APP_SHA', '?')}` · ветка `{os.environ.get('APP_REF', '?')}`"
+  + (f" · вариант **{variant}**" if variant else "") + "  ")
 for e in env.splitlines():
     p(e + "  ")
 p("")

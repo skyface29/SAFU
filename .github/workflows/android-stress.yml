@@ -24,14 +24,30 @@ env:
   EVENTS: ${{ inputs.events || '30000' }}
 jobs:
   stress:
+    name: stress (${{ matrix.variant }})
     runs-on: ubuntu-24.04
     timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        # as-is — приложение как есть; fix — с исправлением из .github/android-stress/fix-*.patch
+        variant: [ as-is, fix ]
+    env:
+      VARIANT: ${{ matrix.variant }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/checkout@v5
         with:
           ref: ${{ env.APP_REF }}
           path: app-src
+      - name: Исправления-кандидаты
+        if: matrix.variant == 'fix'
+        run: |
+          for p in .github/android-stress/fix-*.patch; do
+            echo "::group::$p"; cat "$p"; echo "::endgroup::"
+            git -C app-src apply "$PWD/$p"
+          done
+          git -C app-src diff --stat
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -77,7 +93,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: stress-${{ github.run_number }}
+          name: stress-${{ matrix.variant }}-${{ github.run_number }}
           path: stress-out
       - name: Итог
         if: always()
