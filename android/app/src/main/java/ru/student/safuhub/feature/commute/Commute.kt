@@ -20,15 +20,9 @@ object CommuteSettings {
 }
 
 object CommutePlanner {
-    /** Для 150 — пара в 8:20 → автобус 7:00, пара в 10:10 → автобус 8:30. Иначе — последний рейс за «выезд за» минут до начала */
-    fun latestDeparture(start: Instant, route: BusRoute = BusRoutes.active): Instant {
-        if (route.builtIn) {
-            val hm = Cal.hour(start) * 60 + Cal.minute(start)
-            if (hm <= 8 * 60 + 20) return Cal.setting(start, 7, 0)
-            if (hm <= 10 * 60 + 10) return Cal.setting(start, 8, 30)
-        }
-        return start.minusSeconds(route.leadMinutes * 60L)
-    }
+    /** Последний рейс, который уходит за «выезд за» минут до начала пары */
+    fun latestDeparture(start: Instant, route: BusRoute = BusRoutes.active): Instant =
+        start.minusSeconds(route.leadMinutes * 60L)
 
     /** Автобус из дома к первой паре */
     fun morning(first: LessonSlot): BusTrip? {

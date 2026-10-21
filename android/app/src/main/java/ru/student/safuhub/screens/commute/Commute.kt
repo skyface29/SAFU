@@ -210,6 +210,10 @@ fun CommuteCard(data: ScheduleData, onHide: (() -> Unit)? = null) {
     LaunchedEffect(showTimetable.value) { busRunning = BusLive.isRunning }
     LaunchedEffect(Unit) { CityLocator.refresh() }
     LaunchedEffect(CityLocator.city) { WeatherStore.refresh(CityLocator.city) }
+    if (!BusRouteStore.hasRoutes) {
+        NoBusCard(onClick = { Haptics.tap(); showTimetable.value = true }, onHide = onHide)
+        return
+    }
     val now = rememberNow(30)
     val info = makeInfo(data, route, now)
 
@@ -317,6 +321,26 @@ fun CommuteCard(data: ScheduleData, onHide: (() -> Unit)? = null) {
     }
 }
 
+/** Своих автобусов ещё нет: встроенных больше не бывает, студент добавляет свой */
+@Composable
+private fun NoBusCard(onClick: () -> Unit, onHide: (() -> Unit)?) {
+    ContextMenuBox(items = {
+        item("Добавить автобус", "plus.circle") { onClick() }
+        if (onHide != null) item("Убрать с главной", "eye.slash", destructive = true) { onHide() }
+    }, modifier = Modifier.fillMaxWidth(), onClick = onClick) {
+        Glass(24.dp, Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SfIcon("bus.fill", size = 14.dp, tint = Brand.color)
+                    Text("АВТОБУС", style = ft(Ts.caption, FontWeight.ExtraBold), color = Brand.color)
+                }
+                Text("Добавь свой автобус — подскажу, когда выходить, чтобы успеть к паре", style = ft(Ts.subheadline), color = Ios.secondaryLabel)
+                IconLabel("Добавить автобус", "plus.circle.fill", style = ft(Ts.subheadline, FontWeight.SemiBold), color = Brand.color)
+            }
+        }
+    }
+}
+
 @Composable
 private fun BusIcon(size: androidx.compose.ui.unit.Dp) {
     Box(Modifier.size(size).clip(RoundedCornerShape(size * 0.3f)).background(Brand.gradient), contentAlignment = Alignment.Center) {
@@ -370,7 +394,8 @@ fun CommuteSettingsScreen() {
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Мои автобусы", style = ft(Ts.body, FontWeight.SemiBold), color = Ios.label)
-                    Text(route.routeText + if (BusRouteStore.routes.size > 1) " · ещё ${BusRouteStore.routes.size - 1}" else "",
+                    Text(if (!BusRouteStore.hasRoutes) "Пока нет — добавь свой"
+                        else route.routeText + if (BusRouteStore.routes.size > 1) " · ещё ${BusRouteStore.routes.size - 1}" else "",
                         style = ft(Ts.caption), color = Ios.secondaryLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 SfIcon("chevron.right", size = 16.dp, tint = Ios.tertiaryLabel)
@@ -382,9 +407,8 @@ fun CommuteSettingsScreen() {
             if (route.useGeo) toggle("Определять город по геолокации", geo, { geo = it; if (it) CityLocator.refresh(force = true) })
             picker("Вид на главной", CommuteStyle.entries.map { it.raw to it.title }, style, { style = it })
         }
-        FormSection("Время · автобус ${route.number}",
-            footer = if (route.builtIn) "Для 150: пара в 8:20 → автобус 7:00, пара в 10:10 → 8:30. Для остальных пар берётся последний рейс, который уходит не позже чем за «выезд за» до начала."
-            else "Берётся последний рейс, который уходит не позже чем за «выезд за» до начала первой пары.") {
+        FormSection(if (BusRouteStore.hasRoutes) "Время · автобус ${route.number}" else "Время",
+            footer = "Берётся последний рейс, который уходит не позже чем за «выезд за» до начала первой пары.") {
             stepper("До остановки из дома: $home мин", home, { home = it }, 0..60, 5)
             stepper("В пути: ${route.travelMinutes} мин", route.travelMinutes, { v -> BusRouteStore.updateActive { it.copy(travelMinutes = v) } }, 5..240, 5)
             stepper("Выезд за ${route.leadMinutes} мин до пары", route.leadMinutes, { v -> BusRouteStore.updateActive { it.copy(leadMinutes = v) } }, 10..240, 5)
@@ -447,6 +471,35 @@ private fun BusTimetable(data: ScheduleData) {
     }
     val next = if (isToday) trips.firstOrNull { it >= now } else null
     val myTrip = if (direction == BusDirection.TO_CAMPUS && isToday) CommutePlanner.firstPair(Instant.now(), data)?.let { CommutePlanner.morning(it)?.departure } else null
+
+    if (!BusRouteStore.hasRoutes) {
+        Screen("Автобус", background = { ru.student.safuhub.ui.design.AmbientBackground() }) {
+            Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Spacer(Modifier.height(30.dp))
+                SfIcon("bus.fill", size = 44.dp, tint = Brand.color)
+                Text("Своего автобуса пока нет", style = ft(Ts.title3, FontWeight.Bold, Design.ROUNDED), color = Ios.label)
+                Text("Добавь номер, остановки и расписание — или вставь код, которым поделился одногруппник. По нему считаются «Дорога», напоминания и автобус в шторке.",
+                    style = ft(Ts.subheadline), color = Ios.secondaryLabel, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Pressable({ Haptics.tap(); addingRoute.value = BusRoute(colorHex = BusPalette.hexes.random()) }, Modifier.fillMaxWidth()) {
+                    Glass(18.dp, Modifier.fillMaxWidth()) {
+                        IconLabel("Добавить свой автобус", "plus.circle.fill", Modifier.padding(vertical = 13.dp).align(Alignment.Center),
+                            style = ft(Ts.headline, FontWeight.SemiBold), color = Brand.color)
+                    }
+                }
+                Pressable({
+                    val r = Share.pasteText()?.let { BusRoute.fromShareCode(it) }
+                    if (r != null) { BusRouteStore.upsert(r); BusRouteStore.activate(r); Haptics.success() }
+                    else Dialogs.alert("В буфере нет кода автобуса", "Код начинается с «SAFU-BUS:». Попроси одногруппника нажать «Поделиться» в его автобусе.")
+                }, Modifier.fillMaxWidth()) {
+                    Glass(16.dp, Modifier.fillMaxWidth()) {
+                        IconLabel("Вставить код от одногруппника", "doc.on.clipboard", Modifier.padding(vertical = 11.dp).align(Alignment.Center),
+                            style = ft(Ts.subheadline, FontWeight.SemiBold))
+                    }
+                }
+            }
+        }
+        return
+    }
 
     Screen(route.title, background = { ru.student.safuhub.ui.design.AmbientBackground() }) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -656,14 +709,14 @@ fun BusRoutesScreen() {
     }
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { ScheduleStore.refreshSideEffects() } }
     FormScreen("Мои автобусы") {
-        FormSection("Нажми, чтобы выбрать свой", footer = "По выбранному автобусу считаются «Дорога» на главной, напоминания «пора выходить», утренняя сводка и автобус в шторке. Удержи автобус, чтобы изменить или поделиться.") {
+        FormSection(if (BusRouteStore.hasRoutes) "Нажми, чтобы выбрать свой" else "Своих автобусов пока нет — добавь свой или вставь код от одногруппника", footer = "По выбранному автобусу считаются «Дорога» на главной, напоминания «пора выходить», утренняя сводка и автобус в шторке. Удержи автобус, чтобы изменить или поделиться.") {
             for (r in BusRouteStore.routes) {
                 raw {
                     val on = r.id == BusRouteStore.activeID
                     ContextMenuBox(items = {
                         item("Изменить", "pencil") { editing.value = r }
                         item("Поделиться кодом", "square.and.arrow.up") { Share.text(ctx, r.shareCode) }
-                        if (BusRouteStore.routes.size > 1) item("Удалить", "trash", destructive = true) { BusRouteStore.delete(r) }
+                        item("Удалить", "trash", destructive = true) { BusRouteStore.delete(r) }
                     }, onClick = { Haptics.tap(); BusRouteStore.activate(r) }) {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -691,7 +744,6 @@ fun BusRoutesScreen() {
                     Dialogs.alert("В буфере нет кода автобуса", "Код начинается с «SAFU-BUS:». Попроси одногруппника нажать «Поделиться» в его автобусе.")
                 }
             }
-            if (BusRouteStore.routes.none { it.id == BusRoute.default150.id }) button("Вернуть автобус 150", "arrow.uturn.backward") { BusRouteStore.restore150() }
         }
     }
 }

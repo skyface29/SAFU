@@ -535,7 +535,7 @@ fun SetupCard(onManual: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Группа", style = ft(Ts.body), color = Ios.secondaryLabel)
                     Spacer(Modifier.width(12.dp))
-                    IosTextField(group, { group = it }, "151621", Modifier.weight(1f), style = ft(Ts.headline, FontWeight.SemiBold, mono = true),
+                    IosTextField(group, { group = it }, "Номер группы", Modifier.weight(1f), style = ft(Ts.headline, FontWeight.SemiBold, mono = true),
                         keyboard = KeyboardType.Number, textAlign = TextAlign.End)
                 }
                 ru.student.safuhub.ui.kit.Divider()
@@ -753,7 +753,7 @@ fun ScheduleSettingsSheet() {
             if (data.usesRuz) {
                 FormSection("РУЗ",
                     footer = "${ScheduleStore.lastSyncText.capitalizedFirstLetter()}. ${data.syncInfo} В памяти: ${data.ruzEvents.size} пар, ${ScheduleStore.rememberedWeeks} нед. Если группа не находится, открой РУЗ на главной, найди свою группу и нажми «Сделать моим расписанием».") {
-                    field("151621", group, { group = it }, keyboard = KeyboardType.Number, title = "Группа")
+                    field("Номер группы", group, { group = it }, keyboard = KeyboardType.Number, title = "Группа")
                     picker("Высшая школа", RuzClient.institutions, institution, { institution = it })
                     button("Сохранить и обновить", "arrow.clockwise") {
                         ScheduleStore.connectRuz(group, institution)

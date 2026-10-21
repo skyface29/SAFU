@@ -681,7 +681,7 @@ private fun GroupPage(
         }
         when {
             manualMode -> Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                IosTextField(manual, onManual, "Например, 151621", Modifier.fillMaxWidth().focusRequester(manualFocus).glass(18.dp)
+                IosTextField(manual, onManual, "Номер группы из РУЗ", Modifier.fillMaxWidth().focusRequester(manualFocus).glass(18.dp)
                     .padding(horizontal = 18.dp, vertical = 15.dp), style = ft(Ts.title2, FontWeight.Bold, Design.ROUNDED, mono = true), keyboard = KeyboardType.Number)
                 Text("Номер группы — на студенческом или в РУЗ. Приложение найдёт её само, даже если она в другой высшей школе.",
                     style = ft(Ts.caption), color = Ios.secondaryLabel)

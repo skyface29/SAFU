@@ -137,22 +137,11 @@ data class BusRoute(
             return set.joinToString(" ") { String.format(Locale.US, "%02d:%02d", it / 60, it % 60) }
         }
 
-        val default150 = BusRoute(
-            id = "builtin-150", number = "150", homeCity = "Северодвинск", homeStop = "о. Ягры",
-            campusCity = "Архангельск", campusStop = "м.р. вокзал", travelMinutes = 60, leadMinutes = 100,
-            colorHex = "F28C1A", useGeo = true, builtIn = true,
-            mapLink = "https://yandex.ru/maps/20/arkhangelsk/routes/bus_150/796d617073626d313a2f2f7472616e7369742f6c696e653f69643d31373034383535383634266c6c3d34302e31383136333325324336342e353534353734266e616d653d31353026723d313833383726747970653d627573/",
-            toCampus = mapOf(
-                "weekday" to "06:20 06:40 07:00 07:25 07:50 08:30 09:35 10:30 11:10 12:00 12:40 13:20 14:00 14:30 15:10 16:00 16:35 17:30 18:30 19:30",
-                "saturday" to "06:40 07:10 07:50 08:30 09:35 10:30 11:10 12:00 12:40 13:20 14:30 15:10 16:00 16:35 17:30 18:30 19:30",
-                "sunday" to "07:10 07:50 08:30 09:35 10:30 11:10 12:00 12:40 13:20 14:30 15:10 16:00 16:35 17:30 18:30 19:30",
-            ),
-            toHome = mapOf(
-                "weekday" to "06:10 07:40 08:15 08:40 09:20 10:00 10:35 11:10 12:00 13:00 14:00 14:50 15:30 16:00 16:30 17:00 17:30 18:15 19:00 20:00",
-                "saturday" to "08:15 08:40 09:20 10:00 10:35 11:10 12:00 13:00 14:00 14:50 16:00 16:30 17:00 17:30 18:15 19:00 20:00",
-                "sunday" to "08:40 09:20 10:00 10:35 11:10 12:00 13:00 14:00 14:50 16:00 16:30 17:00 17:30 18:15 19:00 20:00",
-            ),
-        )
+        /** Заглушка, пока своих автобусов нет: без рейсов — значит без напоминаний и автобуса в шторке */
+        val none = BusRoute()
+
+        /** id прежнего встроенного 150 — его больше нет ни у кого, даже у тех, кто ставил приложение раньше */
+        const val legacyBuiltinID = "builtin-150"
 
         fun fromShareCode(text: String): BusRoute? {
             val i = text.indexOf(sharePrefix)
@@ -176,7 +165,7 @@ object BusRouteStore {
     var routes: List<BusRoute>
         get() = _routes.value
         set(v) { _routes.value = v; Defaults.encode(key, v) }
-    private var _active = mutableStateOf(BusRoute.default150.id)
+    private var _active = mutableStateOf("")
     var activeID: String
         get() = _active.value
         set(v) { _active.value = v; Defaults.set(activeKey, v) }
@@ -185,35 +174,35 @@ object BusRouteStore {
     fun load() {
         if (loaded) return
         loaded = true
-        val list = Defaults.decode<List<BusRoute>>(key)
-        _routes.value = if (!list.isNullOrEmpty()) list else listOf(BusRoute.default150)
-        _active.value = Defaults.string(activeKey) ?: BusRoute.default150.id
+        // встроенных автобусов нет: свой каждый добавляет сам (вручную или кодом от одногруппника)
+        val list = (Defaults.decode<List<BusRoute>>(key) ?: emptyList()).filter { it.id != BusRoute.legacyBuiltinID && !it.builtIn }
+        _routes.value = list
+        val saved = Defaults.string(activeKey)
+        _active.value = if (list.any { it.id == saved }) saved!! else list.firstOrNull()?.id ?: ""
     }
 
     fun reload() { loaded = false; load() }
 
-    val active: BusRoute get() { load(); return routes.firstOrNull { it.id == activeID } ?: routes.firstOrNull() ?: BusRoute.default150 }
+    val active: BusRoute get() { load(); return routes.firstOrNull { it.id == activeID } ?: routes.firstOrNull() ?: BusRoute.none }
+
+    /** Есть ли хоть один свой автобус */
+    val hasRoutes: Boolean get() { load(); return routes.isNotEmpty() }
 
     fun upsert(r: BusRoute) {
         routes = if (routes.any { it.id == r.id }) routes.map { if (it.id == r.id) r else it } else routes + r
+        if (routes.none { it.id == activeID }) activeID = r.id
     }
 
     fun delete(r: BusRoute) {
-        var list = routes.filter { it.id != r.id }
-        if (list.isEmpty()) list = listOf(BusRoute.default150)
+        val list = routes.filter { it.id != r.id }
         routes = list
-        if (list.none { it.id == activeID }) activeID = list[0].id
+        if (list.none { it.id == activeID }) activeID = list.firstOrNull()?.id ?: ""
     }
 
     fun activate(r: BusRoute) {
         if (r.id == activeID) return
         activeID = r.id
         ru.student.safuhub.system.BusLive.stop()
-    }
-
-    /** Вернуть встроенный 150, если его удалили */
-    fun restore150() {
-        if (routes.none { it.id == BusRoute.default150.id }) routes = listOf(BusRoute.default150) + routes
     }
 
     /** Поправить активный маршрут (время в пути, запас) из настроек */
