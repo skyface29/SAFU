@@ -85,7 +85,7 @@ export function SiteLayer() {
   // ссылки «в новом окне» — в ту же карточку
   useEffect(() => safu.app.on('site:newWindow', ({ id, url }: { id: number; url: string }) => {
     for (const [tabId, wv] of webviews) {
-      try { if (wv.getWebContentsId() === id) { wv.loadURL(url); sites.expand(tabId); return } } catch { /* ещё не готов */ }
+      try { if (wv.getWebContentsId() === id) { wv.loadURL(url).catch(() => {}); sites.expand(tabId); return } } catch { /* ещё не готов */ }
     }
   }), [])
 
@@ -461,7 +461,7 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
     openMenu(e, tab.kind === 'site' ? [
       { label: 'Открыть в браузере', icon: <ExternalLink size={15} />, run: () => safu.shell.open(tab.currentURL || tab.url) },
       { label: 'Копировать ссылку', icon: <Copy size={15} />, run: () => { safu.clipboard.write(tab.currentURL || tab.url); toast('Ссылка скопирована') } },
-      { label: 'На главную сайта', icon: <Home size={15} />, run: () => { if (res) resources.clearLastURL(res); wv?.loadURL(res?.url || tab.url) } },
+      { label: 'На главную сайта', icon: <Home size={15} />, run: () => { if (res) resources.clearLastURL(res); wv?.loadURL(res?.url || tab.url).catch(() => {}) } },
       { sep: true, label: '' },
       { label: dark ? 'Обычные цвета' : 'Тёмная тема для сайта', icon: <Moon size={15} />, run: () => { wv?.send('safu:dark', !dark); setDark(!dark) } },
       { label: 'Крупнее', icon: <ZoomIn size={15} />, run: () => { const z = Math.min(2, zoom + 0.1); setZoom(z); wv?.setZoomFactor(z) } },

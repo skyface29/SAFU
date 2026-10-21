@@ -243,11 +243,17 @@ let kv: Record<string, unknown> = {}
 let kvTimer: NodeJS.Timeout | null = null
 
 function loadKV() {
+  // хранилище — только объект: в файле с null окно не открывалось вовсе, а массив терял все настройки при записи
+  const read = (f: string) => {
+    const v = JSON.parse(fs.readFileSync(f, 'utf8'))
+    if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('не объект')
+    return v as Record<string, unknown>
+  }
   try {
-    kv = JSON.parse(fs.readFileSync(storeFile(), 'utf8'))
+    kv = read(storeFile())
   } catch {
     // повреждённый файл — пробуем запасную копию
-    try { kv = JSON.parse(fs.readFileSync(storeFile() + '.bak', 'utf8')) } catch { kv = {} }
+    try { kv = read(storeFile() + '.bak') } catch { kv = {} }
   }
 }
 
@@ -658,7 +664,7 @@ function showNotification(n: Note) {
 }
 
 function loadScheduled() {
-  try { scheduled = JSON.parse(fs.readFileSync(notifFile(), 'utf8')) } catch { scheduled = [] }
+  try { const v = JSON.parse(fs.readFileSync(notifFile(), 'utf8')); scheduled = Array.isArray(v) ? v : [] } catch { scheduled = [] }
 }
 
 // список напоминаний пишется в фоне и не чаще раза в секунду
