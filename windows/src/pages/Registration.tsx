@@ -11,7 +11,7 @@ import { loadGroups, type RuzGroup } from '../lib/ruz'
 import { scheduleStore, useSchedule, teacherMode } from '../lib/scheduleStore'
 import { subjects, slotsRange } from '../lib/schedule'
 import { fullDay, hm } from '../lib/date'
-import { bus, busStore, fromShareCode, routeText, newRoute } from '../lib/bus'
+import { bus, busStore, ownRoutes, fromShareCode, routeText, newRoute } from '../lib/bus'
 import { safu } from '../lib/bridge'
 import { celebrations, CelebrationOverlay } from '../fx/Celebrations'
 import { resources } from '../lib/resources'
@@ -59,7 +59,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
   const [farAway, setFarAway] = useState(kv.get('commute.enabled', false))
   const [tasks, setTasks] = useState<Task[]>([])
   const [finished, setFinished] = useState(false)
-  const routes = busStore.use()
+  const routes = ownRoutes(busStore.use())
   const [activeBus, setActiveBus] = useState(bus.activeID())
 
   const groupNumber = (manualMode ? manual : picked?.number || '').trim()
@@ -232,7 +232,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
               {step === 1 && (
                 <>
                   <Header title={teacher ? 'Как вас зовут?' : 'Как тебя зовут?'} text={teacher ? 'Фамилия нужна, чтобы найти ваши пары в РУЗ.' : 'Для приветствия и титульных листов.'} />
-                  <Appear delay={0.08}><Input label="Имя" value={first} onChange={setFirst} autoFocus placeholder="Кирилл" /></Appear>
+                  <Appear delay={0.08}><Input label="Имя" value={first} onChange={setFirst} autoFocus placeholder="Иван" /></Appear>
                   {(showMore || teacher) ? (
                     <>
                       <Appear delay={0.12}><Input label="Фамилия" value={last} onChange={setLast} placeholder="Иванов" /></Appear>

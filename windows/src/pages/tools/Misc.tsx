@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bus, Plus, Share2, Trash2, ClipboardPaste, MapPin, ExternalLink, Check, Image as ImageIcon, Download, Copy, Upload, AlarmClock, PartyPopper, FolderOpen, Gamepad2, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader, Card, Sheet, Empty, Field, Segmented, Toggle, ToggleRow, Row, toast, confirmDialog, alertDialog, useNow } from '../../ui/kit'
-import { bus, busStore, BUS_DAYS, BUS_PALETTE, times, trips, routeTitle, routeText, mapURL, shareCode, fromShareCode, normalizeTimes, newRoute, commute, type BusRoute, type Direction, dayType } from '../../lib/bus'
+import { bus, busStore, ownRoutes, BUS_DAYS, BUS_PALETTE, times, trips, routeTitle, routeText, mapURL, shareCode, fromShareCode, normalizeTimes, newRoute, commute, type BusRoute, type Direction, dayType } from '../../lib/bus'
 import { useSchedule } from '../../lib/scheduleStore'
 import { slotsOn, kindStyle, subjects, type Slot } from '../../lib/schedule'
 import { hm, fullDay, startOfDay, addDays, untilText, isToday, isYesterday, plural, relDay, monday, DAY_NAMES, dayMon, weekday, ymd } from '../../lib/date'
@@ -23,14 +23,14 @@ import { OS } from '../../lib/os'
 // ---------- дорога ----------
 
 export function BusPage() {
-  const routes = busStore.use()
+  const routes = ownRoutes(busStore.use())
   const data = useSchedule(s => s.data)
   const now = useNow(30_000)
   const [enabled, setEnabled] = usePref('commute.enabled', false)
   const [notifyOn, setNotifyOn] = usePref('commute.notify', true)
   const [walk, setWalk] = usePref('commute.walk', 15)
   const [home, setHome] = usePref('commute.home', 10)
-  const [activeId, setActive] = usePref('bus.active', 'builtin-150')
+  const [activeId, setActive] = usePref('bus.active', '')
   const [edit, setEdit] = useState<BusRoute | null>(null)
   const [dir, setDir] = useState<Direction>('toCampus')
   const [dt, setDt] = useState(dayType(Date.now()))
@@ -55,7 +55,7 @@ export function BusPage() {
               {x.id === r.id && <Check size={18} color={'#' + x.colorHex} />}
             </motion.div>
           ))}
-          {!routes.some(x => x.id === 'builtin-150') && <button className="btn" onClick={() => bus.restore150()}>Вернуть автобус 150</button>}
+          {!routes.length && <div className="sub" style={{ padding: '4px 2px' }}>Своих автобусов пока нет — добавь свой («+ Автобус») или вставь код от одногруппника («Код от друга»).</div>}
           <Card className="list" style={{ padding: 0 }}>
             <ToggleRow title="Езжу на автобусе" sub="Карточка «Дорога» на главной" on={enabled} onChange={setEnabled} />
             <ToggleRow title="«Через 10 мин выходи»" sub="Уведомление перед автобусом" on={notifyOn} onChange={setNotifyOn} />
@@ -63,6 +63,16 @@ export function BusPage() {
             <Row title="От корпуса до остановки" right={<input className="input" type="number" style={{ width: 70 }} value={walk} onChange={e => setWalk(+e.target.value)} />} />
           </Card>
         </div>
+        {!routes.length ? (
+          <Card>
+            <div className="h-card mb8">Своего автобуса пока нет</div>
+            <div className="sub mb12">Добавь номер, остановки и расписание — или вставь код, которым поделился одногруппник. По нему считаются «Дорога» на главной и напоминания «пора выходить».</div>
+            <div className="row gap8">
+              <button className="btn primary" onClick={() => setEdit(newRoute())}><Plus size={15} /> Добавить свой автобус</button>
+              <button className="btn" onClick={async () => { const t = await safu.clipboard.read(); const nr = fromShareCode(t); if (nr) { bus.upsert(nr); toast(`${routeTitle(nr)} добавлен`) } else alertDialog('В буфере нет кода автобуса', 'Попроси одногруппника нажать «Поделиться» в его автобусе и скопируй код.') }}><ClipboardPaste size={15} /> Код от друга</button>
+            </div>
+          </Card>
+        ) : (
         <div className="col gap14">
           <Card style={{ overflow: 'hidden' }}>
             <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(500px 220px at 100% 0%, ${color}33, transparent)` }} />
@@ -105,6 +115,7 @@ export function BusPage() {
             </div>
           </Card>
         </div>
+        )}
       </div>
       <RouteEditor r={edit} onClose={() => setEdit(null)} />
     </>

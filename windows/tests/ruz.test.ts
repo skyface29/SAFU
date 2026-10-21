@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { parseHTML, EventText, parseICS, parseGroups, extractGroupID, lecturerEvent, sameLecturer, icsLinks, sameGroup } from '../src/lib/ruz'
 import { AddressFormat, mergeRuz, emptySchedule, slotsOn, pairFor, academicWeek, diffChanges, upcomingMap } from '../src/lib/schedule'
 import { targets, guessKind, newHomework, resolve, chip } from '../src/lib/homework'
-import { normalizeTimes, fromShareCode, shareCode, default150, commute } from '../src/lib/bus'
+import { normalizeTimes, fromShareCode, shareCode, newRoute, ownRoutes, noRoute, LEGACY_BUS_ID, commute } from '../src/lib/bus'
 import { parseBinaryPlist } from '../src/lib/plist'
 import { convertIOS } from '../src/lib/backup'
 import { makeZip, crc32 } from '../src/lib/zip'
@@ -128,17 +128,23 @@ test('ДЗ: срок к следующей паре и прогноз после
   assert.equal(chip(Date.now() - 2 * day), 'просрочено 2 дн')
 })
 
-test('автобусы: разбор времени, коды обмена, правило 150', () => {
+test('автобусы: разбор времени, коды обмена, выезд за «выезд за» минут', () => {
   assert.equal(normalizeTimes('7.40, 6:20; 8:15 6:20'), '06:20 07:40 08:15')
-  const r = fromShareCode('лови ' + shareCode(default150) + ' 🙂')!
-  assert.equal(r.number, '150')
-  assert.notEqual(r.id, default150.id)
+  const own = { ...newRoute(), number: '42', homeCity: 'Новодвинск', leadMinutes: 70, toCampus: { weekday: '06:50 07:05' } }
+  const r = fromShareCode('лови ' + shareCode(own) + ' 🙂')!
+  assert.equal(r.number, '42')
+  assert.notEqual(r.id, own.id)
+  assert.equal(r.builtIn, false)
   const first = new Date(2026, 9, 5, 8, 20).getTime()
-  assert.equal(new Date(commute.latestDeparture(first, default150)).getHours(), 7)
+  const latest = new Date(commute.latestDeparture(first, own))
+  assert.equal(latest.getHours() * 60 + latest.getMinutes(), 7 * 60 + 10)
+  // встроенного автобуса больше нет: прежний 150 из старых сохранений не считается своим
+  assert.deepEqual(ownRoutes([{ ...own, id: LEGACY_BUS_ID, builtIn: true }, own]).map(x => x.id), [own.id])
+  assert.equal(noRoute.number, '')
 })
 
 test('копия с iPhone: binary plist и даты Swift', () => {
-  // bplist: { "user.first": "Кирилл", "schedule.v1": <JSON с датой от 2001 года> }
+  // bplist: { "user.first": "Иван", "schedule.v1": <JSON с датой от 2001 года> }
   const json = new TextEncoder().encode(JSON.stringify({ semesterStart: 810000000, source: 1, ruzEvents: [{ start: 812000000, end: 812005700, subject: 'X' }] }))
   const objs: Uint8Array[] = []
   const enc = (s: string) => { const b = [0x60 | s.length]; for (const ch of s) { const c = ch.charCodeAt(0); b.push(c >> 8, c & 255) } return Uint8Array.from(b) }
@@ -146,7 +152,7 @@ test('копия с iPhone: binary plist и даты Swift', () => {
   objs.push(Uint8Array.from([0xd2, 1, 2, 3, 4]))
   objs.push(ascii('user.first'))
   objs.push(ascii('schedule.v1'))
-  objs.push(enc('Кирилл'))
+  objs.push(enc('Иван'))
   objs.push(Uint8Array.from([0x4f, 0x10, json.length, ...json]))
   const head = new TextEncoder().encode('bplist00')
   const offsets: number[] = []
@@ -159,7 +165,7 @@ test('копия с iPhone: binary plist и даты Swift', () => {
   all.set(head, 0); let p = head.length; for (const o of objs) { all.set(o, p); p += o.length }
   all.set(table, pos); all.set(trailer, pos + table.length)
   const dom = parseBinaryPlist(all) as any
-  assert.equal(dom['user.first'], 'Кирилл')
+  assert.equal(dom['user.first'], 'Иван')
   const conv = convertIOS(dom) as any
   assert.equal(conv['schedule.v1'].semesterStart, (810000000 + 978307200) * 1000)
   assert.equal(conv['schedule.v1'].ruzEvents[0].start, (812000000 + 978307200) * 1000)
