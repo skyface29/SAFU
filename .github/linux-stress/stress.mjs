@@ -110,10 +110,11 @@ function seededStore() {
       lessons: [], buildings: [{ id: 'b1', name: 'А-НСД17', address: 'наб. Северной Двины, д. 17' }], semesterStart: today - 50 * DAY, history: {},
       source: 1, ruzGroupNumber: '151116', ruzInstitution: 3, ruzGroupID: '0', ruzEvents, lastSync: now.getTime() - 3600_000, syncInfo: '', teacherPrefs: {}
     },
-    'bus.routes': [{ id: 'own-1', number: '42', homeCity: 'Новодвинск', homeStop: 'Центр', campusCity: 'Архангельск', campusStop: 'САФУ',
+    'bus.routes.v1': [{ id: 'own-1', number: '42', homeCity: 'Новодвинск', homeStop: 'Центр', campusCity: 'Архангельск', campusStop: 'САФУ',
       travelMinutes: 45, leadMinutes: 20, colorHex: '3B82F6', toCampus: { weekday: '06:30 07:10 07:50 08:40 12:00', saturday: '08:00 10:00', sunday: '' },
       toHome: { weekday: '13:00 15:30 17:40 19:10 21:00', saturday: '14:00', sunday: '' }, mapLink: '', useGeo: false, builtIn: false }],
-    'bus.active': 'own-1'
+    'bus.active': 'own-1',
+    'commute.enabled': true
   }
 }
 
