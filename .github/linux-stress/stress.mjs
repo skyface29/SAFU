@@ -734,9 +734,10 @@ phase('time', 'Путешествия во времени', async () => {
     did(`время ${when}`)
     log(`время ${when}`)
     // время то же, что и у системы, плюс сдвиг; расписание засеяно относительно «сегодня» этого времени
-    // монотонные часы не трогаем — на них таймеры Chromium; LD_PRELOAD не проходит через SUID-песочницу, поэтому
+    // монотонные часы не трогаем — на них таймеры Chromium; FAKETIME_NO_CACHE не ставим: с ним каждый запрос времени
+    // заново разбирает настройку, и всё идёт раз в десять медленнее (окно не успевало открыться за 20 с); LD_PRELOAD не проходит через SUID-песочницу, поэтому
     // на этом этапе окна без песочницы — иначе в окне было бы настоящее время, а в главном процессе подставное
-    const env = { LD_PRELOAD: FAKETIME, FAKETIME: `@${when}`, FAKETIME_DONT_RESET: '1', FAKETIME_NO_CACHE: '1', FAKETIME_DONT_FAKE_MONOTONIC: '1' }
+    const env = { LD_PRELOAD: FAKETIME, FAKETIME: `@${when}`, FAKETIME_DONT_RESET: '1', FAKETIME_DONT_FAKE_MONOTONIC: '1' }
     const home = newHome('time', seededStoreAt(when))
     let s
     try { s = await launch(home, { env, args: SANDBOX.length ? [] : ['--no-sandbox'] }) } catch (e) { R.startFail.push({ phase: R.phase, what: `${when}: не запустилось: ${e.message.split('\n')[0]}`, recent: [...recent] }); continue }
