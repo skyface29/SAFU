@@ -22,18 +22,27 @@ struct SeededGenerator: RandomNumberGenerator {
 /// анимируется всегда — ожидание шло бы до тайм-аута на каждом касании. Отключаем его.
 enum Quiescence {
     static func disable() {
-        guard let cls = NSClassFromString("XCUIApplicationProcess") else { return }
         var count: UInt32 = 0
-        guard let methods = class_copyMethodList(cls, &count) else { return }
-        defer { free(methods) }
+        guard let classes = objc_copyClassList(&count) else { return }
+        var done = 0
         for i in 0..<Int(count) {
-            let m = methods[i]
-            let name = NSStringFromSelector(method_getName(m))
-            guard name.hasPrefix("waitForQuiescence") else { continue }
-            let block: @convention(block) (AnyObject) -> Bool = { _ in true }
-            method_setImplementation(m, imp_implementationWithBlock(block))
-            print("MONKEY: без ожидания анимаций — \(name)")
+            let cls: AnyClass = classes[i]
+            let cname = NSStringFromClass(cls)
+            guard cname.hasPrefix("XC") else { continue }
+            var mc: UInt32 = 0
+            guard let methods = class_copyMethodList(cls, &mc) else { continue }
+            for j in 0..<Int(mc) {
+                let m = methods[j]
+                let name = NSStringFromSelector(method_getName(m))
+                guard name.hasPrefix("waitForQuiescence") || name.hasPrefix("_waitForQuiescence") else { continue }
+                let block: @convention(block) (AnyObject) -> Bool = { _ in true }
+                method_setImplementation(m, imp_implementationWithBlock(block))
+                print("MONKEY: без ожидания анимаций — \(cname).\(name)")
+                done += 1
+            }
+            free(methods)
         }
+        if done == 0 { print("MONKEY: ожидание анимаций отключить не удалось") }
     }
 }
 
@@ -59,8 +68,10 @@ final class MonkeyTests: XCTestCase {
         var left = 0
         let started = Date()
         func r(_ a: Double, _ b: Double) -> Double { Double.random(in: a...b, using: &rng) }
+        // координаты считаем от SpringBoard: его дерево крошечное, а касание всё равно приходит в приложение
+        // на экране (от самого приложения XCUITest на каждое касание обходил бы всё дерево SwiftUI — секунды)
         func point(_ x: Double, _ y: Double) -> XCUICoordinate {
-            app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y))
+            springboard.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y))
         }
 
         for i in 0..<events {
@@ -101,13 +112,15 @@ final class MonkeyTests: XCTestCase {
                 p.press(forDuration: r(0.6, 1.4))
             case 83..<86:
                 p.doubleTap()
-            case 86..<91:
+            case 86..<89:
                 if app.keyboards.count > 0 {
                     let texts = ["стр. 45, № 5-6", "Матан", "🎓 тест", "1) раз\n2) два", String(repeating: "я", count: 300), "' OR 1=1 --", "0/0"]
                     app.typeText(texts[Int.random(in: 0..<texts.count, using: &rng)])
                 } else {
                     p.tap()
                 }
+            case 89..<91:
+                p.tap()
             case 91..<94:
                 // свернуть и вернуться
                 XCUIDevice.shared.press(.home)
@@ -120,8 +133,8 @@ final class MonkeyTests: XCTestCase {
                 // кнопки в правом и левом верхнем углу
                 point(Bool.random(using: &rng) ? r(0.82, 0.96) : r(0.04, 0.18), r(0.06, 0.1)).tap()
             }
-            if i > 0 && i % 250 == 0 {
-                print("MONKEY: \(i) событий за \(Int(Date().timeIntervalSince(started))) с")
+            if i > 0 && i % 100 == 0 {
+                print("MONKEY: \(i) событий за \(Int(Date().timeIntervalSince(started))) с, приложение: \(app.state.rawValue)")
             }
         }
         print("MONKEY: готово, событий \(events) за \(Int(Date().timeIntervalSince(started))) с, перезапусков \(relaunches), выходов из приложения \(left)")

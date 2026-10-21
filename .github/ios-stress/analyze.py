@@ -101,7 +101,9 @@ for f in sorted(os.listdir(OUT)) if os.path.isdir(OUT) else []:
     if f.startswith("monkey_") and f.endswith(".txt"):
         t = read(f)
         done = re.search(r"MONKEY: готово, событий (\d+) за (\d+) с, перезапусков (\d+), выходов из приложения (\d+)", t)
-        monkey_rows.append((f[7:-4], done.group(1) if done else "—", done.group(2) + " с" if done else "—",
+        last = re.findall(r"MONKEY: (\d+) событий за (\d+) с", t)
+        monkey_rows.append((f[7:-4], done.group(1) if done else (f"до {last[-1][0]}" if last else "—"),
+                            done.group(2) + " с" if done else (f"{last[-1][1]} с" if last else "—"),
                             done.group(3) if done else str(t.count("MONKEY: приложения нет")),
                             done.group(4) if done else "—", "да" if done else "нет"))
 
@@ -141,6 +143,33 @@ if dead:
     for d in dead:
         p(f"- {d}")
     p("")
+# завершения процесса и фатальные ошибки — из системного журнала и stderr запусков
+ends = collections.Counter()
+for line in read("sim_log.txt").splitlines():
+    if "safuhub" in line or "SAFU[" in line:
+        if re.search(r"(?i)termination|exited|crash|signal|fatal|exception", line):
+            ends[re.sub(r"\d{2}:\d{2}:\d{2}\.\d+|\b\d+\b|0x[0-9a-f]+", "#", line.split(" ", 2)[-1])[:220]] += 1
+fatal = collections.Counter()
+sdir = os.path.join(OUT, "stderr")
+for name in os.listdir(sdir) if os.path.isdir(sdir) else []:
+    for line in read(os.path.join("stderr", name)).splitlines():
+        if re.search(r"Fatal error|fatal error|Terminating app|libc\+\+abi", line):
+            fatal[line.strip()[:300]] += 1
+if fatal:
+    p("## Фатальные ошибки (stderr приложения)\n")
+    p("```")
+    for line, cnt in fatal.most_common(10):
+        p(f"{cnt}× {line}")
+    p("```\n")
+if ends:
+    p("<details><summary>Завершения процесса по системному журналу</summary>\n")
+    p("```")
+    for line, cnt in ends.most_common(15):
+        p(f"{cnt}× {line}")
+    p("```\n</details>\n")
+found = read("reports_found.txt").strip().splitlines()
+p(f"Отчётов о падениях в системе за прогон: {len(found)}" + (" — " + ", ".join(os.path.basename(x) for x in found[:6]) if found else "") + "\n")
+
 p("## «Обезьяна»\n")
 p("| Прогон | Событий | Время | Приложение закрыто | Уходов из приложения | Дошла до конца |")
 p("|---|---|---|---|---|---|")
@@ -161,6 +190,7 @@ if steps:
     p(steps)
     p("```\n</details>")
 
-if crashes:
+if crashes or fatal:
     with open(os.path.join(OUT, "FAILED"), "w") as f:
-        f.write(f"Падений: {len(crashes)} уникальных, всего {sum(c['count'] for c in crashes.values())}\n")
+        f.write(f"Падений: {len(crashes)} уникальных, всего {sum(c['count'] for c in crashes.values())}; "
+                f"фатальных ошибок в stderr: {sum(fatal.values())}\n")
