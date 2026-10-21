@@ -137,9 +137,11 @@ export function SubjectSheet({ name, onClose }: { name: string | null; onClose: 
           <textarea className="textarea" value={note} onChange={e => setNote(e.target.value)} onBlur={() => subjectNotes.set(s, note)} placeholder="Требования преподавателя, допуск, что спросить…" style={{ minHeight: 110 }} />
           <div className="h-sec"><Pin size={13} /> Закрепы <span className="spacer" />
             <button className="btn sm ghost" onClick={async () => {
-              const url = await promptDialog('Ссылка', 'https://', 'https://sakai.narfu.ru/…')
-              if (!url || !/^https?:\/\//.test(url)) return
-              const title = await promptDialog('Название', new URL(url).host)
+              const url = (await promptDialog('Ссылка', 'https://', 'https://sakai.narfu.ru/…'))?.trim()
+              let host = ''
+              try { if (url && /^https?:\/\//.test(url)) host = new URL(url).host } catch { /* не ссылка */ }
+              if (!url || !host) { if (url && url !== 'https://') toast('Это не похоже на ссылку'); return }
+              const title = await promptDialog('Название', host)
               pins.add(s, { title: title || url, value: url, isFile: false })
             }}><Link2 size={13} /> Ссылка</button>
           </div>
