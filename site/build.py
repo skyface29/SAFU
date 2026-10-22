@@ -135,6 +135,8 @@ for r in releases:
         "platform": plat, "version": v, "build": build, "draft": draft,
         "date": (dt.datetime.strptime(when, "%Y-%m-%dT%H:%M:%SZ") + dt.timedelta(hours=3)).strftime("%Y-%m-%d") if when else "",
         "published": when,
+        # из какого коммита собрано: у черновиков из веток тут SHA, у сборок main — просто «main»
+        "commit": r.get("target_commitish") or "",
         "page": "" if draft else r.get("html_url", ""),
         "downloads": [{"name": a["name"], "url": a["browser_download_url"], "size": a.get("size", 0)} for a in assets],
     }
@@ -174,7 +176,15 @@ for plat, wf in STRESS.items():
         runs = api(f"actions/workflows/{wf}/runs?per_page=15").get("workflow_runs", [])
     except Exception:
         continue
-    after = [x for x in runs if x.get("created_at", "") >= latest["published"]]
+    # тест мог начаться, пока сборка ещё шла: проверяет он код коммита, поэтому считаем от времени коммита
+    # (если релиз указывает на SHA), но не позже самого релиза
+    since = latest["published"]
+    if re.fullmatch(r"[0-9a-f]{40}", latest["commit"]):
+        try:
+            since = min(since or "9", api(f"commits/{latest['commit']}")["commit"]["committer"]["date"])
+        except Exception:
+            pass
+    after = [x for x in runs if x.get("created_at", "") >= since]
     done = [x for x in after if x["status"] == "completed" and x["conclusion"] in ("success", "failure")]
     if done and done[0]["conclusion"] == "success":
         latest["test"] = "passed"
@@ -186,6 +196,7 @@ for plat, wf in STRESS.items():
 for r in rows:
     r.pop("published", None)
     r.pop("draft", None)
+    r.pop("commit", None)
 rows.sort(key=lambda r: (PLATFORMS.index(r["platform"]), [-int(x) for x in (r["version"].split(".") + ["0"] * 4)[:4]]))
 
 os.makedirs(OUT, exist_ok=True)
