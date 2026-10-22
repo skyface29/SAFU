@@ -153,6 +153,8 @@ object FileService {
     fun isAudio(f: File) = f.extension.lowercase() in audio
     fun isPdf(f: File) = f.extension.lowercase() == "pdf"
     fun isText(f: File) = f.extension.lowercase() in texts || f.extension.lowercase() in code
+    /** HTML показываем страницей, как в браузере, а не исходным кодом */
+    fun isHtml(f: File) = f.extension.lowercase() in setOf("html", "htm", "xhtml")
 
     fun icon(item: FileItem): String {
         if (item.isDirectory) return "folder.fill"

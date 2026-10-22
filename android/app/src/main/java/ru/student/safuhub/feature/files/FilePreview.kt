@@ -1,5 +1,6 @@
 package ru.student.safuhub.feature.files
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -7,14 +8,19 @@ import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.graphics.pdf.PdfRenderer
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.LruCache
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.MediaController
 import android.widget.VideoView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,8 +36,11 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -51,18 +60,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.exifinterface.media.ExifInterface
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import ru.student.safuhub.core.Defaults
 import ru.student.safuhub.data.FileItem
 import ru.student.safuhub.data.FileService
+import ru.student.safuhub.feature.web.CustomTabs
 import ru.student.safuhub.ui.design.Haptics
 import ru.student.safuhub.ui.kit.BarIcon
 import ru.student.safuhub.ui.kit.DoneSheet
 import ru.student.safuhub.ui.kit.ProgressLabel
 import ru.student.safuhub.ui.kit.ProminentButton
 import ru.student.safuhub.ui.kit.Screen
-import ru.student.safuhub.ui.kit.Share
 import ru.student.safuhub.ui.kit.SfGradientIcon
+import ru.student.safuhub.ui.kit.Share
 import ru.student.safuhub.ui.theme.Ios
 import ru.student.safuhub.ui.theme.Ts
 import ru.student.safuhub.ui.theme.ft
@@ -207,6 +221,7 @@ fun FilePreview(file: File) {
                 !file.exists() -> Unsupported(file, "Файл не найден")
                 FileService.isImage(file) -> ZoomableImage(file)
                 FileService.isPdf(file) -> PdfPages(file)
+                FileService.isHtml(file) -> HtmlPreview(file)
                 FileService.isText(file) -> TextPreview(file)
                 FileService.isMovie(file) || FileService.isAudio(file) -> MediaPreview(file)
                 else -> Unsupported(file, null)
@@ -293,6 +308,95 @@ private fun TextPreview(file: File) {
         Text(text ?: "", style = ft(if (code) 13f else Ts.body, mono = code).let { if (code) it.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace) else it },
             color = Ios.label, modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .let { if (code) it.horizontalScroll(rememberScrollState()) else it }.padding(16.dp))
+    }
+}
+
+/** Где остановился в каждом HTML: место на странице в её собственных точках (без масштаба).
+ *  Ключ — папка и имя файла: полный путь после переноса или восстановления копии меняется */
+object HtmlPlaces {
+    private const val KEY = "files.htmlPlace.v1"
+    private fun id(f: File) = (f.parentFile?.name ?: "") + "/" + f.name
+
+    fun get(f: File): Float? = (Defaults.dictionary(KEY)?.get(id(f)) as? String)?.substringBefore('|')?.toFloatOrNull()
+
+    fun put(f: File, y: Float) {
+        val all = HashMap<String, Any>(Defaults.dictionary(KEY) ?: emptyMap())
+        all[id(f)] = "$y|${System.currentTimeMillis()}"
+        // помним последние 200 файлов
+        if (all.size > 200) all.entries.sortedBy { (it.value as? String)?.substringAfter('|')?.toLongOrNull() ?: 0L }
+            .take(all.size - 200).map { it.key }.forEach { all.remove(it) }
+        Defaults.set(KEY, all)
+    }
+}
+
+/** HTML (решебники, сохранённые страницы) — страницей, как в браузере, с работающими кнопками.
+ *  Открывается там, где её оставили; если система выгрузила страницу в фоне — загружается на то же место */
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun HtmlPreview(file: File) {
+    // страницу выгрузили (у WebView умер процесс отрисовки) — создаём новую, номер её пересоздаёт
+    var generation by remember(file) { mutableIntStateOf(0) }
+    // место в точках страницы; < 0 — ещё не знаем
+    val place = remember(file) { floatArrayOf(HtmlPlaces.get(file) ?: -1f) }
+    val owner = LocalLifecycleOwner.current
+    DisposableEffect(owner, file) {
+        val save = { if (place[0] >= 0) HtmlPlaces.put(file, place[0]) }
+        // уходит в фон — запоминаем и на случай, если система закроет приложение
+        val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_PAUSE) save() }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs); save() }
+    }
+    key(generation) {
+        AndroidView({ c ->
+            WebView(c).apply {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.allowFileAccess = true
+                settings.builtInZoomControls = true
+                settings.displayZoomControls = false
+                settings.loadWithOverviewMode = true
+                settings.useWideViewPort = true
+                // пока возвращаемся на место, прыжки страницы не запоминаем
+                var restoring = place[0] > 0
+                setOnScrollChangeListener { v, _, y, _, _ ->
+                    val s = (v as WebView).scale
+                    if (!restoring && s > 0) place[0] = y / s
+                }
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView, req: WebResourceRequest): Boolean {
+                        val u = req.url
+                        val scheme = u.scheme?.lowercase()
+                        // сама страница, якоря, соседние файлы и окна внутри страницы
+                        if (scheme == "file" || scheme == "about" || scheme == "data" || scheme == "blob" || !req.isForMainFrame) return false
+                        // сайт — во встроенном браузере; почта, телефон и другие приложения — только по нажатию
+                        if (scheme == "http" || scheme == "https") CustomTabs.open(view.context, u.toString())
+                        else if (req.hasGesture()) Share.url(view.context, u.toString())
+                        return true
+                    }
+
+                    override fun onPageFinished(view: WebView, url: String?) {
+                        if (!restoring) return
+                        // картинки догружаются уже после загрузки, и страница ещё растёт — ждём до трёх секунд
+                        fun attempt(n: Int) {
+                            val target = (place[0] * view.scale).toInt()
+                            val max = ((view.contentHeight * view.scale).toInt() - view.height).coerceAtLeast(0)
+                            if (target <= max || n >= 12) {
+                                view.scrollTo(0, target.coerceIn(0, max))
+                                restoring = false
+                            } else view.postDelayed({ attempt(n + 1) }, 250)
+                        }
+                        attempt(0)
+                    }
+
+                    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                        // этим WebView пользоваться больше нельзя — Compose уберёт его и создаст новый на том же месте
+                        generation++
+                        return true
+                    }
+                }
+                loadUrl(Uri.fromFile(file).toString())
+            }
+        }, Modifier.fillMaxSize(), onRelease = { it.destroy() })
     }
 }
 
