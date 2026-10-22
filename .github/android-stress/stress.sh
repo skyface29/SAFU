@@ -23,8 +23,9 @@ check() {
     else
         log "   ПРИЛОЖЕНИЯ НЕТ после: $1"; echo "$1" >> "$OUT/dead_after.txt"
         # падения нет, а процесса нет — в отчёт то, что система писала о нём: запуск, смерть, кто убил
-        { echo "== $1"; adb logcat -d -t 600 2>/dev/null | tr -d '\r' \
-            | grep -E "$PKG|AndroidRuntime|lowmemorykiller|ActivityTaskManager: START|ActivityManager: (Start proc|Process|Killing)" | tail -40; } >> "$OUT/dead_context.txt"
+        # из непрерывного logcat (снимок -t 600 на шумном эмуляторе покрывал всего секунду)
+        { echo "== $1"; tail -n 30000 "$OUT/logcat.txt" | tr -d '\r' \
+            | grep -E "$PKG|AndroidRuntime|STRESS" | grep -vE "SurfaceSyncGroup|FrameTracker|ImeBackDispatcher" | tail -45; } >> "$OUT/dead_context.txt"
     fi
 }
 # среда после monkey: сеть, поворот, шторка
