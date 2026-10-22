@@ -175,6 +175,25 @@ if anrs:
         p("```")
         p("\n".join(a["block"]))
         p("```\n")
+# стеки главного потока из /data/anr: где именно он стоял
+traces = []
+adir = os.path.join(OUT, "anr")
+for root, _, files in os.walk(adir) if os.path.isdir(adir) else []:
+    for f in sorted(files):
+        text = read(os.path.relpath(os.path.join(root, f), OUT))
+        if PKG not in text:
+            continue
+        m = re.search(r'^"main".*?(?=\n\s*\n)', text, re.S | re.M)
+        if m:
+            traces.append((f, m.group(0).splitlines()[:35]))
+if traces:
+    p("<details open><summary>Стеки главного потока при зависаниях (/data/anr)</summary>\n")
+    for f, lines in traces[:4]:
+        p(f"`{f}`\n")
+        p("```")
+        p("\n".join(lines))
+        p("```\n")
+    p("</details>\n")
 if natives:
     p("## Нативные падения\n")
     for sig, n in natives.items():
@@ -189,6 +208,12 @@ if dead:
     for d in dead:
         p(f"- {d}")
     p("")
+    ctx = read("dead_context.txt").strip()
+    if ctx:
+        p("<details><summary>Что было с процессом перед этим (logcat)</summary>\n")
+        p("```")
+        p(ctx[-6000:])
+        p("```\n</details>\n")
 
 p("## Monkey\n")
 p("| Прогон | Событий | CRASH | ANR | Дошёл до конца |")

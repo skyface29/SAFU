@@ -20,7 +20,12 @@ launch() { adb shell am start -W -n "$ACT" "$@" 2>&1 | tr -d '\r'; }
 stop() { adb shell am force-stop "$PKG" >/dev/null 2>&1; }
 check() {
     if [ -n "$(pid)" ]; then log "   приложение живо после: $1"
-    else log "   ПРИЛОЖЕНИЯ НЕТ после: $1"; echo "$1" >> "$OUT/dead_after.txt"; fi
+    else
+        log "   ПРИЛОЖЕНИЯ НЕТ после: $1"; echo "$1" >> "$OUT/dead_after.txt"
+        # падения нет, а процесса нет — в отчёт то, что система писала о нём: запуск, смерть, кто убил
+        { echo "== $1"; adb logcat -d -t 600 2>/dev/null | tr -d '\r' \
+            | grep -E "$PKG|AndroidRuntime|lowmemorykiller|ActivityTaskManager: START|ActivityManager: (Start proc|Process|Killing)" | tail -40; } >> "$OUT/dead_context.txt"
+    fi
 }
 # среда после monkey: сеть, поворот, шторка
 restore_env() {
@@ -267,12 +272,16 @@ adb shell dumpsys dropbox --print data_app_crash > "$OUT/dropbox_crash.txt" 2>&1
 adb shell dumpsys dropbox --print data_app_anr > "$OUT/dropbox_anr.txt" 2>&1
 adb shell dumpsys dropbox --print data_app_native_crash > "$OUT/dropbox_native.txt" 2>&1
 adb shell dumpsys dropbox --print SYSTEM_TOMBSTONE > "$OUT/dropbox_tombstone.txt" 2>&1
-mkdir -p "$OUT/anr" "$OUT/tombstones"
-adb pull /data/anr "$OUT/anr" >/dev/null 2>&1 || true
-adb pull /data/tombstones "$OUT/tombstones" >/dev/null 2>&1 || true
 shot 11_final
 sleep 2
 kill "$LOGCAT" >/dev/null 2>&1
 pkill -f "adb logcat" >/dev/null 2>&1
+# стеки зависаний и нативных падений лежат в /data/anr и /data/tombstones — без root их не прочитать
+# (образ google_apis даёт root; adbd при этом перезапускается, поэтому — после всех проверок)
+mkdir -p "$OUT/anr" "$OUT/tombstones"
+adb root >/dev/null 2>&1; sleep 3; adb wait-for-device
+adb pull /data/anr "$OUT/anr" >/dev/null 2>&1 || true
+adb pull /data/tombstones "$OUT/tombstones" >/dev/null 2>&1 || true
+log "стеков зависаний: $(find "$OUT/anr" -type f | wc -l), нативных: $(find "$OUT/tombstones" -type f | wc -l)"
 log "готово"
 exit 0

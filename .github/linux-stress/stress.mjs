@@ -61,6 +61,7 @@ const R = {
   screens: new Set(),
   startMs: [],
   siteConsole: 0,
+  siteErrors: new Map(), // ошибки в скриптах сайтов во вкладках
   notes: []
 }
 const steps = fs.createWriteStream(path.join(OUT, 'steps.txt'))
@@ -111,7 +112,7 @@ function seededStore() {
       source: 1, ruzGroupNumber: '151116', ruzInstitution: 3, ruzGroupID: '0', ruzEvents, lastSync: now.getTime() - 3600_000, syncInfo: '', teacherPrefs: {}
     },
     'bus.routes.v1': [{ id: 'own-1', number: '42', homeCity: 'Новодвинск', homeStop: 'Центр', campusCity: 'Архангельск', campusStop: 'САФУ',
-      travelMinutes: 45, leadMinutes: 20, colorHex: '3B82F6', toCampus: { weekday: '06:30 07:10 07:50 08:40 12:00', saturday: '08:00 10:00', sunday: '' },
+      travelMinutes: 45, leadMinutes: 75, colorHex: '3B82F6', toCampus: { weekday: '06:30 07:10 07:50 08:40 12:00', saturday: '08:00 10:00', sunday: '' },
       toHome: { weekday: '13:00 15:30 17:40 19:10 21:00', saturday: '14:00', sunday: '' }, mapLink: '', useGeo: false, builtIn: false }],
     'bus.active': 'own-1',
     'commute.enabled': true
@@ -147,7 +148,8 @@ async function launch(home, { env = {}, args = [], wait = true } = {}) {
     for (const line of String(d).split('\n')) {
       if (!line.trim()) continue
       s.tail.push(line); if (s.tail.length > 40) s.tail.shift()
-      if (/FATAL:|Check failed|Segmentation fault|Trace\/breakpoint|Aborted|core dumped|A JavaScript error occurred/i.test(line)) count(R.stderrFatal, line.replace(/\[\d+:\d+\/\d+\.\d+:/, '[').trim())
+      // «ERR_ABORTED» — обычная отмена загрузки страницы сайта, не падение
+      if (/FATAL:|Check failed|Segmentation fault|Trace\/breakpoint trap|^Aborted|core dumped|A JavaScript error occurred/.test(line)) count(R.stderrFatal, line.replace(/\[\d+:\d+\/\d+\.\d+:/, '[').trim())
     }
   }
   s.proc.stdout?.on('data', onData)
@@ -181,7 +183,12 @@ function attachPage(s, p) {
   if (p.__stress) return
   p.__stress = true
   const where = () => (p.url().includes('#widget') ? 'мини-окно' : 'окно')
-  p.on('pageerror', e => count(R.pageErrors, `${where()}: ${e.name}: ${e.message}`, (e.stack || '').split('\n').slice(0, 8).join('\n')))
+  p.on('pageerror', e => {
+    // ошибки в скриптах самих сайтов университета (Sakai и др. во вкладках) — не ошибки приложения
+    const top = (e.stack || '').split('\n').find(l => /^\s+at /.test(l)) || ''
+    if (/\(?https?:\/\//.test(top)) { R.siteConsole += 1; count(R.siteErrors, `${e.name}: ${e.message} — ${top.trim().slice(0, 120)}`); return }
+    count(R.pageErrors, `${where()}: ${e.name}: ${e.message}`, (e.stack || '').split('\n').slice(0, 8).join('\n'))
+  })
   p.on('console', m => {
     if (m.type() !== 'error') return
     const t = m.text()
@@ -592,8 +599,17 @@ phase('screens', 'Каждый экран по очереди', async () => {
     await within(s.page.keyboard.press(t.key), 5000)
     await sleep(500)
     if (t.text) {
-      const r = await within(s.page.getByText(t.text, { exact: true }).first().click({ timeout: 6000 }), 9000)
-      if (r === TIMEOUT || r?.__error) R.notes.push(`этап «экраны»: не нашёл плитку «${t.text}»`)
+      let r = await within(s.page.getByText(t.text, { exact: true }).first().click({ timeout: 6000 }), 9000)
+      if (r === TIMEOUT || r?.__error) {
+        // плитки не видно (открыт лист, другой раздел) — как человек: через поиск Ctrl+K
+        await within(s.page.keyboard.press('Escape'), 3000)
+        await within(s.page.keyboard.press('Control+k'), 3000)
+        await sleep(400)
+        await within(s.page.keyboard.type(t.text, { delay: 20 }), 5000)
+        await sleep(600)
+        r = await within(s.page.keyboard.press('Enter'), 3000)
+        if (r === TIMEOUT || r?.__error) R.notes.push(`этап «экраны»: не открыл «${t.text}»`)
+      }
     }
     await sleep(800)
     if (await health(s, name) === 'hang') { s = await restart(s, {}, 'зависание'); continue }
@@ -811,6 +827,7 @@ if (R.bus150.length) { p('## Автобус 150\n'); R.bus150.slice(0, 5).forEac
 table('Фатальные строки в выводе Chromium', R.stderrFatal)
 table('Журнал ошибок приложения (logs/errors.log)', R.errorsLog, false)
 table('Ошибки в консоли интерфейса', R.consoleErrors, false)
+table('Ошибки в скриптах самих сайтов (не приложения)', R.siteErrors, false)
 block('Падения GPU и служебных процессов (под виртуальным экраном видеокарты нет — рисует процессор)', R.childGone, x => `${x.phase}: ${x.type} ${x.name} — ${x.reason} (${x.code})`)
 block('Закрыли из интерфейса (не падение)', R.quits, x => `${x.phase}: после «${x.recent.slice(-1)[0]}»`)
 if (R.notes.length) { p('## Заметки\n'); R.notes.forEach(n => p(`- ${n}`)); p('') }
