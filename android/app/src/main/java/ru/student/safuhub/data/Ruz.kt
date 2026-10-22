@@ -190,7 +190,13 @@ object RuzClient {
 
     // MARK: поиск группы
 
-    suspend fun findGroupID(number: String, institution: Int, searchAll: Boolean = true): String? {
+    // Разбор страниц РУЗ — регулярные выражения по всей странице — не в главном потоке: на нём загрузка
+    // расписания держала интерфейс дольше 5 секунд, и Android показывал «Приложение не отвечает»
+    // (стресс-тест, стек главного потока: RuzClient.load → parseHTML → squeezed). Сеть — в fetch, на IO
+    suspend fun findGroupID(number: String, institution: Int, searchAll: Boolean = true): String? =
+        withContext(Dispatchers.Default) { findGroupIDOnPages(number, institution, searchAll) }
+
+    private suspend fun findGroupIDOnPages(number: String, institution: Int, searchAll: Boolean): String? {
         val order = mutableListOf(institution)
         if (searchAll) order += institutions.map { it.first }.filter { it != institution }
         for (inst in order) {
@@ -214,7 +220,9 @@ object RuzClient {
 
     // MARK: загрузка расписания
 
-    suspend fun load(groupID: String): RuzResult {
+    suspend fun load(groupID: String): RuzResult = withContext(Dispatchers.Default) { loadPage(groupID) }
+
+    private suspend fun loadPage(groupID: String): RuzResult {
         val html = fetch(timetableURL(groupID))
         RuzLecturers.remember(html)
         // 1. Страница РУЗ — в ней есть тип пары (лекция/практика/лаба) и преподаватель
@@ -275,7 +283,10 @@ object RuzClient {
         DateTimeFormatter.ofPattern(fmt, java.util.Locale.US).format(d.atZone(moscow))
 
     /** Пытаемся загрузить конкретную неделю */
-    suspend fun loadWeek(groupID: String, monday: Instant): List<RuzEvent> {
+    suspend fun loadWeek(groupID: String, monday: Instant): List<RuzEvent> =
+        withContext(Dispatchers.Default) { loadWeekPage(groupID, monday) }
+
+    private suspend fun loadWeekPage(groupID: String, monday: Instant): List<RuzEvent> {
         val html = try { fetch(timetableURL(groupID)) } catch (_: Throwable) { return emptyList() }
         val candidates = mutableListOf<String>()
         val linkPattern = "href\\s*=\\s*[\"']([^\"']*group=$groupID[^\"']*)[\"']"

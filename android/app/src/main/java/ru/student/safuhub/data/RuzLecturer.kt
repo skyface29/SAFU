@@ -81,7 +81,10 @@ object RuzLecturers {
     }
 
     /** Ищем номер преподавателя на странице своей группы (и на других неделях — вдруг его пары там) */
-    suspend fun findID(name: String, groupID: String): String? {
+    suspend fun findID(name: String, groupID: String): String? = withContext(Dispatchers.Default) { findIDOnPages(name, groupID) }
+
+    // разбор страниц — не в главном потоке (как и RuzClient.load)
+    private suspend fun findIDOnPages(name: String, groupID: String): String? {
         knownID(name)?.let { return it }
         if (groupID.isEmpty()) return null
         val html = try { RuzClient.fetch(RuzClient.timetableURL(groupID)) } catch (_: Throwable) { return null }
