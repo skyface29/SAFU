@@ -186,9 +186,10 @@ for r in rows:
 rows.sort(key=lambda r: (PLATFORMS.index(r["platform"]), [-int(x) for x in (r["version"].split(".") + ["0"] * 4)[:4]]))
 
 os.makedirs(OUT, exist_ok=True)
-shutil.copy(os.path.join(HERE, "index.html"), os.path.join(OUT, "index.html"))
-if os.path.exists(os.path.join(HERE, "CNAME")):
-    shutil.copy(os.path.join(HERE, "CNAME"), os.path.join(OUT, "CNAME"))
+# og.png — картинка превью ссылки (Telegram и мессенджеры)
+for name in ("index.html", "og.png", "CNAME"):
+    if os.path.exists(os.path.join(HERE, name)):
+        shutil.copy(os.path.join(HERE, name), os.path.join(OUT, name))
 json.dump({"generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "repo": REPO, "versions": rows},
           open(os.path.join(OUT, "versions.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 from collections import Counter
