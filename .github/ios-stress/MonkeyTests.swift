@@ -110,11 +110,11 @@ final class MonkeyTests: XCTestCase {
             case 83..<86:
                 p.doubleTap()
             case 86..<89:
-                if app.keyboards.count > 0 {
-                    let texts = ["стр. 45, № 5-6", "Матан", "🎓 тест", "1) раз\n2) два", String(repeating: "я", count: 300), "' OR 1=1 --", "0/0"]
-                    app.typeText(texts[Int.random(in: 0..<texts.count, using: &rng)])
-                } else {
-                    p.tap()
+                // ввод текста — касаниями по клавишам экранной клавиатуры внизу экрана (нет клавиатуры — просто
+                // касания). Спрашивать приложение (app.keyboards, typeText) нельзя: это обход всего дерева SwiftUI,
+                // он упирался в тайм-аут запроса, а typeText падал, если фокус уходил между проверкой и вводом
+                for _ in 0..<Int.random(in: 3...12, using: &rng) {
+                    point(r(0.04, 0.96), r(0.72, 0.93)).tap()
                 }
             case 89..<91:
                 p.tap()
