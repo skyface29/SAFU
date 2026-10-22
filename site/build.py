@@ -84,8 +84,11 @@ for ref_env in ("ELECTRON_REF", "ANDROID_REF", ""):
         continue
     cl = ts[ts.index("const CHANGELOG"):]
     for m in re.finditer(r"\{ version: '([^']+)', items: \[(.*?)\] \}", cl[:cl.index("\n]\n") + 3], re.S):
-        plat = "Linux" if "Linux" in m.group(1) else "Windows"
-        notes[plat].setdefault(norm(m.group(1)), strings(m.group(2), "'"))
+        # «19.9.2 для Windows и Linux» — одна запись на обе системы
+        v = m.group(1)
+        plats = ["Windows", "Linux"] if "Windows" in v and "Linux" in v else ["Linux" if "Linux" in v else "Windows"]
+        for plat in plats:
+            notes[plat].setdefault(norm(v), strings(m.group(2), "'"))
 
 # версии, которых нет в «Что нового» самих приложений: самые ранние, убранные позже и Mac
 extra = json.load(open(os.path.join(HERE, "history-extra.json"), encoding="utf-8"))
