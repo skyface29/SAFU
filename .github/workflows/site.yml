@@ -1,6 +1,6 @@
 # Сайт Арктики на GitHub Pages: последние версии для каждой системы, что нового и где скачать.
-# Список собирается сам (site/build.py) из «Что нового» в коде приложений, опубликованных релизов и стресс-тестов.
-# Черновики на сайт не попадают: версия появляется, как только релиз опубликован для всех.
+# Список собирается сам (site/build.py) из «Что нового» в коде приложений, релизов и стресс-тестов.
+# Черновики показываются как «в работе», без файлов: кнопка «Скачать» появляется, когда релиз опубликован для всех.
 name: Сайт
 on:
   workflow_dispatch:
@@ -10,10 +10,11 @@ on:
   # релиз опубликовали, исправили или сняли — вручную в Releases
   release:
     types: [ published, edited, unpublished, deleted ]
-  # релизы iPhone создаёт сама сборка, а события от её токена сайт не запускают — ловим конец сборки;
+  # релизы и черновики создают сами сборки, а события от их токена сайт не запускают — ловим конец сборки;
   # стресс-тесты — чтобы на сайте был их итог
   workflow_run:
-    workflows: [ 'Build IPA', 'Build macOS', 'iOS stress test', 'Android stress test', 'Linux stress test' ]
+    workflows: [ 'Build IPA', 'Build macOS', 'Build APK', 'Build Windows', 'Build Linux',
+                 'iOS stress test', 'Android stress test', 'Linux stress test' ]
     types: [ completed ]
   schedule:
     - cron: '17 4 * * *'
@@ -39,6 +40,11 @@ jobs:
   build:
     if: github.event_name != 'release'
     runs-on: ubuntu-latest
+    permissions:
+      # черновики релизов API отдаёт только с правом записи; сама сборка в репозиторий ничего не пишет
+      contents: write
+      actions: read
+      pages: read
     steps:
       - uses: actions/checkout@v5
         with:

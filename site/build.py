@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Сайт версий: собирает _site/versions.json из «Что нового» в коде приложений, опубликованных релизов
-GitHub и стресс-тестов в Actions. Черновики не попадают — на сайте только то, что вышло для всех.
+"""Сайт версий: собирает _site/versions.json из «Что нового» в коде приложений, релизов GitHub
+и стресс-тестов в Actions. Черновики тоже попадают, но без файлов: пользователь видит, что версия
+в работе, а скачать её можно, только когда релиз опубликуют.
 
 Запуск в GitHub Actions (site.yml): GH_TOKEN, GITHUB_REPOSITORY; ветки с Android и Electron — ANDROID_REF,
-ELECTRON_REF (если в рабочей копии этих файлов нет). Локально: GH_TOKEN можно не задавать — публичный API.
+ELECTRON_REF (если в рабочей копии этих файлов нет). Черновики API отдаёт только токену с правом записи;
+локально без GH_TOKEN (публичный API) их не будет.
 """
 import datetime as dt
 import io
@@ -75,8 +77,11 @@ kt = read_source(ANDROID_PATH, "ANDROID_REF")
 for m in re.finditer(r'ChangelogEntry\("([^"]+)", listOf\((.*?)\)\)', kt, re.S):
     notes["Android"].setdefault(norm(m.group(1)), strings(m.group(2), '"'))
 
-ts = read_source(ELECTRON_PATH, "ELECTRON_REF")
-if "const CHANGELOG" in ts:
+# Windows собирается из трёх веток, и в каждой свои последние версии: берём «Что нового» из всех
+for ref_env in ("ELECTRON_REF", "ANDROID_REF", ""):
+    ts = read_source(ELECTRON_PATH, ref_env)
+    if "const CHANGELOG" not in ts:
+        continue
     cl = ts[ts.index("const CHANGELOG"):]
     for m in re.finditer(r"\{ version: '([^']+)', items: \[(.*?)\] \}", cl[:cl.index("\n]\n") + 3], re.S):
         plat = "Linux" if "Linux" in m.group(1) else "Windows"
@@ -89,7 +94,7 @@ for e in extra:
     extra_notes[(e["platform"], norm(e["version"]))] = e
 
 
-# ---------- опубликованные релизы ----------
+# ---------- релизы: вышедшие и черновики ----------
 TAGS = [("mac-build-", "Mac"), ("build-", "iPhone"), ("android-", "Android"), ("win-", "Windows"), ("linux-", "Linux")]
 MAIN_ASSET = {"iPhone": r"-v[\d.]+-build\d+\.ipa$|\.ipa$", "Mac": r"\.dmg$", "Android": r"\.apk$", "Windows": r"\.exe$",
               "Linux": r"\.(AppImage|deb|rpm)$"}
@@ -104,8 +109,6 @@ while True:
 
 best = {}
 for r in releases:
-    if r.get("draft"):
-        continue
     tag = r.get("tag_name", "")
     plat = next((p for pre, p in TAGS if tag.startswith(pre)), None)
     m = re.search(r"(\d+(?:\.\d+)+)", r.get("name") or "")
@@ -114,18 +117,22 @@ for r in releases:
         continue
     v = norm(m.group(1))
     build = int(b.group(1)) if b else 0
+    draft = bool(r.get("draft"))
     key = (plat, v)
-    if key in best and best[key]["build"] >= build:
+    # вышедшая сборка версии важнее черновика той же версии, среди равных — с бо́льшим номером
+    if key in best and (best[key]["draft"], -best[key]["build"]) <= (draft, -build):
         continue
-    assets = [a for a in r.get("assets", []) if re.search(MAIN_ASSET[plat], a["name"], re.I)]
+    # файлы и страница черновика видны только участникам репозитория — на сайт их не выносим
+    assets = [] if draft else [a for a in r.get("assets", []) if re.search(MAIN_ASSET[plat], a["name"], re.I)]
     # у iPhone два одинаковых файла: с номером версии и SAFU.ipa — оставляем первый
     if plat == "iPhone":
         assets = sorted(assets, key=lambda a: a["name"] == "SAFU.ipa")[:1]
+    when = (r.get("created_at") if draft else r.get("published_at")) or ""
     best[key] = {
-        "platform": plat, "version": v, "build": build,
-        "date": (dt.datetime.strptime(r["published_at"], "%Y-%m-%dT%H:%M:%SZ") + dt.timedelta(hours=3)).strftime("%Y-%m-%d") if r.get("published_at") else "",
-        "published": r.get("published_at") or "",
-        "page": r.get("html_url", ""),
+        "platform": plat, "version": v, "build": build, "draft": draft,
+        "date": (dt.datetime.strptime(when, "%Y-%m-%dT%H:%M:%SZ") + dt.timedelta(hours=3)).strftime("%Y-%m-%d") if when else "",
+        "published": when,
+        "page": "" if draft else r.get("html_url", ""),
         "downloads": [{"name": a["name"], "url": a["browser_download_url"], "size": a.get("size", 0)} for a in assets],
     }
 
@@ -139,13 +146,25 @@ for (plat, v), rel in best.items():
     rel.update({"items": items or [], "note": note if items else "Список изменений этой сборки не сохранился"})
     rows.append(rel)
 
+# public — вышла, скачать можно; work — самый новый черновик, новее всего вышедшего: над ним идёт работа;
+# test — черновик, который так и не вышел для всех: его изменения вошли в следующие версии
+newest = {}
+for plat in PLATFORMS:
+    mine = sorted((r for r in rows if r["platform"] == plat), key=lambda r: [int(x) for x in r["version"].split(".")], reverse=True)
+    for r in mine:
+        r["status"] = "test" if r["draft"] else "public"
+    if mine:
+        newest[plat] = mine[0]
+        if mine[0]["draft"]:
+            mine[0]["status"] = "work"
 
-# ---------- стресс-тесты: прогон после выпуска версии ----------
+
+# ---------- стресс-тесты: прогон после выпуска (или сборки черновика) самой новой версии ----------
 STRESS = {"iPhone": "ios-stress.yml", "Android": "android-stress.yml", "Linux": "linux-stress.yml", "Windows": "linux-stress.yml"}
 WHAT = {"iPhone": "симулятор iPhone", "Android": "эмулятор Android", "Linux": "Ubuntu, собранный .deb",
         "Windows": "тот же код на Linux"}
 for plat, wf in STRESS.items():
-    latest = max((r for r in rows if r["platform"] == plat), key=lambda r: [int(x) for x in r["version"].split(".")], default=None)
+    latest = newest.get(plat)
     if not latest:
         continue
     try:
@@ -163,6 +182,7 @@ for plat, wf in STRESS.items():
 
 for r in rows:
     r.pop("published", None)
+    r.pop("draft", None)
 rows.sort(key=lambda r: (PLATFORMS.index(r["platform"]), [-int(x) for x in (r["version"].split(".") + ["0"] * 4)[:4]]))
 
 os.makedirs(OUT, exist_ok=True)
@@ -173,4 +193,6 @@ json.dump({"generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%
           open(os.path.join(OUT, "versions.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 from collections import Counter
 print("версий на сайте:", len(rows), dict(Counter(r["platform"] for r in rows)))
+print("в работе:", [f'{r["platform"]} {r["version"]}' for r in rows if r["status"] == "work"],
+      "тестовых сборок:", sum(r["status"] == "test" for r in rows))
 print("без списка изменений:", [f'{r["platform"]} {r["version"]}' for r in rows if not r["items"]])
