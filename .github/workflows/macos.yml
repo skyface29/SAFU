@@ -105,8 +105,11 @@ jobs:
       - uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
+          # черновик: виден только владельцу репозитория, публикуется вручную
+          draft: true
+          prerelease: true
           tag_name: mac-build-${{ github.run_number }}
-          name: Арктика для Mac ${{ env.APP_VERSION }} (сборка ${{ github.run_number }})
+          name: Арктика для Mac ${{ env.APP_VERSION }} (черновик, сборка ${{ github.run_number }})
           files: |
             ${{ env.DMG_NAME }}
             Arktika.dmg
