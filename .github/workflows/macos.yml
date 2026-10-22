@@ -6,6 +6,8 @@ on:
   workflow_dispatch:
   push:
     branches: [ main, dev, 'claude/**' ]
+    # сайт и описания — не повод собирать и выпускать новую версию
+    paths-ignore: [ 'site/**', '.github/workflows/site.yml', '**.md', '.gitignore' ]
 permissions:
   contents: write
 jobs:

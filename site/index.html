@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Арктика — версии и загрузки</title>
+<meta name="description" content="Неофициальное приложение для студентов САФУ для iPhone, Mac, Android, Windows и Linux: последние версии, что нового и где скачать.">
+<meta property="og:title" content="Арктика — версии и загрузки">
+<meta property="og:description" content="Последняя версия для iPhone, Mac, Android, Windows и Linux, что в ней нового и где скачать. Вся история — с первой версии.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0c1626">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&family=Unbounded:wght@600;700&display=swap">
+<style>
+/* Сайт Арктики: выбор системы крупными плитками, под ним последняя версия с загрузкой и вся история лентой */
+:root {
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --sunk: #f4f7fb;
+  --ink: #0c1626;
+  --muted: #5b6a80;
+  --line: #d8e0ea;
+  --focus: #1f62e0;
+  --ok: #137347;   --ok-bg: #dcf2e6;
+  --warn: #8a5900; --warn-bg: #fbeed0;
+  --run: #1f5bd0;  --run-bg: #dfe9fd;
+  --bad: #9a2b2b;  --bad-bg: #f7e0e0;
+  --dim: #5b6a80;  --dim-bg: #e8edf3;
+  /* цвета систем */
+  --c-all: #2a3446; --c-iphone: #2f6bff; --c-mac: #7a5cf0; --c-android: #12945a; --c-windows: #0a84c6; --c-linux: #d9820a;
+  --shadow: 0 1px 2px rgba(12, 22, 38, .06), 0 8px 24px rgba(12, 22, 38, .06);
+  --display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #090e16; --surface: #101824; --sunk: #0c131d; --ink: #e5ecf5; --muted: #8d9cb2; --line: #1d2939; --focus: #6fa3ff;
+    --ok: #6fd6a0; --ok-bg: #11301f; --warn: #f0c46b; --warn-bg: #33270e; --run: #8db6ff; --run-bg: #14254a;
+    --bad: #f3a0a0; --bad-bg: #3a1818; --dim: #8d9cb2; --dim-bg: #182233;
+    --c-all: #42557a; --c-iphone: #5d8dff; --c-mac: #9c86ff; --c-android: #39c47f; --c-windows: #39aee8; --c-linux: #f0a238;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .28);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #090e16; --surface: #101824; --sunk: #0c131d; --ink: #e5ecf5; --muted: #8d9cb2; --line: #1d2939; --focus: #6fa3ff;
+  --ok: #6fd6a0; --ok-bg: #11301f; --warn: #f0c46b; --warn-bg: #33270e; --run: #8db6ff; --run-bg: #14254a;
+  --bad: #f3a0a0; --bad-bg: #3a1818; --dim: #8d9cb2; --dim-bg: #182233;
+  --c-all: #42557a; --c-iphone: #5d8dff; --c-mac: #9c86ff; --c-android: #39c47f; --c-windows: #39aee8; --c-linux: #f0a238;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .28);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 72px;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 22px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(26px, 4.4vw, 40px); letter-spacing: -.015em; margin: 0; text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+.btn {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 9px 15px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; text-decoration: none; color: var(--ink);
+}
+.btn:hover { border-color: var(--pc, var(--focus)); }
+.btn.solid { background: var(--pc, var(--focus)); border-color: var(--pc, var(--focus)); color: #fff; }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--muted); padding: 6px 8px; font-weight: 500; }
+.btn.ghost:hover { color: var(--ink); }
+.btn.danger { color: var(--bad); }
+
+/* выбор системы */
+.picker { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 860px) { .picker { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tile {
+  --pc: var(--c-all);
+  position: relative; text-align: left; border: 1.5px solid var(--line); background: var(--surface); border-radius: 18px;
+  padding: 14px 14px 13px; display: grid; gap: 10px; align-content: start; min-width: 0; box-shadow: var(--shadow);
+  transition: transform .18s ease, background-color .18s ease, border-color .18s ease;
+}
+.tile:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--pc) 55%, var(--line)); }
+.tile .glyph {
+  width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--pc) 14%, transparent); color: var(--pc);
+}
+.tile .glyph svg { width: 24px; height: 24px; }
+.tile .name { font-weight: 600; font-size: 15px; }
+.tile .ver { font-family: var(--mono); font-weight: 700; font-size: 19px; line-height: 1; font-variant-numeric: tabular-nums; }
+.tile .sub { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; min-height: 18px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
+.dot.public { background: var(--ok); } .dot.draft { background: var(--warn); }
+.tile[aria-selected="true"] {
+  background: linear-gradient(150deg, var(--pc), color-mix(in srgb, var(--pc) 70%, #000));
+  border-color: var(--pc); color: #fff; transform: translateY(-2px);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--pc) 35%, transparent);
+}
+.tile[aria-selected="true"] .glyph { background: rgba(255, 255, 255, .18); color: #fff; }
+.tile[aria-selected="true"] .sub { color: rgba(255, 255, 255, .85); }
+.tile[aria-selected="true"] .dot { box-shadow: 0 0 0 2px rgba(255, 255, 255, .7); }
+@media (max-width: 520px) {
+  .tile { padding: 11px 10px; gap: 7px; border-radius: 15px; }
+  .tile .glyph { width: 34px; height: 34px; border-radius: 10px; }
+  .tile .glyph svg { width: 20px; height: 20px; }
+  .tile .ver { font-size: 16px; }
+  .tile .name { font-size: 14px; }
+}
+
+/* «сейчас» выбранной системы */
+.hero {
+  --pc: var(--c-all);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+}
+@media (max-width: 760px) { .hero { grid-template-columns: minmax(0, 1fr); } }
+.hero .side {
+  padding: 22px; display: grid; gap: 12px; align-content: start;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--pc) 16%, var(--surface)), var(--surface) 75%);
+  border-right: 1px solid var(--line);
+}
+@media (max-width: 760px) { .hero .side { border-right: 0; border-bottom: 1px solid var(--line); } }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--pc); }
+.bigver { font-family: var(--mono); font-weight: 700; font-size: 48px; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.meta { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.explain { font-size: 13.5px; color: var(--muted); }
+.actions-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.hero .main { padding: 22px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.hero h2 { margin: 0; font-family: var(--display); font-size: 17px; font-weight: 600; }
+ul.items { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+ul.items li { max-width: 74ch; }
+ul.items li::marker { color: var(--pc); }
+.note { font-size: 13px; color: var(--muted); border-left: 3px solid color-mix(in srgb, var(--pc) 45%, var(--line)); padding-left: 10px; }
+
+/* «Все»: сводка по системам */
+.matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
+.matrix th { text-align: left; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 0 10px 8px 0; }
+.matrix td { padding: 10px 10px 10px 0; border-top: 1px solid var(--line); vertical-align: middle; }
+.matrix .os { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.matrix .os .glyph { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--pc); background: color-mix(in srgb, var(--pc) 14%, transparent); }
+.matrix .os .glyph svg { width: 17px; height: 17px; }
+.matrix .v { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+.matrix tr.go { cursor: pointer; } .matrix tr.go:hover td { background: var(--sunk); }
+.scroll { overflow-x: auto; }
+
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.chip.public, .chip.passed { color: var(--ok); background: var(--ok-bg); }
+.chip.draft, .chip.partial { color: var(--warn); background: var(--warn-bg); }
+.chip.running { color: var(--run); background: var(--run-bg); }
+.chip.none { color: var(--bad); background: var(--bad-bg); }
+.chip.dim { color: var(--dim); background: var(--dim-bg); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* история */
+.histhead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.histhead h2 { margin: 0 auto 0 0; font-family: var(--display); font-size: 18px; font-weight: 600; }
+.search { flex: 1 1 220px; max-width: 360px; min-width: 0; }
+.search input { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 8px 12px; }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 9px; padding: 5px 11px; color: var(--muted); font-weight: 500; font-size: 14px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.feed { display: grid; gap: 10px; }
+.entry {
+  --pc: var(--c-all);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px;
+  display: grid; grid-template-columns: 118px minmax(0, 1fr) auto; gap: 4px 16px; align-items: start;
+}
+.entry .badge { display: grid; gap: 4px; align-content: start; }
+.entry .vtag { font-family: var(--mono); font-weight: 700; font-size: 18px; color: var(--pc); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.entry .os { font-size: 12px; font-weight: 600; color: var(--muted); }
+.entry .when { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.entry .body { display: grid; gap: 8px; min-width: 0; }
+.more { border: 0; background: none; color: var(--pc); padding: 0; font-weight: 600; font-size: 14px; justify-self: start; }
+.tnote { font-size: 12.5px; color: var(--muted); }
+@media (max-width: 620px) {
+  .entry { grid-template-columns: minmax(0, 1fr) auto; }
+  .entry .badge { grid-column: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .entry .body { grid-column: 1 / -1; }
+  .entry .edit { grid-column: 2; grid-row: 1; }
+}
+.group { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.group .glyph { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--pc); background: color-mix(in srgb, var(--pc) 14%, transparent); }
+.group .glyph svg { width: 16px; height: 16px; }
+.group h3 { margin: 0 auto 0 0; font-size: 15px; font-weight: 600; }
+.empty { padding: 32px 18px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: 16px; }
+.empty strong { display: block; color: var(--ink); margin-bottom: 4px; }
+.pager { display: flex; justify-content: center; }
+
+/* пояснения */
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px 22px; font-size: 13.5px; color: var(--muted); }
+.legend div { display: flex; gap: 8px; align-items: baseline; }
+footer.foot { font-size: 12.5px; color: var(--muted); }
+
+/* форма */
+dialog {
+  border: 1px solid var(--line); border-radius: 20px; padding: 0; width: min(620px, calc(100vw - 32px));
+  background: var(--surface); color: var(--ink); box-shadow: 0 24px 70px rgba(0, 0, 0, .32);
+}
+dialog::backdrop { background: rgba(6, 11, 20, .5); }
+form.f { display: grid; gap: 14px; padding: 20px; }
+form.f h3 { margin: 0; font-family: var(--display); font-size: 18px; font-weight: 600; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+label.fld { display: grid; gap: 5px; font-size: 13px; color: var(--muted); font-weight: 500; }
+label.fld input, label.fld select, label.fld textarea {
+  border: 1px solid var(--line); background: var(--sunk); border-radius: 10px; padding: 9px 11px; color: var(--ink); width: 100%;
+}
+label.fld textarea { min-height: 150px; resize: vertical; line-height: 1.45; }
+.factions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.factions .right { display: flex; gap: 10px; margin-left: auto; }
+.msg { font-size: 13px; color: var(--bad); margin: 0; }
+.saving { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .tile:hover, .tile[aria-selected="true"] { transform: none; } }
+
+/* только для сайта */
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+.tile.soon .ver { color: var(--muted); font-size: 16px; font-weight: 600; }
+.tile.soon[aria-selected="true"] .ver { color: rgba(255, 255, 255, .85); }
+.btn small { font-weight: 500; opacity: .78; }
+.explain a, .foot a { color: var(--pc, var(--focus)); }
+.hero .bigver { overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(() => {
+  const PL = [
+    { id: "all", key: "", name: "Все системы", short: "Все", c: "--c-all" },
+    { id: "iphone", key: "iPhone", name: "iPhone", c: "--c-iphone", how: "Файл .ipa ставится через AltStore, SideStore или Sideloadly" },
+    { id: "mac", key: "Mac", name: "Mac", c: "--c-mac", how: "Открой .dmg и перетащи Арктику в «Программы»" },
+    { id: "android", key: "Android", name: "Android", c: "--c-android", how: "Открой .apk на телефоне и разреши установку из этого источника" },
+    { id: "windows", key: "Windows", name: "Windows", c: "--c-windows", how: "Запусти установщик .exe" },
+    { id: "linux", key: "Linux", name: "Linux", c: "--c-linux", how: "AppImage — для любого дистрибутива, .deb — Ubuntu и Debian, .rpm — Fedora и openSUSE" }
+  ];
+  const OS = PL.slice(1);
+  const byKey = k => PL.find(p => p.key === k) || PL[0];
+  const G = {
+    all: '<path d="M12 3 21 8l-9 5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 16.5 9 5 9-5"/>',
+    iphone: '<rect x="6.5" y="2.5" width="11" height="19" rx="3"/><path d="M10.5 5.2h3"/>',
+    mac: '<rect x="3.5" y="4.5" width="17" height="11.5" rx="1.8"/><path d="M1.5 19.5h21"/>',
+    android: '<path d="M5 16a7 7 0 0 1 14 0z"/><path d="M8.2 9.4 6.6 7M15.8 9.4 17.4 7"/><circle cx="9.5" cy="13" r=".9" fill="currentColor" stroke="none"/><circle cx="14.5" cy="13" r=".9" fill="currentColor" stroke="none"/><path d="M5 19.5h14"/>',
+    windows: '<rect x="3" y="3" width="8" height="8" rx="1.2"/><rect x="13" y="3" width="8" height="8" rx="1.2"/><rect x="3" y="13" width="8" height="8" rx="1.2"/><rect x="13" y="13" width="8" height="8" rx="1.2"/>',
+    linux: '<rect x="2.5" y="4" width="19" height="16" rx="2.5"/><path d="m6.5 9.5 3 2.5-3 2.5M12 15h5"/>'
+  };
+  const glyph = id => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${G[id]}</svg>`;
+  const TEST = { passed: "Стресс-тест пройден", running: "Стресс-тест идёт" };
+  const PAGE = 30, GROUP = 3;
+
+  let rows = [], generated = "";
+  const st = { sel: "all", q: "", shown: PAGE, open: new Set(), failed: false };
+  const fromHash = (location.hash || "").slice(1).toLowerCase();
+  if (PL.some(p => p.id === fromHash)) st.sel = fromHash;
+  else { try { const s = localStorage.getItem("arktika.site.sel"); if (PL.some(p => p.id === s)) st.sel = s; } catch {} }
+
+  const parts = v => String(v).split(/[^\d]+/).filter(Boolean).map(Number);
+  const cmpVer = (a, b) => { const x = parts(a), y = parts(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
+  const newest = (a, b) => cmpVer(b.version, a.version) || (b.build || 0) - (a.build || 0);
+  const ofOS = key => rows.filter(r => r.platform === key).sort(newest);
+  const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
+  const fmtDate = d => {
+    const [y, m, day] = String(d || "").split("-").map(Number);
+    if (!y || !m || !day) return "";
+    return new Date(y, m - 1, day).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }).replace(" г.", "");
+  };
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const size = n => n > 0 ? (n / 1048576).toFixed(n > 104857600 ? 0 : 1).replace(".", ",") + " МБ" : "";
+  const ext = name => (name.match(/\.([a-z0-9]+)$/i) || [, ""])[1].toLowerCase();
+  const when = r => [fmtDate(r.date), r.build ? "сборка " + r.build : ""].filter(Boolean).join(" · ");
+  const chipTest = t => TEST[t] ? `<span class="chip ${t}">${TEST[t]}</span>` : "";
+
+  function picker() {
+    return `<div class="picker" role="tablist" aria-label="Система">${PL.map(p => {
+      const list = p.key ? ofOS(p.key) : rows, top = p.key ? list[0] : null;
+      const ver = p.key ? (top ? esc(top.version) : "скоро") : String(rows.length);
+      const sub = p.key ? (top ? `<span class="dot public"></span>${fmtDate(top.date) || "вышла"}` : "ещё не вышла") : `${plural(rows.length, "версия", "версии", "версий")} с первой`;
+      return `<button class="tile${p.key && !top ? " soon" : ""}" role="tab" id="t-${p.id}" data-sel="${p.id}" aria-selected="${st.sel === p.id}" tabindex="${st.sel === p.id ? 0 : -1}" style="--pc: var(${p.c})">
+        <span class="glyph">${glyph(p.id)}</span><span class="name">${p.short || p.name}</span>
+        <span class="ver">${ver}</span><span class="sub">${sub}</span></button>`;
+    }).join("")}</div>`;
+  }
+
+  function downloads(r, solid) {
+    const d = r.downloads || [];
+    if (!d.length) return r.page ? `<a class="btn${solid ? " solid" : ""}" href="${esc(r.page)}" target="_blank" rel="noopener">Открыть релиз</a>` : "";
+    return d.map((a, i) => `<a class="btn${solid && i === 0 ? " solid" : ""}" href="${esc(a.url)}" rel="noopener">Скачать${d.length > 1 ? " ." + ext(a.name) : ""}${size(a.size) ? ` <small>${size(a.size)}</small>` : ""}</a>`).join("");
+  }
+
+  function hero() {
+    const p = PL.find(x => x.id === st.sel);
+    if (!p.key) {
+      return `<section class="hero" style="--pc: var(--c-all); grid-template-columns: minmax(0, 1fr)"><div class="main">
+        <h2>Последняя версия для каждой системы</h2>
+        <div class="scroll"><table class="matrix"><thead><tr><th>Система</th><th>Версия</th><th>Вышла</th><th></th></tr></thead><tbody>
+        ${OS.map(o => { const t = ofOS(o.key)[0]; return `<tr class="go" data-sel="${o.id}" tabindex="0" style="--pc: var(${o.c})">
+          <td><span class="os"><span class="glyph">${glyph(o.id)}</span>${o.name}</span></td>
+          <td class="v">${t ? esc(t.version) : '<span class="chip dim">скоро</span>'}</td><td class="meta">${t ? fmtDate(t.date) : ""}</td>
+          <td>${t && t.test ? chipTest(t.test) : ""}</td></tr>`; }).join("")}
+        </tbody></table></div>
+      </div></section>`;
+    }
+    const t = ofOS(p.key)[0];
+    if (!t) return `<section class="hero" style="--pc: var(${p.c})"><div class="side"><div class="eyebrow">${p.name}</div><div class="bigver">скоро</div>
+      <div class="explain">Версия для ${p.name} уже собирается и проверяется — как только выйдет, она появится здесь с кнопкой «Скачать».</div></div>
+      <div class="main"><h2>Пока можно</h2><ul class="items"><li>Следить за этой страницей — она обновляется сама при каждом выпуске</li><li>Посмотреть, что уже есть на других системах: выбери плитку выше</li></ul></div></section>`;
+    return `<section class="hero" style="--pc: var(${p.c})">
+      <div class="side">
+        <div class="eyebrow">Последняя версия · ${p.name}</div>
+        <div class="bigver">${esc(t.version)}</div>
+        ${t.test ? `<div class="chips">${chipTest(t.test)}</div>` : ""}
+        ${when(t) ? `<div class="meta">${when(t)}</div>` : ""}
+        <div class="actions-row">${downloads(t, true)}</div>
+        <div class="explain">${esc(p.how)}${t.page && (t.downloads || []).length ? ` · <a href="${esc(t.page)}" target="_blank" rel="noopener">все файлы релиза</a>` : ""}</div>
+        ${t.testNote ? `<div class="explain">${esc(t.testNote)}</div>` : ""}
+      </div>
+      <div class="main">
+        <h2>Что нового в ${esc(t.version)}</h2>
+        <ul class="items">${(t.items || []).map(i => `<li>${esc(i)}</li>`).join("")}</ul>
+        ${t.note ? `<div class="note">${esc(t.note)}</div>` : ""}
+      </div>
+    </section>`;
+  }
+
+  function match(r) {
+    if (!st.q) return true;
+    const hay = [r.platform, r.version, r.note, ...(r.items || [])].join(" ").toLowerCase();
+    return st.q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+  }
+  function entry(r) {
+    const p = byKey(r.platform), items = r.items || [];
+    const open = st.open.has(r.platform + r.version) || !!st.q, shown = open ? items : items.slice(0, 3);
+    const file = (r.downloads || [])[0];
+    return `<article class="entry" style="--pc: var(${p.c})">
+      <div class="badge"><span class="vtag">${esc(r.version)}</span>${st.sel === "all" ? `<span class="os">${p.name}</span>` : ""}<span class="when">${when(r) || "&nbsp;"}</span></div>
+      <div class="body">
+        ${r.test || file || r.page ? `<div class="chips">${chipTest(r.test)}${file ? `<a class="chip dim" href="${esc(file.url)}" rel="noopener">Скачать ${esc(r.version)} ↓</a>` : r.page ? `<a class="chip dim" href="${esc(r.page)}" target="_blank" rel="noopener">Релиз ↗</a>` : ""}</div>` : ""}
+        <ul class="items">${shown.map(i => `<li>${esc(i)}</li>`).join("")}</ul>
+        ${items.length > 3 && !st.q ? `<button class="more" data-toggle="${esc(r.platform + r.version)}">${open ? "Свернуть" : "Ещё " + (items.length - 3)}</button>` : ""}
+        ${r.note ? `<div class="note">${esc(r.note)}</div>` : ""}
+      </div><span></span>
+    </article>`;
+  }
+  function history() {
+    const p = PL.find(x => x.id === st.sel);
+    const hit = rows.filter(r => (!p.key || r.platform === p.key) && match(r));
+    if (p.key && !ofOS(p.key).length) return "";
+    let feed;
+    if (!hit.length) feed = `<div class="empty"><strong>Ничего не нашлось</strong>Попробуй другое слово.</div>`;
+    else if (!p.key && !st.q) {
+      feed = OS.map(o => {
+        const l = hit.filter(r => r.platform === o.key).sort(newest);
+        if (!l.length) return "";
+        return `<div class="group" style="--pc: var(${o.c})"><span class="glyph">${glyph(o.id)}</span><h3>${o.name}</h3>${l.length > GROUP ? `<button class="btn ghost" data-sel="${o.id}">Все ${l.length} →</button>` : ""}</div>` + l.slice(0, GROUP).map(entry).join("");
+      }).join("");
+    } else {
+      const l = hit.sort((a, b) => p.key ? newest(a, b) : OS.findIndex(o => o.key === a.platform) - OS.findIndex(o => o.key === b.platform) || newest(a, b));
+      feed = l.slice(0, st.shown).map(entry).join("") + (l.length > st.shown ? `<div class="pager"><button class="btn" data-more>Показать ещё ${Math.min(PAGE, l.length - st.shown)}</button></div>` : "");
+    }
+    return `<section class="histhead">
+        <h2>${p.key ? "Все версии " + p.name : "Последние версии"}</h2>
+        <div class="search"><input id="q" type="search" placeholder="Поиск: автобус, почта, 20.6…" value="${esc(st.q)}" autocomplete="off" aria-label="Поиск по изменениям"></div>
+        <span class="count">${hit.length} ${plural(hit.length, "версия", "версии", "версий")}</span>
+      </section><section class="feed" aria-live="polite">${feed}</section>`;
+  }
+
+  const app = document.getElementById("app");
+  function render(keepFocus) {
+    const focusId = keepFocus && document.activeElement && document.activeElement.id;
+    const caret = focusId === "q" ? document.activeElement.selectionStart : null;
+    const upd = generated ? new Date(generated).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
+    app.innerHTML = `<div class="wrap">
+      <header class="top"><div><h1>Арктика</h1><p class="lede">Неофициальное приложение для студентов САФУ: пары, домашка, файлы, почта и сайты вуза. Выбери свою систему — увидишь последнюю версию, что в ней нового и где скачать.</p></div></header>
+      ${st.failed ? `<div class="empty"><strong>Не получилось загрузить список версий</strong>Обнови страницу через минуту.</div>` : !rows.length ? `<div class="empty"><strong>Загружаю версии…</strong></div>` : picker() + hero() + history()}
+      <footer class="foot">Список обновляется сам при каждом выпуске${upd ? ` · обновлён ${upd}` : ""} · <a href="https://github.com/skyface29/SAFU" target="_blank" rel="noopener">исходный код на GitHub</a></footer>
+    </div>`;
+    if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); if (caret != null) try { el.setSelectionRange(caret, caret); } catch {} } }
+  }
+  function select(id, focus) {
+    st.sel = id; st.shown = PAGE;
+    try { localStorage.setItem("arktika.site.sel", id); } catch {}
+    try { history.replaceState(null, "", id === "all" ? location.pathname : "#" + id); } catch {}
+    render();
+    if (focus) document.getElementById("t-" + id)?.focus();
+  }
+  app.addEventListener("click", e => {
+    const t = e.target.closest("[data-sel],[data-toggle],[data-more]");
+    if (!t) return;
+    if (t.dataset.sel) return select(t.dataset.sel);
+    if (t.dataset.toggle) { const id = t.dataset.toggle; st.open.has(id) ? st.open.delete(id) : st.open.add(id); return render(); }
+    if (t.hasAttribute("data-more")) { st.shown += PAGE; return render(); }
+  });
+  app.addEventListener("keydown", e => {
+    const tab = e.target.closest(".tile");
+    if (tab && ["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) {
+      e.preventDefault();
+      const i = PL.findIndex(p => p.id === tab.dataset.sel);
+      const n = e.key === "Home" ? 0 : e.key === "End" ? PL.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + PL.length) % PL.length;
+      return select(PL[n].id, true);
+    }
+    const row = e.target.closest("tr.go");
+    if (row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); select(row.dataset.sel); }
+  });
+  let qt;
+  app.addEventListener("input", e => {
+    if (e.target.id !== "q") return;
+    clearTimeout(qt);
+    qt = setTimeout(() => { st.q = e.target.value.trim(); st.shown = PAGE; render(true); }, 160);
+  });
+  window.addEventListener("hashchange", () => { const h = location.hash.slice(1).toLowerCase(); if (PL.some(p => p.id === h) && h !== st.sel) select(h); });
+
+  render();
+  fetch("versions.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => {
+    rows = d.versions || []; generated = d.generated || "";
+    render();
+  }).catch(() => { st.failed = true; render(); });
+})();
+</script>
+</body>
+</html>

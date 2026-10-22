@@ -5,6 +5,8 @@ on:
     # dev — проверочные сборки: .ipa в артефактах, без релиза
     # claude/** — проверка сборки веток с правками, тоже без релиза
     branches: [ main, dev, 'claude/**' ]
+    # сайт и описания — не повод собирать и выпускать новую версию
+    paths-ignore: [ 'site/**', '.github/workflows/site.yml', '**.md', '.gitignore' ]
 permissions:
   contents: write
 jobs:

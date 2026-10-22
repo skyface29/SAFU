@@ -1,0 +1,68 @@
+# Сайт Арктики на GitHub Pages: последние версии для каждой системы, что нового и где скачать.
+# Список собирается сам (site/build.py) из «Что нового» в коде приложений, опубликованных релизов и стресс-тестов.
+# Черновики на сайт не попадают: версия появляется, как только релиз опубликован для всех.
+name: Сайт
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: [ 'SAFU.zip', 'windows/src/pages/Profile.tsx', 'site/**', '.github/workflows/site.yml' ]
+  # релиз опубликовали, исправили или сняли — вручную в Releases
+  release:
+    types: [ published, edited, unpublished, deleted ]
+  # релизы iPhone создаёт сама сборка, а события от её токена сайт не запускают — ловим конец сборки;
+  # стресс-тесты — чтобы на сайте был их итог
+  workflow_run:
+    workflows: [ 'Build IPA', 'Build macOS', 'iOS stress test', 'Android stress test', 'Linux stress test' ]
+    types: [ completed ]
+  schedule:
+    - cron: '17 4 * * *'
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  # по событию релиза ссылка запуска — тег, а публиковать Pages можно только из main: перезапускаем себя на main
+  kick:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: gh workflow run site.yml --ref main -R "$GITHUB_REPOSITORY"
+        env:
+          GH_TOKEN: ${{ github.token }}
+  build:
+    if: github.event_name != 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Список версий
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # «Что нового» Android и Linux живут в своих ветках, пока их не влили в main
+          ANDROID_REF: claude/arktika-windows-android
+          ELECTRON_REF: claude/linux-app-po35jr
+        run: |
+          for r in "$ANDROID_REF" "$ELECTRON_REF"; do git fetch -q origin "+refs/heads/$r:refs/remotes/origin/$r" || true; done
+          python3 site/build.py | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
