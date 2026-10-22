@@ -6,7 +6,7 @@
 <title>Арктика — версии и загрузки</title>
 <meta name="description" content="Неофициальное приложение для студентов САФУ для iPhone, Mac, Android, Windows и Linux: последние версии, что нового и где скачать.">
 <meta property="og:title" content="Арктика — версии и загрузки">
-<meta property="og:description" content="Последняя версия для iPhone, Mac, Android, Windows и Linux, что в ней нового и где скачать. Вся история — с первой версии.">
+<meta property="og:description" content="Последняя версия для iPhone, Mac, Android, Windows и Linux, что в ней нового, где скачать и что сейчас в работе. Вся история — с первой версии.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#0c1626">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -98,6 +98,8 @@ h1 { font-family: var(--display); font-weight: 700; font-size: clamp(26px, 4.4vw
 .tile .sub { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; min-height: 18px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
 .dot.public { background: var(--ok); } .dot.draft { background: var(--warn); }
+.dot.work { background: var(--run); animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
 .tile[aria-selected="true"] {
   background: linear-gradient(150deg, var(--pc), color-mix(in srgb, var(--pc) 70%, #000));
   border-color: var(--pc); color: #fff; transform: translateY(-2px);
@@ -149,11 +151,14 @@ ul.items li::marker { color: var(--pc); }
 .matrix .v { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; }
 .matrix tr.go { cursor: pointer; } .matrix tr.go:hover td { background: var(--sunk); }
 .scroll { overflow-x: auto; }
+@media (max-width: 620px) { .matrix .c-date, .matrix .c-test { display: none; } }
 
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
 .chip.public, .chip.passed { color: var(--ok); background: var(--ok-bg); }
 .chip.draft, .chip.partial { color: var(--warn); background: var(--warn-bg); }
-.chip.running { color: var(--run); background: var(--run-bg); }
+.chip.running, .chip.work { color: var(--run); background: var(--run-bg); }
+.chip.work .dot { width: 7px; height: 7px; }
+.chip.test { color: var(--dim); background: var(--dim-bg); }
 .chip.none { color: var(--bad); background: var(--bad-bg); }
 .chip.dim { color: var(--dim); background: var(--dim-bg); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -218,7 +223,7 @@ label.fld textarea { min-height: 150px; resize: vertical; line-height: 1.45; }
 .factions .right { display: flex; gap: 10px; margin-left: auto; }
 .msg { font-size: 13px; color: var(--bad); margin: 0; }
 .saving { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .tile:hover, .tile[aria-selected="true"] { transform: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } .tile:hover, .tile[aria-selected="true"] { transform: none; } }
 
 /* только для сайта */
 html { -webkit-text-size-adjust: 100%; }
@@ -228,6 +233,10 @@ body { margin: 0; }
 .btn small { font-weight: 500; opacity: .78; }
 .explain a, .foot a { color: var(--pc, var(--focus)); }
 .hero .bigver { overflow-wrap: anywhere; }
+.btn.off { color: var(--muted); background: var(--sunk); border-style: dashed; cursor: default; }
+.btn.off:hover { border-color: var(--line); }
+.soonline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13.5px; color: var(--muted); }
+.soonline button { border: 0; background: none; padding: 0; color: var(--pc); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -254,6 +263,12 @@ body { margin: 0; }
   };
   const glyph = id => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${G[id]}</svg>`;
   const TEST = { passed: "Стресс-тест пройден", running: "Стресс-тест идёт" };
+  // public — вышла, можно скачать; work — черновик новее всего вышедшего; test — черновик, который так и не вышел
+  const STATUS = { work: "В работе", test: "Тестовая сборка" };
+  const HINT = {
+    work: "собрана и проходит проверку — скачать можно будет, когда выйдет для всех",
+    test: "не выходила для всех — её изменения вошли в следующие версии"
+  };
   const PAGE = 30, GROUP = 3;
 
   let rows = [], generated = "";
@@ -266,6 +281,10 @@ body { margin: 0; }
   const cmpVer = (a, b) => { const x = parts(a), y = parts(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
   const newest = (a, b) => cmpVer(b.version, a.version) || (b.build || 0) - (a.build || 0);
   const ofOS = key => rows.filter(r => r.platform === key).sort(newest);
+  const isOut = r => !r.status || r.status === "public";
+  const outOf = key => ofOS(key).find(isOut);
+  const wipOf = key => ofOS(key).find(r => r.status === "work");
+  const topOf = key => outOf(key) || wipOf(key);
   const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
   const fmtDate = d => {
     const [y, m, day] = String(d || "").split("-").map(Number);
@@ -275,14 +294,17 @@ body { margin: 0; }
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const size = n => n > 0 ? (n / 1048576).toFixed(n > 104857600 ? 0 : 1).replace(".", ",") + " МБ" : "";
   const ext = name => (name.match(/\.([a-z0-9]+)$/i) || [, ""])[1].toLowerCase();
-  const when = r => [fmtDate(r.date), r.build ? "сборка " + r.build : ""].filter(Boolean).join(" · ");
+  const when = r => { const d = fmtDate(r.date); return [d && !isOut(r) ? "собрана " + d : d, r.build ? "сборка " + r.build : ""].filter(Boolean).join(" · "); };
   const chipTest = t => TEST[t] ? `<span class="chip ${t}">${TEST[t]}</span>` : "";
+  const chipStatus = (s, text) => STATUS[s] ? `<span class="chip ${s}" title="${STATUS[s]}: ${HINT[s]}">${s === "work" ? '<span class="dot work"></span>' : ""}${text || STATUS[s]}</span>` : "";
 
   function picker() {
     return `<div class="picker" role="tablist" aria-label="Система">${PL.map(p => {
-      const list = p.key ? ofOS(p.key) : rows, top = p.key ? list[0] : null;
+      const top = p.key ? topOf(p.key) : null;
       const ver = p.key ? (top ? esc(top.version) : "скоро") : String(rows.length);
-      const sub = p.key ? (top ? `<span class="dot public"></span>${fmtDate(top.date) || "вышла"}` : "ещё не вышла") : `${plural(rows.length, "версия", "версии", "версий")} с первой`;
+      const sub = !p.key ? `${plural(rows.length, "версия", "версии", "версий")} с первой`
+        : !top ? "ещё не вышла"
+        : isOut(top) ? `<span class="dot public"></span>${fmtDate(top.date) || "вышла"}` : `<span class="dot work"></span>в работе`;
       return `<button class="tile${p.key && !top ? " soon" : ""}" role="tab" id="t-${p.id}" data-sel="${p.id}" aria-selected="${st.sel === p.id}" tabindex="${st.sel === p.id ? 0 : -1}" style="--pc: var(${p.c})">
         <span class="glyph">${glyph(p.id)}</span><span class="name">${p.short || p.name}</span>
         <span class="ver">${ver}</span><span class="sub">${sub}</span></button>`;
@@ -300,18 +322,34 @@ body { margin: 0; }
     if (!p.key) {
       return `<section class="hero" style="--pc: var(--c-all); grid-template-columns: minmax(0, 1fr)"><div class="main">
         <h2>Последняя версия для каждой системы</h2>
-        <div class="scroll"><table class="matrix"><thead><tr><th>Система</th><th>Версия</th><th>Вышла</th><th></th></tr></thead><tbody>
-        ${OS.map(o => { const t = ofOS(o.key)[0]; return `<tr class="go" data-sel="${o.id}" tabindex="0" style="--pc: var(${o.c})">
+        <div class="scroll"><table class="matrix"><thead><tr><th>Система</th><th>Версия</th><th>Состояние</th><th class="c-date">Дата</th><th class="c-test"></th></tr></thead><tbody>
+        ${OS.map(o => { const t = topOf(o.key), w = wipOf(o.key), last = w || t; return `<tr class="go" data-sel="${o.id}" tabindex="0" style="--pc: var(${o.c})">
           <td><span class="os"><span class="glyph">${glyph(o.id)}</span>${o.name}</span></td>
-          <td class="v">${t ? esc(t.version) : '<span class="chip dim">скоро</span>'}</td><td class="meta">${t ? fmtDate(t.date) : ""}</td>
-          <td>${t && t.test ? chipTest(t.test) : ""}</td></tr>`; }).join("")}
+          <td class="v">${t ? esc(t.version) : '<span class="chip dim">скоро</span>'}</td>
+          <td><div class="chips">${!t ? "" : isOut(t) ? '<span class="chip public">Вышла</span>' : chipStatus("work")}${t && isOut(t) && w ? chipStatus("work", "готовится " + esc(w.version)) : ""}</div></td>
+          <td class="meta c-date">${t ? fmtDate(t.date) : ""}</td>
+          <td class="c-test">${last && last.test ? chipTest(last.test) : ""}</td></tr>`; }).join("")}
         </tbody></table></div>
       </div></section>`;
     }
-    const t = ofOS(p.key)[0];
-    if (!t) return `<section class="hero" style="--pc: var(${p.c})"><div class="side"><div class="eyebrow">${p.name}</div><div class="bigver">скоро</div>
+    const t = outOf(p.key), w = wipOf(p.key);
+    const changes = r => `<ul class="items">${(r.items || []).map(i => `<li>${esc(i)}</li>`).join("")}</ul>${r.note ? `<div class="note">${esc(r.note)}</div>` : ""}`;
+    if (!t && !w) return `<section class="hero" style="--pc: var(${p.c})"><div class="side"><div class="eyebrow">${p.name}</div><div class="bigver">скоро</div>
       <div class="explain">Версия для ${p.name} уже собирается и проверяется — как только выйдет, она появится здесь с кнопкой «Скачать».</div></div>
       <div class="main"><h2>Пока можно</h2><ul class="items"><li>Следить за этой страницей — она обновляется сама при каждом выпуске</li><li>Посмотреть, что уже есть на других системах: выбери плитку выше</li></ul></div></section>`;
+    // ни одна версия ещё не вышла: показываем ту, что в работе, — без загрузки
+    if (!t) return `<section class="hero" style="--pc: var(${p.c})">
+      <div class="side">
+        <div class="eyebrow">В работе · ${p.name}</div>
+        <div class="bigver">${esc(w.version)}</div>
+        <div class="chips">${chipStatus("work")}${chipTest(w.test)}</div>
+        ${when(w) ? `<div class="meta">${when(w)}</div>` : ""}
+        <div class="actions-row"><span class="btn off" aria-disabled="true">Скачать — скоро</span></div>
+        <div class="explain">Версия для ${p.name} собрана и проходит проверку. Как только она выйдет для всех, здесь появится кнопка «Скачать».</div>
+        ${w.testNote ? `<div class="explain">${esc(w.testNote)}</div>` : ""}
+      </div>
+      <div class="main"><h2>Что будет в ${esc(w.version)}</h2>${changes(w)}</div>
+    </section>`;
     return `<section class="hero" style="--pc: var(${p.c})">
       <div class="side">
         <div class="eyebrow">Последняя версия · ${p.name}</div>
@@ -321,28 +359,26 @@ body { margin: 0; }
         <div class="actions-row">${downloads(t, true)}</div>
         <div class="explain">${esc(p.how)}${t.page && (t.downloads || []).length ? ` · <a href="${esc(t.page)}" target="_blank" rel="noopener">все файлы релиза</a>` : ""}</div>
         ${t.testNote ? `<div class="explain">${esc(t.testNote)}</div>` : ""}
+        ${w ? `<div class="soonline">${chipStatus("work", "готовится " + esc(w.version))}${chipTest(w.test)}<span>что в ней будет — в списке ниже</span></div>` : ""}
       </div>
-      <div class="main">
-        <h2>Что нового в ${esc(t.version)}</h2>
-        <ul class="items">${(t.items || []).map(i => `<li>${esc(i)}</li>`).join("")}</ul>
-        ${t.note ? `<div class="note">${esc(t.note)}</div>` : ""}
-      </div>
+      <div class="main"><h2>Что нового в ${esc(t.version)}</h2>${changes(t)}</div>
     </section>`;
   }
 
   function match(r) {
     if (!st.q) return true;
-    const hay = [r.platform, r.version, r.note, ...(r.items || [])].join(" ").toLowerCase();
+    const hay = [r.platform, r.version, r.note, STATUS[r.status], ...(r.items || [])].join(" ").toLowerCase();
     return st.q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
   }
   function entry(r) {
     const p = byKey(r.platform), items = r.items || [];
     const open = st.open.has(r.platform + r.version) || !!st.q, shown = open ? items : items.slice(0, 3);
     const file = (r.downloads || [])[0];
+    const chips = chipStatus(r.status) + chipTest(r.test) + (file ? `<a class="chip dim" href="${esc(file.url)}" rel="noopener">Скачать ${esc(r.version)} ↓</a>` : r.page ? `<a class="chip dim" href="${esc(r.page)}" target="_blank" rel="noopener">Релиз ↗</a>` : "");
     return `<article class="entry" style="--pc: var(${p.c})">
       <div class="badge"><span class="vtag">${esc(r.version)}</span>${st.sel === "all" ? `<span class="os">${p.name}</span>` : ""}<span class="when">${when(r) || "&nbsp;"}</span></div>
       <div class="body">
-        ${r.test || file || r.page ? `<div class="chips">${chipTest(r.test)}${file ? `<a class="chip dim" href="${esc(file.url)}" rel="noopener">Скачать ${esc(r.version)} ↓</a>` : r.page ? `<a class="chip dim" href="${esc(r.page)}" target="_blank" rel="noopener">Релиз ↗</a>` : ""}</div>` : ""}
+        ${chips ? `<div class="chips">${chips}</div>` : ""}
         <ul class="items">${shown.map(i => `<li>${esc(i)}</li>`).join("")}</ul>
         ${items.length > 3 && !st.q ? `<button class="more" data-toggle="${esc(r.platform + r.version)}">${open ? "Свернуть" : "Ещё " + (items.length - 3)}</button>` : ""}
         ${r.note ? `<div class="note">${esc(r.note)}</div>` : ""}
@@ -372,14 +408,23 @@ body { margin: 0; }
       </section><section class="feed" aria-live="polite">${feed}</section>`;
   }
 
+  function legend() {
+    if (rows.every(isOut)) return "";
+    return `<section class="legend" aria-label="Что значат пометки">
+      <div><span class="chip public">Вышла</span><span>можно скачать</span></div>
+      <div>${chipStatus("work")}<span>${HINT.work}</span></div>
+      <div>${chipStatus("test")}<span>${HINT.test}</span></div>
+    </section>`;
+  }
+
   const app = document.getElementById("app");
   function render(keepFocus) {
     const focusId = keepFocus && document.activeElement && document.activeElement.id;
     const caret = focusId === "q" ? document.activeElement.selectionStart : null;
     const upd = generated ? new Date(generated).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
     app.innerHTML = `<div class="wrap">
-      <header class="top"><div><h1>Арктика</h1><p class="lede">Неофициальное приложение для студентов САФУ: пары, домашка, файлы, почта и сайты вуза. Выбери свою систему — увидишь последнюю версию, что в ней нового и где скачать.</p></div></header>
-      ${st.failed ? `<div class="empty"><strong>Не получилось загрузить список версий</strong>Обнови страницу через минуту.</div>` : !rows.length ? `<div class="empty"><strong>Загружаю версии…</strong></div>` : picker() + hero() + history()}
+      <header class="top"><div><h1>Арктика</h1><p class="lede">Неофициальное приложение для студентов САФУ: пары, домашка, файлы, почта и сайты вуза. Выбери свою систему — увидишь последнюю версию, что в ней нового, где скачать и что сейчас в работе.</p></div></header>
+      ${st.failed ? `<div class="empty"><strong>Не получилось загрузить список версий</strong>Обнови страницу через минуту.</div>` : !rows.length ? `<div class="empty"><strong>Загружаю версии…</strong></div>` : picker() + hero() + history() + legend()}
       <footer class="foot">Список обновляется сам при каждом выпуске${upd ? ` · обновлён ${upd}` : ""} · <a href="https://github.com/skyface29/SAFU" target="_blank" rel="noopener">исходный код на GitHub</a></footer>
     </div>`;
     if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); if (caret != null) try { el.setSelectionRange(caret, caret); } catch {} } }
