@@ -302,7 +302,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                     </>
                   ) : (
                     <>
-                      <Input label="Номер группы" value={manual} onChange={setManual} autoFocus placeholder="151621" />
+                      <Input label="Номер группы" value={manual} onChange={setManual} autoFocus placeholder="Номер группы из РУЗ" />
                       <div className="tiny faint">Номер группы — на студенческом или в РУЗ. Приложение найдёт её само, даже если она в другой высшей школе.</div>
                       <button className="btn ghost mt12" onClick={() => setManualMode(false)}>Выбрать из списка</button>
                     </>
