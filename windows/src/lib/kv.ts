@@ -22,10 +22,19 @@ function emit(key: string) {
   anyListeners.forEach(f => f())
 }
 
+/** Подходит ли сохранённое значение к значению по умолчанию по типу. Чужое (из старой версии, копии с iPhone,
+ *  синхронизации или испорченного файла) не отдаём: объект вместо имени ронял весь интерфейс в «Что-то сломалось» */
+function fits(v: unknown, def: unknown): boolean {
+  if (def === undefined || def === null) return true
+  if (Array.isArray(def)) return Array.isArray(v)
+  if (typeof def === 'object') return typeof v === 'object' && v !== null && !Array.isArray(v)
+  return typeof v === typeof def
+}
+
 export const kv = {
   get<T>(key: string, def: T): Widen<T> {
     const v = data[key]
-    return (v === undefined ? def : v) as Widen<T>
+    return (v === undefined || v === null || !fits(v, def) ? def : v) as Widen<T>
   },
   has(key: string) { return data[key] !== undefined },
   set<T>(key: string, value: T) {

@@ -1,0 +1,86 @@
+# Стресс-тест Арктики для iPhone на симуляторе: «обезьяна» (XCUITest) по всему приложению, холодные запуски,
+# тема, размер текста, свернуть-развернуть, геопозиция, разрешения, битые ссылки, пуши.
+# Собирается тот же код, что и .ipa (SAFU.zip этой ветки), только под симулятор. Отчёт — в сводке запуска.
+name: iOS stress test
+on:
+  workflow_dispatch:
+    inputs:
+      events:
+        description: 'Событий «обезьяны» в каждом из трёх кругов'
+        default: '1000'
+  push:
+    branches: [ 'claude/android-stress-test-*' ]
+    paths: [ '.github/workflows/ios-stress.yml', '.github/ios-stress/**' ]
+permissions:
+  contents: read
+concurrency:
+  group: ios-stress-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  stress:
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      EVENTS: ${{ inputs.events || '1000' }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: tools
+      # приложение — из этой же ветки (в ней SAFU.zip с последними исправлениями)
+      - uses: actions/checkout@v5
+        with:
+          path: app
+      - name: Проект с целью «обезьяны»
+        working-directory: app
+        run: |
+          if [ -f SAFU.zip ]; then unzip -o -q SAFU.zip; fi
+          if [ -d SAFU ]; then cp -R SAFU/. .; fi
+          mkdir -p Monkey && cp ../tools/.github/ios-stress/MonkeyTests.swift Monkey/
+          ruby ../tools/.github/ios-stress/add-monkey-target.rb Monkey
+          brew install xcodegen
+          xcodegen generate
+          {
+            echo "APP_SHA=$(git rev-parse --short HEAD)"
+            echo "APP_VERSION=$(grep -m1 'MARKETING_VERSION' project.yml | sed -E 's/[^0-9.]//g')"
+          } >> "$GITHUB_ENV"
+      - name: Симулятор
+        run: |
+          xcodebuild -version
+          UDID=$(python3 tools/.github/ios-stress/pick_sim.py)
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" || true
+      - name: Сборка под симулятор
+        working-directory: app
+        env:
+          YANDEX_MAPKIT_KEY: ${{ secrets.YANDEX_MAPKIT_KEY }}
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing -project SAFU.xcodeproj -scheme SAFUMonkey -configuration Debug \
+            -destination "id=$UDID" -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO YANDEX_MAPKIT_KEY="$YANDEX_MAPKIT_KEY" 2>&1 | tee build.log | grep -E "error:|\*\* " || true
+          XCTESTRUN=$(ls "$RUNNER_TEMP"/dd/Build/Products/*.xctestrun | head -1)
+          APP=$(ls -d "$RUNNER_TEMP"/dd/Build/Products/Debug-iphonesimulator/SAFU.app)
+          test -n "$XCTESTRUN" && test -d "$APP"
+          { echo "XCTESTRUN=$XCTESTRUN"; echo "APP=$APP"; } >> "$GITHUB_ENV"
+      - name: Ошибки сборки
+        if: failure()
+        run: |
+          grep -E "error:" app/build.log | sort -u | head -30 | while IFS= read -r L; do echo "::error::$(echo "$L" | cut -c1-300)"; done
+          tail -40 app/build.log
+      - name: Стресс-тест на симуляторе
+        run: bash tools/.github/ios-stress/stress.sh "$PWD/stress-out"
+      - name: Отчёт
+        if: always()
+        run: python3 tools/.github/ios-stress/analyze.py stress-out | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-stress-${{ github.run_number }}
+          path: stress-out
+      - name: Итог
+        if: always()
+        run: |
+          test -d stress-out || { echo "::error::Стресс-тест не дошёл до симулятора"; exit 1; }
+          if [ -f stress-out/FAILED ]; then echo "::error::$(cat stress-out/FAILED)"; exit 1; fi
+          if [ -f stress-out/INCOMPLETE ]; then echo "::error::Проверка неполная — $(cat stress-out/INCOMPLETE)"; exit 1; fi
+          echo "Падений не найдено"

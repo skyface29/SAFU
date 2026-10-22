@@ -19,21 +19,16 @@ export type Direction = 'toCampus' | 'toHome'
 
 export const BUS_PALETTE = ['F28C1A', 'E94B4B', 'E8457C', '8B5CF6', '3B82F6', '06B6D4', '10B981', '84CC16', 'EAB308', '64748B']
 
-export const default150: BusRoute = {
-  id: 'builtin-150', number: '150', homeCity: 'Северодвинск', homeStop: 'о. Ягры', campusCity: 'Архангельск', campusStop: 'м.р. вокзал',
-  travelMinutes: 60, leadMinutes: 100, colorHex: 'F28C1A', useGeo: true, builtIn: true,
-  mapLink: 'https://yandex.ru/maps/20/arkhangelsk/routes/bus_150/796d617073626d313a2f2f7472616e7369742f6c696e653f69643d31373034383535383634266c6c3d34302e31383136333325324336342e353534353734266e616d653d31353026723d313833383726747970653d627573/',
-  toCampus: {
-    weekday: '06:20 06:40 07:00 07:25 07:50 08:30 09:35 10:30 11:10 12:00 12:40 13:20 14:00 14:30 15:10 16:00 16:35 17:30 18:30 19:30',
-    saturday: '06:40 07:10 07:50 08:30 09:35 10:30 11:10 12:00 12:40 13:20 14:30 15:10 16:00 16:35 17:30 18:30 19:30',
-    sunday: '07:10 07:50 08:30 09:35 10:30 11:10 12:00 12:40 13:20 14:30 15:10 16:00 16:35 17:30 18:30 19:30'
-  },
-  toHome: {
-    weekday: '06:10 07:40 08:15 08:40 09:20 10:00 10:35 11:10 12:00 13:00 14:00 14:50 15:30 16:00 16:30 17:00 17:30 18:15 19:00 20:00',
-    saturday: '08:15 08:40 09:20 10:00 10:35 11:10 12:00 13:00 14:00 14:50 16:00 16:30 17:00 17:30 18:15 19:00 20:00',
-    sunday: '08:40 09:20 10:00 10:35 11:10 12:00 13:00 14:00 14:50 16:00 16:30 17:00 17:30 18:15 19:00 20:00'
-  }
+/** Встроенных автобусов нет: свой каждый добавляет сам (вручную или кодом от одногруппника).
+ *  id прежнего встроенного 150 — у тех, кто ставил раньше, он убирается */
+export const LEGACY_BUS_ID = 'builtin-150'
+/** Заглушка, пока своих автобусов нет: без рейсов — значит без напоминаний */
+export const noRoute: BusRoute = {
+  id: '', number: '', homeCity: '', homeStop: '', campusCity: '', campusStop: '', travelMinutes: 30, leadMinutes: 60,
+  colorHex: '64748B', toCampus: {}, toHome: {}, mapLink: '', useGeo: false, builtIn: false
 }
+/** Только свои автобусы (без прежнего встроенного) */
+export const ownRoutes = (l: BusRoute[]) => l.filter(r => r.id !== LEGACY_BUS_ID && !r.builtIn)
 
 export const newRoute = (): BusRoute => ({
   id: uid(), number: '', homeCity: '', homeStop: '', campusCity: 'Архангельск', campusStop: '', travelMinutes: 30, leadMinutes: 60,
@@ -78,19 +73,23 @@ export function fromShareCode(text: string): BusRoute | null {
   } catch { return null }
 }
 
-export const busStore = createCollection<BusRoute[]>('bus.routes.v1', [default150])
+export const busStore = createCollection<BusRoute[]>('bus.routes.v1', [])
 
 export const bus = {
-  routes: () => { const l = busStore.get(); return l.length ? l : [default150] },
-  activeID: () => kv.get('bus.active', default150.id),
-  active(): BusRoute { const l = bus.routes(); return l.find(r => r.id === bus.activeID()) || l[0] || default150 },
+  routes: () => ownRoutes(busStore.get()),
+  /** Есть ли хоть один свой автобус */
+  has: () => bus.routes().length > 0,
+  activeID: () => { const id = kv.get('bus.active', ''); const l = bus.routes(); return l.some(r => r.id === id) ? id : (l[0]?.id || '') },
+  active(): BusRoute { const l = bus.routes(); return l.find(r => r.id === bus.activeID()) || l[0] || noRoute },
   activate(id: string) { kv.set('bus.active', id) },
-  upsert(r: BusRoute) { busStore.set(l => { const i = l.findIndex(x => x.id === r.id); if (i >= 0) { const c = [...l]; c[i] = r; return c } return [...l, r] }) },
-  remove(id: string) {
-    busStore.set(l => { const n = l.filter(r => r.id !== id); return n.length ? n : [default150] })
-    if (!bus.routes().some(r => r.id === bus.activeID())) bus.activate(bus.routes()[0].id)
+  upsert(r: BusRoute) {
+    busStore.set(l => { const i = l.findIndex(x => x.id === r.id); if (i >= 0) { const c = [...l]; c[i] = r; return c } return [...l, r] })
+    if (!bus.routes().some(x => x.id === kv.get('bus.active', ''))) bus.activate(r.id)
   },
-  restore150() { if (!busStore.get().some(r => r.id === default150.id)) busStore.set(l => [default150, ...l]) }
+  remove(id: string) {
+    busStore.set(l => l.filter(r => r.id !== id))
+    if (!bus.routes().some(r => r.id === kv.get('bus.active', ''))) bus.activate(bus.routes()[0]?.id || '')
+  }
 }
 
 export const commute = {
@@ -98,14 +97,8 @@ export const commute = {
   walkMinutes: () => kv.get('commute.walk', 15) || 15,
   homeMinutes: () => kv.get('commute.home', 10) || 10,
 
-  /** Для 150 — правила: пара в 8:20 → автобус 7:00, пара в 10:10 → 8:30. Иначе — за «выезд за» минут */
+  /** Последний рейс, который уходит за «выезд за» минут до начала пары */
   latestDeparture(start: number, r = bus.active()): number {
-    if (r.builtIn) {
-      const d = new Date(start), m = d.getHours() * 60 + d.getMinutes()
-      const at = (h: number, mi: number) => { const x = new Date(start); x.setHours(h, mi, 0, 0); return x.getTime() }
-      if (m <= 8 * 60 + 20) return at(7, 0)
-      if (m <= 10 * 60 + 10) return at(8, 30)
-    }
     return start - r.leadMinutes * 60_000
   },
   morning(first: Slot): BusTrip | null {

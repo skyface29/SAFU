@@ -1,0 +1,86 @@
+# Стресс-тест Арктики для Linux: собранный .deb ставится на Ubuntu и запускается под виртуальным экраном.
+# «Обезьяна» (Playwright) жмёт по всему приложению; отдельно — первый запуск, без сети, kill -9, испорченное
+# хранилище, вторые копии со ссылками safu://, трей, часовые пояса и путешествия во времени (libfaketime).
+# Отчёт — в сводке запуска, журналы и снимки экрана — в артефакте linux-stress-….
+name: Linux stress test
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ветка с приложением для Linux'
+        default: 'claude/linux-app-po35jr'
+      events:
+        description: 'Действий «обезьяны» в основном прогоне'
+        default: '6000'
+  push:
+    branches: [ 'claude/android-stress-test-*' ]
+    paths: [ '.github/workflows/linux-stress.yml', '.github/linux-stress/**' ]
+permissions:
+  contents: read
+concurrency:
+  group: linux-stress-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  APP_REF: ${{ inputs.ref || 'claude/linux-app-po35jr' }}
+  EVENTS: ${{ inputs.events || '6000' }}
+jobs:
+  stress:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: tools
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.APP_REF }}
+          path: app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/windows/package-lock.json
+      - name: Сборка .deb
+        working-directory: app/windows
+        run: |
+          # NODE_ENV=production только для сборки: с ним npm ci не ставит инструменты сборки
+          npm ci
+          export NODE_ENV=production
+          npm run build
+          npx electron-builder --linux deb --x64 --publish never
+          ls -la release
+          {
+            echo "APP_VERSION=$(node -p "require('./package.json').version")"
+            echo "APP_SHA=$(git rev-parse --short HEAD)"
+          } >> "$GITHUB_ENV"
+      - name: Установка
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb faketime dbus-x11 ./app/windows/release/*.deb
+          ls -la "/opt/Арктика/"
+          npm i --no-save --prefix "$RUNNER_TEMP/pw" playwright-core@1.56.1
+      - name: Стресс-тест
+        env:
+          ARKTIKA_EXE: /opt/Арктика/arktika
+        run: |
+          export PLAYWRIGHT="$RUNNER_TEMP/pw/node_modules/playwright-core"
+          dbus-run-session -- xvfb-run -a -s "-screen 0 1440x900x24" node tools/.github/linux-stress/stress.mjs "$PWD/stress-out"
+      - name: Отчёт
+        if: always()
+        run: test -f stress-out/report.md && cat stress-out/report.md >> "$GITHUB_STEP_SUMMARY" || echo "Отчёта нет" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-stress-${{ github.run_number }}
+          path: |
+            stress-out
+            !stress-out/homes/**/Cache/**
+            !stress-out/homes/**/Code Cache/**
+            !stress-out/homes/**/GPUCache/**
+      - name: Итог
+        if: always()
+        run: |
+          test -d stress-out || { echo "::error::Стресс-тест не запустился"; exit 1; }
+          if [ -f stress-out/FAILED ]; then echo "::error::$(cat stress-out/FAILED)"; exit 1; fi
+          if [ -f stress-out/INCOMPLETE ]; then echo "::error::Не доделаны этапы: $(cat stress-out/INCOMPLETE)"; exit 1; fi
+          echo "Падений и зависаний не найдено"
