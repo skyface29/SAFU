@@ -52,10 +52,13 @@ fun rememberFilePicker(multiple: Boolean = true, onResult: (List<Uri>) -> Unit):
     return remember(launcher) { FilePicker { t -> @Suppress("UNCHECKED_CAST") (launcher as androidx.activity.result.ActivityResultLauncher<Array<String>>).launch(t) } }
 }
 
-/** Выбор фото и видео из галереи (PhotosPicker) */
+/** Выбор фото и видео из галереи (PhotosPicker). Экран, который его держит, уже закрыт (нажатие из меню
+ *  успело прийти после) — запуск бросает IllegalStateException; молча ничего не открываем, как FilePicker */
 class MediaPicker(private val launch: (PickVisualMediaRequest) -> Unit) {
-    fun images() = launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-    fun any() = launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+    fun images() = open(ActivityResultContracts.PickVisualMedia.ImageOnly)
+    fun any() = open(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+    private fun open(type: ActivityResultContracts.PickVisualMedia.VisualMediaType) =
+        try { launch(PickVisualMediaRequest(type)) } catch (_: Throwable) {}
 }
 
 @Composable

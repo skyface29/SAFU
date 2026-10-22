@@ -54,7 +54,8 @@ fun rememberDocScanner(onResult: (File?) -> Unit): DocScanner {
                 .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
                 .build()
             GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
-                .addOnSuccessListener { sender -> launcher.launch(IntentSenderRequest.Builder(sender).build()) }
+                // ответ приходит позже: экран со сканером к этому времени могли закрыть — тогда запуск бросает ошибку
+                .addOnSuccessListener { sender -> try { launcher.launch(IntentSenderRequest.Builder(sender).build()) } catch (_: Throwable) {} }
                 .addOnFailureListener {
                     Dialogs.alert("Сканер недоступен", "Для сканера документов нужны сервисы Google Play. Можно сфотографировать страницы камерой.")
                 }
