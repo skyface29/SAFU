@@ -610,6 +610,7 @@ function FileView({ tab }: { tab: SiteTab }) {
   if (['mp4', 'webm'].includes(ext)) return <video src={url} controls autoPlay style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', background: '#000' }} />
   if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) return <div className="center" style={{ position: 'absolute', inset: 0, background: 'var(--bg)' }}><audio src={url} controls autoPlay /></div>
   if (text !== null) return <pre className="wrap" style={{ position: 'absolute', inset: 0, margin: 0, padding: 24, overflow: 'auto', background: 'var(--bg2)', color: 'var(--text)', fontFamily: 'Cascadia Code, Consolas, monospace', fontSize: 13, userSelect: 'text' }}>{text}</pre>
+  if (['html', 'htm'].includes(ext) && tab.fileRel) return <HtmlFile rel={tab.fileRel} url={url} />
   if (VIEWABLE.includes(ext)) return <webview src={url} plugins={"true" as any} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
   return (
     <div className="center" style={{ position: 'absolute', inset: 0, background: 'var(--bg)' }}>
@@ -625,6 +626,42 @@ function FileView({ tab }: { tab: SiteTab }) {
       </div>
     </div>
   )
+}
+
+/** HTML (решебники, сохранённые страницы) открывается там, где его оставили: место помним по файлу */
+function HtmlFile({ rel, url }: { rel: string; url: string }) {
+  const ref = useRef<any>(null)
+  useEffect(() => {
+    const wv = ref.current
+    if (!wv) return
+    const key = 'file.place.' + rel
+    const saved = kv.get(key, 0)
+    // пока страница не вернулась на место, её прыжки (загрузка с верха) не запоминаем
+    let settled = saved <= 0
+    let restored = false
+    // пока страница грузится или вкладку уже закрыли, webview бросает ошибку сразу, а не в промисе
+    const run = (code: string): Promise<unknown> => { try { return wv.executeJavaScript(code) } catch (e) { return Promise.reject(e) } }
+    const same = (href: string) => { try { return decodeURI(href) === decodeURI(url) } catch { return href === url } }
+    const read = () => {
+      if (!settled) return
+      run('[location.href.split("#")[0], Math.round(scrollY)]').then(r => {
+        // по ссылке могли уйти на соседнюю страницу — её место не наше
+        if (Array.isArray(r) && same(String(r[0])) && typeof r[1] === 'number' && r[1] >= 0) kv.set(key, r[1])
+      }).catch(() => {})
+    }
+    // картинки догружаются уже после загрузки, и страница ещё растёт — догоняем нужное место до трёх секунд
+    const restore = () => {
+      if (restored) return
+      restored = true
+      if (settled) return
+      run(`new Promise(done => { let n = 0; const go = () => { scrollTo(0, ${saved}); if (scrollY < ${saved} - 2 && n++ < 12) setTimeout(go, 250); else done(scrollY) }; go() })`)
+        .catch(() => {}).finally(() => { settled = true })
+    }
+    wv.addEventListener('did-finish-load', restore)
+    const t = setInterval(read, 1500)
+    return () => { clearInterval(t); wv.removeEventListener('did-finish-load', restore); read() }
+  }, [rel, url])
+  return <webview ref={ref} src={url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
 }
 
 /** Плашка свёрнутых сайтов внизу окна */
