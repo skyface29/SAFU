@@ -87,9 +87,11 @@ async function scan() {
       const list = parseGroups(await get(`${RUZ}?groups&institution=${inst}`));
       if (list.length) listsOk++;
       for (const g of list) {
-        const old = groups[g.number];
-        if (old) { if (!old.insts.includes(inst)) old.insts.push(inst); }
-        else groups[g.number] = { number: g.number, id: g.id, title: g.title, course: g.course, insts: [inst] };
+        // один номер в РУЗе бывает у нескольких записей: очная и «Д» — разные группы, остальные дубли сливаем
+        const key = g.variant ? `${g.number} ${g.variant}` : g.number;
+        const old = groups[key];
+        if (old) { if (!old.insts.includes(inst)) old.insts.push(inst); if (!old.ids.includes(g.id)) old.ids.push(g.id); if (!old.title && g.title) old.title = g.title; }
+        else groups[key] = { number: key, ids: [g.id], title: g.title, course: g.course, insts: [inst] };
       }
     } catch (e) { log(`школа ${inst}: список групп не получен —`, e.message); }
   }
@@ -99,8 +101,9 @@ async function scan() {
   const byGroup = {}, fetched = new Set();
   await pool(all, 6, async g => {
     try {
-      const html = await get(`${RUZ}?timetable&group=${g.id}`, 2);
-      const ev = parseTimetable(html).map(norm);
+      const ev = [];
+      for (const id of g.ids) ev.push(...parseTimetable(await get(`${RUZ}?timetable&group=${id}`, 2)).map(norm));
+      g.ids.sort(); g.id = g.ids.join(',');
       byGroup[g.number] = dedupe(ev); fetched.add(g.number); ok++; events += ev.length;
     } catch { failed++; }
   });
@@ -118,12 +121,14 @@ function coverageOf(list) {
   if (!src.length) return null;
   return [wk(dayKey(Math.min(...src.map(l => l.start))))[0], wk(dayKey(Math.max(...src.map(l => l.start))))[1]];
 }
-function merge(prev, fresh, prevCov) {
+function merge(prev, fresh, prevCov, prevIds) {
   const out = {}, changedDays = {}, cov = { ...prevCov };
   const names = new Set([...Object.keys(prev), ...Object.keys(fresh.byGroup)]);
   for (const n of names) {
     const old = prev[n] || [];
     if (!fresh.fetched.has(n)) { out[n] = old; continue; }
+    // набор записей РУЗ у группы поменялся (например, разделили очную и «Д») — это новая точка отсчёта, а не правки
+    const rebase = prevIds[n] !== undefined && fresh.groups[n] && fresh.groups[n].id && prevIds[n] !== fresh.groups[n].id;
     const nw = fresh.byGroup[n] || [];
     const today = dayKey(NOW);
     if (!nw.length) {
@@ -136,7 +141,7 @@ function merge(prev, fresh, prevCov) {
     const keep = old.filter(l => { const k = dayKey(l.start); return k < wlo || k > whi; });
     out[n] = dedupe([...keep, ...nw]);
     const oc = prevCov[n] || coverageOf(old);
-    if (oc) changedDays[n] = [Math.max(wlo, today, oc[0]), Math.min(whi, oc[1])];
+    if (oc && !rebase) changedDays[n] = [Math.max(wlo, today, oc[0]), Math.min(whi, oc[1])];
     cov[n] = [wlo, Math.max(whi, oc ? oc[1] : whi)];
   }
   return { byGroup: out, window: changedDays, cov };
@@ -211,7 +216,8 @@ const newStatus = {
 
 let dataChanged = false;
 if (up) {
-  const m = merge(prev.byGroup, fresh, (prevData && prevData.cov) || {});
+  const prevIds = Object.fromEntries(Object.values(prev.groups).map(g => [g.number, g.id || '']));
+  const m = merge(prev.byGroup, fresh, (prevData && prevData.cov) || {}, prevIds);
   const groups = { ...prev.groups, ...fresh.groups };
   const items = prevData ? diff(prev.byGroup, m.byGroup, m.window) : [];
   const atTime = +process.env.RUZ_AT || NOW;
