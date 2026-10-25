@@ -275,7 +275,7 @@ var TYPES={add:'Новая пара',del:'Отменена',mod:'Изменен�
 var KEY='safu.mirror.v1', mem={};
 try{mem=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(mem));}catch(e){}}
-if(location.hash){var h=location.hash.slice(1);if(/^g\d+$/.test(h)){mem.mode='group';mem.group=h.slice(1);}}
+if(location.hash){var h='';try{h=decodeURIComponent(location.hash.slice(1));}catch(e){}if(/^g\d{4,7}( Д)?$/.test(h)){mem.mode='group';mem.group=h.slice(1);}}
 mem.mode=mem.mode||'group'; mem.seen=mem.seen||{};
 
 /* ---------- время ---------- */
@@ -527,7 +527,7 @@ function heroHtml(ids,now){
     (cur?'<div class="bar"><i style="width:'+Math.round((now-st2)/(en2-st2)*100)+'%"></i></div>':'')+'</div>';
 }
 function share(){
-  var url=location.origin+location.pathname+(mem.mode==='group'?'#g'+mem.group:'');
+  var url=location.origin+location.pathname+(mem.mode==='group'?'#g'+encodeURIComponent(mem.group):'');
   var txt=mem.mode==='group'?'Расписание группы '+mem.group+' — работает, даже когда РУЗ лежит':'Расписание САФУ';
   if(navigator.share){navigator.share({title:txt,url:url}).catch(function(){});return;}
   if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){toast('Ссылка скопирована');},function(){prompt('Ссылка:',url);});
