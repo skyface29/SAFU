@@ -135,18 +135,17 @@ button.card:hover{border-color:var(--rim2);background:var(--ice2);transform:tran
 .tools{display:flex;gap:8px;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:7px}
 .badge{min-width:20px;height:20px;padding:0 6px;border-radius:20px;background:var(--mod);color:#1a1200;font-size:11.5px;font-weight:800;display:inline-grid;place-items:center}
-.hero{position:relative;overflow:hidden;padding:18px 20px;margin-bottom:14px;border-radius:22px;border:1px solid var(--rim2);
+.hero{position:relative;overflow:hidden;padding:18px 20px;margin-bottom:14px;border-radius:22px;border:1px solid var(--rim2);display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:18px;align-items:start;
   background:linear-gradient(120deg,color-mix(in srgb,var(--aur1) 16%,var(--ice)),color-mix(in srgb,var(--aur2) 18%,var(--ice)))}
 .hero .lbl{font:700 11px var(--ff-d);letter-spacing:.14em;text-transform:uppercase;color:var(--tx2)}
 .hero .sj{font:700 clamp(18px,3vw,24px)/1.2 var(--ff-d);margin:6px 0 4px;letter-spacing:-.01em}
 .hero .rw{color:var(--tx2);font-size:14px;font-weight:600}
-.hero .cd{position:absolute;right:20px;top:18px;text-align:right;font-variant-numeric:tabular-nums}
+.hero .lbl,.hero .sj,.hero .rw{grid-column:1}
+.hero .cd{grid-column:2;grid-row:1/4;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .hero .cd b{display:block;font:800 26px var(--ff-d)}
 .hero .cd span{font-size:12px;color:var(--tx2);font-weight:700}
-.hero .bar{height:5px;border-radius:5px;background:color-mix(in srgb,var(--tx) 12%,transparent);margin-top:12px;overflow:hidden}
+.hero .bar{grid-column:1/-1;height:5px;border-radius:5px;background:color-mix(in srgb,var(--tx) 12%,transparent);margin-top:12px;overflow:hidden}
 .hero .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--aur1),var(--aur2));border-radius:5px}
-.hero.next .sj{padding-right:110px}
-.hero .sj{padding-right:110px}
 .weekbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
 .weekbar .lbl{font:700 14px var(--ff-d);flex:1;min-width:150px}
 .weekbar .lbl small{display:block;font:600 12px var(--ff);color:var(--tx3)}
@@ -229,9 +228,9 @@ footer a{color:var(--aur1);text-decoration:none;font-weight:800}
   .days{grid-template-columns:1fr}
   .days .day:not(.sel){display:none}
   .logo small{display:none}
-  .hero .cd{position:static;text-align:left;margin-top:8px}
+  .hero{grid-template-columns:minmax(0,1fr)}
+  .hero .cd{grid-column:1;grid-row:auto;text-align:left;margin-top:8px}
   .hero .cd b{display:inline;font-size:18px;margin-right:6px}
-  .hero .sj{padding-right:0}
   header .seg{order:3;width:100%}
   header .seg button{flex:1}
 }
@@ -340,7 +339,8 @@ function banners(){
   if(STATUS){el.hidden=false;
     if(STATUS.up===false){el.classList.add('down');tx.textContent='РУЗ лежит';
       b+='<div class="banner down"><span>⚠️</span><div class="grow"><b>РУЗ САФУ сейчас не работает'+(STATUS.downSince?' (с '+when(STATUS.downSince)+')':'')+'.</b> Ничего страшного — здесь последняя копия расписания от '+when(LIVE&&LIVE.at)+'. Как только РУЗ оживёт, правки подтянутся сами.</div></div>';}
-    else{el.classList.remove('down');tx.textContent='РУЗ работает · '+hm(STATUS.checkedAt||Date.now());}
+    else if(STATUS.up===true){el.classList.remove('down');tx.textContent='РУЗ работает · '+hm(STATUS.checkedAt);}
+    else{el.classList.remove('down');tx.textContent='Копия от '+when(LIVE&&LIVE.at);}
     el.title='Последняя проверка: '+when(STATUS.checkedAt)+(STATUS.lastOkAt?'\nПоследний удачный ответ: '+when(STATUS.lastOkAt):'');
   }
   if(viewingSnap){b+='<div class="banner time"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="grow"><b>Ты смотришь архивную копию от '+when(viewingSnap.at)+'.</b> Так расписание выглядело тогда.</div><button class="btn" id="backLive">Вернуться к актуальному</button></div>';}
