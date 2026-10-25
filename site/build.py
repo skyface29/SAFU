@@ -204,6 +204,9 @@ os.makedirs(OUT, exist_ok=True)
 for name in ("index.html", "og.png", "CNAME"):
     if os.path.exists(os.path.join(HERE, name)):
         shutil.copy(os.path.join(HERE, name), os.path.join(OUT, name))
+# raspisanie/ — офлайн-копия расписания РУЗ САФУ (arktika-app.ru/raspisanie/)
+if os.path.isdir(os.path.join(HERE, "raspisanie")):
+    shutil.copytree(os.path.join(HERE, "raspisanie"), os.path.join(OUT, "raspisanie"), dirs_exist_ok=True)
 json.dump({"generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "repo": REPO, "versions": rows},
           open(os.path.join(OUT, "versions.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 from collections import Counter
