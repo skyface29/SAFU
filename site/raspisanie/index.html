@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070b18">
+<title>Расписание САФУ</title>
+<meta name="description" content="Зеркало расписания РУЗ САФУ: все высшие школы, группы и преподаватели. Правки видны сразу, есть архив копий. Работает, даже когда РУЗ лежит. Разработчик @skf29.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Арктика">
+<meta property="og:title" content="Расписание САФУ — работает, когда РУЗ лежит">
+<meta property="og:description" content="Все высшие школы, группы и преподаватели. Правки видны сразу, архив копий, работает без интернета. by @skf29">
+<meta property="og:url" content="https://arktika-app.ru/raspisanie/">
+<meta property="og:image" content="https://arktika-app.ru/raspisanie/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://arktika-app.ru/raspisanie/og.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="og-icon.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x2='1' y2='1'%3E%3Cstop stop-color='%2333d6c8'/%3E%3Cstop offset='1' stop-color='%237c6cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Ctext x='32' y='44' font-family='Arial' font-weight='800' font-size='34' fill='white' text-anchor='middle'%3E%D0%A1%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Полярная ночь: тёмное небо Архангельска, северное сияние как акцент, карточки-льдины.
+   Сначала тёмная тема (как в приложении «Арктика»), светлая — «белые ночи». */
+:root{
+  --sky:#070b18; --sky2:#0c1326; --ice:rgba(255,255,255,.045); --ice2:rgba(255,255,255,.075); --ice3:rgba(255,255,255,.11);
+  --rim:rgba(160,190,255,.12); --rim2:rgba(160,190,255,.22);
+  --tx:#eaf0ff; --tx2:#a3afc8; --tx3:#6c7893;
+  --aur1:#33d6c8; --aur2:#7c6cff; --aur3:#3d8bff;
+  --lec:#5b9bff; --pr:#2fd493; --lab:#ffb547; --ex:#ff6b6b; --oth:#b69cff;
+  --add:#2fd493; --del:#ff6b6b; --mod:#ffb547;
+  --stars:rgba(255,255,255,.55); --glow:.55; --shadow:0 18px 50px rgba(0,0,0,.45);
+  --ff-d:"Unbounded","Segoe UI",system-ui,sans-serif; --ff:"Manrope","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --sky:#eef2fb; --sky2:#e3e9f7; --ice:#ffffff; --ice2:#f4f7fd; --ice3:#e9eefa;
+  --rim:rgba(30,50,110,.10); --rim2:rgba(30,50,110,.2);
+  --tx:#0d1530; --tx2:#4a5674; --tx3:#8591ad;
+  --stars:rgba(60,80,160,.0); --glow:.28; --shadow:0 14px 34px rgba(20,40,100,.10); color-scheme:light;
+  --aur1:#0a9e92; --mod:#b86e00; --pr:#14995f; --lec:#2a6fe0; --lab:#c27800; --add:#14995f; --del:#d63a3a;
+}}
+:root[data-theme="light"]{
+  --sky:#eef2fb; --sky2:#e3e9f7; --ice:#ffffff; --ice2:#f4f7fd; --ice3:#e9eefa;
+  --rim:rgba(30,50,110,.10); --rim2:rgba(30,50,110,.2);
+  --tx:#0d1530; --tx2:#4a5674; --tx3:#8591ad;
+  --stars:rgba(60,80,160,.0); --glow:.28; --shadow:0 14px 34px rgba(20,40,100,.10); color-scheme:light;
+  --aur1:#0a9e92; --mod:#b86e00; --pr:#14995f; --lec:#2a6fe0; --lab:#c27800; --add:#14995f; --del:#d63a3a;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--sky);color:var(--tx);font:15px/1.5 var(--ff);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background-image:radial-gradient(1px 1px at 20px 30px,var(--stars),transparent),radial-gradient(1px 1px at 120px 80px,var(--stars),transparent),
+  radial-gradient(1.5px 1.5px at 200px 160px,var(--stars),transparent),radial-gradient(1px 1px at 300px 40px,var(--stars),transparent),
+  radial-gradient(1px 1px at 380px 220px,var(--stars),transparent),radial-gradient(1.5px 1.5px at 60px 260px,var(--stars),transparent);
+  background-size:420px 300px;opacity:.6}
+.aurora{position:fixed;inset:-20vh -10vw auto;height:70vh;z-index:-1;pointer-events:none;opacity:var(--glow);filter:blur(60px)}
+.aurora i{position:absolute;border-radius:50%;mix-blend-mode:screen}
+.aurora i:nth-child(1){left:5%;top:10%;width:55vw;height:28vh;background:var(--aur1);transform:rotate(-8deg);animation:drift 18s ease-in-out infinite alternate}
+.aurora i:nth-child(2){left:40%;top:0;width:50vw;height:30vh;background:var(--aur2);transform:rotate(6deg);animation:drift 22s ease-in-out infinite alternate-reverse}
+.aurora i:nth-child(3){left:20%;top:22%;width:40vw;height:18vh;background:var(--aur3);opacity:.7;animation:drift 26s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translateX(6vw) rotate(-2deg) scaleY(1.2)}}
+@media (prefers-reduced-motion:reduce){.aurora i{animation:none}}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--aur1);outline-offset:2px}
+.wrap{max-width:1160px;margin:0 auto;padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0 18px}
+.logo{display:flex;align-items:center;gap:11px;margin-right:auto;text-decoration:none;color:inherit}
+.logo i{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font:800 18px var(--ff-d);font-style:normal;color:#fff;
+  background:linear-gradient(135deg,var(--aur1),var(--aur2));box-shadow:0 8px 26px color-mix(in srgb,var(--aur2) 45%,transparent)}
+.logo b{font:700 16px/1.1 var(--ff-d);letter-spacing:-.01em;display:block}
+.logo small{display:block;font-size:12px;color:var(--tx2);font-weight:600}
+.status{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:40px;border:1px solid var(--rim);background:var(--ice);font-size:12.5px;font-weight:700;color:var(--tx2);white-space:nowrap}
+.status .dot{width:8px;height:8px;border-radius:50%;background:var(--pr);box-shadow:0 0 0 4px color-mix(in srgb,var(--pr) 22%,transparent)}
+.status.down{color:var(--tx);border-color:color-mix(in srgb,var(--del) 45%,transparent);background:color-mix(in srgb,var(--del) 12%,var(--ice))}
+.status.down .dot{background:var(--del);box-shadow:0 0 0 4px color-mix(in srgb,var(--del) 25%,transparent);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px transparent}}
+.btn{border:1px solid var(--rim);background:var(--ice);border-radius:12px;padding:8px 14px;font-weight:700;transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--rim2);background:var(--ice2)}
+.btn.icon{width:40px;height:40px;padding:0;display:grid;place-items:center}
+.btn[disabled]{opacity:.35;cursor:default}
+.seg{display:inline-flex;background:var(--ice);border:1px solid var(--rim);border-radius:13px;padding:3px}
+.seg button{border:0;background:none;padding:7px 13px;border-radius:10px;color:var(--tx2);font-weight:700;font-size:14px}
+.seg button.on{background:var(--ice3);color:var(--tx);box-shadow:inset 0 0 0 1px var(--rim2)}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-radius:16px;margin-bottom:16px;font-size:14px;border:1px solid var(--rim)}
+.banner.down{background:color-mix(in srgb,var(--del) 10%,var(--ice));border-color:color-mix(in srgb,var(--del) 35%,transparent)}
+.banner.time{background:color-mix(in srgb,var(--aur2) 14%,var(--ice));border-color:color-mix(in srgb,var(--aur2) 40%,transparent);align-items:center;flex-wrap:wrap}
+.banner b{font-weight:800}
+.banner .grow{flex:1;min-width:200px}
+h1{font:800 clamp(26px,5vw,40px)/1.08 var(--ff-d);letter-spacing:-.025em;margin:4px 0 6px;text-wrap:balance}
+.sub{color:var(--tx2);margin:0 0 18px;max-width:62ch}
+.grid{display:grid;gap:12px}
+.card{background:var(--ice);border:1px solid var(--rim);border-radius:20px;padding:15px 17px;transition:transform .15s,border-color .15s,background .15s}
+button.card{text-align:left;width:100%}
+button.card:hover{border-color:var(--rim2);background:var(--ice2);transform:translateY(-2px)}
+.schools{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.sch{display:flex;flex-direction:column;gap:6px;min-height:150px}
+.sch .t{display:flex;align-items:center;gap:10px;font:700 15px var(--ff-d)}
+.mark{flex:none;width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font:800 12px var(--ff-d);color:#fff}
+.sch .f{font-size:13.5px;font-weight:600}
+.sch .a{font-size:12.5px;color:var(--tx2)}
+.sch .n{font-size:12px;color:var(--tx3);margin-top:auto;font-weight:700}
+.search{position:relative;margin:0 0 14px}
+.search input{width:100%;background:var(--ice);border:1px solid var(--rim);border-radius:15px;padding:13px 16px 13px 44px;outline:none;font-weight:600}
+.search input:focus{border-color:var(--aur1)}
+.search svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--tx3)}
+.crumbs{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:13.5px}
+.crumbs button{border:0;background:none;color:var(--aur1);padding:0;font-weight:700}
+.course{margin:20px 0 9px;font:700 11.5px var(--ff-d);color:var(--tx3);text-transform:uppercase;letter-spacing:.12em}
+.groups{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.grp .num{font:800 18px var(--ff-d);letter-spacing:-.01em}
+.grp .num small{font:700 11px var(--ff);color:var(--tx3);margin-left:6px}
+.grp .ttl{font-size:12.5px;color:var(--tx2);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.teachers{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.tch{display:flex;gap:12px;align-items:center}
+.tch>div{min-width:0}
+.tch .nm{font-weight:800}
+.tch .ds{font-size:12.5px;color:var(--tx2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ava{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font:800 13px var(--ff-d);color:#fff}
+.empty{color:var(--tx2);padding:34px;text-align:center}
+.skeleton{height:120px;border-radius:20px;background:linear-gradient(90deg,var(--ice),var(--ice2),var(--ice));background-size:200% 100%;animation:sh 1.2s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+/* расписание */
+.who{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.who>div{flex:1;min-width:220px}
+.who .meta{color:var(--tx2);font-size:13.5px;font-weight:600}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:7px}
+.badge{min-width:20px;height:20px;padding:0 6px;border-radius:20px;background:var(--mod);color:#1a1200;font-size:11.5px;font-weight:800;display:inline-grid;place-items:center}
+.hero{position:relative;overflow:hidden;padding:18px 20px;margin-bottom:14px;border-radius:22px;border:1px solid var(--rim2);
+  background:linear-gradient(120deg,color-mix(in srgb,var(--aur1) 16%,var(--ice)),color-mix(in srgb,var(--aur2) 18%,var(--ice)))}
+.hero .lbl{font:700 11px var(--ff-d);letter-spacing:.14em;text-transform:uppercase;color:var(--tx2)}
+.hero .sj{font:700 clamp(18px,3vw,24px)/1.2 var(--ff-d);margin:6px 0 4px;letter-spacing:-.01em}
+.hero .rw{color:var(--tx2);font-size:14px;font-weight:600}
+.hero .cd{position:absolute;right:20px;top:18px;text-align:right;font-variant-numeric:tabular-nums}
+.hero .cd b{display:block;font:800 26px var(--ff-d)}
+.hero .cd span{font-size:12px;color:var(--tx2);font-weight:700}
+.hero .bar{height:5px;border-radius:5px;background:color-mix(in srgb,var(--tx) 12%,transparent);margin-top:12px;overflow:hidden}
+.hero .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--aur1),var(--aur2));border-radius:5px}
+.hero.next .sj{padding-right:110px}
+.hero .sj{padding-right:110px}
+.weekbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.weekbar .lbl{font:700 14px var(--ff-d);flex:1;min-width:150px}
+.weekbar .lbl small{display:block;font:600 12px var(--ff);color:var(--tx3)}
+.strip{display:none;gap:6px;overflow-x:auto;padding:2px 0 10px;margin-bottom:2px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip button{flex:1 0 auto;min-width:52px;border:1px solid var(--rim);background:var(--ice);border-radius:14px;padding:7px 4px;text-align:center;font-weight:700;line-height:1.15}
+.strip button small{display:block;font-size:11px;color:var(--tx3);font-weight:700;text-transform:uppercase}
+.strip button b{font:700 17px var(--ff-d)}
+.strip button i{display:block;width:5px;height:5px;border-radius:50%;margin:4px auto 0;background:transparent}
+.strip button.has i{background:var(--aur1)}
+.strip button.on{background:linear-gradient(135deg,var(--aur1),var(--aur2));border-color:transparent;color:#fff}
+.strip button.on small{color:rgba(255,255,255,.8)}
+.strip button.on.has i{background:#fff}
+.strip button.today:not(.on){border-color:var(--aur1)}
+.days{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+.day{padding:0;overflow:hidden}
+.day>.h{display:flex;justify-content:space-between;align-items:baseline;padding:13px 17px;border-bottom:1px solid var(--rim)}
+.day>.h b{font:700 14.5px var(--ff-d)}
+.day>.h span{color:var(--tx3);font-size:12.5px;font-weight:700}
+.day.today{border-color:color-mix(in srgb,var(--aur1) 60%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--aur1) 25%,transparent),var(--shadow)}
+.day.today>.h b::after{content:"сегодня";margin-left:8px;font:800 10px var(--ff);padding:2px 8px;border-radius:20px;background:var(--aur1);color:#04201d;vertical-align:2px;text-transform:uppercase;letter-spacing:.05em}
+.free{padding:18px 17px;color:var(--tx3);font-size:13.5px;font-weight:600}
+.les{display:grid;grid-template-columns:58px minmax(0,1fr);gap:12px;padding:12px 17px;border-top:1px solid var(--rim);position:relative}
+.les:first-of-type{border-top:0}
+.les::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--k)}
+.tm{font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--tx3);line-height:1.3;font-weight:700}
+.tm b{display:block;color:var(--tx);font-size:15px}
+.tm em{display:block;font-style:normal;font-size:10.5px;margin-top:4px;text-transform:uppercase;letter-spacing:.05em}
+.sj{font-weight:800;font-size:14.5px;line-height:1.3}
+.row{font-size:13px;color:var(--tx2);margin-top:4px;font-weight:600;overflow-wrap:anywhere}
+.row a{color:var(--tx);text-decoration:none;border-bottom:1px dashed var(--rim2);cursor:pointer}
+.row a:hover{color:var(--aur1);border-color:var(--aur1)}
+.kind{display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:20px;margin-right:6px;vertical-align:1px;background:color-mix(in srgb,var(--k) 18%,transparent);color:var(--k)}
+.chg{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:20px;margin-left:6px;vertical-align:2px;background:color-mix(in srgb,var(--mod) 20%,transparent);color:var(--mod);text-transform:uppercase;letter-spacing:.04em}
+.les.past{opacity:.45}
+.les.now{background:color-mix(in srgb,var(--aur1) 9%,transparent)}
+.les.now .tm b{color:var(--aur1)}
+.stats{color:var(--tx3);font-size:12.5px;font-weight:700;margin:-4px 0 12px}
+/* панель правок / архива */
+.sheet{position:fixed;inset:0;z-index:50;display:flex;justify-content:flex-end;background:rgba(3,6,15,.55);backdrop-filter:blur(4px)}
+.sheet[hidden]{display:none}
+.sheet .pane{width:min(520px,100%);height:100%;overflow:auto;background:var(--sky2);border-left:1px solid var(--rim);
+  padding:calc(18px + env(safe-area-inset-top,0px)) max(18px,env(safe-area-inset-right,0px)) calc(30px + env(safe-area-inset-bottom,0px)) 18px}
+.sheet h2{font:800 22px var(--ff-d);margin:0;letter-spacing:-.02em}
+.sheet .top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.sheet .top h2{flex:1}
+.sheet .hint{color:var(--tx2);font-size:13.5px;margin:0 0 14px}
+.cgroup{margin:18px 0 8px;font:700 11.5px var(--ff-d);color:var(--tx3);text-transform:uppercase;letter-spacing:.12em}
+.ci{background:var(--ice);border:1px solid var(--rim);border-radius:16px;padding:12px 14px;margin-bottom:8px}
+.ci .h{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--tx2);font-weight:700;margin-bottom:6px;flex-wrap:wrap}
+.ci .t{font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.t-add{background:color-mix(in srgb,var(--add) 18%,transparent);color:var(--add)}
+.t-del{background:color-mix(in srgb,var(--del) 18%,transparent);color:var(--del)}
+.t-mod,.t-move,.t-swap{background:color-mix(in srgb,var(--mod) 18%,transparent);color:var(--mod)}
+.ci .l{font-size:13.5px;font-weight:700}
+.ci .l.was{color:var(--tx3);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--del) 70%,transparent);font-weight:600}
+.ci .l small{display:block;font-weight:600;color:var(--tx2);font-size:12.5px}
+.ci .l.was small{color:var(--tx3)}
+.snap{display:flex;justify-content:space-between;gap:10px;align-items:center;width:100%;text-align:left;margin-bottom:8px}
+.snap b{font-weight:800}
+.snap span{font-size:12.5px;color:var(--tx2);font-weight:600}
+.snap.cur{border-color:color-mix(in srgb,var(--aur1) 55%,transparent)}
+.subs{margin-top:6px;font-size:13px;color:var(--tx2);font-weight:600}
+.subs summary{cursor:pointer;color:var(--aur1);font-weight:800;font-size:12.5px;list-style:none}
+.subs summary::-webkit-details-marker{display:none}
+.subs summary::after{content:" ▾"}
+.subs[open] summary::after{content:" ▴"}
+.subs .sub{padding:6px 0;border-top:1px dashed var(--rim);overflow-wrap:anywhere}
+.subs .sub:first-of-type{border-top:0}
+.subs .sub a{color:var(--tx);text-decoration:none;border-bottom:1px dashed var(--rim2);cursor:pointer}
+.subs .sub span{color:var(--tx3)}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--rim);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--tx3);font-size:13px;font-weight:600}
+footer a{color:var(--aur1);text-decoration:none;font-weight:800}
+.dev{display:inline-flex;align-items:center;gap:9px;color:var(--tx2)}
+.dev .d{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--aur1),var(--aur2));display:grid;place-items:center;color:#fff;font:800 11px var(--ff-d)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
+@media (max-width:900px){.days{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){
+  .strip{display:flex}
+  .days{grid-template-columns:1fr}
+  .days .day:not(.sel){display:none}
+  .logo small{display:none}
+  .hero .cd{position:static;text-align:left;margin-top:8px}
+  .hero .cd b{display:inline;font-size:18px;margin-right:6px}
+  .hero .sj{padding-right:0}
+  header .seg{order:3;width:100%}
+  header .seg button{flex:1}
+}
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="wrap">
+  <header>
+    <a class="logo" href="./"><i>С</i><div><b>Расписание САФУ</b><small>зеркало РУЗ · Арктика</small></div></a>
+    <span class="status" id="status" hidden><span class="dot"></span><span id="statusTxt"></span></span>
+    <div class="seg" id="modeSeg" role="tablist">
+      <button data-m="group" role="tab">Группа</button>
+      <button data-m="teacher" role="tab">Преподаватель</button>
+    </div>
+    <button class="btn icon" id="themeBtn" title="Светлая / тёмная тема" aria-label="Сменить тему"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+  </header>
+  <div id="banners"></div>
+  <main id="app"><div class="grid schools"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div></main>
+  <noscript><div class="card">Включи JavaScript или открой страницу в обычном браузере (Safari, Chrome).</div></noscript>
+  <footer>
+    <div class="dev"><span class="d">S</span>Разработчик: <a href="https://t.me/skf29" target="_blank" rel="noopener">@skf29</a></div>
+    <div id="foot">Данные с ruz.narfu.ru · проверка каждые 30 минут</div>
+  </footer>
+</div>
+
+<div class="sheet" id="sheet" hidden><div class="pane" id="pane" role="dialog" aria-modal="true"></div></div>
+
+<script>
+(function(){
+"use strict";
+var TZ=3*3600e3, DAY=864e5;
+var COLORS=['#ff6b6b','#ff9f43','#f5c84c','#2fd493','#33d6c8','#3d8bff','#7c6cff','#e66bd8'];
+var WD=['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
+var WDs=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+var MON=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+var MONs=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+var PAIRS={'8:20':1,'10:10':2,'12:00':3,'13:45':4,'14:30':4,'16:15':5,'18:00':6,'19:40':7};
+var TYPES={add:'Новая пара',del:'Отменена',mod:'Изменение',move:'Перенос',swap:'Замена'};
+
+/* ---------- память ---------- */
+var KEY='safu.mirror.v1', mem={};
+try{mem=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(mem));}catch(e){}}
+if(location.hash){var h=location.hash.slice(1);if(/^g\d+$/.test(h)){mem.mode='group';mem.group=h.slice(1);}}
+mem.mode=mem.mode||'group'; mem.seen=mem.seen||{};
+
+/* ---------- время ---------- */
+function dk(ms){return Math.floor((ms+TZ)/DAY);}
+function wd(k){return (k+3)%7;}
+function weekOf(ms){var k=dk(ms);return k-wd(k);}
+function dm(k,s){var d=new Date(k*DAY);return d.getUTCDate()+' '+(s?MONs:MON)[d.getUTCMonth()];}
+function hm(ms){var d=new Date(ms+TZ),m=d.getUTCMinutes();return d.getUTCHours()+':'+(m<10?'0':'')+m;}
+function when(ms){if(!ms)return'—';var k=dk(ms),t=dk(Date.now());return (k===t?'сегодня':k===t-1?'вчера':dm(k,1))+' в '+hm(ms);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function kc(k){k=(k||'').toLowerCase();if(k.indexOf('лекц')>=0)return'var(--lec)';if(k.indexOf('практ')>=0)return'var(--pr)';if(k.indexOf('лаб')>=0)return'var(--lab)';if(/экзам|зач/.test(k))return'var(--ex)';return'var(--oth)';}
+function colorFor(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return COLORS[Math.abs(h)%COLORS.length];}
+function initials(n){var p=n.replace(/[.]/g,' ').split(/\s+/).filter(Boolean);return(((p[0]||'')[0]||'')+((p[1]||'')[0]||'')).toUpperCase();}
+function plural(n,a,b,c){var m=n%10,h=n%100;return m===1&&h!==11?a:(m>=2&&m<=4&&(h<10||h>=20)?b:c);}
+function dur(ms){var m=Math.max(0,Math.round(ms/6e4));if(m<60)return m+' мин';var h=Math.floor(m/60);m%=60;return h+' ч'+(m?' '+m+' мин':'');}
+
+/* ---------- тема ---------- */
+if(mem.theme)document.documentElement.setAttribute('data-theme',mem.theme);
+document.getElementById('themeBtn').onclick=function(){
+  var cur=document.documentElement.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+  mem.theme=cur==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',mem.theme);save();};
+
+/* ---------- данные ---------- */
+var D=null, LIVE=null, STATUS=null, CHANGES=[], SNAPS=null, viewingSnap=null;
+var S,G,L,BASE,SCH={},gIdx={},byGroup={},byTeacher={},tSubj={},teachers=[],minT=0,maxT=0;
+function index(d){
+  D=d;S=d.S;G=d.G;L=d.L;BASE=d.base*6e4;SCH={};gIdx={};byGroup={};byTeacher={};tSubj={};
+  d.schools.forEach(function(s){SCH[s[0]]={id:s[0],short:s[1],full:s[2],about:s[3]};});
+  G.forEach(function(g,i){gIdx[g[0]]=i;});
+  minT=Infinity;maxT=0;
+  for(var i=0;i<L.length;i++){var l=L[i],st=BASE+l[0]*6e4;if(st<minT)minT=st;if(st+l[1]*6e4>maxT)maxT=st+l[1]*6e4;
+    for(var j=8;j<l.length;j++)(byGroup[l[j]]||(byGroup[l[j]]=[])).push(i);
+    var tn=S[l[4]];if(tn){tn.split(',').forEach(function(t){t=t.trim();if(t.length<3)return;(byTeacher[t]||(byTeacher[t]=[])).push(i);(tSubj[t]||(tSubj[t]={}))[S[l[2]]]=1;});}}
+  teachers=Object.keys(byTeacher).sort(function(a,b){return a.localeCompare(b,'ru');});
+}
+function getJSON(u){return fetch(u,{cache:'no-cache'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
+function getGz(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.arrayBuffer();}).then(function(buf){
+  var b=new Uint8Array(buf);
+  if(b[0]===0x1f&&b[1]===0x8b){
+    if(!window.DecompressionStream)throw new Error('old');
+    return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text().then(JSON.parse);}
+  return JSON.parse(new TextDecoder().decode(b));});}
+
+/* ---------- состояние экрана ---------- */
+var app=document.getElementById('app'), view=null, week=null, selDay=null;
+function setMode(m){mem.mode=m;save();week=null;selDay=null;route();}
+Array.prototype.forEach.call(document.querySelectorAll('#modeSeg button'),function(b){b.onclick=function(){setMode(b.dataset.m);};});
+function syncSeg(){Array.prototype.forEach.call(document.querySelectorAll('#modeSeg button'),function(b){b.classList.toggle('on',b.dataset.m===mem.mode);b.setAttribute('aria-selected',b.dataset.m===mem.mode);});}
+function route(){
+  syncSeg();banners();
+  if(mem.mode==='teacher'){if(mem.teacher&&byTeacher[mem.teacher]&&view!=='teachers')return showSched();return showTeachers();}
+  if(mem.group&&gIdx[mem.group]!=null&&view!=='groups'&&view!=='schools')return showSched();
+  if(mem.school!=null&&SCH[mem.school]&&view!=='schools')return showGroups();
+  return showSchools();
+}
+var searchSvg='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+
+/* ---------- статус РУЗ и баннеры ---------- */
+function banners(){
+  var el=document.getElementById('status'),tx=document.getElementById('statusTxt'),b='';
+  if(STATUS){el.hidden=false;
+    if(STATUS.up===false){el.classList.add('down');tx.textContent='РУЗ лежит';
+      b+='<div class="banner down"><span>⚠️</span><div class="grow"><b>РУЗ САФУ сейчас не работает'+(STATUS.downSince?' (с '+when(STATUS.downSince)+')':'')+'.</b> Ничего страшного — здесь последняя копия расписания от '+when(LIVE&&LIVE.at)+'. Как только РУЗ оживёт, правки подтянутся сами.</div></div>';}
+    else{el.classList.remove('down');tx.textContent='РУЗ работает · '+hm(STATUS.checkedAt||Date.now());}
+    el.title='Последняя проверка: '+when(STATUS.checkedAt)+(STATUS.lastOkAt?'\nПоследний удачный ответ: '+when(STATUS.lastOkAt):'');
+  }
+  if(viewingSnap){b+='<div class="banner time"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="grow"><b>Ты смотришь архивную копию от '+when(viewingSnap.at)+'.</b> Так расписание выглядело тогда.</div><button class="btn" id="backLive">Вернуться к актуальному</button></div>';}
+  document.getElementById('banners').innerHTML=b;
+  var bl=document.getElementById('backLive');if(bl)bl.onclick=function(){viewingSnap=null;index(LIVE);route();};
+}
+
+/* ---------- экраны выбора ---------- */
+function groupsOf(id){return G.map(function(g,i){return i;}).filter(function(i){return G[i][1].indexOf(id)>=0;});}
+function showSchools(){
+  view='schools';var cnt={};G.forEach(function(g){g[1].forEach(function(s){cnt[s]=(cnt[s]||0)+1;});});
+  var h='<h1>Выбери высшую школу</h1><p class="sub">Потом свою группу — и всё. В следующий раз расписание откроется сразу, а правки из РУЗ будут подсвечены.</p>'+
+   '<div class="search">'+searchSvg+'<input id="gq" placeholder="Или сразу номер группы, например 151621" inputmode="search" autocomplete="off" aria-label="Поиск группы"></div><div id="gres"></div><div class="grid schools" id="slist">';
+  D.schools.forEach(function(s){if(!cnt[s[0]])return;
+    h+='<button class="card sch" data-s="'+s[0]+'"><div class="t"><span class="mark" style="background:'+colorFor(s[1])+'">'+esc(s[1].slice(0,2).toUpperCase())+'</span>'+esc(s[1])+'</div><div class="f">'+esc(s[2])+'</div><div class="a">'+esc(s[3])+'</div><div class="n">'+cnt[s[0]]+' '+plural(cnt[s[0]],'группа','группы','групп')+'</div></button>';});
+  app.innerHTML=h+'</div>';
+  app.querySelectorAll('[data-s]').forEach(function(b){b.onclick=function(){mem.school=+b.dataset.s;save();showGroups();};});
+  var inp=document.getElementById('gq');
+  inp.oninput=function(){var v=inp.value.trim(),res=document.getElementById('gres'),sl=document.getElementById('slist');
+    if(!v){res.innerHTML='';sl.hidden=false;return;}sl.hidden=true;
+    res.innerHTML=groupCards(G.map(function(g,i){return i;}).filter(function(i){return matchGroup(G[i],v);}),true);bindGroups(res);};
+}
+function matchGroup(g,v){v=v.toLowerCase();return g[0].indexOf(v)>=0||(g[3]||'').toLowerCase().indexOf(v)>=0;}
+function groupCards(list,showSchool){
+  if(!list.length)return '<div class="empty">Ничего не нашлось</div>';
+  var by={};list.forEach(function(i){var c=G[i][2]||0;(by[c]||(by[c]=[])).push(i);});
+  var h='';Object.keys(by).sort().forEach(function(c){
+    h+='<div class="course">'+(+c?c+' курс':'Другие')+'</div><div class="grid groups">';
+    by[c].sort(function(a,b){return G[a][0].localeCompare(G[b][0]);}).forEach(function(i){var g=G[i],sc=SCH[g[1][0]];
+      h+='<button class="card grp" data-g="'+esc(g[0])+'"><div class="num">'+esc(g[0])+(showSchool&&sc?'<small>'+esc(sc.short)+'</small>':'')+'</div><div class="ttl">'+esc(g[3]||'Без названия')+'</div></button>';});
+    h+='</div>';});
+  return h;
+}
+function bindGroups(root){root.querySelectorAll('[data-g]').forEach(function(b){b.onclick=function(){openGroup(b.dataset.g);};});}
+function showGroups(){
+  view='groups';var s=SCH[mem.school],list=groupsOf(s.id);
+  app.innerHTML='<div class="crumbs"><button id="back">← Все высшие школы</button></div><h1>'+esc(s.short)+'</h1><p class="sub">'+esc(s.full)+'. Выбери свою группу.</p>'+
+    '<div class="search">'+searchSvg+'<input id="gq" placeholder="Номер группы или направление" autocomplete="off" aria-label="Поиск группы"></div><div id="gl"></div>';
+  var gl=document.getElementById('gl');
+  function draw(v){gl.innerHTML=groupCards(list.filter(function(i){return !v||matchGroup(G[i],v);}));bindGroups(gl);}
+  draw('');document.getElementById('gq').oninput=function(e){draw(e.target.value.trim());};
+  document.getElementById('back').onclick=function(){mem.school=null;save();showSchools();};
+}
+function showTeachers(){
+  view='teachers';
+  app.innerHTML='<h1>Преподаватели</h1><p class="sub">'+teachers.length+' '+plural(teachers.length,'преподаватель','преподавателя','преподавателей')+'. Найди нужного — где у него пары и когда.</p>'+
+    '<div class="search">'+searchSvg+'<input id="tq" placeholder="Фамилия или предмет" autocomplete="off" aria-label="Поиск преподавателя"></div><div class="grid teachers" id="tl"></div>';
+  var tl=document.getElementById('tl');
+  function draw(v){v=v.toLowerCase();var out='',n=0;
+    for(var i=0;i<teachers.length;i++){var t=teachers[i],subj=Object.keys(tSubj[t]).join(', ');
+      if(v&&t.toLowerCase().indexOf(v)<0&&subj.toLowerCase().indexOf(v)<0)continue;if(++n>240)break;
+      out+='<button class="card tch" data-t="'+esc(t)+'"><span class="ava" style="background:'+colorFor(t)+'">'+esc(initials(t))+'</span><div><div class="nm">'+esc(t)+'</div><div class="ds">'+esc(subj)+'</div></div></button>';}
+    tl.innerHTML=out||'<div class="empty">Никого не нашлось</div>';
+    tl.querySelectorAll('[data-t]').forEach(function(b){b.onclick=function(){openTeacher(b.dataset.t);};});}
+  draw('');var inp=document.getElementById('tq');inp.oninput=function(){draw(inp.value.trim());};
+}
+function openTeacher(t){mem.mode='teacher';mem.teacher=t;save();week=null;selDay=null;syncSeg();showSched();scrollTo(0,0);}
+function openGroup(num){if(gIdx[num]==null)return;var g=G[gIdx[num]];mem.mode='group';mem.group=num;if(!g[1].length||g[1].indexOf(mem.school)<0)mem.school=g[1][0];save();week=null;selDay=null;syncSeg();showSched();scrollTo(0,0);}
+
+/* ---------- правки ---------- */
+function relevant(){
+  var isT=mem.mode==='teacher';
+  var list=CHANGES.filter(function(x){
+    if(isT){var a=x.a&&x.a.tch||'',b=x.b&&x.b.tch||'';return a.indexOf(mem.teacher)>=0||b.indexOf(mem.teacher)>=0;}
+    return x.g===mem.group;});
+  if(isT){var seen={};list=list.filter(function(x){var k=x.at+'|'+x.t+'|'+JSON.stringify(x.a||x.b);if(seen[k])return false;seen[k]=1;return true;});}
+  return list;
+}
+function seenKey(){return mem.mode==='teacher'?'t:'+mem.teacher:'g:'+mem.group;}
+function unseen(list){var s=mem.seen[seenKey()]||0,today=dk(Date.now());
+  return list.filter(function(x){var l=x.a||x.b;return x.at>s&&dk(l.s)>=today;}).length;}
+function changedSet(list){var m={},cut=Date.now()-3*DAY;list.forEach(function(x){if(x.at<cut||!x.a)return;m[x.a.s+'|'+x.a.subj]=TYPES[x.t];});return m;}
+function lessonLine(l,was){
+  var place=[l.room?'ауд. '+l.room:'',l.addr].filter(Boolean).join(', ');
+  return '<div class="l'+(was?' was':'')+'">'+esc(WDs[wd(dk(l.s))])+', '+dm(dk(l.s),1)+' · '+hm(l.s)+'–'+hm(l.e)+' — '+esc(l.subj)+
+    '<small>'+esc([l.kind,l.tch,place].filter(Boolean).join(' · '))+'</small></div>';
+}
+function openChanges(){
+  var list=relevant(),title=mem.mode==='teacher'?mem.teacher:'группы '+mem.group;
+  var h='<div class="top"><h2>Правки</h2><button class="btn icon" data-close aria-label="Закрыть">✕</button></div>'+
+    '<p class="hint">Все изменения в РУЗ для '+esc(title)+' за последние 60 дней. Сборщик сверяет расписание каждые 30 минут.</p>';
+  if(!list.length)h+='<div class="empty">Правок пока не было 👌</div>';
+  var cur='';list.slice(0,400).forEach(function(x){
+    var k=dk(x.at),lbl=when(x.at).replace(/ в .*/,'');
+    if(lbl!==cur){cur=lbl;h+='<div class="cgroup">Замечено '+esc(lbl)+'</div>';}
+    h+='<div class="ci"><div class="h"><span class="t t-'+x.t+'">'+TYPES[x.t]+'</span>'+(mem.mode==='teacher'?'группа '+esc(x.g)+' · ':'')+'в '+hm(x.at)+'</div>'+
+      (x.b?lessonLine(x.b,!!x.a||x.t==='del'):'')+(x.a?lessonLine(x.a,false):'')+'</div>';});
+  sheet(h);mem.seen[seenKey()]=Date.now();save();
+}
+/* ---------- архив ---------- */
+function openArchive(){
+  var h='<div class="top"><h2>Машина времени</h2><button class="btn icon" data-close aria-label="Закрыть">✕</button></div>'+
+    '<p class="hint">Каждый раз, когда РУЗ меняется, сохраняется копия. Выбери, чтобы посмотреть, каким было расписание в тот момент.</p><div id="snaps"><div class="skeleton"></div></div>';
+  sheet(h);
+  (SNAPS?Promise.resolve(SNAPS):getJSON('data/snapshots/index.json').then(function(x){SNAPS=x;return x;})).then(function(list){
+    var el=document.getElementById('snaps');if(!el)return;
+    var out='<button class="card snap'+(viewingSnap?'':' cur')+'" data-live><div><b>Актуальное</b><br><span>копия от '+when(LIVE.at)+'</span></div><span>сейчас</span></button>',cur='';
+    list.slice().reverse().forEach(function(s){var lbl=dm(dk(s.at));if(lbl!==cur){cur=lbl;out+='<div class="cgroup">'+esc(lbl)+'</div>';}
+      out+='<button class="card snap'+(viewingSnap&&viewingSnap.f===s.f?' cur':'')+'" data-f="'+esc(s.f)+'"><div><b>'+hm(s.at)+'</b><br><span>'+s.n+' пар · '+s.g+' групп</span></div><span>'+(s.c?s.c+' '+plural(s.c,'правка','правки','правок'):'первая копия')+'</span></button>';});
+    el.innerHTML=out;
+    el.querySelector('[data-live]').onclick=function(){viewingSnap=null;index(LIVE);closeSheet();route();};
+    el.querySelectorAll('[data-f]').forEach(function(b){b.onclick=function(){
+      var s=list.filter(function(x){return x.f===b.dataset.f;})[0];b.innerHTML='<div><b>Загружаю…</b></div>';
+      getGz('data/snapshots/'+s.f).then(function(d){viewingSnap=s;index(d);closeSheet();week=null;route();toast('Архивная копия от '+when(s.at));})
+      .catch(function(e){toast(e.message==='old'?'Браузер слишком старый для архива — обнови его':'Не получилось загрузить копию');b.innerHTML='<div><b>'+hm(s.at)+'</b></div>';});};});
+  }).catch(function(){var el=document.getElementById('snaps');if(el)el.innerHTML='<div class="empty">Архив сейчас недоступен — нужен интернет.</div>';});
+}
+var sheetEl=document.getElementById('sheet'),paneEl=document.getElementById('pane');
+function sheet(h){paneEl.innerHTML=h;sheetEl.hidden=false;document.body.style.overflow='hidden';paneEl.querySelector('[data-close]').onclick=closeSheet;}
+function closeSheet(){sheetEl.hidden=true;document.body.style.overflow='';if(view==='sched')showSched(true);}
+sheetEl.onclick=function(e){if(e.target===sheetEl)closeSheet();};
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!sheetEl.hidden)closeSheet();});
+function toast(t){var d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(function(){d.remove();},2600);}
+
+/* ---------- расписание ---------- */
+function showSched(keep){
+  view='sched';
+  var isT=mem.mode==='teacher',ids,title,meta;
+  if(isT){ids=byTeacher[mem.teacher]||[];title=mem.teacher;meta=Object.keys(tSubj[mem.teacher]||{}).join(' · ');}
+  else{var gi=gIdx[mem.group];if(gi==null){view=null;return route();}var g=G[gi];ids=byGroup[gi]||[];title='Группа '+g[0];
+    var sc=SCH[mem.school]||SCH[g[1][0]];meta=[g[3],sc&&sc.short,g[2]?g[2]+' курс':''].filter(Boolean).join(' · ');}
+  var now=Date.now(),today=dk(now),w0=weekOf(minT),w1=weekOf(maxT-1);
+  if(week==null){week=weekOf(now);if(wd(today)===6)week+=7;if(week<w0)week=w0;if(week>w1)week=w1;}
+  var days={};ids.forEach(function(i){var k=dk(BASE+L[i][0]*6e4);if(k>=week&&k<week+7)(days[k]||(days[k]=[])).push(i);});
+  for(var k in days)days[k].sort(function(a,b){return L[a][0]-L[b][0];});
+  if(selDay==null||selDay<week||selDay>=week+7){selDay=today>=week&&today<week+7&&wd(today)<6?today:null;
+    if(selDay==null||!days[selDay]){for(var d=0;d<7;d++)if(days[week+d]&&week+d>=Math.min(today,week+6)){selDay=week+d;break;}}
+    if(selDay==null)selDay=week;}
+  var chl=viewingSnap?[]:relevant(),cnt=unseen(chl),chs=changedSet(chl);
+  var total=0;for(k in days)total+=days[k].length;
+  var h='<div class="crumbs"><button id="chg">← '+(isT?'Другой преподаватель':'Сменить группу')+'</button></div>'+
+    '<div class="who"><div><h1>'+esc(title)+'</h1><div class="meta">'+esc(meta)+'</div></div><div class="tools">'+
+    (viewingSnap?'':'<button class="btn pill" id="chBtn">Правки'+(cnt?' <span class="badge">'+cnt+'</span>':'')+'</button>')+
+    '<button class="btn pill" id="arBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Архив</button><button class="btn pill" id="shBtn">Поделиться</button></div></div>';
+  h+=heroHtml(ids,now);
+  h+='<div class="weekbar"><button class="btn icon" id="pw" '+(week<=w0?'disabled':'')+' aria-label="Прошлая неделя">‹</button>'+
+    '<div class="lbl">'+dm(week,1)+' — '+dm(week+5,1)+'<small>'+(total?total+' '+plural(total,'занятие','занятия','занятий'):'занятий нет')+'</small></div>'+
+    '<button class="btn" id="tw">Сегодня</button><button class="btn icon" id="nw" '+(week>=w1?'disabled':'')+' aria-label="Следующая неделя">›</button></div>';
+  h+='<div class="strip" role="tablist">';
+  for(d=0;d<7;d++){k=week+d;if(d===6&&!days[k])continue;
+    h+='<button data-d="'+k+'" class="'+(k===selDay?'on ':'')+(days[k]?'has ':'')+(k===today?'today':'')+'"><small>'+WDs[d]+'</small><b>'+new Date(k*DAY).getUTCDate()+'</b><i></i></button>';}
+  h+='</div><div class="grid days">';
+  for(d=0;d<7;d++){k=week+d;var list=days[k];if(d===6&&!list)continue;
+    h+='<section class="card day'+(k===today?' today':'')+(k===selDay?' sel':'')+'"><div class="h"><b>'+WD[d]+'</b><span>'+dm(k)+'</span></div>';
+    if(!list)h+='<div class="free">Пар нет — отдыхаем</div>';
+    else bundle(list).forEach(function(grp){var l=L[grp[0]],st=BASE+l[0]*6e4,en=st+l[1]*6e4,kind=S[l[3]],tm=hm(st);
+      var cls=en<now?' past':(st<=now&&now<en?' now':''),mark=chs[st+'|'+S[l[2]]];
+      function who(l){if(isT)return l.slice(8).map(function(x){return '<a data-og="'+esc(G[x][0])+'">'+esc(G[x][0])+'</a>';}).join(', ');
+        return S[l[4]]?S[l[4]].split(',').map(function(t){t=t.trim();return '<a data-ot="'+esc(t)+'">'+esc(t)+'</a>';}).join(', '):'';}
+      function place(l){return [S[l[5]]?'ауд. '+S[l[5]]:'',S[l[6]]].filter(Boolean).join(', ');}
+      var body='';
+      if(grp.length===1){var p=place(l);body='<div class="row"><span class="kind">'+esc(kind)+'</span>'+who(l)+'</div>'+(p?'<div class="row">📍 '+esc(p)+'</div>':'')+(!isT&&S[l[7]]?'<div class="row">Поток: '+esc(S[l[7]])+'</div>':'');}
+      else{body='<div class="row"><span class="kind">'+esc(kind)+'</span>'+grp.length+' '+plural(grp.length,'подгруппа','подгруппы','подгрупп')+'</div><details class="subs"'+(grp.length<=3?' open':'')+'><summary>Кто и где</summary>'+
+        grp.map(function(i){var x=L[i],p=place(x);return '<div class="sub">'+who(x)+(p?' · '+esc(p):'')+(!isT&&S[x[7]]?' · <span>'+esc(S[x[7]])+'</span>':'')+'</div>';}).join('')+'</details>';}
+      h+='<div class="les'+cls+'" style="--k:'+kc(kind)+'"><div class="tm"><b>'+tm+'</b>'+hm(en)+(PAIRS[tm]?'<em>'+PAIRS[tm]+' пара</em>':'')+'</div><div>'+
+        '<div class="sj">'+esc(S[l[2]])+(mark?'<span class="chg">'+esc(mark)+'</span>':'')+'</div>'+body+'</div></div>';});
+    h+='</section>';}
+  app.innerHTML=h+'</div>';
+  document.getElementById('chg').onclick=function(){isT?showTeachers():showGroups();};
+  document.getElementById('pw').onclick=function(){week-=7;selDay=null;showSched();};
+  document.getElementById('nw').onclick=function(){week+=7;selDay=null;showSched();};
+  document.getElementById('tw').onclick=function(){week=null;selDay=null;showSched();};
+  var cb=document.getElementById('chBtn');if(cb)cb.onclick=openChanges;
+  document.getElementById('arBtn').onclick=openArchive;
+  document.getElementById('shBtn').onclick=share;
+  app.querySelectorAll('.strip [data-d]').forEach(function(b){b.onclick=function(){selDay=+b.dataset.d;showSched();};});
+  app.querySelectorAll('[data-ot]').forEach(function(a){a.onclick=function(){openTeacher(a.dataset.ot);};});
+  app.querySelectorAll('[data-og]').forEach(function(a){a.onclick=function(){openGroup(a.dataset.og);};});
+}
+function bundle(list){var out=[];list.forEach(function(i){var l=L[i],p=out[out.length-1];
+  if(p){var q=L[p[0]];if(q[0]===l[0]&&q[2]===l[2]&&q[3]===l[3]){p.push(i);return;}}out.push([i]);});return out;}
+function heroHtml(ids,now){
+  if(viewingSnap)return '';
+  var cur=null,next=null;
+  for(var j=0;j<ids.length;j++){var l=L[ids[j]],st=BASE+l[0]*6e4,en=st+l[1]*6e4;
+    if(st<=now&&now<en){cur=l;}else if(st>now&&(!next||st<BASE+next[0]*6e4))next=l;}
+  var l2=cur||next;if(!l2)return '';
+  var st2=BASE+l2[0]*6e4,en2=st2+l2[1]*6e4,place=[S[l2[5]]?'ауд. '+S[l2[5]]:'',S[l2[6]]].filter(Boolean).join(', ');
+  var who=mem.mode==='teacher'?l2.slice(8).map(function(x){return G[x][0];}).join(', '):S[l2[4]];
+  var lbl=cur?'Сейчас идёт':(dk(st2)===dk(now)?'Следующая пара':'Ближайшая пара · '+WDs[wd(dk(st2))]+', '+dm(dk(st2),1));
+  return '<div class="hero'+(cur?'':' next')+'"><div class="lbl">'+lbl+'</div><div class="sj">'+esc(S[l2[2]])+'</div>'+
+    '<div class="rw">'+hm(st2)+'–'+hm(en2)+' · '+esc([S[l2[3]],who,place].filter(Boolean).join(' · '))+'</div>'+
+    '<div class="cd">'+(cur?'<b>'+dur(en2-now)+'</b><span>до конца</span>':'<b>'+dur(st2-now)+'</b><span>до начала</span>')+'</div>'+
+    (cur?'<div class="bar"><i style="width:'+Math.round((now-st2)/(en2-st2)*100)+'%"></i></div>':'')+'</div>';
+}
+function share(){
+  var url=location.origin+location.pathname+(mem.mode==='group'?'#g'+mem.group:'');
+  var txt=mem.mode==='group'?'Расписание группы '+mem.group+' — работает, даже когда РУЗ лежит':'Расписание САФУ';
+  if(navigator.share){navigator.share({title:txt,url:url}).catch(function(){});return;}
+  if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){toast('Ссылка скопирована');},function(){prompt('Ссылка:',url);});
+}
+
+/* ---------- запуск ---------- */
+function boot(d){LIVE=d;index(d);route();
+  document.getElementById('foot').textContent='Данные с ruz.narfu.ru · копия от '+when(d.at)+' · проверка каждые 30 минут';}
+Promise.all([
+  getJSON('data/latest.json'),
+  getJSON('data/status.json').catch(function(){return null;}),
+  getJSON('data/changes.json').catch(function(){return {items:[]};})
+]).then(function(r){STATUS=r[1];CHANGES=(r[2]&&r[2].items)||[];boot(r[0]);})
+.catch(function(){app.innerHTML='<div class="card empty">Не получилось загрузить расписание. Проверь интернет и обнови страницу — после первого открытия сайт работает и офлайн.</div>';});
+setInterval(function(){if(view==='sched'&&sheetEl.hidden){var y=scrollY;showSched();scrollTo(0,y);}},60000);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+})();
+</script>
+</body>
+</html>

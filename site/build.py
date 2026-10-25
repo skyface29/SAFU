@@ -204,6 +204,13 @@ os.makedirs(OUT, exist_ok=True)
 for name in ("index.html", "og.png", "CNAME"):
     if os.path.exists(os.path.join(HERE, name)):
         shutil.copy(os.path.join(HERE, name), os.path.join(OUT, name))
+# raspisanie/ — зеркало расписания РУЗ САФУ (arktika-app.ru/raspisanie/); данные — из ветки ruz-data (ruz.yml)
+if os.path.isdir(os.path.join(HERE, "raspisanie")):
+    shutil.copytree(os.path.join(HERE, "raspisanie"), os.path.join(OUT, "raspisanie"), dirs_exist_ok=True)
+    data = os.path.join(ROOT, "ruz-data")
+    if os.path.isdir(data):
+        shutil.copytree(data, os.path.join(OUT, "raspisanie", "data"), dirs_exist_ok=True, ignore=shutil.ignore_patterns(".git", "*.md"))
+        print("расписание:", len(os.listdir(os.path.join(data, "snapshots"))) - 1 if os.path.isdir(os.path.join(data, "snapshots")) else 0, "копий в архиве")
 json.dump({"generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "repo": REPO, "versions": rows},
           open(os.path.join(OUT, "versions.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 from collections import Counter
