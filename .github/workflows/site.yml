@@ -58,6 +58,8 @@ jobs:
           ELECTRON_REF: claude/linux-app-po35jr
         run: |
           for r in "$ANDROID_REF" "$ELECTRON_REF"; do git fetch -q origin "+refs/heads/$r:refs/remotes/origin/$r" || true; done
+          # копии расписания РУЗ (их пишет ruz.yml) — для arktika-app.ru/raspisanie/
+          if git fetch -q --depth 1 origin ruz-data; then git worktree add -q -f ruz-data FETCH_HEAD; fi
           python3 site/build.py | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
