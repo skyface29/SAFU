@@ -109,7 +109,8 @@ export function parseGroups(html) {
     const end = u.toLowerCase().indexOf('</a>'); if (end >= 0) u = u.slice(0, end);
     const txt = Wt(si(u)).replace(/\s+/g, ' ').trim();
     const num = /\b(\d{6})\b/.exec(txt) || /\b(\d{4,7})\b/.exec(txt); if (!num) return;
-    const title = txt.replace(num[1], '').replace(/^[\s\-–—,.:()]+|[\s\-–—,.:()]+$/g, '');
+    let title = txt.replace(num[1], '').replace(/^[\s\-–—,.:()]+|[\s\-–—,.:()]+$/g, '');
+    if ((title.match(/\(/g) || []).length > (title.match(/\)/g) || []).length) title += ')';
     const course = [...courses].reverse().find(c => c.pos < m.index)?.course ?? 0;
     seen.add(id); out.push({ id, number: num[1], title, course });
   });

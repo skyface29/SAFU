@@ -109,8 +109,17 @@ async function scan() {
 }
 
 // ---------- слияние: новое заменяет только те дни, что РУЗ сейчас показывает ----------
-function merge(prev, fresh) {
-  const out = {}, changedDays = {};
+// cov — какие дни РУЗ уже показывал для группы. Правками считаем только изменения внутри старого окна:
+// новая неделя, которую РУЗ только что открыл, — это не правка.
+const wk = k => [k - ((k + 3) % 7), k + (6 - ((k + 3) % 7))];
+function coverageOf(list) {
+  const full = list.filter(l => l.teacher || l.room);   // пары из iCal без деталей окна не задают
+  const src = full.length ? full : list;
+  if (!src.length) return null;
+  return [wk(dayKey(Math.min(...src.map(l => l.start))))[0], wk(dayKey(Math.max(...src.map(l => l.start))))[1]];
+}
+function merge(prev, fresh, prevCov) {
+  const out = {}, changedDays = {}, cov = { ...prevCov };
   const names = new Set([...Object.keys(prev), ...Object.keys(fresh.byGroup)]);
   for (const n of names) {
     const old = prev[n] || [];
@@ -122,14 +131,15 @@ function merge(prev, fresh) {
       out[n] = old;
       continue;
     }
-    const lo = dayKey(Math.min(...nw.map(l => l.start))), hi = dayKey(Math.max(...nw.map(l => l.start)));
-    // РУЗ показывает недели целиком — расширяем окно до границ недель
-    const wlo = lo - ((lo + 3) % 7), whi = hi + (6 - ((hi + 3) % 7));
+    // РУЗ показывает недели целиком — окно от начала первой до конца последней недели
+    const [wlo] = wk(dayKey(Math.min(...nw.map(l => l.start)))), [, whi] = wk(dayKey(Math.max(...nw.map(l => l.start))));
     const keep = old.filter(l => { const k = dayKey(l.start); return k < wlo || k > whi; });
     out[n] = dedupe([...keep, ...nw]);
-    changedDays[n] = [Math.max(wlo, today), whi];
+    const oc = prevCov[n] || coverageOf(old);
+    if (oc) changedDays[n] = [Math.max(wlo, today, oc[0]), Math.min(whi, oc[1])];
+    cov[n] = [wlo, Math.max(whi, oc ? oc[1] : whi)];
   }
-  return { byGroup: out, window: changedDays };
+  return { byGroup: out, window: changedDays, cov };
 }
 
 // ---------- правки ----------
@@ -146,7 +156,12 @@ function diff(prev, next, window) {
     const take = (pred, type) => {
       for (const x of [...a]) {
         const j = b.findIndex(y => pred(x, y));
-        if (j >= 0) { items.push({ at: NOW, g: n, t: type, b: brief(x), a: brief(b[j]) }); b.splice(j, 1); a.splice(a.indexOf(x), 1); }
+        if (j >= 0) {
+          const bx = brief(x), by = brief(b[j]);
+          // отличие только в невидимом (поток, примечание) — не правка
+          if (JSON.stringify(bx) !== JSON.stringify(by)) items.push({ at: NOW, g: n, t: type, b: bx, a: by });
+          b.splice(j, 1); a.splice(a.indexOf(x), 1);
+        }
       }
     };
     take((x, y) => x.start === y.start && x.subject === y.subject, 'mod');              // та же пара: другая аудитория/преподаватель/вид
@@ -196,11 +211,12 @@ const newStatus = {
 
 let dataChanged = false;
 if (up) {
-  const m = merge(prev.byGroup, fresh);
+  const m = merge(prev.byGroup, fresh, (prevData && prevData.cov) || {});
   const groups = { ...prev.groups, ...fresh.groups };
   const items = prevData ? diff(prev.byGroup, m.byGroup, m.window) : [];
   const atTime = +process.env.RUZ_AT || NOW;
   const next = pack(groups, m.byGroup, { at: atTime, checked: NOW });
+  next.cov = m.cov;
   const sig = o => crypto.createHash('sha1').update(JSON.stringify([o.S, o.G, o.L, o.base])).digest('hex');
   const prevSig = prevData ? sig(prevData) : '';
   if (sig(next) !== prevSig) {
