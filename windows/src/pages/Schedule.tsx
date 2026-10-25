@@ -3,16 +3,17 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, RefreshCw, Bell, Settings2, Plus, Download, Copy, MapPin, User, Clock, BookMarked, Trash2,
-  ExternalLink, Building2, History, CalendarDays, LayoutGrid, List, Pencil, FolderOpen, Users
+  ExternalLink, Building2, History, CalendarDays, LayoutGrid, List, Pencil, FolderOpen, Users, Send, Image as ImageIcon
 } from 'lucide-react'
 import { useSchedule, scheduleStore, teacherMode } from '../lib/scheduleStore'
 import {
-  type Slot, type Lesson, slotsOn, usesRuz, academicWeek, BELLS, bellLabel, LESSON_KINDS, kindStyle, slotShareLine,
+  type Slot, type Lesson, slotsOn, usesRuz, academicWeek, BELLS, bellLabel, LESSON_KINDS, kindStyle,
   subjects, teachersOf, AddressFormat, defaultSemesterStart, groupParallel
 } from '../lib/schedule'
 import { monday, addDays, startOfDay, isToday, dayMon, DAY_NAMES, WEEKDAYS, fullDay, hm, ymd, plural, relativeAgo, weekday } from '../lib/date'
 import { RUZ_BASE, timetableURL, institutions } from '../lib/ruz'
-import { Card, PageHeader, Segmented, Sheet, Empty, KindBadge, Toggle, Row, ToggleRow, Field, toast, confirmDialog, useNow, openMenu } from '../ui/kit'
+import { Card, PageHeader, Segmented, Sheet, Empty, KindBadge, Toggle, Row, ToggleRow, Field, toast, confirmDialog, useNow, openMenu, type MenuItem } from '../ui/kit'
+import { type ShareSpan, drawScheduleCard, shareScheduleText, shareFileName } from '../lib/scheduleShare'
 import { SlotRow } from '../ui/lesson'
 import { usePref, kv, uid } from '../lib/kv'
 import { useModals, openSubject, openHomeworkEditor, openHomework, go } from '../lib/nav'
@@ -63,6 +64,12 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
         title="Пары"
         subtitle={<>{week ? `${week}-я неделя · ${week % 2 ? 'нечётная' : 'чётная'} · ` : ''}{dayMon(weekStart)} — {dayMon(addDays(weekStart, 6))} · {total} {plural(total, 'пара', 'пары', 'пар')}</>}
         right={<>
+          <button className="btn primary" title="Отправить расписание ребятам — картинкой или текстом" onClick={e => openMenu(e, [
+            ...shareItems({ kind: 'week', date: weekStart }, data),
+            { sep: true, label: '' },
+            { label: 'Сегодня картинкой', icon: <ImageIcon size={15} />, run: () => copyCard({ kind: 'day', date: Date.now() }, data) },
+            { label: 'Завтра картинкой', icon: <ImageIcon size={15} />, run: () => copyCard({ kind: 'day', date: addDays(Date.now(), 1) }, data) }
+          ])}><Send size={15} /> Ребятам</button>
           <Segmented value={view} onChange={setView} options={[{ value: 'week', label: <span className="row gap6"><LayoutGrid size={14} />Неделя</span> }, { value: 'list', label: <span className="row gap6"><List size={14} />Список</span> }]} />
           {usesRuz(data) && <button className="btn icon" title="Обновить из РУЗ" onClick={() => scheduleStore.sync(true)}><RefreshCw size={16} className={syncing ? 'spin' : ''} /></button>}
           <button className="btn icon" title="Журнал изменений" onClick={() => setShowChanges(true)} style={{ position: 'relative' }}>
@@ -70,7 +77,7 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
           </button>
           <button className="btn icon" title="Ещё" onClick={e => openMenu(e, [
             ...(!usesRuz(data) ? [{ label: 'Добавить пару', icon: <Plus size={15} />, run: () => setEditing(newLesson()) }] : []),
-            { label: 'Отправить расписание дня', icon: <Copy size={15} />, run: () => copyDay(startOfDay(Date.now()), data) },
+            { label: 'Отправить неделю ребятам', icon: <Send size={15} />, run: () => copyCard({ kind: 'week', date: weekStart }, data) },
             { label: 'Экспорт в календарь (.ics)', icon: <Download size={15} />, run: () => setShowExport(true) },
             { label: 'Корпуса и адреса', icon: <Building2 size={15} />, run: () => setShowBuildings(true) },
             { label: 'Преподаватели', icon: <Users size={15} />, run: () => go('teachers') },
@@ -99,7 +106,10 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
                 const today = isToday(d)
                 return (
                   <motion.div key={d} className="col gap8" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                    <div className="tc" style={{ padding: '8px 4px', borderRadius: 14, background: today ? 'var(--grad)' : 'var(--fill)', color: today ? '#fff' : undefined, boxShadow: today ? '0 6px 20px rgba(var(--brand-rgb),.35)' : undefined }}>
+                    <div className="tc clickable" title="Отправить этот день ребятам"
+                      onClick={e => openMenu(e, shareItems({ kind: 'day', date: d }, data))}
+                      onContextMenu={e => openMenu(e, shareItems({ kind: 'day', date: d }, data))}
+                      style={{ padding: '8px 4px', borderRadius: 14, background: today ? 'var(--grad)' : 'var(--fill)', color: today ? '#fff' : undefined, boxShadow: today ? '0 6px 20px rgba(var(--brand-rgb),.35)' : undefined }}>
                       <div className="heavy">{DAY_NAMES[weekday(d) - 1]}</div>
                       <div className="tiny" style={{ opacity: 0.8 }}>{dayMon(d)}</div>
                     </div>
@@ -119,7 +129,7 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
                     <div className="row" style={{ margin: '0 4px 8px' }}>
                       <div className="h-card cap" style={{ color: isToday(d) ? 'var(--brand)' : undefined }}>{isToday(d) ? 'Сегодня, ' : ''}{fullDay(d)}</div>
                       <span className="spacer" />
-                      {list.length > 0 && <button className="btn sm ghost" onClick={() => copyDay(d, data)}><Copy size={13} /> Отправить</button>}
+                      {list.length > 0 && <button className="btn sm ghost" onClick={e => openMenu(e, shareItems({ kind: 'day', date: d }, data))}><Send size={13} /> Ребятам</button>}
                     </div>
                     {!list.length ? <div className="sub" style={{ margin: '0 4px' }}>Пар нет</div> : <div className="col gap8">{groupParallel(list).map(g => <SlotRow key={g.slot.key} s={g.slot} alts={g.alts} now={now} />)}</div>}
                   </div>
@@ -185,12 +195,35 @@ function Bells() {
   )
 }
 
-function copyDay(day: number, data: any) {
-  const list = slotsOn(day, data)
-  if (!list.length) { toast('В этот день пар нет', 'info'); return }
-  const text = `📅 ${fullDay(day)[0].toUpperCase() + fullDay(day).slice(1)}\n` + list.map(slotShareLine).join('\n')
-  safu.clipboard.write(text)
-  toast('Расписание дня скопировано — вставь в чат группы')
+// ---------- отправить ребятам: день или неделя, картинкой (как ДЗ) или текстом ----------
+
+const shareGroup = (data: any): string => data.ruzGroupNumber || kv.get('group', '')
+
+function copyCard(span: ShareSpan, data: any) {
+  drawScheduleCard(span, data, shareGroup(data)).toBlob(async b => {
+    if (!b) return
+    try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); toast('Картинка в буфере — вставь в чат группы (Ctrl+V)') }
+    catch { toast('Не получилось скопировать — сохрани файлом', 'warn') }
+  })
+}
+
+async function saveCard(span: ShareSpan, data: any) {
+  const url = drawScheduleCard(span, data, shareGroup(data)).toDataURL('image/png')
+  if (await safu.dialog.save({ name: shareFileName(span, data), base64: url.split(',')[1], filters: [{ name: 'Картинка', extensions: ['png'] }] })) toast('Картинка сохранена')
+}
+
+function copyText(span: ShareSpan, data: any) {
+  safu.clipboard.write(shareScheduleText(span, data, shareGroup(data)))
+  toast(`Расписание ${span.kind === 'week' ? 'недели' : 'дня'} скопировано — вставь в чат группы`)
+}
+
+function shareItems(span: ShareSpan, data: any): MenuItem[] {
+  const what = span.kind === 'week' ? 'Неделю' : 'День'
+  return [
+    { label: `${what} картинкой`, icon: <ImageIcon size={15} />, run: () => copyCard(span, data) },
+    { label: `${what} текстом`, icon: <Copy size={15} />, run: () => copyText(span, data) },
+    { label: 'Сохранить картинку…', icon: <Download size={15} />, run: () => saveCard(span, data) }
+  ]
 }
 
 // ---------- первое подключение ----------
