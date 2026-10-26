@@ -178,6 +178,8 @@ button.card:hover{border-color:var(--rim2);background:var(--ice2);transform:tran
 .row{font-size:13px;color:var(--tx2);margin-top:4px;font-weight:600;overflow-wrap:anywhere}
 .row a{color:var(--tx);text-decoration:none;border-bottom:1px dashed var(--rim2);cursor:pointer}
 .row a:hover{color:var(--aur1);border-color:var(--aur1)}
+.subg{display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:20px;margin-right:6px;vertical-align:1px;white-space:nowrap;
+  background:color-mix(in srgb,var(--aur2) 20%,transparent);color:var(--tx);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--aur2) 45%,transparent)}
 .kind{display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:20px;margin-right:6px;vertical-align:1px;background:color-mix(in srgb,var(--k) 18%,transparent);color:var(--k)}
 .chg{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:20px;margin-left:6px;vertical-align:2px;background:color-mix(in srgb,var(--mod) 20%,transparent);color:var(--mod);text-transform:uppercase;letter-spacing:.04em}
 .les.past{opacity:.45}
@@ -300,17 +302,24 @@ document.getElementById('themeBtn').onclick=function(){
 
 /* ---------- данные ---------- */
 var D=null, LIVE=null, STATUS=null, CHANGES=[], SNAPS=null, viewingSnap=null;
-var S,G,L,BASE,SCH={},gIdx={},byGroup={},byTeacher={},tSubj={},teachers=[],minT=0,maxT=0;
+var GO=8,S,G,L,BASE,SCH={},gIdx={},byGroup={},byTeacher={},tSubj={},teachers=[],minT=0,maxT=0;
 function index(d){
-  D=d;S=d.S;G=d.G;L=d.L;BASE=d.base*6e4;SCH={};gIdx={};byGroup={};byTeacher={};tSubj={};
+  D=d;S=d.S;G=d.G;L=d.L;BASE=d.base*6e4;GO=d.v>=2?9:8;SCH={};gIdx={};byGroup={};byTeacher={};tSubj={};
   d.schools.forEach(function(s){SCH[s[0]]={id:s[0],short:s[1],full:s[2],about:s[3]};});
   G.forEach(function(g,i){gIdx[g[0]]=i;});
   minT=Infinity;maxT=0;
   for(var i=0;i<L.length;i++){var l=L[i],st=BASE+l[0]*6e4;if(st<minT)minT=st;if(st+l[1]*6e4>maxT)maxT=st+l[1]*6e4;
-    for(var j=8;j<l.length;j++)(byGroup[l[j]]||(byGroup[l[j]]=[])).push(i);
+    for(var j=GO;j<l.length;j++)(byGroup[l[j]]||(byGroup[l[j]]=[])).push(i);
     var tn=S[l[4]];if(tn){tn.split(',').forEach(function(t){t=t.trim();if(t.length<3)return;(byTeacher[t]||(byTeacher[t]=[])).push(i);(tSubj[t]||(tSubj[t]={}))[S[l[2]]]=1;});}}
   teachers=Object.keys(byTeacher).sort(function(a,b){return a.localeCompare(b,'ru');});
 }
+/* подгруппа: РУЗ пишет «151318_2», «151515_БЖД_01», «161301фр.», «161415 - норв»; у старых копий — только в потоке */
+function subRaw(l,num){var r=GO>8?S[l[8]]:'';if(r)return r;num=String(num||'').split(' ')[0];if(!num)return '';
+  var m=new RegExp('(?:^|[\\s,])('+num+'[_\\-][^,\\s]+)').exec(S[l[7]]||'');return m?m[1]:'';}
+function subText(raw,short){if(!raw)return '';var r=String(raw).replace(/\s+/g,' ').trim().replace(/^\d{6}/,'').replace(/^[\s_\-–—.,]+/,'');if(!r)return '';
+  var m=/(?:^|[_\s\-])0*(\d{1,2})$/.exec(r)||/^0*(\d{1,2})$/.exec(r);
+  if(m)return short?'п/г '+m[1]:m[1]+' подгруппа';r=r.replace(/_+/g,' ');return short?r:'подгруппа: '+r;}
+function subChip(l,num){var s=subText(subRaw(l,num));return s?'<span class="subg">'+esc(s)+'</span>':'';}
 function getJSON(u){return fetch(u,{cache:'no-cache'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
 function getGz(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.arrayBuffer();}).then(function(buf){
   var b=new Uint8Array(buf);
@@ -416,7 +425,7 @@ function changedSet(list){var m={},cut=Date.now()-3*DAY;list.forEach(function(x)
 function lessonLine(l,was){
   var place=[l.room?'ауд. '+l.room:'',l.addr].filter(Boolean).join(', ');
   return '<div class="l'+(was?' was':'')+'">'+esc(WDs[wd(dk(l.s))])+', '+dm(dk(l.s),1)+' · '+hm(l.s)+'–'+hm(l.e)+' — '+esc(l.subj)+
-    '<small>'+esc([l.kind,l.tch,place].filter(Boolean).join(' · '))+'</small></div>';
+    '<small>'+esc([l.kind,subText(l.sub),l.tch,place].filter(Boolean).join(' · '))+'</small></div>';
 }
 function openChanges(){
   var list=relevant(),title=mem.mode==='teacher'?mem.teacher:'группы '+mem.group;
@@ -488,13 +497,14 @@ function showSched(keep){
     if(!list)h+='<div class="free">Пар нет — отдыхаем</div>';
     else bundle(list).forEach(function(grp){var l=L[grp[0]],st=BASE+l[0]*6e4,en=st+l[1]*6e4,kind=S[l[3]],tm=hm(st);
       var cls=en<now?' past':(st<=now&&now<en?' now':''),mark=chs[st+'|'+S[l[2]]];
-      function who(l){if(isT)return l.slice(8).map(function(x){return '<a data-og="'+esc(G[x][0])+'">'+esc(G[x][0])+'</a>';}).join(', ');
+      function who(l){if(isT)return l.slice(GO).map(function(x){var s=subText(subRaw(l,G[x][0]),true);return '<a data-og="'+esc(G[x][0])+'">'+esc(G[x][0])+'</a>'+(s?' <span class="subg">'+esc(s)+'</span>':'');}).join(', ');
         return S[l[4]]?S[l[4]].split(',').map(function(t){t=t.trim();return '<a data-ot="'+esc(t)+'">'+esc(t)+'</a>';}).join(', '):'';}
       function place(l){return [S[l[5]]?'ауд. '+S[l[5]]:'',S[l[6]]].filter(Boolean).join(', ');}
       var body='';
-      if(grp.length===1){var p=place(l);body='<div class="row"><span class="kind">'+esc(kind)+'</span>'+who(l)+'</div>'+(p?'<div class="row">📍 '+esc(p)+'</div>':'')+(!isT&&S[l[7]]?'<div class="row">Поток: '+esc(S[l[7]])+'</div>':'');}
-      else{body='<div class="row"><span class="kind">'+esc(kind)+'</span>'+grp.length+' '+plural(grp.length,'подгруппа','подгруппы','подгрупп')+'</div><details class="subs"'+(grp.length<=3?' open':'')+'><summary>Кто и где</summary>'+
-        grp.map(function(i){var x=L[i],p=place(x);return '<div class="sub">'+who(x)+(p?' · '+esc(p):'')+(!isT&&S[x[7]]?' · <span>'+esc(S[x[7]])+'</span>':'')+'</div>';}).join('')+'</details>';}
+      var me=isT?'':mem.group;
+      if(grp.length===1){var p=place(l);body='<div class="row"><span class="kind">'+esc(kind)+'</span>'+(isT?'':subChip(l,me))+who(l)+'</div>'+(p?'<div class="row">📍 '+esc(p)+'</div>':'')+(!isT&&S[l[7]]?'<div class="row">Поток: '+esc(S[l[7]])+'</div>':'');}
+      else{body='<div class="row"><span class="kind">'+esc(kind)+'</span>'+(isT?grp.length+' '+plural(grp.length,'группа','группы','групп')+' параллельно':grp.length+' '+plural(grp.length,'подгруппа','подгруппы','подгрупп'))+'</div><details class="subs"'+(grp.length<=3?' open':'')+'><summary>Кто и где</summary>'+
+        grp.map(function(i){var x=L[i],p=place(x);return '<div class="sub">'+(isT?'':subChip(x,me))+who(x)+(p?' · '+esc(p):'')+(!isT&&S[x[7]]?' · <span>'+esc(S[x[7]])+'</span>':'')+'</div>';}).join('')+'</details>';}
       h+='<div class="les'+cls+'" style="--k:'+kc(kind)+'"><div class="tm"><b>'+tm+'</b>'+hm(en)+(PAIRS[tm]?'<em>'+PAIRS[tm]+' пара</em>':'')+'</div><div>'+
         '<div class="sj">'+esc(S[l[2]])+(mark?'<span class="chg">'+esc(mark)+'</span>':'')+'</div>'+body+'</div></div>';});
     h+='</section>';}
@@ -519,10 +529,11 @@ function heroHtml(ids,now){
     if(st<=now&&now<en){cur=l;}else if(st>now&&(!next||st<BASE+next[0]*6e4))next=l;}
   var l2=cur||next;if(!l2)return '';
   var st2=BASE+l2[0]*6e4,en2=st2+l2[1]*6e4,place=[S[l2[5]]?'ауд. '+S[l2[5]]:'',S[l2[6]]].filter(Boolean).join(', ');
-  var who=mem.mode==='teacher'?l2.slice(8).map(function(x){return G[x][0];}).join(', '):S[l2[4]];
+  var isT=mem.mode==='teacher',who=isT?l2.slice(GO).map(function(x){var s=subText(subRaw(l2,G[x][0]),true);return G[x][0]+(s?' ('+s+')':'');}).join(', '):S[l2[4]];
+  var par=ids.filter(function(i){return L[i][0]===l2[0];}).length,sub=isT?'':subText(subRaw(l2,mem.group));
   var lbl=cur?'Сейчас идёт':(dk(st2)===dk(now)?'Следующая пара':'Ближайшая пара · '+WDs[wd(dk(st2))]+', '+dm(dk(st2),1));
   return '<div class="hero'+(cur?'':' next')+'"><div class="lbl">'+lbl+'</div><div class="sj">'+esc(S[l2[2]])+'</div>'+
-    '<div class="rw">'+hm(st2)+'–'+hm(en2)+' · '+esc([S[l2[3]],who,place].filter(Boolean).join(' · '))+'</div>'+
+    '<div class="rw">'+hm(st2)+'–'+hm(en2)+' · '+esc([S[l2[3]],sub,who,place].filter(Boolean).join(' · '))+(!isT&&par>1?' · <b>ещё '+(par-1)+' '+plural(par-1,'вариант','варианта','вариантов')+' по подгруппам ниже</b>':'')+'</div>'+
     '<div class="cd">'+(cur?'<b>'+dur(en2-now)+'</b><span>до конца</span>':'<b>'+dur(st2-now)+'</b><span>до начала</span>')+'</div>'+
     (cur?'<div class="bar"><i style="width:'+Math.round((now-st2)/(en2-st2)*100)+'%"></i></div>':'')+'</div>';
 }
