@@ -65,6 +65,13 @@ jobs:
           fi
       - name: Пересобрать сайт
         if: steps.collect.outputs.changed == 'true'
-        run: gh workflow run site.yml --ref main -R "$GITHUB_REPOSITORY"
+        # GitHub иногда отвечает ошибкой на запуск (26.10 21:30) — пробуем трижды. Копия к этому моменту уже сохранена,
+        # а сайт в худшем случае обновится со следующей проверкой, поэтому весь запуск из-за этого не «падает».
+        run: |
+          for i in 1 2 3; do
+            gh workflow run site.yml --ref main -R "$GITHUB_REPOSITORY" && exit 0
+            sleep $((i * 20))
+          done
+          echo "::warning::Сайт не удалось пересобрать — обновится со следующей проверкой"
         env:
           GH_TOKEN: ${{ github.token }}
