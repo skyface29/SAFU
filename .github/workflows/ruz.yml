@@ -51,18 +51,17 @@ jobs:
           git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
           base=$(git rev-parse -q --verify HEAD || true)
           git add -A
-          if git diff --cached --quiet; then exit 0; fi
+          if [ -n "$base" ] && git diff --cached --quiet; then exit 0; fi
           when=$(TZ=Europe/Moscow date '+%d.%m %H:%M')
-          if [ "${{ steps.collect.outputs.data }}" = "true" ]; then
-            git commit -q -m "Копия РУЗ $when"
-            for i in 1 2 3; do git push -q origin HEAD:ruz-data && break; sleep 5; done
-          elif [ -n "$base" ] && git log -1 --format=%s | grep -q '^Проверка РУЗ'; then
-            # подряд идущие «только проверки» склеиваем в один коммит — архив копий от этого не меняется
-            git commit -q --amend -m "Проверка РУЗ $when"
-            git push -q --force-with-lease=ruz-data:$base origin HEAD:ruz-data
+          msg="Проверка РУЗ $when"
+          [ "${{ steps.collect.outputs.data }}" = "true" ] && msg="Копия РУЗ $when"
+          # Ветка-архив хранится ОДНИМ коммитом без истории: версии лежат файлами в snapshots/,
+          # а история git только копила бы удалённые старые версии и раздувала репозиторий.
+          c=$(git commit-tree "$(git write-tree)" -m "$msg")
+          if [ -n "$base" ]; then
+            git push -q --force-with-lease=ruz-data:$base origin $c:refs/heads/ruz-data
           else
-            git commit -q -m "Проверка РУЗ $when"
-            for i in 1 2 3; do git push -q origin HEAD:ruz-data && break; sleep 5; done
+            git push -q origin $c:refs/heads/ruz-data
           fi
       - name: Пересобрать сайт
         if: steps.collect.outputs.changed == 'true'

@@ -22,6 +22,27 @@ const writeJSON = (f, o) => { fs.mkdirSync(path.dirname(P(f)), { recursive: true
 const log = (...a) => console.log(...a);
 const summary = [];
 
+// ---------- сколько хранить ----------
+// Каждая версия ~0,5 МБ, а у GitHub предел ~1 ГБ на репозиторий и 1 ГБ на сайт, поэтому:
+//  • все версии за последние ALL_DAYS дней («как было утром / вчера / на прошлой неделе»)
+//  • дальше — одна версия в день (последняя за день) до DAILY_DAYS дней
+//  • ещё старше — удаляются. Само прошлое расписание при этом не теряется: оно лежит в текущей копии (latest.json)
+//    за последние KEEP_LESSONS дней.
+const ALL_DAYS = 10, DAILY_DAYS = 60, KEEP_LESSONS = 200;
+function prune(idx) {
+  const keep = new Set(), lastOfDay = new Map();
+  for (const s of idx) {
+    const age = NOW - s.at;
+    if (age <= ALL_DAYS * DAY) keep.add(s.f);
+    else if (age <= DAILY_DAYS * DAY) { const k = Math.floor((s.at + TZ) / DAY), o = lastOfDay.get(k); if (!o || s.at > o.at) lastOfDay.set(k, s); }
+  }
+  for (const s of lastOfDay.values()) keep.add(s.f);
+  const out = idx.filter(s => keep.has(s.f));
+  let files = []; try { files = fs.readdirSync(P('snapshots')); } catch {}
+  for (const f of files) if (f.endsWith('.json.gz') && !keep.has(f)) fs.unlinkSync(P('snapshots/' + f));
+  return out;
+}
+
 // ---------- компактный формат (общий с сайтом) ----------
 // {v:2, at, base, S:[строки], G:[[номер, [школы], курс, название, id]],
 //  L:[[старт(мин от base), длит, предмет, вид, препод, ауд, адрес, поток, подгруппа, ...индексы групп]]}
@@ -50,7 +71,9 @@ function pack(groups, byGroup, meta) {
     if (!L.has(k)) L.set(k, { l, g: new Set() });
     L.get(k).g.add(gi.get(n));
   }
-  const rows = [...L.values()].sort((a, b) => a.l.start - b.l.start || (a.l.subject < b.l.subject ? -1 : 1));
+  // пары старше KEEP_LESSONS дней из текущей копии убираем (прошлые недели семестра при этом остаются)
+  const rows = [...L.values()].filter(x => x.l.start > NOW - KEEP_LESSONS * DAY)
+    .sort((a, b) => a.l.start - b.l.start || (a.l.subject < b.l.subject ? -1 : 1));
   const base = rows.length ? Math.floor(rows[0].l.start / 6e4) : Math.floor(NOW / 6e4);
   return {
     v: 2, ...meta, base, schools: SCHOOLS, S, G,
@@ -277,7 +300,9 @@ if (up) {
     fs.writeFileSync(P('snapshots/' + name), zlib.gzipSync(JSON.stringify(next), { level: 9 }));
     const idx = readJSON('snapshots/index.json', []);
     idx.push({ f: name, at: atTime, n: next.L.length, g: next.G.length, c: items.length });
-    writeJSON('snapshots/index.json', idx);
+    const kept = prune(idx);
+    writeJSON('snapshots/index.json', kept);
+    if (kept.length < idx.length) summary.push(`Архив: удалено старых версий ${idx.length - kept.length}, осталось ${kept.length}`);
     const ch = readJSON('changes.json', { items: [] });
     const keep = ch.items.filter(x => x.at > NOW - 60 * DAY);
     writeJSON('changes.json', { items: [...items, ...keep].slice(0, 20000) });
