@@ -178,6 +178,12 @@ button.card:hover{border-color:var(--rim2);background:var(--ice2);transform:tran
 .row{font-size:13px;color:var(--tx2);margin-top:4px;font-weight:600;overflow-wrap:anywhere}
 .row a{color:var(--tx);text-decoration:none;border-bottom:1px dashed var(--rim2);cursor:pointer}
 .row a:hover{color:var(--aur1);border-color:var(--aur1)}
+.subbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 14px}
+.subbar b{font:700 13px var(--ff-d)}
+.subbar .seg button{padding:6px 14px;font-size:13.5px}
+.subbar small{color:var(--tx3);font-weight:600;font-size:12.5px}
+.mine{border:0;background:none;padding:0 0 0 6px;color:var(--aur1);font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap}
+.mine.alt{color:var(--tx3)}
 .subg{display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:20px;margin-right:6px;vertical-align:1px;white-space:nowrap;
   background:color-mix(in srgb,var(--aur2) 20%,transparent);color:var(--tx);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--aur2) 45%,transparent)}
 .kind{display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:20px;margin-right:6px;vertical-align:1px;background:color-mix(in srgb,var(--k) 18%,transparent);color:var(--k)}
@@ -319,6 +325,15 @@ function subRaw(l,num){var r=GO>8?S[l[8]]:'';if(r)return r;num=String(num||'').s
 function subText(raw,short){if(!raw)return '';var r=String(raw).replace(/\s+/g,' ').trim().replace(/^\d{6}/,'').replace(/^[\s_\-–—.,]+/,'');if(!r)return '';
   var m=/(?:^|[_\s\-])0*(\d{1,2})$/.exec(r)||/^0*(\d{1,2})$/.exec(r);
   if(m)return short?'п/г '+m[1]:m[1]+' подгруппа';r=r.replace(/_+/g,' ');return short?r:'подгруппа: '+r;}
+function subNum(l,num){var m=/^п\/г (\d+)$/.exec(subText(subRaw(l,num),true));return m?m[1]:'';}
+function groupSubs(ids,num){var s={};ids.forEach(function(i){var n=subNum(L[i],num);if(n)s[n]=1;});return Object.keys(s).sort(function(a,b){return a-b;});}
+/* «Моя подгруппа»: номер на группу (mem.sub) + выбор варианта для предмета, где подгруппы не номерные (mem.pick) */
+function mySub(){return (mem.sub||{})[mem.group]||'';}
+function myFilter(ids){var sel=mySub();if(!sel)return ids;return ids.filter(function(i){var n=subNum(L[i],mem.group);return !n||n===sel;});}
+function pickKey(l){return S[l[4]]+'|'+S[l[7]];}
+function myPick(subj){return ((mem.pick||{})[mem.group]||{})[subj];}
+function applyPick(grp){if(grp.length<2)return grp;var k=myPick(S[L[grp[0]][2]]);if(!k)return grp;
+  var m=grp.filter(function(i){return pickKey(L[i])===k;});return m.length?m:grp;}
 function subChip(l,num){var s=subText(subRaw(l,num));return s?'<span class="subg">'+esc(s)+'</span>':'';}
 function getJSON(u){return fetch(u,{cache:'no-cache'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
 function getGz(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.arrayBuffer();}).then(function(buf){
@@ -471,7 +486,8 @@ function showSched(keep){
   var isT=mem.mode==='teacher',ids,title,meta;
   if(isT){ids=byTeacher[mem.teacher]||[];title=mem.teacher;meta=Object.keys(tSubj[mem.teacher]||{}).join(' · ');}
   else{var gi=gIdx[mem.group];if(gi==null){view=null;return route();}var g=G[gi];ids=byGroup[gi]||[];title='Группа '+g[0];
-    var sc=SCH[mem.school]||SCH[g[1][0]];meta=[g[3],sc&&sc.short,g[2]?g[2]+' курс':''].filter(Boolean).join(' · ');}
+    var sc=SCH[mem.school]||SCH[g[1][0]];meta=[g[3],sc&&sc.short,g[2]?g[2]+' курс':''].filter(Boolean).join(' · ');
+    var subs=groupSubs(ids,mem.group);if(subs.indexOf(mySub())<0&&mem.sub)delete mem.sub[mem.group];ids=myFilter(ids);}
   var now=Date.now(),today=dk(now),w0=weekOf(minT),w1=weekOf(maxT-1);
   if(week==null){week=weekOf(now);if(wd(today)===6)week+=7;if(week<w0)week=w0;if(week>w1)week=w1;}
   var days={};ids.forEach(function(i){var k=dk(BASE+L[i][0]*6e4);if(k>=week&&k<week+7)(days[k]||(days[k]=[])).push(i);});
@@ -485,6 +501,10 @@ function showSched(keep){
     '<div class="who"><div><h1>'+esc(title)+'</h1><div class="meta">'+esc(meta)+'</div></div><div class="tools">'+
     (viewingSnap?'':'<button class="btn pill" id="chBtn">Правки'+(cnt?' <span class="badge">'+cnt+'</span>':'')+'</button>')+
     '<button class="btn pill" id="arBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Архив</button><button class="btn pill" id="shBtn">Поделиться</button></div></div>';
+  if(!isT&&subs.length>1){var cur=mySub();
+    h+='<div class="subbar"><b>Моя подгруппа</b><div class="seg" role="tablist"><button data-sub=""'+(cur?'':' class="on"')+'>Все</button>'+
+      subs.map(function(n){return '<button data-sub="'+n+'"'+(cur===n?' class="on"':'')+'>'+n+'</button>';}).join('')+'</div>'+
+      (cur?'<small>пары других подгрупп скрыты</small>':'<small>выбери — и пары чужих подгрупп пропадут</small>')+'</div>';}
   h+=heroHtml(ids,now);
   h+='<div class="weekbar"><button class="btn icon" id="pw" '+(week<=w0?'disabled':'')+' aria-label="Прошлая неделя">‹</button>'+
     '<div class="lbl">'+dm(week,1)+' — '+dm(week+5,1)+'<small>'+(total?total+' '+plural(total,'занятие','занятия','занятий'):'занятий нет')+'</small></div>'+
@@ -496,16 +516,18 @@ function showSched(keep){
   for(d=0;d<7;d++){k=week+d;var list=days[k];if(d===6&&!list)continue;
     h+='<section class="card day'+(k===today?' today':'')+(k===selDay?' sel':'')+'"><div class="h"><b>'+WD[d]+'</b><span>'+dm(k)+'</span></div>';
     if(!list)h+='<div class="free">Пар нет — отдыхаем</div>';
-    else bundle(list).forEach(function(grp){var l=L[grp[0]],st=BASE+l[0]*6e4,en=st+l[1]*6e4,kind=S[l[3]],tm=hm(st);
+    else bundle(list).forEach(function(all){var grp=isT?all:applyPick(all),picked=grp.length<all.length,l=L[grp[0]],st=BASE+l[0]*6e4,en=st+l[1]*6e4,kind=S[l[3]],tm=hm(st);
       var cls=en<now?' past':(st<=now&&now<en?' now':''),mark=chs[st+'|'+S[l[2]]];
       function who(l){if(isT)return l.slice(GO).map(function(x){var s=subText(subRaw(l,G[x][0]),true);return '<a data-og="'+esc(G[x][0])+'">'+esc(G[x][0])+'</a>'+(s?' <span class="subg">'+esc(s)+'</span>':'');}).join(', ');
         return S[l[4]]?S[l[4]].split(',').map(function(t){t=t.trim();return '<a data-ot="'+esc(t)+'">'+esc(t)+'</a>';}).join(', '):'';}
       function place(l){return [S[l[5]]?'ауд. '+S[l[5]]:'',S[l[6]]].filter(Boolean).join(', ');}
       var body='';
       var me=isT?'':mem.group;
-      if(grp.length===1){var p=place(l);body='<div class="row"><span class="kind">'+esc(kind)+'</span>'+(isT?'':subChip(l,me))+who(l)+'</div>'+(p?'<div class="row">📍 '+esc(p)+'</div>':'')+(!isT&&S[l[7]]?'<div class="row">Поток: '+esc(S[l[7]])+'</div>':'');}
+      if(grp.length===1){var p=place(l);body='<div class="row"><span class="kind">'+esc(kind)+'</span>'+(isT?'':subChip(l,me))+who(l)+
+        (picked?'<button class="mine alt" data-unpick="'+esc(S[l[2]])+'">сменить</button>':'')+'</div>'+(p?'<div class="row">📍 '+esc(p)+'</div>':'')+(!isT&&S[l[7]]?'<div class="row">Поток: '+esc(S[l[7]])+'</div>':'');}
       else{body='<div class="row"><span class="kind">'+esc(kind)+'</span>'+(isT?grp.length+' '+plural(grp.length,'группа','группы','групп')+' параллельно':grp.length+' '+plural(grp.length,'подгруппа','подгруппы','подгрупп'))+'</div><details class="subs"'+(grp.length<=3?' open':'')+'><summary>Кто и где</summary>'+
-        grp.map(function(i){var x=L[i],p=place(x);return '<div class="sub">'+(isT?'':subChip(x,me))+who(x)+(p?' · '+esc(p):'')+(!isT&&S[x[7]]?' · <span>'+esc(S[x[7]])+'</span>':'')+'</div>';}).join('')+'</details>';}
+        grp.map(function(i){var x=L[i],p=place(x);return '<div class="sub">'+(isT?'':subChip(x,me))+who(x)+(p?' · '+esc(p):'')+(!isT&&S[x[7]]?' · <span>'+esc(S[x[7]])+'</span>':'')+
+          (isT?'':'<button class="mine" data-pick="'+esc(S[x[2]])+'" data-key="'+esc(pickKey(x))+'">это я</button>')+'</div>';}).join('')+'</details>';}
       h+='<div class="les'+cls+'" style="--k:'+kc(kind)+'"><div class="tm"><b>'+tm+'</b>'+hm(en)+(PAIRS[tm]?'<em>'+PAIRS[tm]+' пара</em>':'')+'</div><div>'+
         '<div class="sj">'+esc(S[l[2]])+(mark?'<span class="chg">'+esc(mark)+'</span>':'')+'</div>'+body+'</div></div>';});
     h+='</section>';}
@@ -520,6 +542,9 @@ function showSched(keep){
   app.querySelectorAll('.strip [data-d]').forEach(function(b){b.onclick=function(){selDay=+b.dataset.d;showSched();};});
   app.querySelectorAll('[data-ot]').forEach(function(a){a.onclick=function(){openTeacher(a.dataset.ot);};});
   app.querySelectorAll('[data-og]').forEach(function(a){a.onclick=function(){openGroup(a.dataset.og);};});
+  app.querySelectorAll('[data-sub]').forEach(function(b){b.onclick=function(){mem.sub=mem.sub||{};if(b.dataset.sub)mem.sub[mem.group]=b.dataset.sub;else delete mem.sub[mem.group];save();showSched();};});
+  app.querySelectorAll('[data-pick]').forEach(function(b){b.onclick=function(e){e.preventDefault();mem.pick=mem.pick||{};(mem.pick[mem.group]=mem.pick[mem.group]||{})[b.dataset.pick]=b.dataset.key;save();showSched();toast('Запомнил: дальше «'+b.dataset.pick+'» — только твой вариант');};});
+  app.querySelectorAll('[data-unpick]').forEach(function(b){b.onclick=function(){if(mem.pick&&mem.pick[mem.group])delete mem.pick[mem.group][b.dataset.unpick];save();showSched();};});
 }
 function bundle(list){var out=[];list.forEach(function(i){var l=L[i],p=out[out.length-1];
   if(p){var q=L[p[0]];if(q[0]===l[0]&&q[2]===l[2]&&q[3]===l[3]){p.push(i);return;}}out.push([i]);});return out;}
@@ -529,12 +554,15 @@ function heroHtml(ids,now){
   for(var j=0;j<ids.length;j++){var l=L[ids[j]],st=BASE+l[0]*6e4,en=st+l[1]*6e4;
     if(st<=now&&now<en){cur=l;}else if(st>now&&(!next||st<BASE+next[0]*6e4))next=l;}
   var l2=cur||next;if(!l2)return '';
+  var at=ids.filter(function(i){return L[i][0]===l2[0];}),res=[];
+  if(mem.mode!=='teacher')bundle(at).forEach(function(b){res=res.concat(applyPick(b));});else res=at;
+  l2=L[res[0]];
   var st2=BASE+l2[0]*6e4,en2=st2+l2[1]*6e4,place=[S[l2[5]]?'ауд. '+S[l2[5]]:'',S[l2[6]]].filter(Boolean).join(', ');
   var isT=mem.mode==='teacher',who=isT?l2.slice(GO).map(function(x){var s=subText(subRaw(l2,G[x][0]),true);return G[x][0]+(s?' ('+s+')':'');}).join(', '):S[l2[4]];
-  var par=ids.filter(function(i){return L[i][0]===l2[0];}).length,sub=isT?'':subText(subRaw(l2,mem.group));
+  var par=res.length,sub=isT?'':subText(subRaw(l2,mem.group));
   var lbl=cur?'Сейчас идёт':(dk(st2)===dk(now)?'Следующая пара':'Ближайшая пара · '+WDs[wd(dk(st2))]+', '+dm(dk(st2),1));
   return '<div class="hero'+(cur?'':' next')+'"><div class="lbl">'+lbl+'</div><div class="sj">'+esc(S[l2[2]])+'</div>'+
-    '<div class="rw">'+hm(st2)+'–'+hm(en2)+' · '+esc([S[l2[3]],sub,who,place].filter(Boolean).join(' · '))+(!isT&&par>1?' · <b>ещё '+(par-1)+' '+plural(par-1,'вариант','варианта','вариантов')+' по подгруппам ниже</b>':'')+'</div>'+
+    '<div class="rw">'+hm(st2)+'–'+hm(en2)+' · '+esc([S[l2[3]],sub,who,place].filter(Boolean).join(' · '))+(!isT&&par>1?' · <b>ещё '+(par-1)+' '+plural(par-1,'вариант','варианта','вариантов')+' ниже — выбери свой</b>':'')+'</div>'+
     '<div class="cd">'+(cur?'<b>'+dur(en2-now)+'</b><span>до конца</span>':'<b>'+dur(st2-now)+'</b><span>до начала</span>')+'</div>'+
     (cur?'<div class="bar"><i style="width:'+Math.round((now-st2)/(en2-st2)*100)+'%"></i></div>':'')+'</div>';
 }
