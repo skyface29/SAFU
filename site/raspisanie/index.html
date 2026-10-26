@@ -348,7 +348,8 @@ function banners(){
   if(STATUS){el.hidden=false;
     if(STATUS.up===false){el.classList.add('down');tx.textContent='РУЗ лежит';
       b+='<div class="banner down"><span>⚠️</span><div class="grow"><b>РУЗ САФУ сейчас не работает'+(STATUS.downSince?' (с '+when(STATUS.downSince)+')':'')+'.</b> Ничего страшного — здесь последняя копия расписания от '+when(LIVE&&LIVE.at)+'. Как только РУЗ оживёт, правки подтянутся сами.</div></div>';}
-    else if(STATUS.up===true){el.classList.remove('down');tx.textContent='РУЗ работает · '+hm(STATUS.checkedAt);}
+    else if(STATUS.up===true){el.classList.remove('down');var fresh=Date.now()-STATUS.checkedAt<2*3600e3;
+      tx.textContent=fresh?'РУЗ работает · проверено в '+hm(STATUS.checkedAt):'Проверено '+when(STATUS.checkedAt);}
     else{el.classList.remove('down');tx.textContent='Копия от '+when(LIVE&&LIVE.at);}
     el.title='Последняя проверка: '+when(STATUS.checkedAt)+(STATUS.lastOkAt?'\nПоследний удачный ответ: '+when(STATUS.lastOkAt):'');
   }
@@ -546,7 +547,8 @@ function share(){
 
 /* ---------- запуск ---------- */
 function boot(d){LIVE=d;index(d);route();
-  document.getElementById('foot').textContent='Данные с ruz.narfu.ru · копия от '+when(d.at)+' · проверка каждые 30 минут';}
+  document.getElementById('foot').textContent='Данные с ruz.narfu.ru · проверено '+when(STATUS&&STATUS.checkedAt||d.checked||d.at)+
+    ' · расписание последний раз менялось '+when(d.at)+' · РУЗ проверяется каждые 30 минут';}
 Promise.all([
   getJSON('data/latest.json'),
   getJSON('data/status.json').catch(function(){return null;}),

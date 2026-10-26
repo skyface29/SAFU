@@ -193,6 +193,17 @@ function diff(prev, next, window) {
 }
 
 // ---------- основное ----------
+// Таймер GitHub часто пропускает запуски, поэтому workflow стучится чаще (раз в 10 минут),
+// а сам обход РУЗа делаем не чаще, чем раз в --every минут (по умолчанию 25), если не --force
+{
+  const st = readJSON('status.json', {});
+  const every = +(args.every || 25) * 6e4;
+  if (!args.force && !args.import && st.checkedAt && NOW - st.checkedAt < every) {
+    log(`РУЗ проверяли ${Math.round((NOW - st.checkedAt) / 6e4)} мин назад — пропускаю`);
+    if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changed=false\ndata=false\n');
+    process.exit(0);
+  }
+}
 const prevData = readJSON('latest.json', null);
 const prev = unpack(prevData);
 const status = readJSON('status.json', { up: null });
@@ -261,11 +272,11 @@ if (up) {
 }
 
 // status.json коммитим, когда что-то поменялось или раз в 3 часа — чтобы «проверено» на сайте не протухало
-const flipped = status.up !== newStatus.up;
-const stale = !status.checkedAt || NOW - status.checkedAt > 3 * 3600e3;
-if (dataChanged || flipped || stale) writeJSON('status.json', newStatus);
+// status.json пишем каждый раз: сайт показывает, когда РУЗ проверяли в последний раз
+// (коммиты «только проверка» workflow склеивает в один, история не засоряется)
+writeJSON('status.json', newStatus);
 summary.push(`РУЗ: ${up ? 'работает' : reason}; групп ${fresh.ok}/${fresh.total}`);
 const out = process.env.GITHUB_OUTPUT;
-if (out) fs.appendFileSync(out, `changed=${dataChanged || flipped || stale}\ndata=${dataChanged}\n`);
+if (out) fs.appendFileSync(out, `changed=true\ndata=${dataChanged}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.map(s => '- ' + s).join('\n') + '\n');
 log(summary.join('\n'));
