@@ -57,6 +57,9 @@ function subOf(e) {
   const r = SUB_ROOM.exec(e.room || '') || SUB_ADDR.exec(e.room || '') || SUB_ADDR.exec(e.address || '');
   return r ? r[1] : (e.sub || '');
 }
+// У пар без адреса («ауд. Дистанционное обучение, ») в РУЗе следом идёт номер следующей пары, и он попадал в адрес:
+// «1», «2»… — одна и та же пара двоилась. Одиночная цифра адресом не бывает — убираем.
+const addrOf = s => { const a = clean(dropSub(s, SUB_ADDR)); return /^\d{1,2}$/.test(a) ? '' : a; };
 const dropSub = (s, re) => String(s || '').replace(re, ' ').replace(/\s*,\s*,/g, ',').replace(/\s+,/g, ',').replace(/\s+/g, ' ').trim();
 const clean = s => String(s || '').replace(/\s*(-->|→)+\s*/g, ' ').trim().replace(/^,+|,+$/g, '').trim();
 const lessonKey = l => [l.start, l.end, l.subject, l.kind, l.teacher, l.room, l.address, l.stream, l.sub].join('|');
@@ -95,7 +98,7 @@ function unpack(d) {
   return { groups, byGroup };
 }
 const norm = e => ({ start: e.start, end: e.end, subject: clean(e.subject), kind: clean(e.kind) || 'Занятие', teacher: clean(e.teacher),
-  room: clean(dropSub(dropSub(e.room, SUB_ROOM), SUB_ADDR)), address: clean(dropSub(e.address, SUB_ADDR)),
+  room: clean(dropSub(dropSub(e.room, SUB_ROOM), SUB_ADDR)), address: addrOf(e.address),
   stream: clean(streamOf(e.note) || e.stream), sub: clean(subOf(e)) });
 const dedupe = list => { const m = new Map(); for (const l of list) m.set(lessonKey(l), l); return [...m.values()].sort((a, b) => a.start - b.start); };
 
@@ -293,7 +296,8 @@ function buildWeb(d, st) {
     process.exit(0);
   }
 }
-const PARSER = 3;   // 3 — возврат к разбору «номер + время» (26.10)   // поднять, когда меняется разбор страниц РУЗ (parse.mjs)
+const PARSER = 4;   // 4 — адрес из одной цифры отбрасывается (26.10)
+// 3 — возврат к разбору «номер + время» (26.10). Поднимать, когда меняется разбор страниц РУЗ (parse.mjs) или нормализация
 const prevData = readJSON('latest.json', null);
 const prev = unpack(prevData);
 const status = readJSON('status.json', { up: null });
