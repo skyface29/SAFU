@@ -64,7 +64,8 @@ function unpack(d) {
   for (const r of d.L) {
     const start = (d.base + r[0]) * 6e4;
     const v2 = d.v >= 2;
-    const l = { start, end: start + r[1] * 6e4, subject: d.S[r[2]], kind: d.S[r[3]], teacher: d.S[r[4]], room: d.S[r[5]], address: d.S[r[6]], stream: d.S[r[7]], sub: v2 ? d.S[r[8]] : '' };
+    let l = { start, end: start + r[1] * 6e4, subject: d.S[r[2]], kind: d.S[r[3]], teacher: d.S[r[4]], room: d.S[r[5]], address: d.S[r[6]], stream: d.S[r[7]], sub: v2 ? d.S[r[8]] : '' };
+    l = norm(l);   // старые строки (и группы, которые в этот раз не открылись): «подгр.1» из адреса → подгруппа
     for (const g of r.slice(v2 ? 9 : 8)) byGroup[d.G[g][0]].push(l);
   }
   return { groups, byGroup };
@@ -117,6 +118,15 @@ async function scan() {
     try {
       const ev = [];
       for (const id of g.ids) ev.push(...parseTimetable(await get(`${RUZ}?timetable&group=${id}`, 2)).map(norm));
+      if (g.ids.length > 1) {
+        // одна и та же пара с разных записей РУЗ бывает с адресом и без — оставляем полную
+        const best = new Map();
+        for (const l of ev) {
+          const k = [l.start, l.subject, l.kind, l.teacher, l.room, l.sub].join('|'), o = best.get(k);
+          if (!o || (l.address || '').length > (o.address || '').length) best.set(k, l);
+        }
+        ev.length = 0; ev.push(...best.values());
+      }
       g.ids.sort(); g.id = g.ids.join(',');
       byGroup[g.number] = dedupe(ev); fetched.add(g.number); ok++; events += ev.length;
     } catch { failed++; }
@@ -142,7 +152,8 @@ function merge(prev, fresh, prevCov, prevIds) {
     const old = prev[n] || [];
     if (!fresh.fetched.has(n)) { out[n] = old; continue; }
     // набор записей РУЗ у группы поменялся (например, разделили очную и «Д») — это новая точка отсчёта, а не правки
-    const rebase = prevIds[n] !== undefined && fresh.groups[n] && fresh.groups[n].id && prevIds[n] !== fresh.groups[n].id;
+    const rebase = (prevIds[n] !== undefined && fresh.groups[n] && fresh.groups[n].id && prevIds[n] !== fresh.groups[n].id) ||
+      (!/ Д$/.test(n) && fresh.groups[n + ' Д'] && prevIds[n + ' Д'] === undefined);   // от группы только что отделили «Д»
     const nw = fresh.byGroup[n] || [];
     const today = dayKey(NOW);
     if (!nw.length) {
@@ -178,7 +189,10 @@ function diff(prev, next, window) {
         if (j >= 0) {
           const bx = brief(x), by = brief(b[j]);
           // отличие только в невидимом (поток, примечание) — не правка
-          if (JSON.stringify(bx) !== JSON.stringify(by)) items.push({ at: NOW, g: n, t: type, b: bx, a: by });
+          // правка — если поменялось то, что видно студенту: время, предмет, вид, преподаватель, аудитория, подгруппа
+          // (текст адреса в РУЗе «плавает» и сам по себе правкой не считается)
+          const vis = o => JSON.stringify([o.s, o.e, o.subj, o.kind, o.tch, o.room, o.sub]);
+          if (vis(bx) !== vis(by)) items.push({ at: NOW, g: n, t: type, b: bx, a: by });
           b.splice(j, 1); a.splice(a.indexOf(x), 1);
         }
       }
@@ -204,6 +218,7 @@ function diff(prev, next, window) {
     process.exit(0);
   }
 }
+const PARSER = 2;   // поднять, когда меняется разбор страниц РУЗ (parse.mjs)
 const prevData = readJSON('latest.json', null);
 const prev = unpack(prevData);
 const status = readJSON('status.json', { up: null });
@@ -245,10 +260,11 @@ if (up) {
   const m = merge(prev.byGroup, fresh, (prevData && prevData.cov) || {}, prevIds);
   const groups = { ...prev.groups, ...fresh.groups };
   // при смене формата (v1 → v2: появились подгруппы) сравнивать не с чем — это новая точка отсчёта
-  const items = prevData && prevData.v >= 2 ? diff(prev.byGroup, m.byGroup, m.window) : [];
+  // и при смене разборщика (PARSER) тоже: иначе его же исправления выглядели бы как правки в РУЗе
+  const items = prevData && prevData.v >= 2 && prevData.parser === PARSER ? diff(prev.byGroup, m.byGroup, m.window) : [];
   const atTime = +process.env.RUZ_AT || NOW;
   const next = pack(groups, m.byGroup, { at: atTime, checked: NOW });
-  next.cov = m.cov;
+  next.cov = m.cov; next.parser = PARSER;
   const sig = o => crypto.createHash('sha1').update(JSON.stringify([o.S, o.G, o.L, o.base])).digest('hex');
   const prevSig = prevData ? sig(prevData) : '';
   if (sig(next) !== prevSig) {
