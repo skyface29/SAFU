@@ -469,7 +469,7 @@ function openChanges(){
 /* ---------- архив ---------- */
 function openArchive(){
   var h='<div class="top"><h2>Машина времени</h2><button class="btn icon" data-close aria-label="Закрыть">✕</button></div>'+
-    '<p class="hint">Каждый раз, когда РУЗ меняется, сохраняется копия. Выбери, чтобы посмотреть, каким было расписание в тот момент.</p><div id="snaps"><div class="skeleton"></div></div>';
+    '<p class="hint">Каждый раз, когда РУЗ меняется, сохраняется копия. Выбери, чтобы посмотреть, каким было расписание в тот момент. Хранятся все версии за 10 дней, дальше — по одной на день за 2 месяца.</p><div id="snaps"><div class="skeleton"></div></div>';
   sheet(h);
   (SNAPS?Promise.resolve(SNAPS):getJSON('data/snapshots/index.json').then(function(x){SNAPS=x;return x;})).then(function(list){
     var el=document.getElementById('snaps');if(!el)return;
