@@ -128,6 +128,7 @@ async function get(url, tries = 3) {
     } catch (e) { if (i === tries - 1) throw e; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
   }
 }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function pool(items, n, fn) {
   const out = new Array(items.length); let i = 0;
   await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) { const k = i++; out[k] = await fn(items[k], k); } }));
@@ -154,12 +155,29 @@ async function scan() {
   }
   const all = Object.values(groups);
   log(`школ со списком групп: ${listsOk}/${insts.length}, групп: ${all.length}`);
+  const empty = [];
   let ok = 0, failed = 0, events = 0;
   const byGroup = {}, fetched = new Set();
+  // РУЗ иногда отдаёт пустую страницу у записи, где пары точно есть (26.10: у 111512 и 131600 из-за этого «пропадали»
+  // и «появлялись» сотни пар — ложные правки). Если в прошлый раз у записи были будущие пары, а сейчас пусто —
+  // пробуем ещё два раза; не вышло — группу в этот раз не трогаем (остаётся прошлая копия). Если пусто
+  // EMPTY_RUNS проверок подряд — значит, пары правда убрали, принимаем.
+  const ids = readJSON('ids.json', { n: {}, e: {} }), EMPTY_RUNS = 6;
+  const idsNext = { n: { ...ids.n }, e: {} };
   await pool(all, 3, async g => {   // 3 страницы одновременно — бережно к РУЗу
     try {
       const ev = [];
-      for (const id of g.ids) ev.push(...parseTimetable(await get(`${RUZ}?timetable&group=${id}`, 2)).map(norm));
+      for (const id of g.ids) {
+        const url = `${RUZ}?timetable&group=${id}`, had = (ids.n[id] || 0) > 0;
+        let list = parseTimetable(await get(url, 2));
+        for (let k = 0; !list.length && had && k < 2; k++) { await sleep(3000 * (k + 1)); list = parseTimetable(await get(url, 2)); }
+        if (!list.length && had) {
+          const streak = (ids.e[id] || 0) + 1;
+          if (streak < EMPTY_RUNS) { idsNext.e[id] = streak; throw new Error(`страница ${id} пустая (${streak}-й раз подряд)`); }
+        }
+        idsNext.n[id] = list.filter(l => l.start > NOW).length;
+        ev.push(...list.map(norm));
+      }
       if (g.ids.length > 1) {
         // одна и та же пара с разных записей РУЗ бывает с адресом и без — оставляем полную
         const best = new Map();
@@ -171,8 +189,10 @@ async function scan() {
       }
       g.ids.sort(); g.id = g.ids.join(',');
       byGroup[g.number] = dedupe(ev); fetched.add(g.number); ok++; events += ev.length;
-    } catch { failed++; }
+    } catch (e) { failed++; if (/пустая/.test(e.message)) empty.push(g.number); }
   });
+  if (empty.length) log(`пустые страницы, группы оставлены как были: ${empty.join(', ')}`);
+  writeJSON('ids.json', idsNext);
   log(`страниц групп: ${ok} ок, ${failed} с ошибкой, пар: ${events}`);
   return { groups, byGroup, fetched, ok, failed, total: all.length, events };
 }
@@ -312,6 +332,7 @@ function buildWeb(d, st) {
   }
 }
 const PARSER = 5;   // 4 — адрес из одной цифры отбрасывается; 5 — пары по строке со временем, окончание «:00», скобки в предмете (26.10)
+// (защита от пустых страниц РУЗа разбор не меняет — PARSER тот же)
 // 3 — возврат к разбору «номер + время» (26.10). Поднимать, когда меняется разбор страниц РУЗ (parse.mjs) или нормализация
 const prevData = readJSON('latest.json', null);
 const prev = unpack(prevData);
