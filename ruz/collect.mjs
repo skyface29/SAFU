@@ -23,10 +23,21 @@ const log = (...a) => console.log(...a);
 const summary = [];
 
 // ---------- компактный формат (общий с сайтом) ----------
-// {v, at, base, S:[строки], G:[[номер, [школы], курс, название, id]], L:[[старт(мин от base), длит, предмет, вид, препод, ауд, адрес, поток, ...индексы групп]]}
+// {v:2, at, base, S:[строки], G:[[номер, [школы], курс, название, id]],
+//  L:[[старт(мин от base), длит, предмет, вид, препод, ауд, адрес, поток, подгруппа, ...индексы групп]]}
+// v:1 (до 26.10) — без подгруппы, группы с 8-го места
 const streamOf = n => { const m = /Поток\s*"([^"]*)"/.exec(n || ''); return m ? m[1] : ''; };
+// подгруппа: РУЗ пишет её в примечании («Подгруппа 151318_2»), у физкультуры — в аудитории или адресе («подгр.1»)
+const SUB_ROOM = /\s*(\d)\s*подгрупп[а-яё]*/i, SUB_ADDR = /\s*,?\s*подгр(?:уппа)?\.?\s*(\d+)\s*/i;
+function subOf(e) {
+  const m = /Подгруппа\s+(.+?)\s*(?:-->|$)/i.exec(String(e.note || ''));
+  if (m) return m[1];
+  const r = SUB_ROOM.exec(e.room || '') || SUB_ADDR.exec(e.room || '') || SUB_ADDR.exec(e.address || '');
+  return r ? r[1] : (e.sub || '');
+}
+const dropSub = (s, re) => String(s || '').replace(re, ' ').replace(/\s*,\s*,/g, ',').replace(/\s+,/g, ',').replace(/\s+/g, ' ').trim();
 const clean = s => String(s || '').replace(/\s*(-->|→)+\s*/g, ' ').trim().replace(/^,+|,+$/g, '').trim();
-const lessonKey = l => [l.start, l.end, l.subject, l.kind, l.teacher, l.room, l.address, l.stream].join('|');
+const lessonKey = l => [l.start, l.end, l.subject, l.kind, l.teacher, l.room, l.address, l.stream, l.sub].join('|');
 
 function pack(groups, byGroup, meta) {
   const S = [], SI = new Map(), s = x => { x = clean(x); if (!SI.has(x)) { SI.set(x, S.length); S.push(x); } return SI.get(x); };
@@ -42,8 +53,8 @@ function pack(groups, byGroup, meta) {
   const rows = [...L.values()].sort((a, b) => a.l.start - b.l.start || (a.l.subject < b.l.subject ? -1 : 1));
   const base = rows.length ? Math.floor(rows[0].l.start / 6e4) : Math.floor(NOW / 6e4);
   return {
-    v: 1, ...meta, base, schools: SCHOOLS, S, G,
-    L: rows.map(({ l, g }) => [Math.round(l.start / 6e4) - base, Math.round((l.end - l.start) / 6e4), s(l.subject), s(l.kind), s(l.teacher), s(l.room), s(l.address), s(l.stream), ...[...g].sort((a, b) => a - b)]),
+    v: 2, ...meta, base, schools: SCHOOLS, S, G,
+    L: rows.map(({ l, g }) => [Math.round(l.start / 6e4) - base, Math.round((l.end - l.start) / 6e4), s(l.subject), s(l.kind), s(l.teacher), s(l.room), s(l.address), s(l.stream), s(l.sub), ...[...g].sort((a, b) => a - b)]),
   };
 }
 function unpack(d) {
@@ -52,12 +63,15 @@ function unpack(d) {
   d.G.forEach(([n, insts, course, title, id]) => { groups[n] = { number: n, insts, course, title, id }; byGroup[n] = []; });
   for (const r of d.L) {
     const start = (d.base + r[0]) * 6e4;
-    const l = { start, end: start + r[1] * 6e4, subject: d.S[r[2]], kind: d.S[r[3]], teacher: d.S[r[4]], room: d.S[r[5]], address: d.S[r[6]], stream: d.S[r[7]] };
-    for (const g of r.slice(8)) byGroup[d.G[g][0]].push(l);
+    const v2 = d.v >= 2;
+    const l = { start, end: start + r[1] * 6e4, subject: d.S[r[2]], kind: d.S[r[3]], teacher: d.S[r[4]], room: d.S[r[5]], address: d.S[r[6]], stream: d.S[r[7]], sub: v2 ? d.S[r[8]] : '' };
+    for (const g of r.slice(v2 ? 9 : 8)) byGroup[d.G[g][0]].push(l);
   }
   return { groups, byGroup };
 }
-const norm = e => ({ start: e.start, end: e.end, subject: clean(e.subject), kind: clean(e.kind) || 'Занятие', teacher: clean(e.teacher), room: clean(e.room), address: clean(e.address), stream: clean(streamOf(e.note) || e.stream) });
+const norm = e => ({ start: e.start, end: e.end, subject: clean(e.subject), kind: clean(e.kind) || 'Занятие', teacher: clean(e.teacher),
+  room: clean(dropSub(dropSub(e.room, SUB_ROOM), SUB_ADDR)), address: clean(dropSub(e.address, SUB_ADDR)),
+  stream: clean(streamOf(e.note) || e.stream), sub: clean(subOf(e)) });
 const dedupe = list => { const m = new Map(); for (const l of list) m.set(lessonKey(l), l); return [...m.values()].sort((a, b) => a.start - b.start); };
 
 // ---------- сеть ----------
@@ -148,7 +162,7 @@ function merge(prev, fresh, prevCov, prevIds) {
 }
 
 // ---------- правки ----------
-const brief = l => ({ s: l.start, e: l.end, subj: l.subject, kind: l.kind, tch: l.teacher, room: l.room, addr: l.address });
+const brief = l => ({ s: l.start, e: l.end, subj: l.subject, kind: l.kind, tch: l.teacher, room: l.room, addr: l.address, sub: l.sub || '' });
 function diff(prev, next, window) {
   const items = [];
   for (const [n, [lo, hi]] of Object.entries(window)) {
@@ -179,6 +193,17 @@ function diff(prev, next, window) {
 }
 
 // ---------- основное ----------
+// Таймер GitHub часто пропускает запуски, поэтому workflow стучится чаще (раз в 10 минут),
+// а сам обход РУЗа делаем не чаще, чем раз в --every минут (по умолчанию 25), если не --force
+{
+  const st = readJSON('status.json', {});
+  const every = +(args.every || 25) * 6e4;
+  if (!args.force && !args.import && st.checkedAt && NOW - st.checkedAt < every) {
+    log(`РУЗ проверяли ${Math.round((NOW - st.checkedAt) / 6e4)} мин назад — пропускаю`);
+    if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changed=false\ndata=false\n');
+    process.exit(0);
+  }
+}
 const prevData = readJSON('latest.json', null);
 const prev = unpack(prevData);
 const status = readJSON('status.json', { up: null });
@@ -219,7 +244,8 @@ if (up) {
   const prevIds = Object.fromEntries(Object.values(prev.groups).map(g => [g.number, g.id || '']));
   const m = merge(prev.byGroup, fresh, (prevData && prevData.cov) || {}, prevIds);
   const groups = { ...prev.groups, ...fresh.groups };
-  const items = prevData ? diff(prev.byGroup, m.byGroup, m.window) : [];
+  // при смене формата (v1 → v2: появились подгруппы) сравнивать не с чем — это новая точка отсчёта
+  const items = prevData && prevData.v >= 2 ? diff(prev.byGroup, m.byGroup, m.window) : [];
   const atTime = +process.env.RUZ_AT || NOW;
   const next = pack(groups, m.byGroup, { at: atTime, checked: NOW });
   next.cov = m.cov;
@@ -246,11 +272,11 @@ if (up) {
 }
 
 // status.json коммитим, когда что-то поменялось или раз в 3 часа — чтобы «проверено» на сайте не протухало
-const flipped = status.up !== newStatus.up;
-const stale = !status.checkedAt || NOW - status.checkedAt > 3 * 3600e3;
-if (dataChanged || flipped || stale) writeJSON('status.json', newStatus);
+// status.json пишем каждый раз: сайт показывает, когда РУЗ проверяли в последний раз
+// (коммиты «только проверка» workflow склеивает в один, история не засоряется)
+writeJSON('status.json', newStatus);
 summary.push(`РУЗ: ${up ? 'работает' : reason}; групп ${fresh.ok}/${fresh.total}`);
 const out = process.env.GITHUB_OUTPUT;
-if (out) fs.appendFileSync(out, `changed=${dataChanged || flipped || stale}\ndata=${dataChanged}\n`);
+if (out) fs.appendFileSync(out, `changed=true\ndata=${dataChanged}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.map(s => '- ' + s).join('\n') + '\n');
 log(summary.join('\n'));
