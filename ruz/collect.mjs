@@ -207,6 +207,21 @@ function coverageOf(list) {
   if (!src.length) return null;
   return [wk(dayKey(Math.min(...src.map(l => l.start))))[0], wk(dayKey(Math.max(...src.map(l => l.start))))[1]];
 }
+// РУЗ иногда отдаёт страницу без аудиторий или адресов (26.10 19:00 у 111207 пропали все аудитории, через полчаса
+// вернулись; у 111612 в 21:00 пропали адреса). Если у той же пары (время, предмет, вид, преподаватель) раньше место
+// было, а сейчас пусто — оставляем прежнее, а не пишем «аудитория убрана» и через полчаса «аудитория 4325».
+function sticky(nw, old) {
+  if (!old.length) return nw;
+  const k = l => [l.start, l.end, l.subject, l.kind, l.teacher].join('|'), by = new Map();
+  for (const o of old) if (o.room || o.address) { const x = k(o); by.set(x, by.has(x) ? null : o); }   // null — неоднозначно
+  return nw.map(l => {
+    if (l.room && l.address) return l;
+    const o = by.get(k(l)); if (!o) return l;
+    if (!l.room) return { ...l, room: o.room, address: l.address || o.address, sub: l.sub || o.sub };
+    if (!l.address && l.room === o.room) return { ...l, address: o.address, sub: l.sub || o.sub };
+    return l;
+  });
+}
 function merge(prev, fresh, prevCov, prevIds) {
   const out = {}, changedDays = {}, cov = { ...prevCov };
   const names = new Set([...Object.keys(prev), ...Object.keys(fresh.byGroup)]);
@@ -216,7 +231,7 @@ function merge(prev, fresh, prevCov, prevIds) {
     // набор записей РУЗ у группы поменялся (например, разделили очную и «Д») — это новая точка отсчёта, а не правки
     const rebase = (prevIds[n] !== undefined && fresh.groups[n] && fresh.groups[n].id && prevIds[n] !== fresh.groups[n].id) ||
       (!/ Д$/.test(n) && fresh.groups[n + ' Д'] && prevIds[n + ' Д'] === undefined);   // от группы только что отделили «Д»
-    const nw = fresh.byGroup[n] || [];
+    const nw = sticky(fresh.byGroup[n] || [], old);
     const today = dayKey(NOW);
     if (!nw.length) {
       // пустая страница: если раньше были будущие пары — не верим и оставляем как было
@@ -259,7 +274,11 @@ function diff(prev, next, window) {
         }
       }
     };
-    take((x, y) => x.start === y.start && x.subject === y.subject, 'mod');              // та же пара: другая аудитория/преподаватель/вид
+    // сначала — та же пара целиком (отличается только адрес): так параллельные пары (иностранный у 7 преподавателей)
+    // не путаются между собой, когда у них разом пропал адрес
+    take((x, y) => x.start === y.start && x.end === y.end && x.subject === y.subject && x.kind === y.kind && x.teacher === y.teacher && x.room === y.room && (x.sub || '') === (y.sub || ''), 'mod');
+    take((x, y) => x.start === y.start && x.subject === y.subject && x.teacher === y.teacher, 'mod'); // та же пара: другая аудитория/вид
+    take((x, y) => x.start === y.start && x.subject === y.subject, 'mod');              // та же пара: другой преподаватель
     take((x, y) => dayKey(x.start) === dayKey(y.start) && x.subject === y.subject && x.kind === y.kind, 'move'); // перенос в тот же день
     take((x, y) => x.start === y.start, 'swap');                                        // замена предмета
     for (const x of a) items.push({ at: NOW, g: n, t: 'del', b: brief(x) });
@@ -376,10 +395,15 @@ if (up) {
   const groups = { ...prev.groups, ...fresh.groups };
   // при смене формата (v1 → v2: появились подгруппы) сравнивать не с чем — это новая точка отсчёта
   // и при смене разборщика (PARSER) тоже: иначе его же исправления выглядели бы как правки в РУЗе
-  const items = prevData && prevData.v >= 2 && prevData.parser === PARSER ? diff(prev.byGroup, m.byGroup, m.window) : [];
+  // Правки считаем только у групп, чьи прошлые пары разобраны тем же разборщиком: группа, которую РУЗ при смене PARSER
+  // не отдал (пустая страница), иначе получила бы «правки» от самого разборщика при следующей удачной проверке (26.10 17:30)
+  const prevGp = (prevData && prevData.gp) || {}, gpOf = n => prevGp[n] ?? (prevData && prevData.parser);
+  const win = Object.fromEntries(Object.entries(m.window).filter(([n]) => gpOf(n) === PARSER));
+  const items = prevData && prevData.v >= 2 ? diff(prev.byGroup, m.byGroup, win) : [];
+  const gp = {}; for (const n of Object.keys(m.byGroup)) gp[n] = fresh.fetched.has(n) && (fresh.byGroup[n] || []).length ? PARSER : gpOf(n);
   const atTime = +process.env.RUZ_AT || NOW;
   const next = pack(groups, m.byGroup, { at: atTime, checked: NOW });
-  next.cov = m.cov; next.parser = PARSER;
+  next.cov = m.cov; next.parser = PARSER; next.gp = gp;
   const sig = o => crypto.createHash('sha1').update(JSON.stringify([o.S, o.G, o.L, o.base])).digest('hex');
   const prevSig = prevData ? sig(prevData) : '';
   if (sig(next) !== prevSig) {
