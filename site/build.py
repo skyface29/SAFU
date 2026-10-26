@@ -211,6 +211,15 @@ if os.path.isdir(os.path.join(HERE, "raspisanie")):
     if os.path.isdir(data):
         shutil.copytree(data, os.path.join(OUT, "raspisanie", "data"), dirs_exist_ok=True, ignore=shutil.ignore_patterns(".git", "*.md"))
         print("расписание:", len(os.listdir(os.path.join(data, "snapshots"))) - 1 if os.path.isdir(os.path.join(data, "snapshots")) else 0, "копий в архиве")
+    # Экономия трафика: GitHub Pages отдаёт ETag по времени изменения файла, а сайт пересобирается каждые полчаса.
+    # Ставим время изменения из содержимого — тогда у неизменившихся файлов ETag тот же и браузер получает «304, не менялось».
+    import zlib
+    for dirpath, _, names in os.walk(os.path.join(OUT, "raspisanie")):
+        for n in names:
+            fp = os.path.join(dirpath, n)
+            with open(fp, "rb") as f:
+                stamp = 1_000_000_000 + zlib.crc32(f.read()) % 700_000_000
+            os.utime(fp, (stamp, stamp))
 json.dump({"generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "repo": REPO, "versions": rows},
           open(os.path.join(OUT, "versions.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 from collections import Counter

@@ -314,10 +314,12 @@ document.getElementById('themeBtn').onclick=function(){
 
 /* ---------- данные ---------- */
 var D=null, LIVE=null, STATUS=null, CHANGES=[], SNAPS=null, viewingSnap=null;
+/* лёгкая загрузка: m.json (статус) → i.*.json (школы и группы) → s<школа>.*.json (расписание одной школы) */
+var M=null, AG=[], AGI={}, TCH=null, TI={}, LEGACY=null, CUR='', SCHOOLS=[];
 var GO=8,S,G,L,BASE,SCH={},gIdx={},byGroup={},byTeacher={},tSubj={},teachers=[],minT=0,maxT=0;
 function index(d){
   D=d;S=d.S;G=d.G;L=d.L;BASE=d.base*6e4;GO=d.v>=2?9:8;SCH={};gIdx={};byGroup={};byTeacher={};tSubj={};
-  d.schools.forEach(function(s){SCH[s[0]]={id:s[0],short:s[1],full:s[2],about:s[3]};});
+  (d.schools||SCHOOLS).forEach(function(s){SCH[s[0]]={id:s[0],short:s[1],full:s[2],about:s[3]};});
   G.forEach(function(g,i){gIdx[g[0]]=i;});
   minT=Infinity;maxT=0;
   for(var i=0;i<L.length;i++){var l=L[i],st=BASE+l[0]*6e4;if(st<minT)minT=st;if(st+l[1]*6e4>maxT)maxT=st+l[1]*6e4;
@@ -349,6 +351,38 @@ function getGz(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.st
     return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text().then(JSON.parse);}
   return JSON.parse(new TextDecoder().decode(b));});}
 
+function setGroups(list,schools){SCHOOLS=schools||SCHOOLS;AG=list;AGI={};list.forEach(function(g){AGI[g[0]]=g;});
+  SCH={};SCHOOLS.forEach(function(s){SCH[s[0]]={id:s[0],short:s[1],full:s[2],about:s[3]};});}
+var SFILES={};
+function getSchool(inst){var f=M&&M.s[inst];if(!f)return Promise.reject(new Error('нет школы '+inst));
+  return SFILES[f]||(SFILES[f]=fetch('data/web/'+f).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).catch(function(e){delete SFILES[f];throw e;}));}
+/* несколько школ (группа в двух школах, преподаватель в нескольких) → один набор данных */
+function mergeData(list){if(list.length===1)return list[0];
+  var S=[],SI={},G=[],GI={},L=[],seen={},C=[],cs={},base=Infinity,at=0;
+  function s(x){if(!(x in SI)){SI[x]=S.length;S.push(x);}return SI[x];}
+  list.forEach(function(d){if(d.base<base)base=d.base;if(d.at>at)at=d.at;});
+  list.forEach(function(d){var gm=d.G.map(function(g){if(!(g[0] in GI)){GI[g[0]]=G.length;G.push(g);}return GI[g[0]];});
+    d.L.forEach(function(r){var row=[d.base+r[0]-base,r[1]];for(var k=2;k<9;k++)row.push(s(d.S[r[k]]));var key=row.join('|'),e=seen[key];
+      var gs=r.slice(9).map(function(x){return gm[x];});
+      if(e){gs.forEach(function(x){if(e.indexOf(x,9)<0)e.push(x);});return;}
+      row=row.concat(gs);seen[key]=row;L.push(row);});
+    (d.C||[]).forEach(function(x){var k=JSON.stringify(x);if(!cs[k]){cs[k]=1;C.push(x);}});});
+  L.sort(function(a,b){return a[0]-b[0];});C.sort(function(a,b){return b.at-a.at;});
+  return {v:2,base:base,at:at,S:S,G:G,L:L,C:C};}
+/* загрузить расписание нужных школ (из кэша браузера, если уже было) */
+function loadFor(insts){
+  if(LEGACY){if(!viewingSnap&&D!==LEGACY){index(LEGACY);}return Promise.resolve();}
+  insts=(insts||[]).filter(function(x){return M.s[x];}).sort(function(a,b){return a-b;});var key=insts.join(',');
+  if(!insts.length)return Promise.reject(new Error('нет данных'));
+  if(key===CUR&&!viewingSnap&&D===LIVE)return Promise.resolve();
+  app.innerHTML='<div class="grid days"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>';
+  return Promise.all(insts.map(getSchool)).then(function(list){var d=mergeData(list);viewingSnap=null;LIVE=d;CUR=key;CHANGES=d.C||[];index(d);banners();});
+}
+function getTeachers(){if(TCH)return Promise.resolve(TCH);
+  if(LEGACY){TCH=teachers.map(function(t){return [t,[],Object.keys(tSubj[t]).join(', ')];});TCH.forEach(function(t){TI[t[0]]=t;});return Promise.resolve(TCH);}
+  return fetch('data/web/'+M.t).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(x){TCH=x.T;TCH.forEach(function(t){TI[t[0]]=t;});return TCH;});}
+function failLoad(){app.innerHTML='<div class="card empty">Не получилось загрузить расписание. Проверь интернет и обнови страницу — после первого открытия сайт работает и без интернета.</div>';}
+
 /* ---------- состояние экрана ---------- */
 var app=document.getElementById('app'), view=null, week=null, selDay=null;
 function setMode(m){mem.mode=m;save();week=null;selDay=null;route();}
@@ -356,8 +390,15 @@ Array.prototype.forEach.call(document.querySelectorAll('#modeSeg button'),functi
 function syncSeg(){Array.prototype.forEach.call(document.querySelectorAll('#modeSeg button'),function(b){b.classList.toggle('on',b.dataset.m===mem.mode);b.setAttribute('aria-selected',b.dataset.m===mem.mode);});}
 function route(){
   syncSeg();banners();
-  if(mem.mode==='teacher'){if(mem.teacher&&byTeacher[mem.teacher]&&view!=='teachers')return showSched();return showTeachers();}
-  if(mem.group&&gIdx[mem.group]!=null&&view!=='groups'&&view!=='schools')return showSched();
+  if(mem.mode==='teacher'){
+    if(mem.teacher&&view!=='teachers'){
+      if(viewingSnap&&byTeacher[mem.teacher])return showSched();
+      return getTeachers().then(function(){var t=TI[mem.teacher];if(!t)return showTeachers();
+        return loadFor(LEGACY?[]:t[1]).then(function(){byTeacher[mem.teacher]?showSched():showTeachers();});}).catch(failLoad);}
+    return showTeachers();}
+  if(mem.group&&AGI[mem.group]&&view!=='groups'&&view!=='schools'){
+    if(viewingSnap&&gIdx[mem.group]!=null)return showSched();
+    return loadFor(AGI[mem.group][1]).then(function(){gIdx[mem.group]!=null?showSched():showGroups();}).catch(failLoad);}
   if(mem.school!=null&&SCH[mem.school]&&view!=='schools')return showGroups();
   return showSchools();
 }
@@ -368,73 +409,77 @@ function banners(){
   var el=document.getElementById('status'),tx=document.getElementById('statusTxt'),b='';
   if(STATUS){el.hidden=false;
     if(STATUS.up===false){el.classList.add('down');tx.textContent='РУЗ лежит';
-      b+='<div class="banner down"><span>⚠️</span><div class="grow"><b>РУЗ САФУ сейчас не работает'+(STATUS.downSince?' (с '+when(STATUS.downSince)+')':'')+'.</b> Ничего страшного — здесь последняя копия расписания от '+when(LIVE&&LIVE.at)+'. Как только РУЗ оживёт, правки подтянутся сами.</div></div>';}
+      b+='<div class="banner down"><span>⚠️</span><div class="grow"><b>РУЗ САФУ сейчас не работает'+(STATUS.downSince?' (с '+when(STATUS.downSince)+')':'')+'.</b> Ничего страшного — здесь последняя копия расписания от '+when(M?M.at:LIVE&&LIVE.at)+'. Как только РУЗ оживёт, правки подтянутся сами.</div></div>';}
     else if(STATUS.up===true){el.classList.remove('down');var fresh=Date.now()-STATUS.checkedAt<2*3600e3;
       tx.textContent=fresh?'РУЗ работает · проверено в '+hm(STATUS.checkedAt):'Проверено '+when(STATUS.checkedAt);}
-    else{el.classList.remove('down');tx.textContent='Копия от '+when(LIVE&&LIVE.at);}
+    else{el.classList.remove('down');tx.textContent='Копия от '+when(M?M.at:LIVE&&LIVE.at);}
     el.title='Последняя проверка: '+when(STATUS.checkedAt)+(STATUS.lastOkAt?'\nПоследний удачный ответ: '+when(STATUS.lastOkAt):'');
   }
-  if(!viewingSnap&&LIVE){var upd=STATUS&&STATUS.checkedAt||LIVE.checked||LIVE.at,n=SNAPS?SNAPS.length:0,dev=!!(navigator.serviceWorker&&navigator.serviceWorker.controller);
+  if(!viewingSnap&&(M||LIVE)){var upd=STATUS&&STATUS.checkedAt||(M&&M.checked)||LIVE.at,n=SNAPS?SNAPS.length:(M?M.snaps:0),dev=!!(navigator.serviceWorker&&navigator.serviceWorker.controller);
     b+='<div class="saved"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>'+
       '<div class="grow"><b>Резервная копия сохранена</b><br>сверена с РУЗом '+when(upd)+(n?' · '+n+' '+plural(n,'версия','версии','версий')+' в архиве':'')+
       (dev?' · откроется и без интернета':'')+'</div><button class="btn" id="savedAr">Архив</button></div>';}
   if(viewingSnap){b+='<div class="banner time"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="grow"><b>Ты смотришь архивную копию от '+when(viewingSnap.at)+'.</b> Так расписание выглядело тогда.</div><button class="btn" id="backLive">Вернуться к актуальному</button></div>';}
   document.getElementById('banners').innerHTML=b;
-  var bl=document.getElementById('backLive');if(bl)bl.onclick=function(){viewingSnap=null;index(LIVE);route();};
+  var bl=document.getElementById('backLive');if(bl)bl.onclick=function(){viewingSnap=null;CUR='';view=null;route();};
   var sa=document.getElementById('savedAr');if(sa)sa.onclick=openArchive;
 }
 
 /* ---------- экраны выбора ---------- */
-function groupsOf(id){return G.map(function(g,i){return i;}).filter(function(i){return G[i][1].indexOf(id)>=0;});}
+function groupsOf(id){return AG.filter(function(g){return g[1].indexOf(id)>=0;});}
 function showSchools(){
-  view='schools';var cnt={};G.forEach(function(g){g[1].forEach(function(s){cnt[s]=(cnt[s]||0)+1;});});
+  view='schools';var cnt={};AG.forEach(function(g){g[1].forEach(function(s){cnt[s]=(cnt[s]||0)+1;});});
   var h='<h1>Выбери высшую школу</h1><p class="sub">Потом свою группу — и всё. В следующий раз расписание откроется сразу, а правки из РУЗ будут подсвечены.</p>'+
    '<div class="search">'+searchSvg+'<input id="gq" placeholder="Или сразу номер группы, например 151621" inputmode="search" autocomplete="off" aria-label="Поиск группы"></div><div id="gres"></div><div class="grid schools" id="slist">';
-  D.schools.forEach(function(s){if(!cnt[s[0]])return;
+  SCHOOLS.forEach(function(s){if(!cnt[s[0]])return;
     h+='<button class="card sch" data-s="'+s[0]+'"><div class="t"><span class="mark" style="background:'+colorFor(s[1])+'">'+esc(s[1].slice(0,2).toUpperCase())+'</span>'+esc(s[1])+'</div><div class="f">'+esc(s[2])+'</div><div class="a">'+esc(s[3])+'</div><div class="n">'+cnt[s[0]]+' '+plural(cnt[s[0]],'группа','группы','групп')+'</div></button>';});
   app.innerHTML=h+'</div>';
   app.querySelectorAll('[data-s]').forEach(function(b){b.onclick=function(){mem.school=+b.dataset.s;save();showGroups();};});
   var inp=document.getElementById('gq');
   inp.oninput=function(){var v=inp.value.trim(),res=document.getElementById('gres'),sl=document.getElementById('slist');
     if(!v){res.innerHTML='';sl.hidden=false;return;}sl.hidden=true;
-    res.innerHTML=groupCards(G.map(function(g,i){return i;}).filter(function(i){return matchGroup(G[i],v);}),true);bindGroups(res);};
+    res.innerHTML=groupCards(AG.filter(function(g){return matchGroup(g,v);}),true);bindGroups(res);};
 }
 function matchGroup(g,v){v=v.toLowerCase();return g[0].indexOf(v)>=0||(g[3]||'').toLowerCase().indexOf(v)>=0;}
 function groupCards(list,showSchool){
   if(!list.length)return '<div class="empty">Ничего не нашлось</div>';
-  var by={};list.forEach(function(i){var c=G[i][2]||0;(by[c]||(by[c]=[])).push(i);});
+  var by={};list.forEach(function(g){var c=g[2]||0;(by[c]||(by[c]=[])).push(g);});
   var h='';Object.keys(by).sort().forEach(function(c){
     h+='<div class="course">'+(+c?c+' курс':'Другие')+'</div><div class="grid groups">';
-    by[c].sort(function(a,b){return G[a][0].localeCompare(G[b][0]);}).forEach(function(i){var g=G[i],sc=SCH[g[1][0]];
+    by[c].sort(function(a,b){return a[0].localeCompare(b[0]);}).forEach(function(g){var sc=SCH[g[1][0]];
       h+='<button class="card grp" data-g="'+esc(g[0])+'"><div class="num">'+esc(g[0])+(showSchool&&sc?'<small>'+esc(sc.short)+'</small>':'')+'</div><div class="ttl">'+esc(g[3]||'Без названия')+'</div></button>';});
     h+='</div>';});
   return h;
 }
 function bindGroups(root){root.querySelectorAll('[data-g]').forEach(function(b){b.onclick=function(){openGroup(b.dataset.g);};});}
 function showGroups(){
-  view='groups';var s=SCH[mem.school],list=groupsOf(s.id);
+  var s=SCH[mem.school];if(!s)return showSchools();
+  view='groups';var list=groupsOf(s.id);
   app.innerHTML='<div class="crumbs"><button id="back">← Все высшие школы</button></div><h1>'+esc(s.short)+'</h1><p class="sub">'+esc(s.full)+'. Выбери свою группу.</p>'+
     '<div class="search">'+searchSvg+'<input id="gq" placeholder="Номер группы или направление" autocomplete="off" aria-label="Поиск группы"></div><div id="gl"></div>';
   var gl=document.getElementById('gl');
-  function draw(v){gl.innerHTML=groupCards(list.filter(function(i){return !v||matchGroup(G[i],v);}));bindGroups(gl);}
+  function draw(v){gl.innerHTML=groupCards(list.filter(function(g){return !v||matchGroup(g,v);}));bindGroups(gl);}
   draw('');document.getElementById('gq').oninput=function(e){draw(e.target.value.trim());};
   document.getElementById('back').onclick=function(){mem.school=null;save();showSchools();};
 }
 function showTeachers(){
   view='teachers';
+  if(!TCH){app.innerHTML='<div class="grid teachers"><div class="skeleton"></div><div class="skeleton"></div></div>';
+    getTeachers().then(function(){if(view==='teachers')showTeachers();}).catch(failLoad);return;}
+  var teachers=TCH;
   app.innerHTML='<h1>Преподаватели</h1><p class="sub">'+teachers.length+' '+plural(teachers.length,'преподаватель','преподавателя','преподавателей')+'. Найди нужного — где у него пары и когда.</p>'+
     '<div class="search">'+searchSvg+'<input id="tq" placeholder="Фамилия или предмет" autocomplete="off" aria-label="Поиск преподавателя"></div><div class="grid teachers" id="tl"></div>';
   var tl=document.getElementById('tl');
   function draw(v){v=v.toLowerCase();var out='',n=0;
-    for(var i=0;i<teachers.length;i++){var t=teachers[i],subj=Object.keys(tSubj[t]).join(', ');
+    for(var i=0;i<teachers.length;i++){var t=teachers[i][0],subj=teachers[i][2];
       if(v&&t.toLowerCase().indexOf(v)<0&&subj.toLowerCase().indexOf(v)<0)continue;if(++n>240)break;
       out+='<button class="card tch" data-t="'+esc(t)+'"><span class="ava" style="background:'+colorFor(t)+'">'+esc(initials(t))+'</span><div><div class="nm">'+esc(t)+'</div><div class="ds">'+esc(subj)+'</div></div></button>';}
     tl.innerHTML=out||'<div class="empty">Никого не нашлось</div>';
     tl.querySelectorAll('[data-t]').forEach(function(b){b.onclick=function(){openTeacher(b.dataset.t);};});}
   draw('');var inp=document.getElementById('tq');inp.oninput=function(){draw(inp.value.trim());};
 }
-function openTeacher(t){mem.mode='teacher';mem.teacher=t;save();week=null;selDay=null;syncSeg();showSched();scrollTo(0,0);}
-function openGroup(num){if(gIdx[num]==null)return;var g=G[gIdx[num]];mem.mode='group';mem.group=num;if(!g[1].length||g[1].indexOf(mem.school)<0)mem.school=g[1][0];save();week=null;selDay=null;syncSeg();showSched();scrollTo(0,0);}
+function openTeacher(t){mem.mode='teacher';mem.teacher=t;save();week=null;selDay=null;syncSeg();view=null;route();scrollTo(0,0);}
+function openGroup(num){var g=AGI[num]||(viewingSnap&&gIdx[num]!=null&&G[gIdx[num]]);if(!g)return;mem.mode='group';mem.group=num;if(!g[1].length||g[1].indexOf(mem.school)<0)mem.school=g[1][0];save();week=null;selDay=null;syncSeg();view=null;route();scrollTo(0,0);}
 
 /* ---------- правки ---------- */
 function relevant(){
@@ -473,14 +518,14 @@ function openArchive(){
   sheet(h);
   (SNAPS?Promise.resolve(SNAPS):getJSON('data/snapshots/index.json').then(function(x){SNAPS=x;return x;})).then(function(list){
     var el=document.getElementById('snaps');if(!el)return;
-    var out='<button class="card snap'+(viewingSnap?'':' cur')+'" data-live><div><b>Актуальное</b><br><span>копия от '+when(LIVE.at)+'</span></div><span>сейчас</span></button>',cur='';
+    var out='<button class="card snap'+(viewingSnap?'':' cur')+'" data-live><div><b>Актуальное</b><br><span>копия от '+when(M?M.at:LIVE.at)+'</span></div><span>сейчас</span></button>',cur='';
     list.slice().reverse().forEach(function(s){var lbl=dm(dk(s.at));if(lbl!==cur){cur=lbl;out+='<div class="cgroup">'+esc(lbl)+'</div>';}
       out+='<button class="card snap'+(viewingSnap&&viewingSnap.f===s.f?' cur':'')+'" data-f="'+esc(s.f)+'"><div><b>'+hm(s.at)+'</b><br><span>'+s.n+' пар · '+s.g+' групп</span></div><span>'+(s.c?s.c+' '+plural(s.c,'правка','правки','правок'):'первая копия')+'</span></button>';});
     el.innerHTML=out;
-    el.querySelector('[data-live]').onclick=function(){viewingSnap=null;index(LIVE);closeSheet();route();};
+    el.querySelector('[data-live]').onclick=function(){viewingSnap=null;CUR='';sheetEl.hidden=true;document.body.style.overflow='';view=null;route();};
     el.querySelectorAll('[data-f]').forEach(function(b){b.onclick=function(){
       var s=list.filter(function(x){return x.f===b.dataset.f;})[0];b.innerHTML='<div><b>Загружаю…</b></div>';
-      getGz('data/snapshots/'+s.f).then(function(d){viewingSnap=s;index(d);closeSheet();week=null;route();toast('Архивная копия от '+when(s.at));})
+      getGz('data/snapshots/'+s.f).then(function(d){viewingSnap=s;CUR='';index(d);closeSheet();week=null;view=null;route();toast('Архивная копия от '+when(s.at));})
       .catch(function(e){toast(e.message==='old'?'Браузер слишком старый для архива — обнови его':'Не получилось загрузить копию');b.innerHTML='<div><b>'+hm(s.at)+'</b></div>';});};});
   }).catch(function(){var el=document.getElementById('snaps');if(el)el.innerHTML='<div class="empty">Архив сейчас недоступен — нужен интернет.</div>';});
 }
@@ -496,7 +541,8 @@ function showSched(keep){
   view='sched';
   var isT=mem.mode==='teacher',ids,title,meta;
   if(isT){ids=byTeacher[mem.teacher]||[];title=mem.teacher;meta=Object.keys(tSubj[mem.teacher]||{}).join(' · ');}
-  else{var gi=gIdx[mem.group];if(gi==null){view=null;return route();}var g=G[gi];ids=byGroup[gi]||[];title='Группа '+g[0];
+  else{var gi=gIdx[mem.group];if(gi==null){view=null;return SCH[mem.school]?showGroups():showSchools();}var g=G[gi];
+    if(!SCH[mem.school]||g[1].indexOf(mem.school)<0){mem.school=g[1][0];save();}ids=byGroup[gi]||[];title='Группа '+g[0];
     var sc=SCH[mem.school]||SCH[g[1][0]];meta=[g[3],sc&&sc.short,g[2]?g[2]+' курс':''].filter(Boolean).join(' · ');
     var subs=groupSubs(ids,mem.group);if(subs.indexOf(mySub())<0&&mem.sub)delete mem.sub[mem.group];ids=myFilter(ids);}
   var now=Date.now(),today=dk(now),w0=weekOf(minT),w1=weekOf(maxT-1);
@@ -585,16 +631,21 @@ function share(){
 }
 
 /* ---------- запуск ---------- */
-function boot(d){LIVE=d;index(d);route();
-  document.getElementById('foot').textContent='Данные с ruz.narfu.ru · проверено '+when(STATUS&&STATUS.checkedAt||d.checked||d.at)+
-    ' · расписание последний раз менялось '+when(d.at)+' · РУЗ проверяется каждые 30 минут';}
-Promise.all([
+function foot(at,checked){document.getElementById('foot').textContent='Данные с ruz.narfu.ru · проверено '+when(checked||at)+
+    ' · расписание последний раз менялось '+when(at)+' · РУЗ проверяется каждые 30 минут';}
+/* старый формат (одним файлом) — пока сборщик не выложил web/ */
+function legacyBoot(){return Promise.all([
   getJSON('data/latest.json'),
   getJSON('data/status.json').catch(function(){return null;}),
   getJSON('data/changes.json').catch(function(){return {items:[]};}),
   getJSON('data/snapshots/index.json').catch(function(){return null;})
-]).then(function(r){STATUS=r[1];CHANGES=(r[2]&&r[2].items)||[];SNAPS=r[3];boot(r[0]);})
-.catch(function(){app.innerHTML='<div class="card empty">Не получилось загрузить расписание. Проверь интернет и обнови страницу — после первого открытия сайт работает и офлайн.</div>';});
+]).then(function(r){STATUS=r[1];CHANGES=(r[2]&&r[2].items)||[];SNAPS=r[3];LEGACY=LIVE=r[0];index(r[0]);
+  setGroups(r[0].G,r[0].schools);foot(r[0].at,STATUS&&STATUS.checkedAt);route();});}
+getJSON('data/web/m.json').then(function(m){M=m;STATUS=m.status;foot(m.at,m.checked);
+  return fetch('data/web/'+m.i).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});})
+.then(function(x){setGroups(x.G,x.schools);route();})
+.catch(function(){M=null;return legacyBoot();})
+.catch(failLoad);
 setInterval(function(){if(view==='sched'&&sheetEl.hidden){var y=scrollY;showSched();scrollTo(0,y);}},60000);
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});
   navigator.serviceWorker.addEventListener('controllerchange',function(){if(LIVE)banners();});}

@@ -7,6 +7,7 @@
 //   status.json            — жив ли РУЗ, когда проверяли
 //   changes.json           — лента правок за 60 дней
 //   snapshots/index.json   — список всех копий; snapshots/*.json.gz — сами копии (для «как было на…»)
+//   web/                   — то, что реально грузит сайт (лёгкие файлы, см. buildWeb)
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -137,7 +138,7 @@ async function scan() {
   log(`школ со списком групп: ${listsOk}/${insts.length}, групп: ${all.length}`);
   let ok = 0, failed = 0, events = 0;
   const byGroup = {}, fetched = new Set();
-  await pool(all, 6, async g => {
+  await pool(all, 3, async g => {   // 3 страницы одновременно — бережно к РУЗу
     try {
       const ev = [];
       for (const id of g.ids) ev.push(...parseTimetable(await get(`${RUZ}?timetable&group=${id}`, 2)).map(norm));
@@ -229,12 +230,63 @@ function diff(prev, next, window) {
   return items;
 }
 
+// ---------- лёгкие файлы для сайта ----------
+// Чтобы укладываться в трафик GitHub Pages, сайт не тянет всё расписание сразу:
+//   web/m.json              — крошечный «манифест»: статус РУЗа, время копии, имена файлов (меняется каждую проверку)
+//   web/i.<хэш>.json        — списки школ, групп и преподавателей (для выбора и поиска)
+//   web/s<школа>.<хэш>.json — расписание одной школы: 3 недели назад и всё вперёд + правки за 30 дней
+// Хэш в имени = содержимое: пока расписание школы не менялось, имя то же и браузер берёт файл из своего кэша.
+function buildWeb(d, st) {
+  const dir = P('web'); fs.mkdirSync(dir, { recursive: true });
+  const GO = d.v >= 2 ? 9 : 8, cut = Math.floor((NOW - 21 * DAY) / 6e4) - d.base;
+  const hash = s => crypto.createHash('sha1').update(s).digest('hex').slice(0, 10);
+  const changes = readJSON('changes.json', { items: [] }).items.filter(x => x.at > NOW - 30 * DAY);
+  const keep = new Set(['m.json']), files = {};
+  const put = (prefix, body) => { const f = `${prefix}.${hash(body)}.json`; keep.add(f); if (!fs.existsSync(path.join(dir, f))) fs.writeFileSync(path.join(dir, f), body); return f; };
+  const insts = [...new Set(d.G.flatMap(g => g[1]))].sort((a, b) => a - b);
+  let total = 0;
+  for (const inst of insts) {
+    const gsel = [], gmap = new Map();
+    d.G.forEach((g, i) => { if (g[1].includes(inst)) { gmap.set(i, gsel.length); gsel.push(g.slice(0, 4)); } });
+    const S = [], SI = new Map(), s = x => { x = x || ''; if (!SI.has(x)) { SI.set(x, S.length); S.push(x); } return SI.get(x); };
+    const L = []; let base = null;
+    for (const r of d.L) {
+      if (r[0] < cut) continue;
+      const gs = r.slice(GO).filter(x => gmap.has(x)).map(x => gmap.get(x)); if (!gs.length) continue;
+      if (base === null) base = d.base + r[0];
+      const f = r.slice(2, GO).map(k => s(d.S[k])); while (f.length < 7) f.push(s(''));
+      L.push([d.base + r[0] - base, r[1], ...f, ...gs]);
+    }
+    const nums = new Set(gsel.map(g => g[0]));
+    const body = JSON.stringify({ v: 2, at: d.at, base: base ?? d.base, S, G: gsel, L, C: changes.filter(x => nums.has(x.g)).slice(0, 2000) });
+    files[inst] = put('s' + inst, body); total += zlib.gzipSync(body).length;
+  }
+  // преподаватели: в каких школах ведут и что (для поиска; само расписание — из файлов школ)
+  const T = new Map();
+  for (const r of d.L) {
+    const names = (d.S[r[4]] || '').split(',').map(x => x.trim()).filter(x => x.length >= 3); if (!names.length) continue;
+    const ins = new Set(r.slice(GO).flatMap(x => d.G[x][1]));
+    for (const n of names) { if (!T.has(n)) T.set(n, { i: new Set(), s: new Set() }); const t = T.get(n); ins.forEach(x => t.i.add(x)); if (t.s.size < 4) t.s.add(d.S[r[2]]); }
+  }
+  // списки групп (нужны всем) и преподавателей (только тем, кто ищет преподавателя) — отдельными файлами
+  const idx = JSON.stringify({ schools: SCHOOLS.filter(s => insts.includes(s[0])), G: d.G.map(g => g.slice(0, 4)) });
+  const tch = JSON.stringify({ T: [...T.entries()].sort((a, b) => a[0].localeCompare(b[0], 'ru')).map(([n, t]) => [n, [...t.i].sort((a, b) => a - b), [...t.s].join(', ')]) });
+  const ifile = put('i', idx), tfile = put('t', tch);
+  total += zlib.gzipSync(idx).length + zlib.gzipSync(tch).length;
+  const snaps = readJSON('snapshots/index.json', []).length;
+  fs.writeFileSync(path.join(dir, 'm.json'), JSON.stringify({ v: 3, at: d.at, checked: st.checkedAt, status: st, snaps, i: ifile, t: tfile, s: files }));
+  for (const f of fs.readdirSync(dir)) if (!keep.has(f)) fs.unlinkSync(path.join(dir, f));
+  return { files: insts.length, kb: Math.round(total / 1024), avg: Math.round(total / 1024 / (insts.length + 1)) };
+}
+
 // ---------- основное ----------
 // Таймер GitHub часто пропускает запуски, поэтому workflow стучится чаще (раз в 10 минут),
 // а сам обход РУЗа делаем не чаще, чем раз в --every минут (по умолчанию 25), если не --force
 {
   const st = readJSON('status.json', {});
-  const every = +(args.every || 25) * 6e4;
+  // днём — не чаще раза в 25 минут, ночью (00–07 МСК, правок почти нет) — раз в ~2 часа
+  const hour = new Date(NOW + TZ).getUTCHours();
+  const every = +(args.every || (hour < 7 ? 110 : 25)) * 6e4;
   if (!args.force && !args.import && st.checkedAt && NOW - st.checkedAt < every) {
     log(`РУЗ проверяли ${Math.round((NOW - st.checkedAt) / 6e4)} мин назад — пропускаю`);
     if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changed=false\ndata=false\n');
@@ -316,6 +368,10 @@ if (up) {
 // status.json пишем каждый раз: сайт показывает, когда РУЗ проверяли в последний раз
 // (коммиты «только проверка» workflow склеивает в один, история не засоряется)
 writeJSON('status.json', newStatus);
+{
+  const d = readJSON('latest.json', null);
+  if (d) { const w = buildWeb(d, newStatus); summary.push(`Сайт: ${w.files} файлов школ, ${w.kb} КБ (gzip) на всё; на одну школу в среднем ${w.avg} КБ`); }
+}
 summary.push(`РУЗ: ${up ? 'работает' : reason}; групп ${fresh.ok}/${fresh.total}`);
 const out = process.env.GITHUB_OUTPUT;
 if (out) fs.appendFileSync(out, `changed=true\ndata=${dataChanged}\n`);
