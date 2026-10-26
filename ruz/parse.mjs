@@ -85,7 +85,10 @@ export function parseTimetable(html) {
     const a = d.index + d[0].length, b = di + 1 < days.length ? days[di + 1].index : t.length;
     if (b <= a) return;
     const chunk = t.slice(a, b), dd = +d[2] || 1, mm = +d[3] || 1, yy = +d[4] || 2026;
-    const pairs = [...chunk.matchAll(/(?:^|\s)([1-8])\s+(\d{1,2}):(\d{2})\s*[–—-]\s*(\d{1,2}):(\d{2})/g)];
+    // Пары делим по времени «ЧЧ:ММ–ЧЧ:ММ». Номер пары перед временем бывает не всегда, поэтому на него не опираемся:
+    // иначе следующая пара без номера прилипала к адресу предыдущей, а цифра из адреса («корп. 1») съедалась как номер.
+    // Номер следующей пары, если он есть, остаётся в конце текста и срезается trimPairNo.
+    const pairs = [...chunk.matchAll(/(?:^|\s)()(\d{1,2}):(\d{2})\s*[–—-]\s*(\d{1,2}):(\d{2})(?=\s|$)/g)];
     pairs.forEach((p, pi) => {
       const x = p.index + p[0].length, y = pi + 1 < pairs.length ? pairs[pi + 1].index : chunk.length;
       if (y <= x) return;
