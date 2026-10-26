@@ -293,7 +293,7 @@ function buildWeb(d, st) {
     process.exit(0);
   }
 }
-const PARSER = 2;   // поднять, когда меняется разбор страниц РУЗ (parse.mjs)
+const PARSER = 3;   // 3 — возврат к разбору «номер + время» (26.10)   // поднять, когда меняется разбор страниц РУЗ (parse.mjs)
 const prevData = readJSON('latest.json', null);
 const prev = unpack(prevData);
 const status = readJSON('status.json', { up: null });
