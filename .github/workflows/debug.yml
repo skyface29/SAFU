@@ -1,0 +1,22 @@
+# Временная ветка: снимок страниц РУЗ для отладки разбора. Ветку удалить после проверки.
+name: РУЗ — снимок страниц (отладка)
+on:
+  push:
+    branches: [ruz-debug]
+permissions:
+  contents: write
+jobs:
+  grab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          mkdir -p pages
+          for id in 21032 21034 20854 21065; do
+            curl -s -m 30 -A 'Mozilla/5.0 (arktika-app.ru schedule mirror; +https://arktika-app.ru/raspisanie/)' "https://ruz.narfu.ru/?timetable&group=$id" -o "pages/$id.html" || true
+            sleep 2
+          done
+          ls -la pages
+          git config user.name 'github-actions[bot]'; git config user.email '41898+github-actions[bot]@users.noreply.github.com'
+          git add pages && git commit -q -m 'Снимок страниц РУЗ' && git push -q origin HEAD:ruz-debug
