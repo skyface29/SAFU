@@ -97,10 +97,25 @@ function unpack(d) {
   }
   return { groups, byGroup };
 }
-const norm = e => ({ start: e.start, end: e.end, subject: clean(e.subject), kind: clean(e.kind) || 'Занятие', teacher: clean(e.teacher),
+// Предмет: у РУЗа одна и та же пара в двух вёрстках пишется «ВУЦ ( !Вакансия )» и «ВУЦ (!Вакансия )» — из-за пробелов
+// студент видел её дважды. Пробелы у скобок убираем, пустые скобки «( )», «( _ )», «( , )» и пометку «Вакансия»
+// (преподаватель не назначен) — тоже.
+const subjOf = s => clean(clean(s).replace(/\s*\(\s*!?\s*вакансия[^()]*\)?/gi, ' ').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')')
+  .replace(/\s*\([^()А-Яа-яЁёA-Za-z0-9]*\)/g, ' ').replace(/\s+/g, ' '));
+// «Занятие / Практика Производственная практика…» — вид, который раньше не распознавался, уходил в начало предмета
+const kindFix = l => { const m = l.kind === 'Занятие' && /^(Практика|Объявление)\s+(.+)$/.exec(l.subject); if (m) { l.kind = m[1]; l.subject = m[2]; } return l; };
+const norm = e => kindFix({ start: e.start, end: e.end, subject: subjOf(e.subject), kind: clean(e.kind) || 'Занятие', teacher: clean(e.teacher),
   room: clean(dropSub(dropSub(e.room, SUB_ROOM), SUB_ADDR)), address: addrOf(e.address),
   stream: clean(streamOf(e.note) || e.stream), sub: clean(subOf(e)) });
-const dedupe = list => { const m = new Map(); for (const l of list) m.set(lessonKey(l), l); return [...m.values()].sort((a, b) => a.start - b.start); };
+// Одна и та же пара (всё, что видно студенту, совпадает) остаётся одна; если адрес записан по-разному — берём полный
+const dedupe = list => {
+  const m = new Map();
+  for (const l of list) {
+    const k = [l.start, l.end, l.subject, l.kind, l.teacher, l.room, l.sub, l.stream].join('|'), o = m.get(k);
+    if (!o || (l.address || '').length > (o.address || '').length) m.set(k, l);
+  }
+  return [...m.values()].sort((a, b) => a.start - b.start);
+};
 
 // ---------- сеть ----------
 async function get(url, tries = 3) {
@@ -296,7 +311,7 @@ function buildWeb(d, st) {
     process.exit(0);
   }
 }
-const PARSER = 4;   // 4 — адрес из одной цифры отбрасывается (26.10)
+const PARSER = 5;   // 4 — адрес из одной цифры отбрасывается; 5 — пары по строке со временем, окончание «:00», скобки в предмете (26.10)
 // 3 — возврат к разбору «номер + время» (26.10). Поднимать, когда меняется разбор страниц РУЗ (parse.mjs) или нормализация
 const prevData = readJSON('latest.json', null);
 const prev = unpack(prevData);

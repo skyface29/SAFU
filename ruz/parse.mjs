@@ -46,13 +46,18 @@ function trimPairNo(s) {
   return t;
 }
 
-const KINDS = ['Лабораторная работа', 'Лабораторные работы', 'Лабораторные занятия', 'Лабораторное занятие', 'Практическое занятие', 'Практические занятия', 'Дифференцированный зачет', 'Зачет с оценкой', 'Курсовое проектирование', 'Контрольная работа', 'Консультация', 'Экзамен', 'Семинар', 'Лекции', 'Лекция', 'Зачет', 'Зачёт'];
+const KINDS = ['Лабораторная работа', 'Лабораторные работы', 'Лабораторные занятия', 'Лабораторное занятие', 'Практическое занятие', 'Практические занятия', 'Дифференцированный зачет', 'Зачет с оценкой', 'Курсовое проектирование', 'Контрольная работа', 'Консультация', 'Экзамен', 'Семинар', 'Лекции', 'Лекция', 'Зачет', 'Зачёт', 'Практика', 'Объявление'];
 const MARKERS = ['ссылка на курс', 'курс лекций', 'http', 'подгруппа', 'поток ', 'онлайн-курс', 'ссылка', 'платформе sakai'];
 const shortKind = k => { const l = k.toLowerCase(); return l.startsWith('лекц') ? 'Лекция' : l.startsWith('практ') ? 'Практика' : l.startsWith('лаб') ? 'Лабораторная' : k; };
 function parseLocation(s) {
   const t = Re(s), i = t.indexOf('ауд.');
   if (i < 0) return { room: '', address: t };
-  const r = t.slice(i + 4).trim(), c = r.indexOf(',');
+  const r = t.slice(i + 4).trim();
+  // РУЗ отделяет аудиторию от адреса « , » (пробел перед запятой): «ауд. ул.Смольн.буян,3,корп.1, подгр.1 , ул.Смольный буян,3,корпус 1»
+  const sp = r.indexOf(' , ');
+  if (sp >= 0) return { room: r.slice(0, sp).trim(), address: r.slice(sp + 3).trim() };
+  if (r.endsWith(' ,')) return { room: r.slice(0, -2).trim(), address: '' };
+  const c = r.indexOf(',');
   return c >= 0 ? { room: r.slice(0, c).trim(), address: r.slice(c + 1).trim() } : { room: r, address: '' };
 }
 function cleanSubject(s) {
@@ -63,7 +68,7 @@ function cleanSubject(s) {
 function parseLesson(src) {
   const o = { kind: 'Занятие', subject: '', teacher: '', room: '', address: '', note: '' };
   let s = Re(src);
-  for (const k of KINDS) if (s.toLowerCase().startsWith(k.toLowerCase())) { o.kind = shortKind(k); s = s.slice(k.length).trim(); break; }
+  for (const k of KINDS) if (s.toLowerCase().startsWith(k.toLowerCase()) && !/[а-яёa-z]/i.test(s[k.length] || '')) { o.kind = shortKind(k); s = s.slice(k.length).trim(); break; }
   const a = s.indexOf('ауд.');
   if (a >= 0) { const l = parseLocation(s.slice(a)); o.room = l.room; o.address = l.address; s = s.slice(0, a).trim(); }
   const p = [...s.matchAll(/\(([^()]*)\)/g)].reverse().find(m => /[А-ЯЁ]\./.test(m[1]));
@@ -75,6 +80,31 @@ function parseLesson(src) {
 }
 
 // Страница группы → пары
+// РУЗ выводит каждую пару строками: [номер пары] / «ЧЧ:ММ–ЧЧ:ММ» / вид / предмет (преподаватель) / ауд., адрес —
+// и всё это дважды (версия для компьютера и для телефона, одинаковые копии потом склеиваются).
+// Номер пары есть не у всех групп (у 161618 его нет совсем), поэтому делим по строке со временем,
+// а строки, где только номер пары, отбрасываем. Цифры адреса («д. 4», «корпус 1») так не теряются,
+// и вторая пара в то же время не прилипает к адресу первой.
+const TIME_LINE = /^(?:[1-8]\s+)?(\d{1,2}):(\d{2})\s*[–—-]\s*(\d{1,2}):(\d{2})$/;
+function pairsByLines(chunk) {
+  const out = []; let cur = null;
+  for (const raw of chunk.split('\n')) {
+    const line = raw.trim(); if (!line) continue;
+    const m = TIME_LINE.exec(line);
+    if (m) { cur = { t: m, lines: [] }; out.push(cur); continue; }
+    if (cur) cur.lines.push(line);
+  }
+  for (const p of out) while (p.lines.length && /^[1-8]$/.test(p.lines[p.lines.length - 1])) p.lines.pop();   // номер следующей пары
+  return out.map(p => ({ h1: +p.t[1], m1: +p.t[2], h2: +p.t[3], m2: +p.t[4], body: Re(p.lines.join(' ')) }));
+}
+// Запасной путь — если РУЗ когда-нибудь сольёт строки: «номер ЧЧ:ММ–ЧЧ:ММ», как в приложении «Арктика»
+function pairsByNumber(chunk) {
+  const pairs = [...chunk.matchAll(/(?:^|\s)([1-8])\s+(\d{1,2}):(\d{2})\s*[–—-]\s*(\d{1,2}):(\d{2})/g)];
+  return pairs.map((p, pi) => {
+    const x = p.index + p[0].length, y = pi + 1 < pairs.length ? pairs[pi + 1].index : chunk.length;
+    return { h1: +p[2], m1: +p[3], h2: +p[4], m2: +p[5], body: y > x ? trimPairNo(Re(chunk.slice(x, y).replace(/\n/g, ' '))) : '' };
+  });
+}
 export function parseTimetable(html) {
   let h = html;
   const s = /понедельник|вторник|среда|четверг|пятница|суббота/i.exec(html);
@@ -85,17 +115,13 @@ export function parseTimetable(html) {
     const a = d.index + d[0].length, b = di + 1 < days.length ? days[di + 1].index : t.length;
     if (b <= a) return;
     const chunk = t.slice(a, b), dd = +d[2] || 1, mm = +d[3] || 1, yy = +d[4] || 2026;
-    // Пару находим по «номер ЧЧ:ММ–ЧЧ:ММ», как в приложении «Арктика». Пробовали делить просто по времени —
-    // РУЗ дублирует время пары в разметке, и пары двоились (26.10, ~5000 дублей); вернули как было.
-    const pairs = [...chunk.matchAll(/(?:^|\s)([1-8])\s+(\d{1,2}):(\d{2})\s*[–—-]\s*(\d{1,2}):(\d{2})/g)];
-    pairs.forEach((p, pi) => {
-      const x = p.index + p[0].length, y = pi + 1 < pairs.length ? pairs[pi + 1].index : chunk.length;
-      if (y <= x) return;
-      const body = trimPairNo(Re(chunk.slice(x, y).replace(/\n/g, ' ')));
-      if (body.length <= 2) return;
-      const l = parseLesson(body);
-      out.push({ start: at(yy, mm, dd, +p[2] || 8, +p[3] || 0), end: at(yy, mm, dd, +p[4] || 9, +p[5] || 35), ...l });
-    });
+    let pairs = pairsByLines(chunk);
+    if (!pairs.length) pairs = pairsByNumber(chunk);
+    for (const p of pairs) {
+      if (p.body.length <= 2) continue;
+      const l = parseLesson(p.body);
+      out.push({ start: at(yy, mm, dd, p.h1, p.m1), end: at(yy, mm, dd, p.h2, p.m2), ...l });
+    }
   });
   return out;
 }
