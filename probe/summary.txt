@@ -1,0 +1,16 @@
+https://ruz.narfu.ru/ code=200 time=2.181520 size=33874 final=https://ruz.narfu.ru/ ip=78.37.98.67
+https://sakai.narfu.ru/ code=200 time=2.824576 size=70827 final=https://sakai.narfu.ru/portal ip=78.37.98.67
+https://sakai.narfu.ru/portal code=200 time=1.666986 size=70827 final=https://sakai.narfu.ru/portal ip=78.37.98.67
+https://lk.narfu.ru/ code=200 time=2.568834 size=40533 final=https://lk.narfu.ru/login ip=78.37.98.67
+https://narfu.ru/ code=200 time=3.301901 size=464269 final=https://narfu.ru/ ip=78.37.98.67
+https://edu.narfu.ru/ code=200 time=0.923287 size=316 final=https://edu.narfu.ru/ ip=78.37.98.5
+https://office.edu.narfu.ru/ code=200 time=1.789104 size=13745 final=https://office.edu.narfu.ru/Auth.aspx?refererurl=https%3a%2f%2foffice.edu.narfu.ru%2fDefault.aspx ip=78.37.96.24
+https://library.narfu.ru/ code=200 time=3.340118 size=64003 final=https://library.narfu.ru/index.php?lang=ru ip=78.37.98.67
+https://edx2.narfu.ru/ code=000 time=0.256848 size=0 final=https://edx2.narfu.ru/ ip=
+https://edx2.narfu.ru/ FAILED
+https://narfu.ru/sveden/document code=200 size=353505 final=https://narfu.ru/sveden/document/
+https://narfu.ru/sveden/grants code=200 size=365900 final=https://narfu.ru/sveden/grants/
+https://narfu.ru/sveden/objects code=200 size=478528 final=https://narfu.ru/sveden/objects/
+https://narfu.ru/sveden/common code=200 size=841005 final=https://narfu.ru/sveden/common/
+https://narfu.ru/sveden/education code=200 size=1303154 final=https://narfu.ru/sveden/education/
+https://narfu.ru/sveden/paid_edu code=200 size=395358 final=https://narfu.ru/sveden/paid_edu/

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="Lkx5djML4sP9vS2rIzcLHYFac84een6Tp5ctTeEL">
+
+    <title>Личный кабинет</title>
+
+    <meta name="description" content="личный кабинет обучающегося САФУ" />
+    <meta property="og:title" content="Личный кабинет">
+<meta property="og:description" content="личный кабинет обучающегося САФУ">
+    <meta property="og:image" content="https://lk.narfu.ru/storage/settings/logo.png">
+            <meta property="og:image:width" content="1764">
+        <meta property="og:image:height" content="443">
+    
+    <link rel="shortcut icon" href="https://lk.narfu.ru/storage/settings/icon.ico" type="image">
+
+    <link rel="stylesheet" href="/css/app.css?id=c350042ca14338b251fc8ca477e4efe8">
+
+    <style >[wire\:loading], [wire\:loading\.delay], [wire\:loading\.inline-block], [wire\:loading\.inline], [wire\:loading\.block], [wire\:loading\.flex], [wire\:loading\.table], [wire\:loading\.grid], [wire\:loading\.inline-flex] {display: none;}[wire\:loading\.delay\.shortest], [wire\:loading\.delay\.shorter], [wire\:loading\.delay\.short], [wire\:loading\.delay\.long], [wire\:loading\.delay\.longer], [wire\:loading\.delay\.longest] {display:none;}[wire\:offline] {display: none;}[wire\:dirty]:not(textarea):not(input):not(select) {display: none;}input:-webkit-autofill, select:-webkit-autofill, textarea:-webkit-autofill {animation-duration: 50000s;animation-name: livewireautofill;}@keyframes livewireautofill { from {} }</style>
+
+    <link rel="stylesheet" href="https://lk.narfu.ru/css/vendor/trix.css">
+    <link rel="stylesheet" href="https://lk.narfu.ru/css/vendor/pikaday.css">
+    <link
+        rel="stylesheet"
+        href="https://lk.narfu.ru/css/vendor/jquery.datetimepicker.css"
+    />
+    <style>
+        [x-cloak] {
+            display: none;
+        }
+    </style>
+
+    <script>
+        window.TandemFilterBarAssets = {
+            core: "https:\/\/lk.narfu.ru\/js\/vendor\/floating-ui.core.umd.min.js",
+            dom: "https:\/\/lk.narfu.ru\/js\/vendor\/floating-ui.dom.umd.min.js",
+        };
+    </script>
+    <script src="https://lk.narfu.ru/js/vendor/tandem-filter-bar.js?v=1792006170" defer></script>
+    <script src="https://lk.narfu.ru/js/vendor/tandem-select-search-v5-multiselect.js?v=1792006170" defer></script>
+    <script src="https://lk.narfu.ru/js/vendor/tandem-tree-list.js" defer></script>
+    <script src="https://lk.narfu.ru/js/vendor/alpine-focus.js" defer></script>
+    <script src="https://lk.narfu.ru/js/vendor/alpine.js" defer></script>
+
+    </head>
+<body class="font-sans antialiased bg-zinc-50">
+    <div          x-transition:enter="ease-out duration-300"
+                  x-transition:enter-start="opacity-0"
+                  x-transition:enter-end="opacity-100"
+                  x-transition:leave="ease-in duration-200"
+                  x-transition:leave-start="opacity-100"
+                  x-transition:leave-end="opacity-0"
+                   x-data="{ loading: false }"
+                 x-show="loading"
+                 @loading.window="loading = $event.detail.loading" style="display: none; z-index: 10000;"
+                 id="notify-1793088975" class="transition-all fixed inset-0 flex items-end justify-center px-4 py-6 pointer-events-none sm:p-6 sm:items-start sm:justify-center z-100">
+        <div x-data="{ show: true } " x-show="show" class="max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto left-1  overflow-hidden z-50">
+            <div class="p-4">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 mt-0.5">
+                        <svg class="w-5 h-5 fill-indigo-600 animate-spin" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8.66667 0.666667V2C8.66667 2.17681 8.59643 2.34638 8.47141 2.4714C8.34638 2.59643 8.17681 2.66667 8 2.66667C7.82319 2.66667 7.65362 2.59643 7.5286 2.4714C7.40357 2.34638 7.33333 2.17681 7.33333 2V0.666667C7.33333 0.489856 7.40357 0.320286 7.5286 0.195262C7.65362 0.0702379 7.82319 0 8 0C8.17681 0 8.34638 0.0702379 8.47141 0.195262C8.59643 0.320286 8.66667 0.489856 8.66667 0.666667ZM8 13.3333C7.82319 13.3333 7.65362 13.4036 7.5286 13.5286C7.40357 13.6536 7.33333 13.8232 7.33333 14V15.3333C7.33333 15.5101 7.40357 15.6797 7.5286 15.8047C7.65362 15.9298 7.82319 16 8 16C8.17681 16 8.34638 15.9298 8.47141 15.8047C8.59643 15.6797 8.66667 15.5101 8.66667 15.3333V14C8.66667 13.8232 8.59643 13.6536 8.47141 13.5286C8.34638 13.4036 8.17681 13.3333 8 13.3333ZM2.66667 8C2.66667 7.82319 2.59643 7.65362 2.4714 7.5286C2.34638 7.40357 2.17681 7.33333 2 7.33333H0.666667C0.489856 7.33333 0.320286 7.40357 0.195262 7.5286C0.0702379 7.65362 0 7.82319 0 8C0 8.17681 0.0702379 8.34638 0.195262 8.47141C0.320286 8.59643 0.489856 8.66667 0.666667 8.66667H2C2.17681 8.66667 2.34638 8.59643 2.4714 8.47141C2.59643 8.34638 2.66667 8.17681 2.66667 8ZM15.3333 7.33333H14C13.8232 7.33333 13.6536 7.40357 13.5286 7.5286C13.4036 7.65362 13.3333 7.82319 13.3333 8C13.3333 8.17681 13.4036 8.34638 13.5286 8.47141C13.6536 8.59643 13.8232 8.66667 14 8.66667H15.3333C15.5101 8.66667 15.6797 8.59643 15.8047 8.47141C15.9298 8.34638 16 8.17681 16 8C16 7.82319 15.9298 7.65362 15.8047 7.5286C15.6797 7.40357 15.5101 7.33333 15.3333 7.33333ZM12.012 1.07867C11.9362 1.03474 11.8526 1.00616 11.7657 0.994583C11.6789 0.983003 11.5907 0.988642 11.5061 1.01118C11.4214 1.03371 11.3421 1.0727 11.2725 1.12592C11.2029 1.17914 11.1446 1.24554 11.1007 1.32133L10.434 2.47533C10.3455 2.62837 10.3215 2.81028 10.3671 2.98105C10.4127 3.15182 10.5243 3.29748 10.6773 3.386C10.7785 3.44514 10.8935 3.47621 11.0107 3.476C11.1277 3.476 11.2426 3.44519 11.344 3.38668C11.4453 3.32817 11.5295 3.24401 11.588 3.14267L12.2547 1.98867C12.343 1.83577 12.367 1.65409 12.3215 1.48348C12.276 1.31288 12.1647 1.1673 12.012 1.07867ZM5.32467 12.614C5.17171 12.5255 4.98987 12.5013 4.8191 12.5468C4.64834 12.5923 4.50263 12.7038 4.414 12.8567L3.74733 14.0107C3.65882 14.1636 3.63466 14.3455 3.68016 14.5162C3.72567 14.687 3.83711 14.8327 3.99 14.9213C4.09114 14.9804 4.2062 15.0115 4.32333 15.0113C4.44047 15.0114 4.55557 14.9807 4.65704 14.9222C4.75851 14.8637 4.84277 14.7794 4.90133 14.678L5.568 13.524C5.65625 13.371 5.68019 13.1893 5.63456 13.0187C5.58894 12.8481 5.47749 12.7025 5.32467 12.614ZM3.14333 4.414L1.98933 3.74733C1.8367 3.6652 1.65808 3.64573 1.49134 3.69307C1.3246 3.74041 1.18285 3.85082 1.09615 4.00091C1.00944 4.15099 0.984603 4.32894 1.02689 4.49704C1.06918 4.66513 1.17527 4.81014 1.32267 4.90133L2.47667 5.568C2.6293 5.65014 2.80792 5.6696 2.97466 5.62226C3.1414 5.57493 3.28315 5.46451 3.36985 5.31443C3.45656 5.16434 3.4814 4.98639 3.43911 4.8183C3.39682 4.65021 3.29073 4.50519 3.14333 4.414ZM14.6767 11.1007L13.5227 10.434C13.37 10.3519 13.1914 10.3324 13.0247 10.3797C12.8579 10.4271 12.7162 10.5375 12.6295 10.6876C12.5428 10.8377 12.5179 11.0156 12.5602 11.1837C12.6025 11.3518 12.7086 11.4968 12.856 11.588L14.01 12.2547C14.1111 12.3138 14.2262 12.3449 14.3433 12.3447C14.4901 12.3447 14.6327 12.2962 14.7492 12.2069C14.8656 12.1176 14.9493 11.9923 14.9873 11.8505C15.0252 11.7088 15.0154 11.5585 14.9592 11.4229C14.9031 11.2873 14.8038 11.174 14.6767 11.1007ZM4.89933 1.32133C4.80814 1.17393 4.66313 1.06784 4.49504 1.02556C4.32694 0.983269 4.14899 1.00811 3.99891 1.09482C3.84882 1.18152 3.73841 1.32327 3.69107 1.49001C3.64373 1.65675 3.6632 1.83537 3.74533 1.988L4.412 3.142C4.47051 3.24334 4.55467 3.3275 4.65601 3.38601C4.75735 3.44453 4.87231 3.47533 4.98933 3.47533C5.10647 3.47554 5.22155 3.44447 5.32267 3.38533C5.47567 3.29681 5.58725 3.15115 5.63288 2.98038C5.67851 2.80961 5.65446 2.62771 5.566 2.47467L4.89933 1.32133ZM11.586 12.8547C11.4948 12.7073 11.3498 12.6012 11.1817 12.5589C11.0136 12.5166 10.8357 12.5414 10.6856 12.6281C10.5355 12.7149 10.4251 12.8566 10.3777 13.0233C10.3304 13.1901 10.3499 13.3687 10.432 13.5213L11.0987 14.6753C11.1899 14.8227 11.3349 14.9288 11.503 14.9711C11.6711 15.0134 11.849 14.9886 11.9991 14.9019C12.1492 14.8151 12.2596 14.6734 12.3069 14.5067C12.3543 14.3399 12.3348 14.1613 12.2527 14.0087L11.586 12.8547ZM13.1913 5.65467C13.3084 5.65466 13.4233 5.62385 13.5247 5.56533L14.6787 4.89867C14.8261 4.80748 14.9322 4.66246 14.9744 4.49437C15.0167 4.32628 14.9919 4.14832 14.9052 3.99824C14.8185 3.84816 14.6767 3.73774 14.51 3.6904C14.3433 3.64307 14.1646 3.66253 14.012 3.74467L12.858 4.41133C12.7312 4.48486 12.6322 4.59811 12.5763 4.73355C12.5204 4.869 12.5106 5.0191 12.5486 5.16064C12.5865 5.30218 12.6701 5.42727 12.7862 5.51657C12.9024 5.60587 13.0448 5.65441 13.1913 5.65467ZM2.47533 10.432L1.32133 11.0987C1.19425 11.172 1.09492 11.2853 1.03877 11.4209C0.982614 11.5565 0.972764 11.7068 1.01075 11.8485C1.04873 11.9903 1.13242 12.1156 1.24884 12.2049C1.36527 12.2942 1.50792 12.3427 1.65467 12.3427C1.77181 12.3429 1.88688 12.3118 1.988 12.2527L3.142 11.586C3.2894 11.4948 3.39549 11.3498 3.43778 11.1817C3.48006 11.0136 3.45522 10.8357 3.36852 10.6856C3.28181 10.5355 3.14007 10.4251 2.97333 10.3777C2.80659 10.3304 2.62796 10.3499 2.47533 10.432Z"/>
+</svg>
+                    </div>
+                    <div class="ml-3 w-0 flex-1 pt-0.5">
+                        <p class="text-sm font-semibold text-indigo-600">
+                            Идет загрузка
+                        </p>
+                        <p class="mt-1 text-sm text-gray-500">
+                            Пожалуйста подождите
+                        </p>
+                    </div>
+                    <div class="ml-4 flex-shrink-0 flex">
+                        <button @click="show = false" class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sunset">
+                            <span class="sr-only">x</span>
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+</svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="font-sans text-gray-900 antialiased">
+        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0
+ bg-zinc-50 ">
+    <div class="flex flex-col md:flex-row  w-full sm:max-w-md  md:max-w-4xl mt-6 bg-white shadow overflow-hidden sm:rounded-2xl">
+        <div class="w-full md:w-6/12 lg:w-7/12 bg-white flex flex-col justify-around items-center border-r border-gray-200">
+            <div class="mx-auto mt-10 md:mt-0">
+              <div class="p-4 max-w-full">
+    <a href="/">
+        <img src="https://lk.narfu.ru/storage/settings/logo.png" alt="Личный кабинет"  style="max-height:100px" />
+    </a>
+</div>
+            </div>
+        </div>
+        <div class="w-full md:w-6/12 lg:w-5/12">
+            <div class="w-full sm:max-w-md px-5 sm:px-10 py-6 bg-white overflow-hidden">
+                <form method="POST" action="https://lk.narfu.ru/login">
+            <input type="hidden" name="_token" value="Lkx5djML4sP9vS2rIzcLHYFac84een6Tp5ctTeEL">                        <div class="flex justify-between md:justify-end mb-1 md:mb-3">
+                <h2 class="block md:hidden font-medium text-xl md:text-2xl text-indigo-900 flex-grow mr-2">Вход в систему</h2>
+                <div wire:id="FJaTrvE6jfs1uq2F67sf" wire:initial-data="{&quot;fingerprint&quot;:{&quot;id&quot;:&quot;FJaTrvE6jfs1uq2F67sf&quot;,&quot;name&quot;:&quot;user-choose-language&quot;,&quot;locale&quot;:null,&quot;path&quot;:&quot;login&quot;,&quot;method&quot;:&quot;GET&quot;,&quot;v&quot;:&quot;acj&quot;},&quot;effects&quot;:{&quot;listeners&quot;:[]},&quot;serverMemo&quot;:{&quot;children&quot;:[],&quot;errors&quot;:[],&quot;htmlHash&quot;:&quot;e21ec168&quot;,&quot;data&quot;:{&quot;current&quot;:[],&quot;locales&quot;:[],&quot;attrs&quot;:[],&quot;shortTitle&quot;:false},&quot;dataMeta&quot;:{&quot;models&quot;:{&quot;current&quot;:{&quot;class&quot;:&quot;Tandem\\Translate\\Models\\TranslationLanguage&quot;,&quot;id&quot;:1,&quot;relations&quot;:[],&quot;connection&quot;:&quot;mysql&quot;}},&quot;modelCollections&quot;:{&quot;locales&quot;:{&quot;class&quot;:&quot;Tandem\\Translate\\Models\\TranslationLanguage&quot;,&quot;id&quot;:[1,2],&quot;relations&quot;:[],&quot;connection&quot;:&quot;mysql&quot;}}},&quot;checksum&quot;:&quot;41d78214e01f8a180e7218ae704f37fcbd2e888a3c5069b2996b0d4770bcc3a5&quot;}}" x-data="{ open: false }" @keydown.window.escape="open = false" @click.away="open = false" class="relative mr-3">
+        <div :class="open == true ? 'fill-indigo-600' : 'fill-gray-600'" class="hidden lg:flex group flex items-center justify-center text-gray-600 hover:text-indigo-600 hover:fill-indigo-600">
+            <div :class="open == true ? 'bg-indigo-100' : 'bg-zinc-50'"  class="group-hover:bg-indigo-100 group-focus:bg-indigo-100 group-active:bg-indigo-100 group-focus:bg-indigo-100 text-sm text-indigo-600 rounded flex items-center py-1 px-3 justify-center cursor-pointer" @click="open = !open">
+                <div>
+                                            Русский
+                                    </div>
+            </div>
+            <div class="mt-2 ml-2 cursor-pointer" @click="open = !open"><svg class="w-3.5 h-3.5 text-gray-600 hover:text-indigo-600" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
+    <path d="M9.14053 0.197199C9.07855 0.134713 9.00482 0.0851168 8.92358 0.051271C8.84234 0.0174253 8.7552 0 8.6672 0C8.57919 0 8.49205 0.0174253 8.41081 0.051271C8.32957 0.0851168 8.25584 0.134713 8.19386 0.197199L5.14053 3.25053C5.07855 3.31301 5.00482 3.36261 4.92358 3.39645C4.84234 3.4303 4.7552 3.44772 4.6672 3.44772C4.57919 3.44772 4.49205 3.4303 4.41081 3.39645C4.32957 3.36261 4.25584 3.31301 4.19386 3.25053L1.14053 0.197199C1.07855 0.134713 1.00482 0.0851168 0.92358 0.051271C0.84234 0.0174253 0.755203 0 0.667195 0C0.579187 0 0.49205 0.0174253 0.41081 0.051271C0.329571 0.0851168 0.255837 0.134713 0.193862 0.197199C0.0696944 0.322107 0 0.491074 0 0.667198C0 0.843321 0.0696944 1.01229 0.193862 1.1372L3.25386 4.19719C3.62886 4.57172 4.13719 4.7821 4.6672 4.7821C5.1972 4.7821 5.70553 4.57172 6.08053 4.19719L9.14053 1.1372C9.2647 1.01229 9.33439 0.843321 9.33439 0.667198C9.33439 0.491074 9.2647 0.322107 9.14053 0.197199Z"/>
+</svg>
+</div>
+        </div>
+        <div class="flex lg:hidden items-center justify-center mr-4">
+            <div class="hover:bg-indigo-200 rounded-full h-7 w-7 flex items-center justify-center cursor-pointer" @click="open = !open">
+                <div wire:loading.attr="disabled">
+                    <div
+    
+    class=" inline-flex  items-center justify-start tandem-popper-tooltip-root "
+    data-tandem-popper-tooltip
+    data-tandem-popper-placement="bottom-end"
+                data-tandem-popper-title="Выбрать язык"
+        data-tandem-popper-html="0"
+    >
+            <div class="flex relative">
+                            <div><svg class="w-3.5 h-3.5 fill-indigo-500 text-indigo-600" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7.40599 12.6314C7.44471 12.7105 7.49868 12.781 7.5648 12.8391C7.63091 12.8971 7.70787 12.9415 7.79122 12.9697C7.87458 12.9978 7.96268 13.0092 8.05046 13.0032C8.13824 12.9971 8.22395 12.9738 8.30266 12.9345C8.38136 12.8951 8.4515 12.8406 8.50904 12.774C8.56657 12.7075 8.61036 12.6302 8.63787 12.5466C8.66539 12.463 8.67609 12.3748 8.66936 12.2871C8.66263 12.1994 8.6386 12.1138 8.59866 12.0355L4.93199 4.70212C4.87663 4.59135 4.79152 4.4982 4.68619 4.43309C4.58086 4.36798 4.45948 4.3335 4.33566 4.3335C4.21183 4.3335 4.09045 4.36798 3.98512 4.43309C3.87979 4.4982 3.79468 4.59135 3.73932 4.70212L0.0726561 12.0355C0.0327133 12.1138 0.00868394 12.1994 0.00195344 12.2871C-0.00477705 12.3748 0.00592447 12.463 0.033441 12.5466C0.0609575 12.6302 0.104745 12.7075 0.162278 12.774C0.219811 12.8406 0.289953 12.8951 0.368658 12.9345C0.447363 12.9738 0.533075 12.9971 0.620852 13.0032C0.708629 13.0092 0.796735 12.9978 0.88009 12.9697C0.963444 12.9415 1.0404 12.8971 1.10652 12.8391C1.17263 12.781 1.22661 12.7105 1.26532 12.6314L2.41399 10.3335H6.25666L7.40599 12.6314ZM3.08066 9.00012L4.33466 6.49078L5.58999 9.00012H3.08066Z"/>
+    <path d="M6.46651 2.08506C6.25843 2.08506 6.08974 2.25375 6.08974 2.46183C6.08974 2.66992 6.25843 2.8386 6.46651 2.8386H7.91232C7.47022 3.67018 6.88666 4.43556 6.16072 4.99804C6.0039 5.11955 5.95977 5.33959 6.06236 5.51141C6.17391 5.69823 6.4433 5.79056 6.63491 5.63873C6.80002 5.50789 6.95784 5.36919 7.10863 5.22362V7.70833C7.10863 7.92362 7.28316 8.09815 7.49844 8.09815C7.71373 8.09815 7.88826 7.92362 7.88826 7.70833V4.4367C7.88826 4.406 7.8847 4.37612 7.87799 4.34745C8.23032 3.87703 8.53136 3.36687 8.78714 2.8386H12.7226C12.9307 2.8386 13.0994 2.66992 13.0994 2.46183C13.0994 2.25375 12.9307 2.08506 12.7226 2.08506H9.11798C9.19729 1.88532 9.2708 1.68451 9.33881 1.4837C9.41396 1.26183 9.27924 1.02797 9.05481 0.973617C8.8438 0.922514 8.63371 1.0484 8.57044 1.25212C8.48433 1.52938 8.38361 1.80855 8.26826 2.08506H6.46651ZM8.86617 4.50491C8.66441 4.50491 8.50085 4.66847 8.50085 4.87023C8.50085 5.07199 8.66441 5.23555 8.86617 5.23555H10.2586V7.2072H8.56666C8.36279 7.2072 8.19752 7.37247 8.19752 7.57634C8.19752 7.78021 8.36279 7.94547 8.56666 7.94547H12.7302C12.9341 7.94547 13.0994 7.78021 13.0994 7.57634C13.0994 7.37247 12.9341 7.2072 12.7302 7.2072H11.0383V5.23555H12.4307C12.6325 5.23555 12.796 5.07199 12.796 4.87023C12.796 4.66847 12.6325 4.50491 12.4307 4.50491H11.0383V3.42144C11.0383 3.20615 10.8637 3.03162 10.6484 3.03162C10.4332 3.03162 10.2586 3.20615 10.2586 3.42144V4.50491H8.86617Z" stroke-width="0.196292"/>
+</svg>
+</div>
+                        </div>
+    
+    </div>
+
+                    </div>
+            </div>
+            <div class="mt-2 ml-2 cursor-pointer" @click="open = !open"><svg class="w-3.5 h-3.5 text-gray-600" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
+    <path d="M9.14053 0.197199C9.07855 0.134713 9.00482 0.0851168 8.92358 0.051271C8.84234 0.0174253 8.7552 0 8.6672 0C8.57919 0 8.49205 0.0174253 8.41081 0.051271C8.32957 0.0851168 8.25584 0.134713 8.19386 0.197199L5.14053 3.25053C5.07855 3.31301 5.00482 3.36261 4.92358 3.39645C4.84234 3.4303 4.7552 3.44772 4.6672 3.44772C4.57919 3.44772 4.49205 3.4303 4.41081 3.39645C4.32957 3.36261 4.25584 3.31301 4.19386 3.25053L1.14053 0.197199C1.07855 0.134713 1.00482 0.0851168 0.92358 0.051271C0.84234 0.0174253 0.755203 0 0.667195 0C0.579187 0 0.49205 0.0174253 0.41081 0.051271C0.329571 0.0851168 0.255837 0.134713 0.193862 0.197199C0.0696944 0.322107 0 0.491074 0 0.667198C0 0.843321 0.0696944 1.01229 0.193862 1.1372L3.25386 4.19719C3.62886 4.57172 4.13719 4.7821 4.6672 4.7821C5.1972 4.7821 5.70553 4.57172 6.08053 4.19719L9.14053 1.1372C9.2647 1.01229 9.33439 0.843321 9.33439 0.667198C9.33439 0.491074 9.2647 0.322107 9.14053 0.197199Z"/>
+</svg>
+</div>
+        </div>
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95"
+             x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75"
+             x-transition:leave-start="transform opacity-100 scale-100"
+             x-transition:leave-end="transform opacity-0 scale-95"
+             class="origin-top-right absolute left-0 lg:right-0 mt-2 border-0 z-50 w-56 rounded-md shadow" style="display: none;">
+            <div class="rounded-md bg-white border-0">
+                <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                                            <a href="#"
+   class="block px-4 py-2 text-sm leading-5 text-gray-700 hover:bg-indigo-100 hover:text-indigo-600 focus:outline-none focus:bg-indigo-100 focus:text-indigo-600" link="#" title="Русский" wire:click.prevent="changeLang('ru')"
+   role="menuitem">
+    Русский
+</a>
+                                            <a href="#"
+   class="block px-4 py-2 text-sm leading-5 text-gray-700 hover:bg-indigo-100 hover:text-indigo-600 focus:outline-none focus:bg-indigo-100 focus:text-indigo-600" link="#" title="English" wire:click.prevent="changeLang('en')"
+   role="menuitem">
+    English
+</a>
+                                    </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Livewire Component wire-end:FJaTrvE6jfs1uq2F67sf -->            </div>
+            <div class="flex hidden md:block">
+                <h2 class="font-medium text-xl md:text-2xl text-indigo-900 mb-5 flex-grow mr-2">Вход в систему</h2>
+            </div>
+
+                        <div x-data="{ openLoginForm: true }" >
+                                                                    <div x-show="openLoginForm"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 scale-90"
+                        x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-300"
+                        x-transition:leave-start="opacity-100 scale-100"
+                        x-transition:leave-end="opacity-0 scale-90" >
+                                                    <div class="text-gray-500 md:mb-5">
+                                <span class="text-sm">
+                                    
+                                </span>
+                            </div>
+                                                <div>
+                                                                                        <label class="flex gap-1 font-medium block text-slate-500 text-[10px] md:text-xs mb-1">
+        Имя пользователя / E-mail
+                <style>
+            a.tandem-ckeditor-link span {
+                text-decoration: underline;
+            }
+        </style>
+    </label>
+                                <input
+        
+    
+    class="form-input border-0 p-2 pl-3 pr-3 rounded focus:border-0 active:border-0 disabled:opacity-65 bg-gray-100 block w-full text-indigo-500 text-xs md:text-sm p-2" type="text" name="login" value="" required="required" autofocus="autofocus"
+    placeholder=""
+>
+                                                    </div>
+                        <div class="mt-5">
+                            <label class="flex gap-1 font-medium block text-slate-500 text-[10px] md:text-xs mb-1">
+        Пароль
+                <style>
+            a.tandem-ckeditor-link span {
+                text-decoration: underline;
+            }
+        </style>
+    </label>
+                            <input
+        
+    
+    class="form-input border-0 p-2 pl-3 pr-3 rounded focus:border-0 active:border-0 disabled:opacity-65 bg-gray-100 block w-full text-indigo-500 text-xs md:text-sm p-2" type="password" name="password" required="required" autocomplete="current-password"
+    placeholder=""
+>
+                        </div>
+                                                <div class="flex items-center justify-between mt-5">
+                            <label class="flex items-center">
+                                <input type="checkbox" class="form-checkbox" name="remember">
+                                <span class="ml-3 text-xs text-slate-900">Запомнить меня</span>
+                            </label>
+                                                    </div>
+                        <div class="w-full mt-5 mb-6 md:mb-4">
+                            <button type="submit"
+                                    class="block w-full text-center items-center mb-3 px-8 py-2 border border-transparent text-sm leading-5
+                                    font-medium rounded text-white cursor-pointer bg-indigo-600 hover:bg-indigo-700 focus:bg-indigo-800 active:bg-indigo-800
+                                    transition duration-150 ease-in-out">
+                                Войти
+                            </button>
+                                                                                                            </div>
+                    </div>
+                            </div>
+            <div class="pt-6 md:pt-6 border-t border-gray-100 mb-8">
+                                                    <span class="block text-sm text-slate-900 mb-3 text-center md:text-left">Нужна помощь?</span>
+                    <div>
+                                                    <div class="mb-2 text-center md:text-left">
+                                <a href="https://lk.narfu.ru/support"
+                                   class="inline-block text-[10px] md:text-xs bg-indigo-100 text-indigo-600 rounded-full py-1.5 px-3
+                                   tandem-blue-line items-center hover:bg-indigo-200"
+                                   title="Поддержка">
+
+                                    Поддержка
+                                </a>
+                            </div>
+                                                                                                            <div class="mb-2 text-center md:text-left">
+                                    <a href="https://ruz.narfu.ru/"
+                                       title="Расписание высшего образования"
+                                       target="_blank"
+                                       class="inline-block text-[10px] md:text-xs bg-indigo-100 text-indigo-600 rounded-full py-1.5 px-3 tandem-blue-line items-center hover:bg-indigo-200">Расписание высшего образования</a>
+                                </div>
+                                                            <div class="mb-2 text-center md:text-left">
+                                    <a href="https://sakai.narfu.ru/portal"
+                                       title="Платформа электронного обучения Sakai"
+                                       target="_blank"
+                                       class="inline-block text-[10px] md:text-xs bg-indigo-100 text-indigo-600 rounded-full py-1.5 px-3 tandem-blue-line items-center hover:bg-indigo-200">Платформа электронного обучения Sakai</a>
+                                </div>
+                                                            <div class="mb-2 text-center md:text-left">
+                                    <a href="https://www.narfu.ru"
+                                       title="Сайт университета"
+                                       target="_blank"
+                                       class="inline-block text-[10px] md:text-xs bg-indigo-100 text-indigo-600 rounded-full py-1.5 px-3 tandem-blue-line items-center hover:bg-indigo-200">Сайт университета</a>
+                                </div>
+                                                                        </div>
+                            </div>
+                                </form>
+            </div>
+        </div>
+    </div>
+</div>
+    </div>
+
+    
+    
+    <script src="/livewire/livewire.js?id=90730a3b0e7144480175" data-turbo-eval="false" data-turbolinks-eval="false" ></script><script data-turbo-eval="false" data-turbolinks-eval="false" >window.livewire = new Livewire();window.Livewire = window.livewire;window.livewire_app_url = '';window.livewire_token = 'Lkx5djML4sP9vS2rIzcLHYFac84een6Tp5ctTeEL';window.deferLoadingAlpine = function (callback) {window.addEventListener('livewire:load', function () {callback();});};let started = false;window.addEventListener('alpine:initializing', function () {if (! started) {window.livewire.start();started = true;}});document.addEventListener("DOMContentLoaded", function () {if (! started) {window.livewire.start();started = true;}});</script>
+
+    <script>
+        window.onload = function() {
+            var quietFilterComponents = {
+                'filter': true,
+                'filter-select': true,
+                'filter-multiselect': true,
+                'filter-checkbox': true,
+                'filter-chips': true
+            };
+
+            var isQuietFilterRequest = function (component) {
+                var name = component && component.fingerprint && component.fingerprint.name;
+                return !!(name && quietFilterComponents[name]);
+            };
+
+            Livewire.hook('message.sent', function (message, component) {
+                if (isQuietFilterRequest(component)) {
+                    return;
+                }
+                localStorage.setItem('loading_start', true)
+                setTimeout( function () {
+                    if( localStorage.getItem('loading_start') ){
+                        window.dispatchEvent(
+                            new CustomEvent('loading', { detail: { loading: true }})
+                        )
+                    }
+                }, 2000 )
+            })
+            Livewire.hook('message.processed', function (message, component) {
+                if (isQuietFilterRequest(component)) {
+                    return;
+                }
+                localStorage.removeItem('loading_start')
+                window.dispatchEvent(
+                    new CustomEvent('loading', { detail: { loading: false }})
+                )
+            })
+        }
+    </script>
+
+    <script src="https://lk.narfu.ru/js/vendor/trix.js"></script>
+    <script src="https://lk.narfu.ru/js/vendor/pikaday.js"></script>
+    <script src="https://lk.narfu.ru/js/vendor/inputmask.js"></script>
+
+    <script src="https://lk.narfu.ru/js/vendor/jquery.js"></script>
+    <link href="https://lk.narfu.ru/css/vendor/suggestions.css" rel="stylesheet" />
+    <script src="https://lk.narfu.ru/js/vendor/suggestions.js"></script>
+    <script src="https://lk.narfu.ru/js/vendor/jquery.datetimepicker.full.js"></script>
+
+    <script>
+                    let tLk = 'ec30582f36b2a05ccefc077beb80fd17454954e3';
+                window.addEventListener('scroll-to', ({detail}) => {
+            const el = document.getElementById(detail);
+            if(el) {
+                if(detail === 'main') {
+                    el.scrollTo({top: 0, behavior: "smooth"});
+                } else {
+                    el.scrollIntoView({block: "start", behavior: "smooth"});
+                }
+            }
+        });
+    </script>
+                <script src="/js/app.js?id=f667d70d87992eac752cac70389bc3e0" defer></script>
+                <script src="https://unpkg.com/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+        <script src="https://unpkg.com/tooltip.js@1.3.3/dist/umd/tooltip.min.js"></script>
+        <script>
+            (function () {
+                'use strict';
+
+                var style = document.getElementById('tandem-popper-tooltip-styles');
+                if (!style) {
+                    style = document.createElement('style');
+                    style.id = 'tandem-popper-tooltip-styles';
+                    document.head.appendChild(style);
+                }
+                style.textContent =
+                        '.tooltip.tandem-popper-tooltip{' +
+                        'position:absolute;z-index:9999;max-width:15rem;width:max-content;' +
+                        '}' +
+                        '.tooltip.tandem-popper-tooltip .tooltip-inner{' +
+                        'padding:0.5rem;font-size:0.875rem;line-height:1.375rem;font-weight:400;' +
+                        'color:#374151;background:#fff;border-radius:0.375rem;' +
+                        'box-shadow:0 2px 12px rgba(0,0,0,0.12);word-break:break-word;max-width:15rem;' +
+                        '}' +
+                        '.tooltip.tandem-popper-tooltip .tooltip-arrow{display:none;}';
+
+                function hideAllTandemPopperTooltips() {
+                    document.querySelectorAll('[data-tandem-popper-tooltip]').forEach(function (el) {
+                        if (el._tandemPopperTooltip) {
+                            try {
+                                el._tandemPopperTooltip.hide();
+                            } catch (e) {}
+                        }
+                    });
+                }
+
+                function bindHideOnClick() {
+                    if (window.__tandemPopperTooltipClickHide) {
+                        return;
+                    }
+                    window.__tandemPopperTooltipClickHide = true;
+                    document.addEventListener('click', function (event) {
+                        var target = event.target;
+                        if (!target || !target.closest) {
+                            return;
+                        }
+                        if (target.closest('[data-tandem-popper-tooltip]')) {
+                            hideAllTandemPopperTooltips();
+                        }
+                    }, true);
+                }
+
+                function dispose(el) {
+                    if (!el || !el._tandemPopperTooltip) {
+                        return;
+                    }
+                    try {
+                        el._tandemPopperTooltip.dispose();
+                    } catch (e) {}
+                    el._tandemPopperTooltip = null;
+                    el._tandemPopperConfigSignature = null;
+                }
+
+                function disposeInSubtree(root) {
+                    if (!root || !root.querySelectorAll) {
+                        return;
+                    }
+                    root.querySelectorAll('[data-tandem-popper-tooltip]').forEach(dispose);
+                    if (root.matches && root.matches('[data-tandem-popper-tooltip]')) {
+                        dispose(root);
+                    }
+                }
+
+                function readConfig(el) {
+                    if (!el) {
+                        return null;
+                    }
+
+                    var placement = el.getAttribute('data-tandem-popper-placement') || 'top';
+                    var templateId = el.getAttribute('data-tandem-popper-template-id');
+                    var title = el.getAttribute('data-tandem-popper-title') || '';
+                    var html = el.getAttribute('data-tandem-popper-html') === '1';
+
+                    if (templateId) {
+                        var node = document.getElementById(templateId);
+                        if (node) {
+                            title = node.innerHTML;
+                            html = true;
+                        }
+                    }
+
+                    return {
+                        title: title,
+                        html: html,
+                        placement: placement,
+                    };
+                }
+
+                function makeSignature(config) {
+                    if (!config) {
+                        return '';
+                    }
+                    return [config.placement, config.html ? '1' : '0', config.title].join('|');
+                }
+
+                function getTruncateTarget(root) {
+                    if (!root) {
+                        return null;
+                    }
+                    var marked = root.querySelector('[data-tandem-popper-truncate-target]');
+                    if (marked) {
+                        return marked;
+                    }
+                    return root.firstElementChild || null;
+                }
+
+                function isElementTextTruncated(node) {
+                    if (!node) {
+                        return false;
+                    }
+                    var tolerance = 1;
+                    return (
+                        node.scrollWidth - node.clientWidth > tolerance ||
+                        node.scrollHeight - node.clientHeight > tolerance
+                    );
+                }
+
+                function shouldInitTruncatedTooltip(el) {
+                    if (!el || el.getAttribute('data-tandem-popper-only-if-truncated') !== '1') {
+                        return true;
+                    }
+                    return isElementTextTruncated(getTruncateTarget(el));
+                }
+
+                function initElement(el) {
+                    if (!el || typeof window.Tooltip === 'undefined') {
+                        return;
+                    }
+
+                    if (!shouldInitTruncatedTooltip(el)) {
+                        dispose(el);
+                        return;
+                    }
+
+                    var config = readConfig(el);
+                    if (!config || !config.title) {
+                        dispose(el);
+                        return;
+                    }
+                    var signature = makeSignature(config);
+
+                    if (el._tandemPopperTooltip && el._tandemPopperConfigSignature === signature) {
+                        return;
+                    }
+
+                    dispose(el);
+
+                    el._tandemPopperTooltip = new Tooltip(el, {
+                        title: config.title,
+                        placement: config.placement,
+                        trigger: 'hover',
+                        html: config.html,
+                        container: 'body',
+                        offset: '0, 4',
+                        template: '<div class="tooltip tandem-popper-tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>',
+                    });
+                    el._tandemPopperConfigSignature = signature;
+                }
+
+                function scan(root) {
+                    if (!root || !root.querySelectorAll) {
+                        return;
+                    }
+                    root.querySelectorAll('[data-tandem-popper-tooltip]').forEach(initElement);
+                    if (root.matches && root.matches('[data-tandem-popper-tooltip]')) {
+                        initElement(root);
+                    }
+                }
+
+                function bindLivewire() {
+                    if (window.__tandemPopperTooltipLwHooks) {
+                        return;
+                    }
+                    if (typeof window.Livewire === 'undefined' || !window.Livewire.hook) {
+                        return;
+                    }
+                    window.__tandemPopperTooltipLwHooks = true;
+                    window.Livewire.hook('element.initialized', function (el) {
+                        scan(el);
+                    });
+                    window.Livewire.hook('element.removed', function (el) {
+                        disposeInSubtree(el);
+                    });
+                    window.Livewire.hook('message.sent', function () {
+                        hideAllTandemPopperTooltips();
+                    });
+                    window.Livewire.hook('message.processed', function () {
+                        scan(document.body);
+                    });
+                }
+
+                function boot() {
+                    bindHideOnClick();
+                    scan(document.body);
+                    bindLivewire();
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', boot);
+                } else {
+                    boot();
+                }
+
+                document.addEventListener('livewire:load', function () {
+                    bindHideOnClick();
+                    scan(document.body);
+                    bindLivewire();
+                });
+            })();
+        </script>
+        <script type="text/javascript">
+var _tmr = window._tmr || (window._tmr = []);
+_tmr.push({id: "3607611", type: "pageView", start: (new Date()).getTime()});
+(function (d, w, id) {
+  if (d.getElementById(id)) return;
+  var ts = d.createElement("script"); ts.type = "text/javascript"; ts.async = true; ts.id = id;
+  ts.src = "https://top-fwz1.mail.ru/js/code.js";
+  var f = function () {var s = d.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ts, s);};
+  if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); }
+})(document, window, "tmr-code");
+</script>
+<noscript><div><img src="https://top-fwz1.mail.ru/counter?id=3607611;js=na" style="position:absolute;left:-9999px;" alt="Top.Mail.Ru" /></div></noscript>
+</body>
+</html>

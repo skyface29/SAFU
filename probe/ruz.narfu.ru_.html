@@ -1,0 +1,655 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<title>САФУ: Расписание учебных занятий</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta content='text/html; charset=UTF-8' http-equiv='Content-Type'/>
+<meta name="description" content="САФУ. Расписание учебных занятий">
+<meta name="keywords" content="САФУ, пары, РУЗ, RUZ, занятия, расписание, студент, преподаватель"/>
+<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+<meta property="og:image" content="https://ruz.narfu.ru/i/splash-s.png"/>
+<meta name="og:title" content="САФУ: Расписание учебных занятий"/>
+<meta name="og:description" content="САФУ: Расписание учебных занятий"/>
+
+<link rel="stylesheet" type="text/css" href="/lib/bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="/lib/bootstrap/css/bootstrap-theme.min.css">
+
+<link rel="stylesheet" type="text/css" href="/lib/gavrikov/ruz.css">
+
+<!-- <script src="https://code.jquery.com/jquery-1.11.0.js"></script>   2 -->
+
+<script src="/i/js/external/jquery/jquery.js"></script>
+
+<script src="/lib/gavrikov/ruz.js"></script>
+<script src="/lib/bootstrap/js/bootstrap.js"></script>
+
+<link href="/i/js/jquery-ui.css" rel="stylesheet">
+<script src="/i/js/jquery-ui.min.js"></script>
+<style>
+.ac_row {
+	padding: 10px;
+}
+
+.ac_describe {
+	font-size: 70%;
+}
+.ui-autocomplete {
+z-index: 1100;	
+	
+}
+
+.ui-autocomplete .ui-menu-item:nth-child(odd) {
+	background: #eee;
+}
+.ui-autocomplete .ui-menu-item:nth-child(even) {
+	background: #fff;
+}
+
+</style>
+
+
+<script>
+	$(document).ready( function() {
+		$(".srch-frm").click(function(e){
+			if ($("#form-search").is(":visible")) {
+                $("#form-search").hide();
+            }
+			else {
+                $("#form-search").show();
+                $("#lecturers").focus();
+            }
+		});
+
+		$( "#lecturers" ).autocomplete({
+		  autoFocus: true,
+		  source: "/i/ac.php",
+		  minLength: 3,
+		  select: function( event, ui ) {
+			window.location="https://ruz.narfu.ru/?timetable&lecturer="+ui.item.lecturerOid;
+		  },
+		  _renderMenu: function( ul, items ) {
+			  var that = this;
+			  $.each( items, function( index, item ) {
+				that._renderItemData( ul, item );
+			  });
+			  $( ul ).find( "li:odd" ).addClass( "odd" );
+		   }
+		})
+		.autocomplete( "instance" )._renderItem = function( ul, item ) {
+			
+		  return $( "<li>" )
+			.append( "<div class=\"ac_row\"><div class=\"ac_label\">" + item.fio + "</div><div class=\"ac_describe\">" + item.chair + "</div></div>" )
+			.appendTo( ul );
+		}
+		
+		
+	});
+</script>
+
+<style>
+    .additional {
+        padding-top: 4px;
+    }
+
+    .additional img
+    {
+        width: 24px; height: 24px; padding: 0px; margin: 0px;
+    }
+
+    .additional span.label
+    {
+        display: inline-block; padding: 0 0 0 5px; margin-top: 3px; vertical-align: middle;
+        color: #0f0f0f;
+    }
+
+</style>
+
+</head>
+
+<body>
+
+<div class="navbar navbar-default navbar-fixed-top" role="navigation" name="begin">
+    <div class="container-fluid header_container"> <!-- container -->
+
+      <div class="col-xs-5 col-sm-6 col-md-8">
+
+         <div class="hidden-xs hidden-sm header_title">
+         <a class="navbar-brand" href="http://ruz.narfu.ru"><span class="ruz">ruz</span>.narfu.ru /
+         <span>
+                            Расписание учебных занятий
+                     </span>
+         </a>
+         </div>
+
+		
+
+         <div class="visible-xs"><nobr>
+         <a style="padding-left: 0;" class="navbar-brand" href="http://ruz.narfu.ru"><span class="ruz">ruz</span>.narfu.ru</a></nobr>
+         </div>
+
+         <div class="visible-sm"><nobr>
+         <a class="navbar-brand" href="http://ruz.narfu.ru"><span class="ruz">ruz</span>.narfu.ru</a></nobr>
+         </div>
+
+
+      </div>
+                  <div class="col-xs-7 col-sm-6 col-md-4 cmd_header_mail" title="Напишите нам пожалуйста свои пожелания и предложения.">
+				
+                <span class="hidden-xs hidden-sm">
+					  
+					<a href="#" class="btn btn-default btn-md srch-frm" title="Поиск по преподавателю"/>
+					<span class="cmd glyphicon glyphicon-search"></span></a>
+					                                            <a href="https://max.ru/id2901039102_biz" target="_blank" class="btn btn-default additional" title="Канал САФУ в MAX">
+                            <span>
+                                 <img src="/i/max-icon.png" alt="Канал в MAX"/>
+                            </span>
+                            <span style="" class="label"> Канал САФУ в Max</span>
+                        </a>
+                        <a href="https://max.ru/vuz_schedule_bot" target="_blank" class="btn btn-default additional" title="Расписание в MAX">
+                            <span>
+                                 <img src="/i/schedule.webp" alt="Расписание в MAX" />
+                            </span>
+                            <span style="" class="label"> Расписание в MAX</span>
+                        </a>
+                    				</span>
+                <span class="visible-xs visible-sm hidden-md">
+					  
+					<a href="#" class="btn btn-default btn-md srch-frm" title="Поиск по преподавателю"/>
+					<span class="cmd glyphicon glyphicon-search"></span></a>
+					                                            <a href="https://max.ru/id2901039102_biz" target="_blank" class="btn btn-default additional" title="Канал САФУ в MAX">
+                            <span>
+                                 <img src="/i/max-icon.png" alt="Канал в MAX"/>
+                            </span>
+                        </a>
+                        <a href="https://max.ru/vuz_schedule_bot" target="_blank" class="btn btn-default additional" title="Расписание в MAX">
+                            <span>
+                                 <img src="/i/schedule.webp" alt="Расписание в MAX" />
+                            </span>
+                        </a>
+                    
+				</span>
+				
+            </div>
+      	  
+	   
+	  <div id="form-search" class="form-search" style="margin: 10px 0px 10px 0px; display: none; clear: both;">
+	  <center>
+	  <input type="text" class="search-query" id="lecturers" style="font-size: 12pt; min-width: 300px; padding: 3px" placeholder="Начните вводить ФИО преподавателя"/>
+	  </center>
+	  </div>
+	  	  
+    </div>
+</div>
+
+<div class="container-fluid content">
+
+
+    
+    <ul class="nav nav-tabs">
+    <li class="li_title hidden-xs">Институты: </li>
+    <li class="active"><a href="#classic" data-toggle="tab">Все</a></li>
+    <li><a href="#cities" data-toggle="tab">По городам</a></li>
+    <!--<li><a href="#alphabet" data-toggle="tab">По алфавиту</a></li>-->
+    <!--<li><a href="#branches" data-toggle="tab">По филиалам</a></li>-->
+    </ul>
+
+    <div class="tab-content">
+
+    <div class="tab-pane row active" id="classic">
+<!--        <div style="padding: 20px; text-align: center; color: #ff3333">-->
+<!--            <div>-->
+<!--                Вниманию студентов всех курсов филиала САФУ в г. Северодвинске!-->
+<!--            </div>-->
+<!--            <div>-->
+<!--                Расписание на сайте ruz.narfu.ru в настоящее время некорректно, ознакомьтесь с расписанием своей группы по ссылке:-->
+<!--                <a href="https://narfu.ru/sf/studie/raspisanie.php" target="_blank">https://narfu.ru/sf/studie/raspisanie.php</a>-->
+<!--            </div>-->
+<!--        </div>-->
+                        <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=15">
+                    Высшая инженерная школа                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=15">
+                    Высшая инженерная школа                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=1">
+                    Высшая школа естественных наук и технологий                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=1">
+                    Высшая школа естественных наук и технологий                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=3">
+                    Высшая школа информационных технологий и автоматизированных систем                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=3">
+                    Высшая школа информационных технологий и автоматизированных систем                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=4">
+                    Высшая школа социально-гуманитарных наук и международной коммуникации                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=4">
+                    Высшая школа социально-гуманитарных наук и международной коммуникации                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=28">
+                    Высшая школа экономики, управления и права                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=28">
+                    Высшая школа экономики, управления и права                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=12">
+                    Высшая школа энергетики, нефти и газа                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=12">
+                    Высшая школа энергетики, нефти и газа                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=6">
+                    Гуманитарный институт <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=6">
+                    Гуманитарный институт <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=35">
+                    Научный отдел филиала САФУ в г. Северодвинске                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=35">
+                    Научный отдел филиала САФУ в г. Северодвинске                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=33">
+                    Управление подготовки и аттестации НПК                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=33">
+                    Управление подготовки и аттестации НПК                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=26">
+                    Институт судостроения и морской арктической техники (Севмашвтуз) <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=26">
+                    Институт судостроения и морской арктической техники (Севмашвтуз) <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=13">
+                    Высшая школа педагогики, психологии и физической культуры                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=13">
+                    Высшая школа педагогики, психологии и физической культуры                </a>
+            </div>
+<!--            <div class="hidden-xs col-sm-4 col-md-3 institution_button_disable">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+<!--            <div class="visible-xs col-xs-12 institution_button_disable xs">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=36">
+                    Высшая школа рыболовства и морских технологий                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=36">
+                    Высшая школа рыболовства и морских технологий                </a>
+            </div>
+<!--            <div class="hidden-xs col-sm-4 col-md-3 institution_button_disable">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+<!--            <div class="visible-xs col-xs-12 institution_button_disable xs">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=23">
+                    Технический колледж <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=23">
+                    Технический колледж <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+<!--            <div class="hidden-xs col-sm-4 col-md-3 institution_button_disable">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+<!--            <div class="visible-xs col-xs-12 institution_button_disable xs">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+                </div>
+
+    <!--<div class="tab-pane" id="alphabet">
+    
+    </div>-->
+
+    <div class="tab-pane" id="cities">
+
+    <ul class="nav nav-pills nav-level2">
+    <li><a href="#arh" data-toggle="tab">Архангельск</a></li>
+    <li class="active"><a href="#sev" data-toggle="tab">Северодвинск</a></li>
+    <!--<li><a href="#kot" data-toggle="tab">Котлас</a></li>
+    <li><a href="#kjm" data-toggle="tab">Коряжма</a></li>
+    <li><a href="#nmar" data-toggle="tab">Нарьян-Мар</a></li>-->
+    </ul>
+
+    <div class="tab-content tab-level2">
+
+                                                                                                                                                                    <!--<pre></pre>-->
+
+    <div class="tab-pane row" id="arh">
+
+                        <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=15">
+                    Высшая инженерная школа                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=15">
+                    Высшая инженерная школа                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=1">
+                    Высшая школа естественных наук и технологий                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=1">
+                    Высшая школа естественных наук и технологий                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=3">
+                    Высшая школа информационных технологий и автоматизированных систем                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=3">
+                    Высшая школа информационных технологий и автоматизированных систем                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=4">
+                    Высшая школа социально-гуманитарных наук и международной коммуникации                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=4">
+                    Высшая школа социально-гуманитарных наук и международной коммуникации                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=28">
+                    Высшая школа экономики, управления и права                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=28">
+                    Высшая школа экономики, управления и права                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=12">
+                    Высшая школа энергетики, нефти и газа                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=12">
+                    Высшая школа энергетики, нефти и газа                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=33">
+                    Управление подготовки и аттестации НПК                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=33">
+                    Управление подготовки и аттестации НПК                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=13">
+                    Высшая школа педагогики, психологии и физической культуры                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=13">
+                    Высшая школа педагогики, психологии и физической культуры                </a>
+            </div>
+<!--            <div class="hidden-xs col-sm-4 col-md-3 institution_button_disable">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+<!--            <div class="visible-xs col-xs-12 institution_button_disable xs">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=36">
+                    Высшая школа рыболовства и морских технологий                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=36">
+                    Высшая школа рыболовства и морских технологий                </a>
+            </div>
+<!--            <div class="hidden-xs col-sm-4 col-md-3 institution_button_disable">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+<!--            <div class="visible-xs col-xs-12 institution_button_disable xs">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+            
+    </div>
+
+    <div class="tab-pane row active" id="sev">
+
+             
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=6">
+                    Гуманитарный институт <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=6">
+                    Гуманитарный институт <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+                     
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=35">
+                    Научный отдел филиала САФУ в г. Северодвинске                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=35">
+                    Научный отдел филиала САФУ в г. Северодвинске                </a>
+            </div>
+                     
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=26">
+                    Институт судостроения и морской арктической техники (Севмашвтуз) <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=26">
+                    Институт судостроения и морской арктической техники (Севмашвтуз) <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+                                <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+                <a href="?groups&institution=23">
+                    Технический колледж <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+            <div class="visible-xs col-xs-12 institution_button xs">
+                <a href="?groups&institution=23">
+                    Технический колледж <nobr>(г. Северодвинск)</nobr>                </a>
+            </div>
+<!--            <div class="hidden-xs col-sm-4 col-md-3 institution_button_disable">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+<!--            <div class="visible-xs col-xs-12 institution_button_disable xs">-->
+<!--                <span>--><!--</span>-->
+<!--            </div>-->
+            
+    </div>
+
+    </div>
+
+    </div>
+
+    <div class="tab-pane" id="branches">
+
+                                                                                                                                                                
+    <ul class="nav nav-pills nav-level2">
+    <li class="active"><a href="#main" data-toggle="tab">Головной вуз</a></li>
+    <li><a href="#another" data-toggle="tab">Филиалы в&nbsp;других городах</a></li>
+    </ul>
+
+    <div class="tab-content tab-level2">
+
+    <div class="tab-pane row active" id="main">
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=15">
+                Высшая инженерная школа            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=15">
+                Высшая инженерная школа            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=1">
+                Высшая школа естественных наук и технологий            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=1">
+                Высшая школа естественных наук и технологий            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=3">
+                Высшая школа информационных технологий и автоматизированных систем            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=3">
+                Высшая школа информационных технологий и автоматизированных систем            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=4">
+                Высшая школа социально-гуманитарных наук и международной коммуникации            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=4">
+                Высшая школа социально-гуманитарных наук и международной коммуникации            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=28">
+                Высшая школа экономики, управления и права            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=28">
+                Высшая школа экономики, управления и права            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=12">
+                Высшая школа энергетики, нефти и газа            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=12">
+                Высшая школа энергетики, нефти и газа            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=33">
+                Управление подготовки и аттестации НПК            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=33">
+                Управление подготовки и аттестации НПК            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=13">
+                Высшая школа педагогики, психологии и физической культуры            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=13">
+                Высшая школа педагогики, психологии и физической культуры            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=36">
+                Высшая школа рыболовства и морских технологий            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=36">
+                Высшая школа рыболовства и морских технологий            </a>
+        </div>
+        </div>
+
+    <div class="tab-pane row" id="another">
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=6">
+                Гуманитарный институт <nobr>(г. Северодвинск)</nobr>            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=6">
+                Гуманитарный институт <nobr>(г. Северодвинск)</nobr>            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=35">
+                Научный отдел филиала САФУ в г. Северодвинске            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=35">
+                Научный отдел филиала САФУ в г. Северодвинске            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=26">
+                Институт судостроения и морской арктической техники (Севмашвтуз) <nobr>(г. Северодвинск)</nobr>            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=26">
+                Институт судостроения и морской арктической техники (Севмашвтуз) <nobr>(г. Северодвинск)</nobr>            </a>
+        </div>
+            <div class="hidden-xs col-sm-4 col-md-3 institution_button">
+            <a href="?groups&institution=23">
+                Технический колледж <nobr>(г. Северодвинск)</nobr>            </a>
+        </div>
+        <div class="visible-xs col-xs-12 institution_button xs">
+            <a href="?groups&institution=23">
+                Технический колледж <nobr>(г. Северодвинск)</nobr>            </a>
+        </div>
+        </div>
+
+    </div>
+
+    </div>
+
+    </div>
+
+
+
+
+</div>
+
+
+                        <!-- Yandex.Metrika counter -->
+<script type="text/javascript" >
+    (function (d, w, c) {
+        (w[c] = w[c] || []).push(function() {
+            try {
+                w.yaCounter50590399 = new Ya.Metrika2({
+                    id:50590399,
+                    clickmap:true,
+                    trackLinks:true,
+                    accurateTrackBounce:true,
+                    webvisor:true
+                });
+            } catch(e) { }
+        });
+
+        var n = d.getElementsByTagName("script")[0],
+            s = d.createElement("script"),
+            f = function () { n.parentNode.insertBefore(s, n); };
+        s.type = "text/javascript";
+        s.async = true;
+        s.src = "https://mc.yandex.ru/metrika/tag.js";
+
+        if (w.opera == "[object Opera]") {
+            d.addEventListener("DOMContentLoaded", f, false);
+        } else { f(); }
+    })(document, window, "yandex_metrika_callbacks2");
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/50590399" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+</body>
+
+</html>
