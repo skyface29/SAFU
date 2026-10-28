@@ -1,8 +1,8 @@
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 import json, collections
-a = json.load(open(os.path.join(HERE, 'corpus_docs.json'))); b = json.load(open(os.path.join(HERE, 'corpus_pages.json')))
-docs = a['docs'] + b['docs']; chunks = a['chunks'] + b['chunks']
+parts = [json.load(open(os.path.join(HERE, f))) for f in ('corpus_docs.json', 'corpus_pages.json', 'corpus_scans.json')]
+docs = sum((x['docs'] for x in parts), []); chunks = sum((x['chunks'] for x in parts), [])
 seen = collections.Counter()
 for c in chunks:
     base = c['doc'] + ':' + ('pp:' if c['part'] else '') + c['p']

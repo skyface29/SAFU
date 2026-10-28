@@ -87,6 +87,7 @@ footer a{color:var(--aur1);text-decoration:none;font-weight:800}
 
 .wrap{max-width:860px;padding-bottom:0}
 body{display:flex;flex-direction:column}
+body>*{min-width:0}body>.wrap{width:100%;box-sizing:border-box}
 nav.links{display:flex;gap:6px;flex-wrap:wrap}
 nav.links a{color:var(--tx2);text-decoration:none;font-weight:700;font-size:13.5px;padding:7px 11px;border-radius:11px;border:1px solid var(--rim);background:var(--ice)}
 nav.links a:hover{color:var(--tx);border-color:var(--rim2)}
@@ -115,11 +116,14 @@ nav.links a:hover{color:var(--tx);border-color:var(--rim2)}
 .q .src a{font-size:12.5px;font-weight:700;color:var(--tx3);text-decoration:none;white-space:nowrap}
 .q .src a:hover{color:var(--aur1)}
 .q .doc{font-size:12.5px;color:var(--tx3);font-weight:600;margin-bottom:8px;line-height:1.35}
+.msg,.bubble,.q{min-width:0;max-width:100%}.q{overflow:hidden}
+.q .note{font-size:12.5px;font-weight:700;color:var(--aur1);margin:-2px 0 8px;line-height:1.35}
 .q .txt{font-size:14.5px;line-height:1.55;white-space:pre-line}
 .q .txt mark{background:color-mix(in srgb,var(--aur1) 22%,transparent);color:inherit;border-radius:4px;padding:0 2px}
 .q .txt .gap{color:var(--tx3)}
 .q .more{border:0;background:none;padding:6px 0 0;color:var(--aur1);font-weight:800;font-size:13px}
-.q table{border-collapse:collapse;font-size:12.5px;width:100%;display:block;overflow-x:auto;white-space:nowrap}
+.q table{border-collapse:collapse;font-size:12.5px;width:100%;display:block;overflow-x:auto;max-width:100%}
+.q td{white-space:normal}.q td:last-child:not(:first-child){white-space:nowrap}
 .q td{border:1px solid var(--rim);padding:5px 7px}
 .q tr:first-child td{font-weight:800;color:var(--tx2);white-space:normal;min-width:90px}
 .also{margin-top:14px;padding-top:12px;border-top:1px dashed var(--rim2)}
@@ -271,7 +275,7 @@ function meMsg(t){chat.appendChild(el('msg me',esc(t)));}
 /* ---------- цитата пункта ---------- */
 function src(c){var d=D.docs[c.d];
   if(d.w)return {lab:'Страница «'+esc(d.t)+'»',doc:'сайт narfu.ru, снимок от '+esc(D.snap),url:d.u,page:1};
-  return {lab:(c.pp?'Правила поведения, ':'')+'п. '+esc(c.p),doc:esc(d.t)+' · '+esc(d.a),url:d.u};}
+  return {lab:c.lb?esc(c.lb):(c.pp?(c.pp===1?'Правила поведения':esc(c.pp))+', ':'')+'п. '+esc(c.p),doc:esc(d.t)+' · '+esc(d.a)+(c.o?' · распознано со скана и сверено вручную':''),url:c.u||d.u,note:c.n};}
 function table(t){return '<table>'+t.split('\n').map(function(r){return '<tr>'+r.split(' | ').map(function(x){return '<td>'+esc(x)+'</td>';}).join('')+'</tr>';}).join('')+'</table>';}
 function markWords(html,stems){ // подсветка слов из вопроса (для найденных пунктов без готовых фраз)
   if(!stems)return html;
@@ -280,7 +284,7 @@ function markWords(html,stems){ // подсветка слов из вопрос
 var LONG=520;
 function quote(id,hl,stems){
   var c=CH[id];if(!c)return '';var s=src(c),t=c.t,full=esc(t),short=null;
-  if(c.tb)return '<div class="q"><div class="src"><b>'+s.lab+'</b><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+(s.page?'Открыть страницу ↗':'Открыть документ ↗')+'</a></div><div class="doc">'+s.doc+'</div>'+table(t)+'</div>';
+  if(c.tb)return '<div class="q"><div class="src"><b>'+s.lab+'</b><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+(s.page?'Открыть страницу ↗':'Открыть документ ↗')+'</a></div><div class="doc">'+s.doc+'</div>'+(s.note?'<div class="note">'+esc(s.note)+'</div>':'')+table(t)+'</div>';
   if(hl&&hl.length){
     hl.forEach(function(h){full=full.split(esc(h)).join('<mark>'+esc(h)+'</mark>');});
     if(t.length>LONG){ // показываем нужные фразы, остальное — по кнопке
@@ -292,7 +296,7 @@ function quote(id,hl,stems){
     full=markWords(full,stems);
     if(t.length>LONG+200){var cut=t.lastIndexOf(' ',LONG);short=markWords(esc(t.slice(0,cut)),stems)+'<span class="gap"> …</span>';}
   }
-  return '<div class="q"><div class="src"><b>'+s.lab+'</b><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+(s.page?'Открыть страницу ↗':'Открыть документ ↗')+'</a></div><div class="doc">'+s.doc+'</div>'+
+  return '<div class="q"><div class="src"><b>'+s.lab+'</b><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+(s.page?'Открыть страницу ↗':'Открыть документ ↗')+'</a></div><div class="doc">'+s.doc+'</div>'+(s.note?'<div class="note">'+esc(s.note)+'</div>':'')+
     '<div class="txt" data-full="'+esc(full)+'">'+(short||full)+'</div>'+(short?'<button class="more" data-more>Показать пункт целиком</button>':'')+'</div>';
 }
 var WARN='<div class="warn">Это дословные цитаты из документов САФУ (снимок от '+'%SNAP%'+'), без пересказа. Документы меняются — перед важным решением открой документ по ссылке или уточни в директорате.</div>';
@@ -350,7 +354,7 @@ function popular(){return [0,2,5,6,12].concat(D.cards.map(function(c,i){return i
 /* ---------- начало ---------- */
 function hello(){
   var cat=mem.spCat||'Сессия';
-  var h='<div class="hello"><h1>Спроси про учёбу в САФУ</h1><p class="sub">Отвечаю только цитатами из официальных документов — положений о сессии, отчислении и переводе, правил распорядка, страниц про стипендии и общежития. '+
+  var h='<div class="hello"><h1>Спроси про учёбу в САФУ</h1><p class="sub">Отвечаю только цитатами из официальных документов — положений о сессии, отчислении и переводе, правил распорядка, порядка о стипендиях и матпомощи, положения об общежитии. '+
     'Без ИИ и без пересказа: всегда видно, какой это документ и пункт.</p>'+'<p class="warn" style="margin:-4px 0 0">Неофициальный сервис · разработчик <a href="https://t.me/skf29" target="_blank" rel="noopener" style="color:var(--aur1);font-weight:800;text-decoration:none">@skf29</a></p>'+
     '<div class="cats">'+CATS.map(function(c){return '<button data-cat="'+c+'"'+(c===cat?' class="on"':'')+'>'+c+'</button>';}).join('')+'<button data-docs>Документы</button></div><div id="catList"></div></div>';
   var m=botMsg(h);fillCat(cat);return m;

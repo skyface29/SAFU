@@ -19,7 +19,7 @@ function meMsg(t){chat.appendChild(el('msg me',esc(t)));}
 /* ---------- цитата пункта ---------- */
 function src(c){var d=D.docs[c.d];
   if(d.w)return {lab:'Страница «'+esc(d.t)+'»',doc:'сайт narfu.ru, снимок от '+esc(D.snap),url:d.u,page:1};
-  return {lab:(c.pp?'Правила поведения, ':'')+'п. '+esc(c.p),doc:esc(d.t)+' · '+esc(d.a),url:d.u};}
+  return {lab:c.lb?esc(c.lb):(c.pp?(c.pp===1?'Правила поведения':esc(c.pp))+', ':'')+'п. '+esc(c.p),doc:esc(d.t)+' · '+esc(d.a)+(c.o?' · распознано со скана и сверено вручную':''),url:c.u||d.u,note:c.n};}
 function table(t){return '<table>'+t.split('\n').map(function(r){return '<tr>'+r.split(' | ').map(function(x){return '<td>'+esc(x)+'</td>';}).join('')+'</tr>';}).join('')+'</table>';}
 function markWords(html,stems){ // подсветка слов из вопроса (для найденных пунктов без готовых фраз)
   if(!stems)return html;
@@ -28,7 +28,7 @@ function markWords(html,stems){ // подсветка слов из вопрос
 var LONG=520;
 function quote(id,hl,stems){
   var c=CH[id];if(!c)return '';var s=src(c),t=c.t,full=esc(t),short=null;
-  if(c.tb)return '<div class="q"><div class="src"><b>'+s.lab+'</b><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+(s.page?'Открыть страницу ↗':'Открыть документ ↗')+'</a></div><div class="doc">'+s.doc+'</div>'+table(t)+'</div>';
+  if(c.tb)return '<div class="q"><div class="src"><b>'+s.lab+'</b><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+(s.page?'Открыть страницу ↗':'Открыть документ ↗')+'</a></div><div class="doc">'+s.doc+'</div>'+(s.note?'<div class="note">'+esc(s.note)+'</div>':'')+table(t)+'</div>';
   if(hl&&hl.length){
     hl.forEach(function(h){full=full.split(esc(h)).join('<mark>'+esc(h)+'</mark>');});
     if(t.length>LONG){ // показываем нужные фразы, остальное — по кнопке
@@ -40,7 +40,7 @@ function quote(id,hl,stems){
     full=markWords(full,stems);
     if(t.length>LONG+200){var cut=t.lastIndexOf(' ',LONG);short=markWords(esc(t.slice(0,cut)),stems)+'<span class="gap"> …</span>';}
   }
-  return '<div class="q"><div class="src"><b>'+s.lab+'</b><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+(s.page?'Открыть страницу ↗':'Открыть документ ↗')+'</a></div><div class="doc">'+s.doc+'</div>'+
+  return '<div class="q"><div class="src"><b>'+s.lab+'</b><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+(s.page?'Открыть страницу ↗':'Открыть документ ↗')+'</a></div><div class="doc">'+s.doc+'</div>'+(s.note?'<div class="note">'+esc(s.note)+'</div>':'')+
     '<div class="txt" data-full="'+esc(full)+'">'+(short||full)+'</div>'+(short?'<button class="more" data-more>Показать пункт целиком</button>':'')+'</div>';
 }
 var WARN='<div class="warn">Это дословные цитаты из документов САФУ (снимок от '+'%SNAP%'+'), без пересказа. Документы меняются — перед важным решением открой документ по ссылке или уточни в директорате.</div>';
@@ -98,7 +98,7 @@ function popular(){return [0,2,5,6,12].concat(D.cards.map(function(c,i){return i
 /* ---------- начало ---------- */
 function hello(){
   var cat=mem.spCat||'Сессия';
-  var h='<div class="hello"><h1>Спроси про учёбу в САФУ</h1><p class="sub">Отвечаю только цитатами из официальных документов — положений о сессии, отчислении и переводе, правил распорядка, страниц про стипендии и общежития. '+
+  var h='<div class="hello"><h1>Спроси про учёбу в САФУ</h1><p class="sub">Отвечаю только цитатами из официальных документов — положений о сессии, отчислении и переводе, правил распорядка, порядка о стипендиях и матпомощи, положения об общежитии. '+
     'Без ИИ и без пересказа: всегда видно, какой это документ и пункт.</p>'+'<p class="warn" style="margin:-4px 0 0">Неофициальный сервис · разработчик <a href="https://t.me/skf29" target="_blank" rel="noopener" style="color:var(--aur1);font-weight:800;text-decoration:none">@skf29</a></p>'+
     '<div class="cats">'+CATS.map(function(c){return '<button data-cat="'+c+'"'+(c===cat?' class="on"':'')+'>'+c+'</button>';}).join('')+'<button data-docs>Документы</button></div><div id="catList"></div></div>';
   var m=botMsg(h);fillCat(cat);return m;
