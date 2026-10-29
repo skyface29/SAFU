@@ -1,10 +1,10 @@
-// Локальная проверка: сайт + API на одном порту, данные в памяти.
+// Локальная проверка: сайт + API на одном порту, данные в памяти (D1 поверх встроенного SQLite).
 // node otmetki-api/dev-server.js [порт] [папка с веткой ruz-data, в ней web/m.json]
 //   http://localhost:8790/otmetki/?api=local
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
 const { http: api } = require('./core');
-const store = require('./store-mem')();
+const store = require('./store-d1')(require('./d1-local')());   // как в Cloudflare: D1 (SQLite) в памяти
 const PORT = +process.argv[2] || 8790, RUZ = process.argv[3] || '', SITE = path.join(__dirname, '..', 'site');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.json': 'application/json', '.js': 'text/javascript', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml' };
 http.createServer(async (req, res) => {
