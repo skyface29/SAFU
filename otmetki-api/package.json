@@ -1,0 +1,10 @@
+{
+  "name": "otmetki-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API отметок посещаемости arktika-app.ru/otmetki/ (Yandex Cloud Functions + YDB)",
+  "main": "index.js",
+  "dependencies": {
+    "ydb-sdk": "5.11.1"
+  }
+}

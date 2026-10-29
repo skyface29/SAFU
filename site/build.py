@@ -204,8 +204,9 @@ os.makedirs(OUT, exist_ok=True)
 for name in ("index.html", "og.png", "CNAME"):
     if os.path.exists(os.path.join(HERE, name)):
         shutil.copy(os.path.join(HERE, name), os.path.join(OUT, name))
-# spravka/ — справочник по документам САФУ, status/ — что сейчас работает (данные — Cloudflare Worker, status-worker/)
-for name in ("spravka", "status"):
+# spravka/ — справочник по документам САФУ, status/ — что сейчас работает (данные — Cloudflare Worker, status-worker/),
+# otmetki/ — отметки посещаемости для старост (сервер — otmetki-api/, Yandex Cloud Functions + YDB)
+for name in ("spravka", "status", "otmetki"):
     if os.path.isdir(os.path.join(HERE, name)):
         shutil.copytree(os.path.join(HERE, name), os.path.join(OUT, name), dirs_exist_ok=True)
 # raspisanie/ — зеркало расписания РУЗ САФУ (arktika-app.ru/raspisanie/); данные — из ветки ruz-data (ruz.yml)
@@ -218,7 +219,7 @@ if os.path.isdir(os.path.join(HERE, "raspisanie")):
     # Экономия трафика: GitHub Pages отдаёт ETag по времени изменения файла, а сайт пересобирается каждые полчаса.
     # Ставим время изменения из содержимого — тогда у неизменившихся файлов ETag тот же и браузер получает «304, не менялось».
 import zlib
-for top in ("raspisanie", "spravka", "status"):
+for top in ("raspisanie", "spravka", "status", "otmetki"):
     for dirpath, _, names in os.walk(os.path.join(OUT, top)):
         for n in names:
             fp = os.path.join(dirpath, n)
