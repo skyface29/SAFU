@@ -78,7 +78,7 @@ header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0 18p
   background:linear-gradient(135deg,var(--aur1),var(--aur2));box-shadow:0 8px 26px color-mix(in srgb,var(--aur2) 45%,transparent)}
 .logo b{font:700 16px/1.1 var(--ff-d);letter-spacing:-.01em;display:block}
 .logo small{display:block;font-size:12px;color:var(--tx2);font-weight:600}
-.status{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:40px;border:1px solid var(--rim);background:var(--ice);font-size:12.5px;font-weight:700;color:var(--tx2);white-space:nowrap}
+.status{text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:40px;border:1px solid var(--rim);background:var(--ice);font-size:12.5px;font-weight:700;color:var(--tx2);white-space:nowrap}
 .status .dot{width:8px;height:8px;border-radius:50%;background:var(--pr);box-shadow:0 0 0 4px color-mix(in srgb,var(--pr) 22%,transparent)}
 .status.down{color:var(--tx);border-color:color-mix(in srgb,var(--del) 45%,transparent);background:color-mix(in srgb,var(--del) 12%,var(--ice))}
 .status.down .dot{background:var(--del);box-shadow:0 0 0 4px color-mix(in srgb,var(--del) 25%,transparent);animation:pulse 1.6s infinite}
@@ -240,7 +240,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--rim);display:
 footer a{color:var(--aur1);text-decoration:none;font-weight:800}
 .dev{display:inline-flex;align-items:center;gap:9px;color:var(--tx2)}
 .dev .d{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--aur1),var(--aur2));display:grid;place-items:center;color:#fff;font:800 11px var(--ff-d)}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
 @media (max-width:900px){.days{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){
   .strip{display:flex}
@@ -253,6 +253,15 @@ footer a{color:var(--aur1);text-decoration:none;font-weight:800}
   header .seg{order:3;width:100%}
   header .seg button{flex:1}
 }
+/* нижняя панель: Расписание · Справочник · Статус — одинаковая на всех трёх страницах */
+.tabs{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(440px,calc(100% - 24px));display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px;border-radius:22px;
+  background:var(--sky2);background:color-mix(in srgb,var(--sky2) 84%,transparent);border:1px solid var(--rim2);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px 6px;border-radius:17px;color:var(--tx3);text-decoration:none;font-size:11.5px;font-weight:800;-webkit-tap-highlight-color:transparent}
+.tabs a svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tabs a:hover{color:var(--tx2)}
+.tabs a[aria-current]{color:var(--tx);background:var(--ice2)}
+.tabs a[aria-current] svg{stroke:var(--aur1)}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
@@ -260,7 +269,7 @@ footer a{color:var(--aur1);text-decoration:none;font-weight:800}
 <div class="wrap">
   <header>
     <a class="logo" href="./"><i>С</i><div><b>Расписание САФУ</b><small>зеркало РУЗ · Арктика</small></div></a>
-    <span class="status" id="status" hidden><span class="dot"></span><span id="statusTxt"></span></span>
+    <a class="status" id="status" href="../status/" title="Статус всех сервисов САФУ" hidden><span class="dot"></span><span id="statusTxt"></span></a>
     <div class="seg" id="modeSeg" role="tablist">
       <button data-m="group" role="tab">Группа</button>
       <button data-m="teacher" role="tab">Преподаватель</button>
@@ -278,6 +287,7 @@ footer a{color:var(--aur1);text-decoration:none;font-weight:800}
 
 <div class="sheet" id="sheet" hidden><div class="pane" id="pane" role="dialog" aria-modal="true"></div></div>
 
+<nav class="tabs" aria-label="Разделы"><a href="../raspisanie/" aria-current="page"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Расписание</a><a href="../spravka/"><svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.5V17A2.5 2.5 0 0 1 4 14.5z"/><path d="M8.5 9h7M8.5 12.5h4.5"/></svg>Справочник</a><a href="../status/"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6.5 5 13 2.5-6.5h4"/></svg>Статус</a></nav>
 <script>
 (function(){
 "use strict";

@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="../raspisanie/manifest.webmanifest">
+<meta name="theme-color" content="#070b18">
+<title>Статус САФУ</title>
+<meta name="description" content="Работают ли сейчас РУЗ, Sakai, личный кабинет и почта САФУ. Проверка каждые 5 минут и история сбоев. by @skf29">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Арктика">
+<meta property="og:title" content="Статус САФУ — что сейчас лежит">
+<meta property="og:description" content="РУЗ, Sakai, личный кабинет и почта: проверка каждые 5 минут и история сбоев. by @skf29">
+<meta property="og:url" content="https://arktika-app.ru/status/">
+<meta property="og:image" content="https://arktika-app.ru/raspisanie/og.png?v=2">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x2='1' y2='1'%3E%3Cstop stop-color='%2333d6c8'/%3E%3Cstop offset='1' stop-color='%237c6cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Ctext x='32' y='44' font-family='Arial' font-weight='800' font-size='34' fill='white' text-anchor='middle'%3E%D0%A1%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --sky:#070b18; --sky2:#0c1326; --ice:rgba(255,255,255,.045); --ice2:rgba(255,255,255,.075); --ice3:rgba(255,255,255,.11);
+  --rim:rgba(160,190,255,.12); --rim2:rgba(160,190,255,.22);
+  --tx:#eaf0ff; --tx2:#a3afc8; --tx3:#6c7893;
+  --aur1:#33d6c8; --aur2:#7c6cff; --aur3:#3d8bff;
+  --lec:#5b9bff; --pr:#2fd493; --lab:#ffb547; --ex:#ff6b6b; --oth:#b69cff;
+  --add:#2fd493; --del:#ff6b6b; --mod:#ffb547;
+  --stars:rgba(255,255,255,.55); --glow:.55; --shadow:0 18px 50px rgba(0,0,0,.45);
+  --ff-d:"Unbounded","Segoe UI",system-ui,sans-serif; --ff:"Manrope","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --sky:#eef2fb; --sky2:#e3e9f7; --ice:#ffffff; --ice2:#f4f7fd; --ice3:#e9eefa;
+  --rim:rgba(30,50,110,.10); --rim2:rgba(30,50,110,.2);
+  --tx:#0d1530; --tx2:#4a5674; --tx3:#8591ad;
+  --stars:rgba(60,80,160,.0); --glow:.28; --shadow:0 14px 34px rgba(20,40,100,.10); color-scheme:light;
+  --aur1:#0a9e92; --mod:#b86e00; --pr:#14995f; --lec:#2a6fe0; --lab:#c27800; --add:#14995f; --del:#d63a3a;
+}}
+:root[data-theme="light"]{
+  --sky:#eef2fb; --sky2:#e3e9f7; --ice:#ffffff; --ice2:#f4f7fd; --ice3:#e9eefa;
+  --rim:rgba(30,50,110,.10); --rim2:rgba(30,50,110,.2);
+  --tx:#0d1530; --tx2:#4a5674; --tx3:#8591ad;
+  --stars:rgba(60,80,160,.0); --glow:.28; --shadow:0 14px 34px rgba(20,40,100,.10); color-scheme:light;
+  --aur1:#0a9e92; --mod:#b86e00; --pr:#14995f; --lec:#2a6fe0; --lab:#c27800; --add:#14995f; --del:#d63a3a;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--sky);color:var(--tx);font:15px/1.5 var(--ff);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background-image:radial-gradient(1px 1px at 20px 30px,var(--stars),transparent),radial-gradient(1px 1px at 120px 80px,var(--stars),transparent),
+  radial-gradient(1.5px 1.5px at 200px 160px,var(--stars),transparent),radial-gradient(1px 1px at 300px 40px,var(--stars),transparent),
+  radial-gradient(1px 1px at 380px 220px,var(--stars),transparent),radial-gradient(1.5px 1.5px at 60px 260px,var(--stars),transparent);
+  background-size:420px 300px;opacity:.6}
+.aurora{position:fixed;inset:-20vh -10vw auto;height:70vh;z-index:-1;pointer-events:none;opacity:var(--glow);filter:blur(60px)}
+.aurora i{position:absolute;border-radius:50%;mix-blend-mode:screen}
+.aurora i:nth-child(1){left:5%;top:10%;width:55vw;height:28vh;background:var(--aur1);transform:rotate(-8deg);animation:drift 18s ease-in-out infinite alternate}
+.aurora i:nth-child(2){left:40%;top:0;width:50vw;height:30vh;background:var(--aur2);transform:rotate(6deg);animation:drift 22s ease-in-out infinite alternate-reverse}
+.aurora i:nth-child(3){left:20%;top:22%;width:40vw;height:18vh;background:var(--aur3);opacity:.7;animation:drift 26s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translateX(6vw) rotate(-2deg) scaleY(1.2)}}
+@media (prefers-reduced-motion:reduce){.aurora i{animation:none}}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--aur1);outline-offset:2px}
+.wrap{max-width:1160px;margin:0 auto;padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0 18px}
+.logo{display:flex;align-items:center;gap:11px;margin-right:auto;text-decoration:none;color:inherit}
+.logo i{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font:800 18px var(--ff-d);font-style:normal;color:#fff;
+  background:linear-gradient(135deg,var(--aur1),var(--aur2));box-shadow:0 8px 26px color-mix(in srgb,var(--aur2) 45%,transparent)}
+.logo b{font:700 16px/1.1 var(--ff-d);letter-spacing:-.01em;display:block}
+.logo small{display:block;font-size:12px;color:var(--tx2);font-weight:600}
+.status{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:40px;border:1px solid var(--rim);background:var(--ice);font-size:12.5px;font-weight:700;color:var(--tx2);white-space:nowrap}
+.status .dot{width:8px;height:8px;border-radius:50%;background:var(--pr);box-shadow:0 0 0 4px color-mix(in srgb,var(--pr) 22%,transparent)}
+.status.down{color:var(--tx);border-color:color-mix(in srgb,var(--del) 45%,transparent);background:color-mix(in srgb,var(--del) 12%,var(--ice))}
+.status.down .dot{background:var(--del);box-shadow:0 0 0 4px color-mix(in srgb,var(--del) 25%,transparent);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px transparent}}
+.btn{border:1px solid var(--rim);background:var(--ice);border-radius:12px;padding:8px 14px;font-weight:700;transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--rim2);background:var(--ice2)}
+.btn.icon{width:40px;height:40px;padding:0;display:grid;place-items:center}
+.btn[disabled]{opacity:.35;cursor:default}
+.seg{display:inline-flex;background:var(--ice);border:1px solid var(--rim);border-radius:13px;padding:3px}
+.seg button{border:0;background:none;padding:7px 13px;border-radius:10px;color:var(--tx2);font-weight:700;font-size:14px}
+.seg button.on{background:var(--ice3);color:var(--tx);box-shadow:inset 0 0 0 1px var(--rim2)}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--rim);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--tx3);font-size:13px;font-weight:600}
+footer a{color:var(--aur1);text-decoration:none;font-weight:800}
+.dev{display:inline-flex;align-items:center;gap:9px;color:var(--tx2)}
+.dev .d{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--aur1),var(--aur2));display:grid;place-items:center;color:#fff;font:800 11px var(--ff-d)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
+
+h1{font:800 clamp(26px,5vw,40px)/1.08 var(--ff-d);letter-spacing:-.025em;margin:4px 0 6px;text-wrap:balance}
+.sub{color:var(--tx2);margin:0 0 18px;max-width:62ch}
+.card{background:var(--ice);border:1px solid var(--rim);border-radius:20px;padding:15px 17px}
+nav.links{display:flex;gap:6px;flex-wrap:wrap}
+nav.links a{color:var(--tx2);text-decoration:none;font-weight:700;font-size:13.5px;padding:7px 11px;border-radius:11px;border:1px solid var(--rim);background:var(--ice)}
+nav.links a:hover{color:var(--tx);border-color:var(--rim2)}
+.hero{display:flex;gap:16px;align-items:center;padding:20px;border-radius:24px;margin:6px 0 18px;border:1px solid var(--rim)}
+.hero.ok{background:color-mix(in srgb,var(--pr) 10%,var(--ice));border-color:color-mix(in srgb,var(--pr) 35%,transparent)}
+.hero.bad{background:color-mix(in srgb,var(--del) 12%,var(--ice));border-color:color-mix(in srgb,var(--del) 40%,transparent)}
+.hero.wait{background:var(--ice)}
+.hero .big{width:54px;height:54px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:26px;color:#fff}
+.hero.ok .big{background:var(--pr);box-shadow:0 0 0 8px color-mix(in srgb,var(--pr) 18%,transparent)}
+.hero.bad .big{background:var(--del);box-shadow:0 0 0 8px color-mix(in srgb,var(--del) 20%,transparent);animation:pulse 1.6s infinite}
+.hero.wait .big{background:var(--tx3)}
+.hero h1{margin:0;font-size:clamp(22px,4.6vw,32px)}
+.hero p{margin:4px 0 0;color:var(--tx2);font-weight:600;font-size:14px}
+.list{display:grid;gap:10px}
+.svc{display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;align-items:center;padding:14px 16px}
+.svc .dot{width:12px;height:12px;border-radius:50%;background:var(--tx3);grid-row:span 2}
+.svc.up .dot{background:var(--pr);box-shadow:0 0 0 4px color-mix(in srgb,var(--pr) 20%,transparent)}
+.svc.slow .dot{background:var(--mod);box-shadow:0 0 0 4px color-mix(in srgb,var(--mod) 22%,transparent)}
+.svc.down .dot{background:var(--del);box-shadow:0 0 0 4px color-mix(in srgb,var(--del) 25%,transparent);animation:pulse 1.6s infinite}
+.svc b{font:700 15.5px var(--ff-d)}
+.svc small{color:var(--tx3);font-weight:600;font-size:12.5px}
+.svc .st{font-weight:800;font-size:13.5px;text-align:right;white-space:nowrap}
+.svc.up .st{color:var(--pr)} .svc.slow .st{color:var(--mod)} .svc.down .st{color:var(--del)}
+.svc .ms{color:var(--tx3);font-size:12px;font-weight:600;text-align:right}
+.svc a{color:inherit;text-decoration:none}
+.bars{grid-column:1/-1;display:flex;gap:2px;margin-top:8px;height:22px;align-items:stretch}
+.bars i{flex:1;border-radius:3px;background:var(--ice3);min-width:3px}
+.bars i.g{background:var(--pr)} .bars i.y{background:var(--mod)} .bars i.r{background:var(--del)}
+.legend{display:flex;justify-content:space-between;color:var(--tx3);font-size:11.5px;font-weight:600;grid-column:1/-1}
+h2{font:700 13px var(--ff-d);text-transform:uppercase;letter-spacing:.12em;color:var(--tx3);margin:26px 0 10px}
+.inc{display:flex;gap:12px;align-items:flex-start;padding:12px 16px}
+.inc .tag{flex:none;font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:color-mix(in srgb,var(--del) 16%,transparent);color:var(--del)}
+.inc .tag.done{background:var(--ice3);color:var(--tx2)}
+.inc b{font-weight:800}
+.inc div{font-size:14px}
+.inc small{display:block;color:var(--tx3);font-weight:600;font-size:12.5px;margin-top:2px}
+.note{color:var(--tx3);font-size:13px;font-weight:600;margin-top:10px}
+.empty{color:var(--tx2);padding:18px;text-align:center;font-weight:600}
+/* нижняя панель: Расписание · Справочник · Статус — одинаковая на всех трёх страницах */
+.tabs{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(440px,calc(100% - 24px));display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px;border-radius:22px;
+  background:var(--sky2);background:color-mix(in srgb,var(--sky2) 84%,transparent);border:1px solid var(--rim2);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px 6px;border-radius:17px;color:var(--tx3);text-decoration:none;font-size:11.5px;font-weight:800;-webkit-tap-highlight-color:transparent}
+.tabs a svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tabs a:hover{color:var(--tx2)}
+.tabs a[aria-current]{color:var(--tx);background:var(--ice2)}
+.tabs a[aria-current] svg{stroke:var(--aur1)}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="wrap">
+  <header>
+    <a class="logo" href="./"><i>С</i><div><b>Статус САФУ</b><small>что сейчас работает · Арктика</small></div></a>
+    <button class="btn icon" id="themeBtn" title="Светлая / тёмная тема" aria-label="Сменить тему"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+  </header>
+  <main id="app">
+    <div class="hero wait"><div class="big">…</div><div><h1>Проверяю…</h1><p>Загружаю результаты последней проверки</p></div></div>
+  </main>
+  <noscript><div class="card">Включи JavaScript или открой страницу в обычном браузере (Safari, Chrome).</div></noscript>
+  <footer>
+    <div class="dev"><span class="d">S</span>Разработчик: <a href="https://t.me/skf29" target="_blank" rel="noopener">@skf29</a></div>
+    <div>Неофициальный сервис, не связан с САФУ</div>
+  </footer>
+</div>
+<nav class="tabs" aria-label="Разделы"><a href="../raspisanie/"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Расписание</a><a href="../spravka/"><svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.5V17A2.5 2.5 0 0 1 4 14.5z"/><path d="M8.5 9h7M8.5 12.5h4.5"/></svg>Справочник</a><a href="../status/" aria-current="page"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6.5 5 13 2.5-6.5h4"/></svg>Статус</a></nav>
+<script>
+(function(){
+"use strict";
+// Адрес воркера Cloudflare (status-worker/README.md). Пока пусто — показываем только РУЗ из зеркала расписания.
+var WORKER='https://safu-status.zarubin-kirillcka.workers.dev';
+var TZ=3*3600e3, DAY=864e5;
+var MONs=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+var KEY='safu.mirror.v1', mem={};
+try{mem=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){}
+if(mem.theme)document.documentElement.setAttribute('data-theme',mem.theme);
+document.getElementById('themeBtn').onclick=function(){
+  var cur=document.documentElement.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+  mem.theme=cur==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',mem.theme);
+  try{var m=JSON.parse(localStorage.getItem(KEY))||{};m.theme=mem.theme;localStorage.setItem(KEY,JSON.stringify(m));}catch(e){}};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function hm(ms){var d=new Date(ms+TZ),m=d.getUTCMinutes();return d.getUTCHours()+':'+(m<10?'0':'')+m;}
+function dk(ms){return Math.floor((ms+TZ)/DAY);}
+function dm(ms){var d=new Date(ms+TZ);return d.getUTCDate()+' '+MONs[d.getUTCMonth()];}
+function when(ms){var k=dk(ms),t=dk(Date.now());return (k===t?'сегодня':k===t-1?'вчера':dm(ms))+' в '+hm(ms);}
+function plural(n,a,b,c){var m=n%10,h=n%100;return m===1&&h!==11?a:(m>=2&&m<=4&&(h<10||h>=20)?b:c);}
+function dur(ms){var m=Math.max(1,Math.round(ms/6e4));if(m<60)return m+' мин';var h=Math.floor(m/60);m%=60;
+  if(h>=48){var d=Math.round(h/24);return d+' '+plural(d,'день','дня','дней');}return h+' ч'+(m?' '+m+' мин':'');}
+var STATE={up:'Работает',slow:'Медленно',down:'Не работает',unknown:'Нет данных'};
+var app=document.getElementById('app');
+
+function render(d){
+  var down=d.services.filter(function(s){return s.state==='down';}), slow=d.services.filter(function(s){return s.state==='slow';});
+  var old=Date.now()-d.checked>(d.every||5)*2.5*6e4+5*6e4;
+  var h='';
+  if(down.length) h+='<div class="hero bad"><div class="big">!</div><div><h1>Не работает: '+down.map(function(s){return esc(s.name);}).join(', ')+'</h1><p>'+
+    down.map(function(s){return esc(s.name)+' — с '+hm(s.since)+(s.why?' ('+esc(s.why)+')':'');}).join(' · ')+'</p></div></div>';
+  else h+='<div class="hero ok"><div class="big">✓</div><div><h1>'+(slow.length?'Работает, но '+slow.map(function(s){return esc(s.name);}).join(', ')+' '+(slow.length>1?'тормозят':'тормозит'):'Всё работает')+'</h1><p>Проверено '+when(d.checked)+' · каждые '+(d.every||5)+' минут</p></div></div>';
+  if(old) h+='<div class="banner down"><span>⏳</span><div class="grow">Последняя проверка была '+when(d.checked)+' — данные могут быть устаревшими.</div></div>';
+  h+='<div class="list">';
+  var days=[],t=dk(Date.now());for(var i=29;i>=0;i--)days.push(t-i);
+  d.services.forEach(function(s){
+    var st=s.state||'unknown', hist=d.days||{};
+    var bars=d.days?days.map(function(k){var key=new Date(k*DAY).toISOString().slice(0,10),x=hist[key]&&hist[key][s.id];
+      if(!x)return '<i title="'+dm(k*DAY-TZ+1)+': нет данных"></i>';var p=x[0]/x[1];
+      return '<i class="'+(p>=.99?'g':p>=.9?'y':'r')+'" title="'+dm(k*DAY-TZ+1)+': работал '+Math.round(p*100)+'% времени"></i>';}).join(''):'';
+    h+='<div class="card svc '+st+'"><span class="dot"></span><a href="'+esc(s.url)+'" target="_blank" rel="noopener"><b>'+esc(s.name)+'</b><br><small>'+esc(s.about||'')+'</small></a>'+
+      '<div><div class="st">'+STATE[st]+(st==='down'&&s.since?' с '+hm(s.since):'')+'</div><div class="ms">'+(st!=='down'&&s.ms?'ответ за '+(s.ms<1000?s.ms+' мс':(s.ms/1000).toFixed(1)+' с'):(s.why?esc(s.why):''))+'</div></div>'+
+      (bars?'<div class="bars">'+bars+'</div><div class="legend"><span>30 дней назад</span><span>сегодня</span></div>':'')+'</div>';
+  });
+  h+='</div>';
+  if(d.incidents){
+    h+='<h2>История сбоев</h2>';
+    var names={};d.services.forEach(function(s){names[s.id]=s.name;});
+    var inc=d.incidents.filter(function(x){return names[x.id];});
+    if(!inc.length) h+='<div class="card empty">За последние 60 дней сбоев не было</div>';
+    else h+='<div class="list">'+inc.slice(0,40).map(function(x){
+      return '<div class="card inc"><span class="tag'+(x.end?' done':'')+'">'+(x.end?dur(x.end-x.start):'идёт')+'</span><div><b>'+esc(names[x.id]||x.id)+'</b> · '+(x.end?'сбой':'не работает сейчас')+
+        '<small>'+when(x.start)+(x.end?' — '+(dk(x.end)===dk(x.start)?hm(x.end):when(x.end)):' · уже '+dur(Date.now()-x.start))+(x.why?' · '+esc(x.why):'')+'</small></div></div>';}).join('')+'</div>';
+  }
+  if(d.note) h+='<p class="note">'+d.note+'</p>';
+  app.innerHTML=h;
+}
+// Запасной вариант: воркер недоступен — показываем РУЗ по данным зеркала расписания (проверка раз в 30 минут)
+function fallback(why){
+  return fetch('../raspisanie/data/status.json',{cache:'no-cache'}).then(function(r){return r.json();}).then(function(st){
+    render({checked:st.checkedAt,every:30,services:[{id:'ruz',name:'РУЗ',about:'Расписание занятий',url:'https://ruz.narfu.ru/',state:st.up===false?'down':'up',since:st.downSince||st.lastOkAt,why:st.reason||''}],
+      note:why+' Пока видно только РУЗ — его проверяет зеркало расписания каждые 30 минут. Расписание, даже когда РУЗ лежит: <a href="../raspisanie/" style="color:var(--aur1)">arktika-app.ru/raspisanie</a>'});
+  }).catch(function(){app.innerHTML='<div class="card empty">Не получилось загрузить статус. Проверь интернет.</div>';});
+}
+function load(){
+  if(!WORKER) return fallback('Проверка остальных сервисов скоро заработает.');
+  return fetch(WORKER.replace(/\/$/,'')+'/status.json',{cache:'no-cache'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(render)
+    .catch(function(){return fallback('Проверка всех сервисов сейчас недоступна.');});
+}
+load();setInterval(load,60000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)load();});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+docs/
+corpus*.json
+__pycache__/

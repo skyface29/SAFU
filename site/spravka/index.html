@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="../raspisanie/manifest.webmanifest">
+<meta name="theme-color" content="#070b18">
+<title>Справочник САФУ</title>
+<meta name="description" content="Ответы на вопросы студентов САФУ: пересдачи, отчисление, академ, стипендии, общежитие. Только дословные цитаты из документов университета со ссылкой на пункт. by @skf29">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Арктика">
+<meta property="og:title" content="Справочник САФУ — ответы из документов, без отсебятины">
+<meta property="og:description" content="Пересдачи, отчисление, академ, стипендии, общежитие: дословно из положений САФУ со ссылкой на пункт. by @skf29">
+<meta property="og:url" content="https://arktika-app.ru/spravka/">
+<meta property="og:image" content="https://arktika-app.ru/raspisanie/og.png?v=2">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x2='1' y2='1'%3E%3Cstop stop-color='%2333d6c8'/%3E%3Cstop offset='1' stop-color='%237c6cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Ctext x='32' y='44' font-family='Arial' font-weight='800' font-size='34' fill='white' text-anchor='middle'%3E%D0%A1%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --sky:#070b18; --sky2:#0c1326; --ice:rgba(255,255,255,.045); --ice2:rgba(255,255,255,.075); --ice3:rgba(255,255,255,.11);
+  --rim:rgba(160,190,255,.12); --rim2:rgba(160,190,255,.22);
+  --tx:#eaf0ff; --tx2:#a3afc8; --tx3:#6c7893;
+  --aur1:#33d6c8; --aur2:#7c6cff; --aur3:#3d8bff;
+  --lec:#5b9bff; --pr:#2fd493; --lab:#ffb547; --ex:#ff6b6b; --oth:#b69cff;
+  --add:#2fd493; --del:#ff6b6b; --mod:#ffb547;
+  --stars:rgba(255,255,255,.55); --glow:.55; --shadow:0 18px 50px rgba(0,0,0,.45);
+  --ff-d:"Unbounded","Segoe UI",system-ui,sans-serif; --ff:"Manrope","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --sky:#eef2fb; --sky2:#e3e9f7; --ice:#ffffff; --ice2:#f4f7fd; --ice3:#e9eefa;
+  --rim:rgba(30,50,110,.10); --rim2:rgba(30,50,110,.2);
+  --tx:#0d1530; --tx2:#4a5674; --tx3:#8591ad;
+  --stars:rgba(60,80,160,.0); --glow:.28; --shadow:0 14px 34px rgba(20,40,100,.10); color-scheme:light;
+  --aur1:#0a9e92; --mod:#b86e00; --pr:#14995f; --lec:#2a6fe0; --lab:#c27800; --add:#14995f; --del:#d63a3a;
+}}
+:root[data-theme="light"]{
+  --sky:#eef2fb; --sky2:#e3e9f7; --ice:#ffffff; --ice2:#f4f7fd; --ice3:#e9eefa;
+  --rim:rgba(30,50,110,.10); --rim2:rgba(30,50,110,.2);
+  --tx:#0d1530; --tx2:#4a5674; --tx3:#8591ad;
+  --stars:rgba(60,80,160,.0); --glow:.28; --shadow:0 14px 34px rgba(20,40,100,.10); color-scheme:light;
+  --aur1:#0a9e92; --mod:#b86e00; --pr:#14995f; --lec:#2a6fe0; --lab:#c27800; --add:#14995f; --del:#d63a3a;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--sky);color:var(--tx);font:15px/1.5 var(--ff);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background-image:radial-gradient(1px 1px at 20px 30px,var(--stars),transparent),radial-gradient(1px 1px at 120px 80px,var(--stars),transparent),
+  radial-gradient(1.5px 1.5px at 200px 160px,var(--stars),transparent),radial-gradient(1px 1px at 300px 40px,var(--stars),transparent),
+  radial-gradient(1px 1px at 380px 220px,var(--stars),transparent),radial-gradient(1.5px 1.5px at 60px 260px,var(--stars),transparent);
+  background-size:420px 300px;opacity:.6}
+.aurora{position:fixed;inset:-20vh -10vw auto;height:70vh;z-index:-1;pointer-events:none;opacity:var(--glow);filter:blur(60px)}
+.aurora i{position:absolute;border-radius:50%;mix-blend-mode:screen}
+.aurora i:nth-child(1){left:5%;top:10%;width:55vw;height:28vh;background:var(--aur1);transform:rotate(-8deg);animation:drift 18s ease-in-out infinite alternate}
+.aurora i:nth-child(2){left:40%;top:0;width:50vw;height:30vh;background:var(--aur2);transform:rotate(6deg);animation:drift 22s ease-in-out infinite alternate-reverse}
+.aurora i:nth-child(3){left:20%;top:22%;width:40vw;height:18vh;background:var(--aur3);opacity:.7;animation:drift 26s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translateX(6vw) rotate(-2deg) scaleY(1.2)}}
+@media (prefers-reduced-motion:reduce){.aurora i{animation:none}}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--aur1);outline-offset:2px}
+.wrap{max-width:1160px;margin:0 auto;padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0 18px}
+.logo{display:flex;align-items:center;gap:11px;margin-right:auto;text-decoration:none;color:inherit}
+.logo i{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font:800 18px var(--ff-d);font-style:normal;color:#fff;
+  background:linear-gradient(135deg,var(--aur1),var(--aur2));box-shadow:0 8px 26px color-mix(in srgb,var(--aur2) 45%,transparent)}
+.logo b{font:700 16px/1.1 var(--ff-d);letter-spacing:-.01em;display:block}
+.logo small{display:block;font-size:12px;color:var(--tx2);font-weight:600}
+.status{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:40px;border:1px solid var(--rim);background:var(--ice);font-size:12.5px;font-weight:700;color:var(--tx2);white-space:nowrap}
+.status .dot{width:8px;height:8px;border-radius:50%;background:var(--pr);box-shadow:0 0 0 4px color-mix(in srgb,var(--pr) 22%,transparent)}
+.status.down{color:var(--tx);border-color:color-mix(in srgb,var(--del) 45%,transparent);background:color-mix(in srgb,var(--del) 12%,var(--ice))}
+.status.down .dot{background:var(--del);box-shadow:0 0 0 4px color-mix(in srgb,var(--del) 25%,transparent);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px transparent}}
+.btn{border:1px solid var(--rim);background:var(--ice);border-radius:12px;padding:8px 14px;font-weight:700;transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--rim2);background:var(--ice2)}
+.btn.icon{width:40px;height:40px;padding:0;display:grid;place-items:center}
+.btn[disabled]{opacity:.35;cursor:default}
+.seg{display:inline-flex;background:var(--ice);border:1px solid var(--rim);border-radius:13px;padding:3px}
+.seg button{border:0;background:none;padding:7px 13px;border-radius:10px;color:var(--tx2);font-weight:700;font-size:14px}
+.seg button.on{background:var(--ice3);color:var(--tx);box-shadow:inset 0 0 0 1px var(--rim2)}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--rim);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--tx3);font-size:13px;font-weight:600}
+footer a{color:var(--aur1);text-decoration:none;font-weight:800}
+.dev{display:inline-flex;align-items:center;gap:9px;color:var(--tx2)}
+.dev .d{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--aur1),var(--aur2));display:grid;place-items:center;color:#fff;font:800 11px var(--ff-d)}
+.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
+
+.wrap{max-width:860px;padding-bottom:0}
+body{display:flex;flex-direction:column}
+body>*{min-width:0}body>.wrap{width:100%;box-sizing:border-box}
+nav.links{display:flex;gap:6px;flex-wrap:wrap}
+nav.links a{color:var(--tx2);text-decoration:none;font-weight:700;font-size:13.5px;padding:7px 11px;border-radius:11px;border:1px solid var(--rim);background:var(--ice)}
+nav.links a:hover{color:var(--tx);border-color:var(--rim2)}
+#chat{display:flex;flex-direction:column;gap:14px;padding-bottom:84px}
+.msg{max-width:100%}
+.me{align-self:flex-end;max-width:85%;background:linear-gradient(135deg,var(--aur3),var(--aur2));color:#fff;padding:10px 15px;border-radius:18px 18px 4px 18px;font-weight:600;word-wrap:break-word}
+.bot{align-self:flex-start;width:100%}
+.bot .who{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;color:var(--tx3);margin:0 0 6px 2px}
+.bot .who i{width:22px;height:22px;border-radius:8px;display:grid;place-items:center;font:800 11px var(--ff-d);font-style:normal;color:#fff;background:linear-gradient(135deg,var(--aur1),var(--aur2))}
+.bubble{background:var(--ice);border:1px solid var(--rim);border-radius:4px 20px 20px 20px;padding:14px 16px}
+.bubble p{margin:0 0 10px}
+.bubble p:last-child{margin-bottom:0}
+.hello h1{font:800 clamp(22px,4.6vw,30px)/1.1 var(--ff-d);letter-spacing:-.02em;margin:0 0 8px}
+.hello .sub{color:var(--tx2);margin:0 0 12px;font-size:14.5px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
+.chip{border:1px solid var(--rim);background:var(--ice2);border-radius:20px;padding:7px 12px;font-weight:700;font-size:13.5px;color:var(--tx);text-align:left}
+.chip:hover{border-color:var(--aur1)}
+.cats{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 2px}
+.cats button{border:0;background:none;padding:5px 10px;border-radius:10px;font-weight:800;font-size:12.5px;color:var(--tx3)}
+.cats button.on{background:var(--ice3);color:var(--tx)}
+.found{font-weight:700;margin-bottom:12px;font-size:14.5px}
+.found b{font-family:var(--ff-d);font-weight:700}
+.q{border:1px solid var(--rim);border-left:3px solid var(--aur1);background:var(--ice2);border-radius:14px;padding:12px 14px;margin:10px 0}
+.q .src{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.q .src b{font-size:12.5px;font-weight:800;color:var(--aur1);text-transform:uppercase;letter-spacing:.04em}
+.q .src a{font-size:12.5px;font-weight:700;color:var(--tx3);text-decoration:none;white-space:nowrap}
+.q .src a:hover{color:var(--aur1)}
+.q .doc{font-size:12.5px;color:var(--tx3);font-weight:600;margin-bottom:8px;line-height:1.35}
+.msg,.bubble,.q{min-width:0;max-width:100%}.q{overflow:hidden}
+.q .note{font-size:12.5px;font-weight:700;color:var(--aur1);margin:-2px 0 8px;line-height:1.35}
+.q .txt{font-size:14.5px;line-height:1.55;white-space:pre-line}
+.q .txt mark{background:color-mix(in srgb,var(--aur1) 22%,transparent);color:inherit;border-radius:4px;padding:0 2px}
+.q .txt .gap{color:var(--tx3)}
+.q .more{border:0;background:none;padding:6px 0 0;color:var(--aur1);font-weight:800;font-size:13px}
+.q table{border-collapse:collapse;font-size:12.5px;width:100%;display:block;overflow-x:auto;max-width:100%}
+.q td{white-space:normal}.q tr:not(:first-child) td:last-child:not(:first-child){white-space:nowrap;width:1%}
+.q td{border:1px solid var(--rim);padding:5px 7px}
+.q tr:first-child td{font-weight:800;color:var(--tx2);white-space:normal;min-width:90px}
+.also{margin-top:14px;padding-top:12px;border-top:1px dashed var(--rim2)}
+.also .t{font-size:12px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.tools{display:flex;gap:12px;margin-top:10px;flex-wrap:wrap}
+.tools button{border:0;background:none;padding:0;color:var(--tx3);font-weight:700;font-size:12.5px}
+.tools button:hover{color:var(--aur1)}
+.warn{font-size:12.5px;color:var(--tx3);font-weight:600;margin-top:10px;line-height:1.4}
+.ask{position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom,0px));z-index:5;padding:10px max(16px,env(safe-area-inset-left,0px)) 8px;
+  background:linear-gradient(to top,var(--sky) 70%,transparent)}
+.ask form{max-width:860px;margin:0 auto;display:flex;gap:8px;background:var(--sky2);border:1px solid var(--rim2);border-radius:18px;padding:6px;box-shadow:var(--shadow)}
+.ask input{flex:1;min-width:0;border:0;background:none;outline:none;padding:9px 10px;font-weight:600;font-size:16px}
+.ask button{border:0;border-radius:13px;padding:0 16px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--aur1),var(--aur2))}
+.ask button[disabled]{opacity:.4}
+.docs a{display:block;color:var(--tx);text-decoration:none;padding:9px 0;border-bottom:1px solid var(--rim);font-weight:700;font-size:14px}
+.docs a small{display:block;color:var(--tx3);font-weight:600;font-size:12.5px}
+.docs a:last-child{border-bottom:0}
+footer{margin-top:10px}
+/* нижняя панель: Расписание · Справочник · Статус — одинаковая на всех трёх страницах */
+.tabs{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(440px,calc(100% - 24px));display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px;border-radius:22px;
+  background:var(--sky2);background:color-mix(in srgb,var(--sky2) 84%,transparent);border:1px solid var(--rim2);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px 6px;border-radius:17px;color:var(--tx3);text-decoration:none;font-size:11.5px;font-weight:800;-webkit-tap-highlight-color:transparent}
+.tabs a svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tabs a:hover{color:var(--tx2)}
+.tabs a[aria-current]{color:var(--tx);background:var(--ice2)}
+.tabs a[aria-current] svg{stroke:var(--aur1)}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="wrap">
+  <header>
+    <a class="logo" href="./"><i>С</i><div><b>Справочник САФУ</b><small>ответы из документов · Арктика</small></div></a>
+    <button class="btn icon" id="themeBtn" title="Светлая / тёмная тема" aria-label="Сменить тему"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+  </header>
+  <main id="chat" aria-live="polite"></main>
+  <noscript><div class="card">Включи JavaScript или открой страницу в обычном браузере (Safari, Chrome).</div></noscript>
+</div>
+<div class="ask"><form id="form" autocomplete="off"><input id="inp" placeholder="Напиши вопрос…" aria-label="Вопрос" enterkeyhint="send"><button id="send" type="submit">Спросить</button></form></div>
+<nav class="tabs" aria-label="Разделы"><a href="../raspisanie/"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Расписание</a><a href="../spravka/" aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.5V17A2.5 2.5 0 0 1 4 14.5z"/><path d="M8.5 9h7M8.5 12.5h4.5"/></svg>Справочник</a><a href="../status/"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6.5 5 13 2.5-6.5h4"/></svg>Статус</a></nav>
+<script>
+/* Поиск справочника: без ИИ. Вопрос разбивается на слова, слова приводятся к основе, ищутся в частых вопросах
+   и в пунктах документов (BM25). Ответ — всегда дословный текст пунктов, ничего не сочиняется. */
+function makeEngine(D){
+  "use strict";
+  var LAT={a:'а',c:'с',e:'е',o:'о',p:'р',x:'х',y:'у',k:'к',m:'м',t:'т',h:'н',b:'в'};
+  function norm(s){
+    return String(s||'').toLowerCase().replace(/ё/g,'е').replace(/[a-zа-я0-9]+/g,function(w){
+      // OCR в PDF: «OПOП» — латинские буквы вперемешку с русскими
+      return /[а-я]/.test(w)&&/[a-z]/.test(w)?w.replace(/[a-z]/g,function(c){return LAT[c]||c;}):w;});
+  }
+  var STOP={};('и в во на с со по к ко о об от до за из у а но ли же бы что как это мне меня я ты мы вы он она они мой моя мое мои мою твой '+
+    'его ее их там тут или если то для при ну есть был была были будет быть так уже еще ещё только очень а то ли ведь вот какой какая какие '+
+    'кто где когда зачем почему чем чего кого кому сам сама себя свой свою свои всё все весь можно нужно надо ли бывает делать сделать '+
+    'хочу хотел хотела могу может могут ли ли').split(' ').forEach(function(w){STOP[w]=1;});
+  var END=['иями','ями','ами','ией','ого','его','ому','ему','ыми','ими','ость','ости','ться','тся','ешь','ете','ите','ает','яет','ует','ают','яют','уют',
+    'ала','ила','ыла','ела','али','или','ыли','ели','ать','ять','ить','еть','уть','ыть','ая','яя','ое','ее','ые','ие','ый','ий','ой','ей','ом','ем','ам','ям',
+    'ах','ях','ов','ев','ую','юю','ия','ья','ии','ью','ал','ил','ыл','ел','ла','ли','ло','ть','ти','ет','ит','ют','ут','ат','ят','ся','сь',
+    'а','я','о','е','ы','и','у','ю','ь','й','л'];
+  function stem(w){
+    if(w.length<=3||/^\d/.test(w))return w;
+    for(var i=0;i<END.length;i++){var e=END[i];if(w.length-e.length>=3&&w.slice(-e.length)===e){w=w.slice(0,-e.length);break;}}
+    return w.length>7?w.slice(0,7):w;
+  }
+  // разговорное → как в документах
+  var SYN={'стипуха':'стипендия','стипуху':'стипендия','стипухи':'стипендия','стипа':'стипендия','стипу':'стипендия','стипы':'стипендия','общага':'общежитие','общаги':'общежитие','общагу':'общежитие','общаге':'общежитие',
+    'академ':'академический отпуск','академа':'академический отпуск','академе':'академический отпуск','академку':'академический отпуск',
+    'хвост':'академическая задолженность','хвосты':'академическая задолженность','хвостов':'академическая задолженность','хвостами':'академическая задолженность',
+    'долг':'академическая задолженность','долги':'академическая задолженность','долгов':'академическая задолженность','долгами':'академическая задолженность',
+    'автомат':'автомат зачет текущего контроля','автоматом':'автомат зачет текущего контроля','матпомощь':'материальная поддержка','матпомощи':'материальная поддержка',
+    'пгас':'повышенная академическая стипендия','повышенка':'повышенная стипендия','повышенку':'повышенная стипендия','неуд':'неудовлетворительно','незачет':'не зачтено',
+    'тройка':'удовлетворительно','тройку':'удовлетворительно','тройки':'удовлетворительно','двойка':'неудовлетворительно','двойку':'неудовлетворительно','двойки':'неудовлетворительно','пара':'занятие','пары':'занятие','пару':'занятие','пар':'занятие',
+    'прогулял':'неявка','прогул':'неявка','проспал':'неявка','пропустил':'неявка пропуск','больничный':'болезнь справка','заболел':'болезнь','болел':'болезнь','болею':'болезнь',
+    'вуз':'университет организацию','шпора':'шпаргалка источники информации','шпоры':'шпаргалка источники информации','списал':'списывание','списать':'списывание','телефон':'телефон технических средств',
+    'выгонят':'отчисление','выгнали':'отчисление','отчислят':'отчисление','отчислили':'отчисление','уйти':'отчисление собственному желанию','забрать':'отчисление',
+    'платник':'платной основе договор','платники':'платной основе договор','бюджет':'бюджетных бюджет','физра':'физкультура физической культурой','физры':'физкультура','физру':'физкультура',
+    'препод':'преподаватель','деканат':'директорат','деканате':'директорат','деканата':'директорат','декан':'директор','учебный':'учебный','кушать':'еду','поесть':'еду','преподу':'преподаватель','препода':'преподаватель','зачетка':'зачетная книжка','зачетку':'зачетная книжка','зачетке':'зачетная книжка','сессия':'сессия промежуточная аттестация',
+    'сессию':'сессия промежуточная аттестация','сессии':'сессия промежуточная аттестация','экзамен':'экзамен','зачет':'зачет','пересдача':'пересдача повторная','пересдать':'пересдать повторная','пересдачи':'пересдачи повторная',
+    'куртка':'верхней одежде','куртке':'верхней одежде','курить':'курить курение','вейп':'курить курение','бухать':'алкогольные','пиво':'алкогольные','пропуск':'пропуск','студак':'студенческий билет'};
+  function words(s){var all=norm(s).match(/[a-zа-я0-9]+/g)||[],out=[];
+    all.forEach(function(w,i){
+      // «можно ли есть на паре» — это про еду, а «есть ли» — служебное
+      if(w==='есть'&&all[i+1]!=='ли'&&(i>0&&/^(можно|ли|нельзя|разрешено)$/.test(all[i-1])))w='еду';
+      if(!STOP[w])out.push(w);});
+    return out;}
+  function terms(s){return words(s).map(stem);}
+  function qterms(s){
+    var out=[],seen={};
+    words(s).forEach(function(w){
+      var group=[stem(w)];if(SYN[w])terms(SYN[w]).forEach(function(t){if(group.indexOf(t)<0)group.push(t);});
+      var key=group[0];if(seen[key])return;seen[key]=1;out.push(group);
+    });
+    return out;
+  }
+  // индекс: частые вопросы и пункты
+  function Index(items){
+    var N=items.length,df={},len=0,docs=items.map(function(it){var tf={},n=0;
+      it.f.forEach(function(f){terms(f[0]).forEach(function(t){tf[t]=(tf[t]||0)+f[1];n+=f[1];});});
+      Object.keys(tf).forEach(function(t){df[t]=(df[t]||0)+1;});len+=n;return {tf:tf,n:n};});
+    var avg=len/Math.max(1,N),vocab=Object.keys(df);
+    var idf={};vocab.forEach(function(t){idf[t]=Math.log(1+(N-df[t]+.5)/(df[t]+.5));});
+    var pre={};
+    function expand(q){ // основа из вопроса → основы в индексе (совпадение или общий префикс)
+      if(pre[q])return pre[q];var r=[];
+      vocab.forEach(function(t){if(t===q)r.push([t,1]);else if(q.length>=4&&t.length>=4&&(t.indexOf(q)===0||q.indexOf(t)===0))r.push([t,.75]);});
+      return pre[q]=r;
+    }
+    return {gidf:function(groups){ // насколько редкое (значимое) каждое слово вопроса
+      return groups.map(function(g){var m=0;g.forEach(function(qt){expand(qt).forEach(function(e){if(idf[e[0]]>m)m=idf[e[0]];});});return m;});},
+    score:function(groups){
+      var res=docs.map(function(){return {s:0,hit:0,mask:0};});
+      groups.forEach(function(g,gi0){
+        var best=docs.map(function(){return 0;});
+        g.forEach(function(qt,gi){expand(qt).forEach(function(e){var t=e[0],w=e[1]*(gi?0.8:1),id=idf[t];
+          docs.forEach(function(d,i){var f=d.tf[t];if(!f)return;var v=id*w*f*2.2/(f+1.2*(.25+.75*d.n/avg));if(v>best[i])best[i]=v;});});});
+        best.forEach(function(v,i){if(v>0){res[i].s+=v;res[i].hit++;res[i].mask|=1<<gi0;}});
+      });
+      return res;
+    }};
+  }
+  var CH={};D.chunks.forEach(function(c){CH[c.i]=c;});
+  var cardIdx=Index(D.cards.map(function(c){
+    var f=[[c.q,3],[c.k,2]];c.r.forEach(function(r){var ch=CH[r[0]];if(ch)f.push([ch.t,.3]);});return {f:f};}));
+  // покрытие считаем только по самому вопросу и ключевым словам: так «справка об обучении» не уедет в «справку для физкультуры»
+  var cardQK=Index(D.cards.map(function(c){return {f:[[c.q,1],[c.k,1]]};}));
+  var chIdx=Index(D.chunks.map(function(c){return {f:[[c.t,1],[c.s||'',.5]]};}));
+  function ask(text){
+    var g=qterms(text);if(!g.length)return {groups:g,cards:[],chunks:[]};
+    var qk=cardQK.score(g);
+    var cs=cardIdx.score(g).map(function(r,i){return {i:i,s:r.s,cov:qk[i].hit/g.length};}).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;});
+    // пункт засчитываем, только если в нём есть самое редкое слово вопроса («справку» в «как получить справку об обучении»)
+    var sc=chIdx.score(g),cnt=g.map(function(_,gi){var n=0;sc.forEach(function(r){if(r.mask&(1<<gi))n++;});return n;}),key=-1;
+    cnt.forEach(function(n,gi){if(n>0&&(key<0||n<cnt[key]))key=gi;});
+    var ks=sc.map(function(r,i){return {i:i,s:r.s,cov:r.hit/g.length,key:key>=0&&!!(r.mask&(1<<key))};}).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;});
+    return {groups:g,cards:cs,chunks:ks};
+  }
+  return {ask:ask,norm:norm,stem:stem,qterms:qterms,words:words};
+}
+(function(){
+"use strict";
+var KEY='safu.mirror.v1', mem={};
+try{mem=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){}
+if(mem.theme)document.documentElement.setAttribute('data-theme',mem.theme);
+document.getElementById('themeBtn').onclick=function(){
+  var cur=document.documentElement.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+  mem.theme=cur==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',mem.theme);
+  try{var m=JSON.parse(localStorage.getItem(KEY))||{};m.theme=mem.theme;localStorage.setItem(KEY,JSON.stringify(m));}catch(e){}};
+
+var chat=document.getElementById('chat'), form=document.getElementById('form'), inp=document.getElementById('inp'), send=document.getElementById('send');
+var D=null, E=null, CH={}, CATS=['Сессия','Учёба','Стипендии','Общежитие','Правила'];
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function el(cls,html){var d=document.createElement('div');d.className=cls;d.innerHTML=html;return d;}
+function scrollDown(node){setTimeout(function(){(node||chat.lastChild).scrollIntoView({behavior:'smooth',block:'start'});},30);}
+function botMsg(html){var m=el('msg bot','<div class="who"><i>С</i>Справочник</div><div class="bubble">'+html+'</div>');chat.appendChild(m);bind(m);return m;}
+function meMsg(t){chat.appendChild(el('msg me',esc(t)));}
+
+/* ---------- цитата пункта ---------- */
+function src(c){var d=D.docs[c.d];
+  if(d.w)return {lab:'Страница «'+esc(d.t)+'»',doc:'сайт narfu.ru, снимок от '+esc(D.snap),url:d.u,page:1};
+  return {lab:c.lb?esc(c.lb):(c.pp?(c.pp===1?'Правила поведения':esc(c.pp))+', ':'')+'п. '+esc(c.p),doc:esc(d.t)+' · '+esc(d.a)+(c.o?' · распознано со скана и сверено вручную':''),url:c.u||d.u,note:c.n};}
+function table(t){return '<table>'+t.split('\n').map(function(r){return '<tr>'+r.split(' | ').map(function(x){return '<td>'+esc(x)+'</td>';}).join('')+'</tr>';}).join('')+'</table>';}
+function markWords(html,stems){ // подсветка слов из вопроса (для найденных пунктов без готовых фраз)
+  if(!stems)return html;
+  return html.replace(/[A-Za-zА-Яа-яЁё]{4,}/g,function(w){var s=E.stem(E.norm(w));
+    for(var i=0;i<stems.length;i++){var q=stems[i];if(s===q||(q.length>=4&&s.length>=4&&(s.indexOf(q)===0||q.indexOf(s)===0)))return '<mark>'+w+'</mark>';}return w;});}
+var LONG=520;
+function quote(id,hl,stems){
+  var c=CH[id];if(!c)return '';var s=src(c),t=c.t,full=esc(t),short=null;
+  if(c.tb)return '<div class="q"><div class="src"><b>'+s.lab+'</b><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+(s.page?'Открыть страницу ↗':'Открыть документ ↗')+'</a></div><div class="doc">'+s.doc+'</div>'+(s.note?'<div class="note">'+esc(s.note)+'</div>':'')+table(t)+'</div>';
+  if(hl&&hl.length){
+    hl.forEach(function(h){full=full.split(esc(h)).join('<mark>'+esc(h)+'</mark>');});
+    if(t.length>LONG){ // показываем нужные фразы, остальное — по кнопке
+      var parts=[],pos=hl.map(function(h){return [t.indexOf(h),h];}).sort(function(a,b){return a[0]-b[0];});
+      var last=0;pos.forEach(function(p){if(p[0]>last)parts.push('<span class="gap">… </span>');parts.push('<mark>'+esc(p[1])+'</mark>');last=p[0]+p[1].length;});
+      if(last<t.length)parts.push('<span class="gap"> …</span>');short=parts.join('');
+    }
+  } else {
+    full=markWords(full,stems);
+    if(t.length>LONG+200){var cut=t.lastIndexOf(' ',LONG);short=markWords(esc(t.slice(0,cut)),stems)+'<span class="gap"> …</span>';}
+  }
+  return '<div class="q"><div class="src"><b>'+s.lab+'</b><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+(s.page?'Открыть страницу ↗':'Открыть документ ↗')+'</a></div><div class="doc">'+s.doc+'</div>'+(s.note?'<div class="note">'+esc(s.note)+'</div>':'')+
+    '<div class="txt" data-full="'+esc(full)+'">'+(short||full)+'</div>'+(short?'<button class="more" data-more>Показать пункт целиком</button>':'')+'</div>';
+}
+var WARN='<div class="warn">Это дословные цитаты из документов САФУ (снимок от '+'%SNAP%'+'), без пересказа. Документы меняются — перед важным решением открой документ по ссылке или уточни в директорате.</div>';
+function tools(q){return '<div class="tools"><button data-share="'+esc(q)+'">Скопировать ссылку на ответ</button></div>';}
+function chips(list){return '<div class="chips">'+list.map(function(i){return '<button class="chip" data-card="'+i+'">'+esc(D.cards[i].q)+'</button>';}).join('')+'</div>';}
+
+/* ---------- ответ ---------- */
+var HELLO=/^(привет|здравствуй|здравствуйте|добрый|доброе|хай|ку|салам|hello|hi)(?=$|[\s!,.?)])/i, THANKS=/^(спасибо|спс|благодарю|пасиб)/i;
+function answerCard(i,q){
+  var c=D.cards[i];
+  var h='<div class="found">'+(q?'Нашёл ответ на вопрос: <b>'+esc(c.q)+'</b>':'<b>'+esc(c.q)+'</b>')+'</div>';
+  c.r.forEach(function(r){h+=quote(r[0],r[1]);});
+  return h;
+}
+function respond(q,cardIdx){
+  var res=null,h='';
+  if(cardIdx!=null){h=answerCard(cardIdx,'');var rel=E.ask(D.cards[cardIdx].q).cards.filter(function(x){return x.i!==cardIdx&&x.cov>=.5;}).slice(0,3).map(function(x){return x.i;});
+    if(rel.length)h+='<div class="also"><div class="t">Ещё по теме</div>'+chips(rel)+'</div>';
+    return botMsg(h+WARN+tools(D.cards[cardIdx].q));}
+  var s=q.trim();
+  if(HELLO.test(s)&&s.split(/\s+/).length<=3)return botMsg('<p>Привет! Задай вопрос про учёбу в САФУ своими словами — например, про пересдачи, академ, стипендию или общежитие.</p>'+chips(popular()));
+  if(THANKS.test(s))return botMsg('<p>Пожалуйста! Если что-то ещё — спрашивай.</p>');
+  res=E.ask(s);
+  var g=res.groups.length, cs=res.cards, top=cs[0], sec=cs[1];
+  var stems=[];res.groups.forEach(function(gr){gr.forEach(function(t){stems.push(t);});});
+  var ambiguous=top&&g===1&&sec&&sec.s>top.s/1.3;
+  var ok=top&&!ambiguous&&(top.cov>=.66||(top.cov>=.5&&top.s>=5));
+  if(ok){
+    h=answerCard(top.i,s);
+    var rel=cs.slice(1).filter(function(x){return x.cov>=.5&&x.s>=top.s*.4;}).slice(0,3).map(function(x){return x.i;});
+    var used={};D.cards[top.i].r.forEach(function(r){used[r[0]]=1;});
+    var more=res.chunks.filter(function(x){return x.key&&!used[D.chunks[x.i].i]&&x.cov>=.66&&x.s>=top.s*.6;}).slice(0,2);
+    if(rel.length)h+='<div class="also"><div class="t">Похожие вопросы</div>'+chips(rel)+'</div>';
+    if(more.length)h+='<div class="also"><div class="t">Ещё нашлось в документах</div>'+more.map(function(x){return quote(D.chunks[x.i].i,null,stems);}).join('')+'</div>';
+    return botMsg(h+WARN+tools(s));
+  }
+  if(ambiguous){
+    var opts=cs.filter(function(x){return x.s>=top.s*.6;}).slice(0,5).map(function(x){return x.i;});
+    return botMsg('<p>Уточни, что именно тебя интересует:</p>'+chips(opts));
+  }
+  var ck=res.chunks, ctop=ck[0];
+  ck=ck.filter(function(x){return x.key;});ctop=ck[0];
+  var hits=ctop?ck.filter(function(x){return x.cov>=(g===1?1:.6)&&x.s>=ctop.s*.5;}).slice(0,3):[];
+  var maybe=cs.filter(function(x){return x.cov>=.5;}).slice(0,3).map(function(x){return x.i;});
+  if(hits.length){
+    h='<div class="found">Готового ответа в частых вопросах нет. Вот что сказано в документах:</div>'+hits.map(function(x){return quote(D.chunks[x.i].i,null,stems);}).join('');
+    if(maybe.length)h+='<div class="also"><div class="t">Может быть, ты про это</div>'+chips(maybe)+'</div>';
+    return botMsg(h+WARN+tools(s));
+  }
+  return botMsg('<p>Не нашёл ответа в документах, которые у меня есть. Попробуй сказать по-другому — например, «сколько раз можно пересдавать» или «как оформить академ». '+
+    'Если вопрос про то, чего нет в положениях (справки, оплата, личные ситуации), лучше спросить в директорате своей высшей школы.</p>'+(maybe.length?chips(maybe):chips(popular())));
+}
+function popular(){return [0,2,5,6,12].concat(D.cards.map(function(c,i){return i;}).filter(function(i){return /академ|Кто получает академическую|заселиться|опаздывать/.test(D.cards[i].q);})).slice(0,8);}
+
+/* ---------- начало ---------- */
+function hello(){
+  var cat=mem.spCat||'Сессия';
+  var h='<div class="hello"><h1>Спроси про учёбу в САФУ</h1><p class="sub">Отвечаю только цитатами из официальных документов — положений о сессии, отчислении и переводе, правил распорядка, порядка о стипендиях и матпомощи, положения об общежитии. '+
+    'Без ИИ и без пересказа: всегда видно, какой это документ и пункт.</p>'+'<p class="warn" style="margin:-4px 0 0">Неофициальный сервис · разработчик <a href="https://t.me/skf29" target="_blank" rel="noopener" style="color:var(--aur1);font-weight:800;text-decoration:none">@skf29</a></p>'+
+    '<div class="cats">'+CATS.map(function(c){return '<button data-cat="'+c+'"'+(c===cat?' class="on"':'')+'>'+c+'</button>';}).join('')+'<button data-docs>Документы</button></div><div id="catList"></div></div>';
+  var m=botMsg(h);fillCat(cat);return m;
+}
+function fillCat(cat){var box=document.getElementById('catList');if(!box)return;
+  box.innerHTML=chips(D.cards.map(function(c,i){return c.c===cat?i:-1;}).filter(function(i){return i>=0;}));bind(box);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cat]'),function(b){b.classList.toggle('on',b.dataset.cat===cat);});}
+function docsList(){return botMsg('<p><b>Документы, по которым я отвечаю</b> (снимок от '+esc(D.snap)+'):</p><div class="docs">'+D.docs.map(function(d){
+  return '<a href="'+esc(d.u)+'" target="_blank" rel="noopener">'+esc(d.w?'Страница «'+d.t+'»':d.t)+'<small>'+esc(d.a)+'</small></a>';}).join('')+'</div>');}
+
+function bind(root){
+  Array.prototype.forEach.call(root.querySelectorAll('[data-card]'),function(b){if(b._b)return;b._b=1;b.onclick=function(){var i=+b.dataset.card;meMsg(D.cards[i].q);var m=respond('',i);scrollDown(m);};});
+  Array.prototype.forEach.call(root.querySelectorAll('[data-more]'),function(b){if(b._b)return;b._b=1;b.onclick=function(){var t=b.previousElementSibling;t.innerHTML=t.getAttribute('data-full');b.remove();};});
+  Array.prototype.forEach.call(root.querySelectorAll('[data-cat]'),function(b){if(b._b)return;b._b=1;b.onclick=function(){mem.spCat=b.dataset.cat;try{var m=JSON.parse(localStorage.getItem(KEY))||{};m.spCat=mem.spCat;localStorage.setItem(KEY,JSON.stringify(m));}catch(e){}fillCat(b.dataset.cat);};});
+  Array.prototype.forEach.call(root.querySelectorAll('[data-docs]'),function(b){if(b._b)return;b._b=1;b.onclick=function(){var m=docsList();scrollDown(m);};});
+  Array.prototype.forEach.call(root.querySelectorAll('[data-share]'),function(b){if(b._b)return;b._b=1;b.onclick=function(){
+    var u=location.origin+location.pathname+'?q='+encodeURIComponent(b.dataset.share);
+    (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){b.textContent='Ссылка скопирована ✓';},function(){prompt('Ссылка на ответ:',u);});};});
+}
+form.onsubmit=function(e){e.preventDefault();var q=inp.value.trim();if(!q||!D)return;inp.value='';meMsg(q);var m=respond(q);scrollDown(m);
+  try{history.replaceState(null,'','?q='+encodeURIComponent(q));}catch(e){}};
+
+send.disabled=true;
+chat.innerHTML='<div class="msg bot"><div class="bubble"><div class="skeleton" style="height:90px"></div></div></div>';
+fetch('data/spravka.json').then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){
+  D=d;D.chunks.forEach(function(c){CH[c.i]=c;});E=makeEngine(D);WARN=WARN.replace('%SNAP%',esc(D.snap));
+  chat.innerHTML='';hello();send.disabled=false;
+  var q=new URLSearchParams(location.search).get('q');
+  if(q){meMsg(q);var m=respond(q);scrollDown(m);}
+}).catch(function(){chat.innerHTML='<div class="card">Не получилось загрузить справочник. Проверь интернет и обнови страницу.</div>';});
+})();
+</script>
+</body>
+</html>
