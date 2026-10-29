@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="../raspisanie/manifest.webmanifest">
 <meta name="theme-color" content="#070b18">
 <title>Справочник САФУ</title>
 <meta name="description" content="Ответы на вопросы студентов САФУ: пересдачи, отчисление, академ, стипендии, общежитие. Только дословные цитаты из документов университета со ссылкой на пункт. by @skf29">
@@ -83,7 +84,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--rim);display:
 footer a{color:var(--aur1);text-decoration:none;font-weight:800}
 .dev{display:inline-flex;align-items:center;gap:9px;color:var(--tx2)}
 .dev .d{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--aur1),var(--aur2));display:grid;place-items:center;color:#fff;font:800 11px var(--ff-d)}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
+.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
 
 .wrap{max-width:860px;padding-bottom:0}
 body{display:flex;flex-direction:column}
@@ -91,7 +92,7 @@ body>*{min-width:0}body>.wrap{width:100%;box-sizing:border-box}
 nav.links{display:flex;gap:6px;flex-wrap:wrap}
 nav.links a{color:var(--tx2);text-decoration:none;font-weight:700;font-size:13.5px;padding:7px 11px;border-radius:11px;border:1px solid var(--rim);background:var(--ice)}
 nav.links a:hover{color:var(--tx);border-color:var(--rim2)}
-#chat{display:flex;flex-direction:column;gap:14px;padding-bottom:110px}
+#chat{display:flex;flex-direction:column;gap:14px;padding-bottom:84px}
 .msg{max-width:100%}
 .me{align-self:flex-end;max-width:85%;background:linear-gradient(135deg,var(--aur3),var(--aur2));color:#fff;padding:10px 15px;border-radius:18px 18px 4px 18px;font-weight:600;word-wrap:break-word}
 .bot{align-self:flex-start;width:100%}
@@ -132,7 +133,7 @@ nav.links a:hover{color:var(--tx);border-color:var(--rim2)}
 .tools button{border:0;background:none;padding:0;color:var(--tx3);font-weight:700;font-size:12.5px}
 .tools button:hover{color:var(--aur1)}
 .warn{font-size:12.5px;color:var(--tx3);font-weight:600;margin-top:10px;line-height:1.4}
-.ask{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px max(16px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));
+.ask{position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom,0px));z-index:5;padding:10px max(16px,env(safe-area-inset-left,0px)) 8px;
   background:linear-gradient(to top,var(--sky) 70%,transparent)}
 .ask form{max-width:860px;margin:0 auto;display:flex;gap:8px;background:var(--sky2);border:1px solid var(--rim2);border-radius:18px;padding:6px;box-shadow:var(--shadow)}
 .ask input{flex:1;min-width:0;border:0;background:none;outline:none;padding:9px 10px;font-weight:600;font-size:16px}
@@ -142,6 +143,15 @@ nav.links a:hover{color:var(--tx);border-color:var(--rim2)}
 .docs a small{display:block;color:var(--tx3);font-weight:600;font-size:12.5px}
 .docs a:last-child{border-bottom:0}
 footer{margin-top:10px}
+/* нижняя панель: Расписание · Справочник · Статус — одинаковая на всех трёх страницах */
+.tabs{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(440px,calc(100% - 24px));display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px;border-radius:22px;
+  background:var(--sky2);background:color-mix(in srgb,var(--sky2) 84%,transparent);border:1px solid var(--rim2);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px 6px;border-radius:17px;color:var(--tx3);text-decoration:none;font-size:11.5px;font-weight:800;-webkit-tap-highlight-color:transparent}
+.tabs a svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tabs a:hover{color:var(--tx2)}
+.tabs a[aria-current]{color:var(--tx);background:var(--ice2)}
+.tabs a[aria-current] svg{stroke:var(--aur1)}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
@@ -149,13 +159,13 @@ footer{margin-top:10px}
 <div class="wrap">
   <header>
     <a class="logo" href="./"><i>С</i><div><b>Справочник САФУ</b><small>ответы из документов · Арктика</small></div></a>
-    <nav class="links"><a href="../raspisanie/">Расписание</a><a href="../status/">Статус</a></nav>
     <button class="btn icon" id="themeBtn" title="Светлая / тёмная тема" aria-label="Сменить тему"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
   </header>
   <main id="chat" aria-live="polite"></main>
   <noscript><div class="card">Включи JavaScript или открой страницу в обычном браузере (Safari, Chrome).</div></noscript>
 </div>
 <div class="ask"><form id="form" autocomplete="off"><input id="inp" placeholder="Напиши вопрос…" aria-label="Вопрос" enterkeyhint="send"><button id="send" type="submit">Спросить</button></form></div>
+<nav class="tabs" aria-label="Разделы"><a href="../raspisanie/"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Расписание</a><a href="../spravka/" aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.5V17A2.5 2.5 0 0 1 4 14.5z"/><path d="M8.5 9h7M8.5 12.5h4.5"/></svg>Справочник</a><a href="../status/"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6.5 5 13 2.5-6.5h4"/></svg>Статус</a></nav>
 <script>
 /* Поиск справочника: без ИИ. Вопрос разбивается на слова, слова приводятся к основе, ищутся в частых вопросах
    и в пунктах документов (BM25). Ответ — всегда дословный текст пунктов, ничего не сочиняется. */

@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="../raspisanie/manifest.webmanifest">
 <meta name="theme-color" content="#070b18">
 <title>Статус САФУ</title>
 <meta name="description" content="Работают ли сейчас РУЗ, Sakai, личный кабинет и почта САФУ. Проверка каждые 5 минут и история сбоев. by @skf29">
@@ -83,7 +84,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--rim);display:
 footer a{color:var(--aur1);text-decoration:none;font-weight:800}
 .dev{display:inline-flex;align-items:center;gap:9px;color:var(--tx2)}
 .dev .d{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--aur1),var(--aur2));display:grid;place-items:center;color:#fff;font:800 11px var(--ff-d)}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
 
 h1{font:800 clamp(26px,5vw,40px)/1.08 var(--ff-d);letter-spacing:-.025em;margin:4px 0 6px;text-wrap:balance}
 .sub{color:var(--tx2);margin:0 0 18px;max-width:62ch}
@@ -126,6 +127,15 @@ h2{font:700 13px var(--ff-d);text-transform:uppercase;letter-spacing:.12em;color
 .inc small{display:block;color:var(--tx3);font-weight:600;font-size:12.5px;margin-top:2px}
 .note{color:var(--tx3);font-size:13px;font-weight:600;margin-top:10px}
 .empty{color:var(--tx2);padding:18px;text-align:center;font-weight:600}
+/* нижняя панель: Расписание · Справочник · Статус — одинаковая на всех трёх страницах */
+.tabs{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(440px,calc(100% - 24px));display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px;border-radius:22px;
+  background:var(--sky2);background:color-mix(in srgb,var(--sky2) 84%,transparent);border:1px solid var(--rim2);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px 6px;border-radius:17px;color:var(--tx3);text-decoration:none;font-size:11.5px;font-weight:800;-webkit-tap-highlight-color:transparent}
+.tabs a svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tabs a:hover{color:var(--tx2)}
+.tabs a[aria-current]{color:var(--tx);background:var(--ice2)}
+.tabs a[aria-current] svg{stroke:var(--aur1)}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
@@ -133,7 +143,6 @@ h2{font:700 13px var(--ff-d);text-transform:uppercase;letter-spacing:.12em;color
 <div class="wrap">
   <header>
     <a class="logo" href="./"><i>С</i><div><b>Статус САФУ</b><small>что сейчас работает · Арктика</small></div></a>
-    <nav class="links"><a href="../raspisanie/">Расписание</a><a href="../spravka/">Справочник</a></nav>
     <button class="btn icon" id="themeBtn" title="Светлая / тёмная тема" aria-label="Сменить тему"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
   </header>
   <main id="app">
@@ -145,6 +154,7 @@ h2{font:700 13px var(--ff-d);text-transform:uppercase;letter-spacing:.12em;color
     <div>Неофициальный сервис, не связан с САФУ</div>
   </footer>
 </div>
+<nav class="tabs" aria-label="Разделы"><a href="../raspisanie/"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Расписание</a><a href="../spravka/"><svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.5V17A2.5 2.5 0 0 1 4 14.5z"/><path d="M8.5 9h7M8.5 12.5h4.5"/></svg>Справочник</a><a href="../status/" aria-current="page"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6.5 5 13 2.5-6.5h4"/></svg>Статус</a></nav>
 <script>
 (function(){
 "use strict";
