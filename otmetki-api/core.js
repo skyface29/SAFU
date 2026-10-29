@@ -7,10 +7,9 @@
 //   del    {g, w, k}         — удалить пару
 //   month  ?g&m              — все пары месяца (для старосты; расшифровать может только он)
 //   student ?g&t&m           — пары месяца, только часть одного студента (по его метке)
-// Хранение пары: строка l/<ключ> = {g: шифр для старост, t: метки студентов} и по строке s/<метка>/<ключ>
-// на каждого студента. Так студент читает только свои строки: база YDB берёт плату за прочитанные строки.
+// Хранение пары: l/<ключ> = {g: шифр для старост, t: метки студентов} и s/<метка>/<ключ> — часть каждого студента
+// (хранилище само решает, как их разложить). Код без зависимостей от Node: работает и в Cloudflare Workers.
 'use strict';
-const crypto = require('crypto');
 
 const LIM = { meta: 300000, card: 4000, les: 60000, items: 200, rows: 1200 };
 const GID = /^[abcdefghjklmnpqrstuvwxyz2-9]{16}$/;
@@ -20,8 +19,15 @@ const KEY = /^(meta|st\/[abcdefghjklmnpqrstuvwxyz2-9]{16}|l\/\d{4}-\d{2}-\d{2}T\
 const B64 = /^[A-Za-z0-9_-]+$/;
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-const sha = t => crypto.createHash('sha256').update(String(t)).digest('hex');
-const same = (a, b) => typeof a === 'string' && a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+async function sha(t) {
+  const b = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t)));
+  return Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, '0')).join('');
+}
+function same(a, b) {   // сравнение без утечки по времени
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
 const out = (code, body) => [code, body];
 
 function okCipher(s, max) { return typeof s === 'string' && s.length >= 24 && s.length <= max && B64.test(s); }
@@ -38,7 +44,7 @@ function okItem(it) {
 
 async function checkWrite(S, g, w) {
   if (typeof w !== 'string' || !W.test(w)) return false;
-  return same(await S.get(g, '_w'), sha(w));
+  return same(await S.get(g, '_w'), await sha(w));
 }
 
 async function handle(op, q, body, S) {
@@ -50,8 +56,8 @@ async function handle(op, q, body, S) {
     case 'create': {
       if (!body || typeof body.w !== 'string' || !W.test(body.w)) return out(400, { error: 'нет пропуска' });
       const was = await S.get(g, '_w');
-      if (was) return same(was, sha(body.w)) ? out(200, { ok: 1 }) : out(409, { error: 'такая группа уже есть' });
-      await S.put(g, [{ k: '_w', d: sha(body.w) }]);
+      if (was) return same(was, await sha(body.w)) ? out(200, { ok: 1 }) : out(409, { error: 'такая группа уже есть' });
+      await S.put(g, [{ k: '_w', d: await sha(body.w) }]);
       return out(200, { ok: 1 });
     }
     case 'get': {
@@ -107,7 +113,7 @@ async function http(event, getStore) {
   let body = null;
   if (event.httpMethod === 'POST') {
     let raw = event.body || '';
-    if (event.isBase64Encoded) raw = Buffer.from(raw, 'base64').toString('utf8');
+    if (event.isBase64Encoded) raw = new TextDecoder().decode(Uint8Array.from(atob(raw), c => c.charCodeAt(0)));
     if (raw.length > LIM.meta + LIM.items * LIM.card + 10000) return { statusCode: 413, headers: CORS, body: '{"error":"слишком большой запрос"}' };
     try { body = JSON.parse(raw); } catch (e) { return { statusCode: 400, headers: CORS, body: '{"error":"bad json"}' }; }
   }
