@@ -127,8 +127,8 @@ h2{font:700 13px var(--ff-d);text-transform:uppercase;letter-spacing:.12em;color
 .inc small{display:block;color:var(--tx3);font-weight:600;font-size:12.5px;margin-top:2px}
 .note{color:var(--tx3);font-size:13px;font-weight:600;margin-top:10px}
 .empty{color:var(--tx2);padding:18px;text-align:center;font-weight:600}
-/* нижняя панель: Расписание · Справочник · Статус — одинаковая на всех трёх страницах */
-.tabs{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(440px,calc(100% - 24px));display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px;border-radius:22px;
+/* нижняя панель: Расписание · Справочник (статус — отдельной страницей, ссылка в шапке расписания) */
+.tabs{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(320px,calc(100% - 24px));display:grid;grid-template-columns:repeat(2,1fr);gap:4px;padding:5px;border-radius:22px;
   background:var(--sky2);background:color-mix(in srgb,var(--sky2) 84%,transparent);border:1px solid var(--rim2);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px 6px;border-radius:17px;color:var(--tx3);text-decoration:none;font-size:11.5px;font-weight:800;-webkit-tap-highlight-color:transparent}
 .tabs a svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
@@ -154,7 +154,7 @@ body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
     <div>Неофициальный сервис, не связан с САФУ</div>
   </footer>
 </div>
-<nav class="tabs" aria-label="Разделы"><a href="../raspisanie/"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Расписание</a><a href="../spravka/"><svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.5V17A2.5 2.5 0 0 1 4 14.5z"/><path d="M8.5 9h7M8.5 12.5h4.5"/></svg>Справочник</a><a href="../status/" aria-current="page"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6.5 5 13 2.5-6.5h4"/></svg>Статус</a></nav>
+<nav class="tabs" aria-label="Разделы"><a href="../raspisanie/"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Расписание</a><a href="../spravka/"><svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.5V17A2.5 2.5 0 0 1 4 14.5z"/><path d="M8.5 9h7M8.5 12.5h4.5"/></svg>Справочник</a></nav>
 <script>
 (function(){
 "use strict";
