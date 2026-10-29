@@ -28,12 +28,13 @@ function getDriver(context) {
     database: process.env.YDB_DATABASE,
     authService: tok ? new TokenAuthService(tok) : getCredentialsFromEnv(),
   });
-  ready = (async () => {
-    if (!(await d.ready(10000))) throw new Error('YDB не отвечает');
+  // не даём зависшему подключению «запереть» экземпляр функции: через 6 с сбрасываем и пробуем заново
+  ready = Promise.race([(async () => {
+    if (!(await d.ready(5000))) throw new Error('YDB не отвечает');
     if (!inited) { await initTable(d); inited = true; }
     return d;
-  })();
-  ready.catch(() => { if (driver === d) driver = null; });
+  })(), new Promise((_, rej) => setTimeout(() => rej(new Error('YDB не отвечает')), 6000))]);
+  ready.catch(() => { if (driver === d) { driver = null; d.destroy().catch(() => {}); } });
   return ready;
 }
 
