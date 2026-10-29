@@ -1,5 +1,5 @@
 // Локальная проверка: сайт + API на одном порту, данные в памяти.
-// node otmetki-api/dev-server.js [порт] [папка с данными расписания ruz-data]
+// node otmetki-api/dev-server.js [порт] [папка с веткой ruz-data, в ней web/m.json]
 //   http://localhost:8790/otmetki/?api=local
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
