@@ -6,7 +6,7 @@ workers_dev = true
 
 [[kv_namespaces]]
 binding = "STATUS"
-id = "KV_ID"          # wrangler kv namespace list → id пространства safu-status
+id = "f52fb0cdf54c4924af13e4fe67cf3741"   # пространство safu-status
 
 [triggers]
 crons = ["*/5 * * * *"]

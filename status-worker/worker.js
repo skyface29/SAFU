@@ -8,7 +8,7 @@ const SERVICES = [
   { id: 'ruz', name: 'РУЗ', about: 'Расписание занятий', url: 'https://ruz.narfu.ru/', mark: /Расписание учебных занятий/i },
   { id: 'sakai', name: 'Sakai', about: 'Курсы и задания', url: 'https://sakai.narfu.ru/portal', mark: /Sakai/i },
   { id: 'lk', name: 'Личный кабинет', about: 'Зачётка, приказы, справки', url: 'https://lk.narfu.ru/', mark: /Личный кабинет/i },
-  { id: 'site', name: 'Сайт narfu.ru', about: 'Новости, документы', url: 'https://narfu.ru/', mark: /САФУ|Северный \(Арктический\)/i },
+  // сайт narfu.ru на запросы проверки отвечает 404, поэтому пока не проверяется
   { id: 'mail', name: 'Почта', about: 'edu.narfu.ru', url: 'https://edu.narfu.ru/', mark: /edu\.narfu\.ru|Pronto/i },
 ];
 const TIMEOUT = 20000, SLOW = 8000;          // дольше 8 с — «медленно», 20 с без ответа — «не работает»
