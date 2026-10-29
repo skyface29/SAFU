@@ -8,7 +8,6 @@
 |---|---|
 | `core.js` | протокол: `create`, `get`, `put`, `del`, `month`, `student`; проверки и ограничения |
 | `store-ydb.js` | хранилище в YDB serverless, таблица `kv(g, k, d, upd)` создаётся сама |
-
 | `store-mem.js` | хранилище в памяти для локальной проверки |
 | `index.js` | точка входа Yandex Cloud Functions |
 | `dev-server.js` | сайт + API на одном порту для проверки у себя |
