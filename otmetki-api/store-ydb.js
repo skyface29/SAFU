@@ -56,8 +56,9 @@ module.exports = function ydbStore(context) {
         UPSERT INTO kv SELECT $g AS g, k, d, $now AS upd FROM AS_TABLE($items);`,
         { $g: U(g), $now: N(Date.now()), $items: TypedValues.list(ITEM, items) });
     },
-    async del(g, k) {
-      await q(context, 'DECLARE $g AS Utf8; DECLARE $k AS Utf8; DELETE FROM kv WHERE g = $g AND k = $k;', { $g: U(g), $k: U(k) });
+    async delMany(g, keys) {
+      await q(context, 'DECLARE $g AS Utf8; DECLARE $keys AS List<Utf8>; DELETE FROM kv WHERE g = $g AND k IN $keys;',
+        { $g: U(g), $keys: TypedValues.list(Types.UTF8, keys) });
     },
     async list(g, prefix) {   // ответ YDB ограничен 1000 строк — читаем страницами
       const res = []; let after = prefix;
@@ -69,11 +70,6 @@ module.exports = function ydbStore(context) {
         if (rows.length < 500) return res;
         after = rows[rows.length - 1].k;
       }
-    },
-    async count(g, prefix) {
-      const [rows] = await q(context, 'DECLARE $g AS Utf8; DECLARE $p AS Utf8; SELECT COUNT(*) AS c FROM kv WHERE g = $g AND StartsWith(k, $p);',
-        { $g: U(g), $p: U(prefix) });
-      return Number(rows[0].c);
     },
   };
 };

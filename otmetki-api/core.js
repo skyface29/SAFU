@@ -7,10 +7,12 @@
 //   del    {g, w, k}         — удалить пару
 //   month  ?g&m              — все пары месяца (для старосты; расшифровать может только он)
 //   student ?g&t&m           — пары месяца, только часть одного студента (по его метке)
+// Хранение пары: строка l/<ключ> = {g: шифр для старост, t: метки студентов} и по строке s/<метка>/<ключ>
+// на каждого студента. Так студент читает только свои строки: база YDB берёт плату за прочитанные строки.
 'use strict';
 const crypto = require('crypto');
 
-const LIM = { meta: 300000, card: 4000, les: 60000, items: 200, lessons: 6000 };
+const LIM = { meta: 300000, card: 4000, les: 60000, items: 200, rows: 1200 };
 const GID = /^[abcdefghjklmnpqrstuvwxyz2-9]{16}$/;
 const TAG = /^[abcdefghjklmnpqrstuvwxyz2-9]{16}$/;
 const W = /^[A-Za-z0-9_-]{32}$/;
@@ -61,27 +63,36 @@ async function handle(op, q, body, S) {
     case 'student': {
       if (typeof q.m !== 'string' || !MONTH.test(q.m)) return out(400, { error: 'неверный месяц' });
       if (op === 'student' && (typeof q.t !== 'string' || !TAG.test(q.t))) return out(400, { error: 'неверная ссылка' });
-      const rows = await S.list(g, 'l/' + q.m + '-');
       const items = {};
-      for (const r of rows) {
-        if (op === 'month') { items[r.k] = r.d; continue; }
-        try { const s = JSON.parse(r.d).s; if (s && s[q.t]) items[r.k] = s[q.t]; } catch (e) {}
-      }
+      if (op === 'month') for (const r of await S.list(g, 'l/' + q.m + '-')) items[r.k] = r.d;
+      else for (const r of await S.list(g, 's/' + q.t + '/' + q.m + '-')) items['l/' + r.k.slice(19)] = r.d;
       return out(200, { items });
     }
     case 'put': {
       if (!body || !(await checkWrite(S, g, body.w))) return out(403, { error: 'код группы не подходит' });
       const items = body.items;
       if (!Array.isArray(items) || !items.length || items.length > LIM.items || !items.every(okItem)) return out(400, { error: 'неверные данные' });
-      const fresh = items.filter(it => it.k.startsWith('l/')).length;
-      if (fresh && (await S.count(g, 'l/')) + fresh > LIM.lessons) return out(413, { error: 'слишком много пар в журнале' });
-      await S.put(g, items.map(it => ({ k: it.k, d: it.d })));
+      const rows = [], gone = [], now = Date.now();
+      for (const it of items) {
+        if (!it.k.startsWith('l/')) { rows.push({ k: it.k, d: it.d }); continue; }
+        const key = it.k.slice(2), o = JSON.parse(it.d), tags = Object.keys(o.s);
+        if (Math.abs(Date.parse(key.slice(0, 10)) - now) > 400 * 864e5) return out(400, { error: 'неверная дата пары' });
+        const old = await S.get(g, it.k);   // при правке: убрать части студентов, у которых отметку сняли
+        if (old) { try { for (const t of JSON.parse(old).t || []) if (!o.s[t]) gone.push('s/' + t + '/' + key); } catch (e) {} }
+        rows.push({ k: it.k, d: JSON.stringify({ g: o.g, t: tags }) });
+        for (const t of tags) rows.push({ k: 's/' + t + '/' + key, d: o.s[t] });
+      }
+      if (rows.length > LIM.rows) return out(413, { error: 'слишком большой запрос' });
+      await S.put(g, rows);
+      if (gone.length) await S.delMany(g, gone);
       return out(200, { ok: 1, n: items.length });
     }
     case 'del': {
       if (!body || !(await checkWrite(S, g, body.w))) return out(403, { error: 'код группы не подходит' });
       if (typeof body.k !== 'string' || !/^l\//.test(body.k) || !KEY.test(body.k)) return out(400, { error: 'неверный ключ' });
-      await S.del(g, body.k);
+      const old = await S.get(g, body.k), key = body.k.slice(2), keys = [body.k];
+      if (old) { try { for (const t of JSON.parse(old).t || []) keys.push('s/' + t + '/' + key); } catch (e) {} }
+      await S.delMany(g, keys);
       return out(200, { ok: 1 });
     }
   }
