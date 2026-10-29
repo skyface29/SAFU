@@ -15,7 +15,7 @@
 3. **Подключить хранилище.** В воркере: Settings → **Bindings** → Add → KV namespace.
    Имя переменной (Variable name): `STATUS`, namespace: `safu-status` → Save.
 4. **Расписание.** В воркере: Settings → **Trigger events** (Triggers) → Add → Cron Triggers → `*/5 * * * *` → Add.
-5. **Проверка.** Открыть `https://safu-status.<твой-поддомен>.workers.dev/status.json`.
+5. **Проверка.** Открыть `https://safu-status.<поддомен>.workers.dev/status.json` (сейчас: https://safu-status.zarubin-kirillcka.workers.dev).
    Должен прийти JSON со списком сервисов. Этот адрес нужно вписать в `site/status/index.html` (константа `WORKER`).
 
 ## Что считается «работает»
