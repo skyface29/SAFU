@@ -1,0 +1,12 @@
+# Развёртывание из командной строки: npx wrangler deploy (из этой папки)
+name = "safu-status"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "STATUS"
+id = "KV_ID"          # wrangler kv namespace list → id пространства safu-status
+
+[triggers]
+crons = ["*/5 * * * *"]
