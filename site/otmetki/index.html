@@ -464,12 +464,11 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 (function(){
 "use strict";
 /* ================= настройки ================= */
-var API_DEFAULT='https://functions.yandexcloud.net/d4e8m5ak49b1ggo0cbkh'; // функция Yandex Cloud (otmetki-api/proxy.js)
-var API_DIRECT='https://otmetki-api.zarubin-kirillcka.workers.dev/'; // тот же сервер напрямую (Cloudflare), если Yandex не отвечает
+var API_DEFAULT='https://functions.yandexcloud.net/d4e8m5ak49b1ggo0cbkh'; // функция Yandex Cloud, данные в Object Storage (otmetki-api/yandex.js)
 var RUZ='../raspisanie/data/web/'; // зеркало расписания на этом же сайте (ветка ruz-data, папка web)
 var KEY='otmetki.v1', THEME_KEY='safu.mirror.v1';
 var API=(function(){try{return localStorage.getItem('otmetki.api')||'';}catch(e){return '';}})();
-var APIS=API?[API]:[API_DEFAULT,API_DIRECT], API_I=(function(){try{return +sessionStorage.getItem('otmetki.apiI')||0;}catch(e){return 0;}})()%APIS.length;
+var APIS=[API||API_DEFAULT], API_I=(function(){try{return +sessionStorage.getItem('otmetki.apiI')||0;}catch(e){return 0;}})()%APIS.length;
 var CODE_ABC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', ID_ABC='abcdefghjklmnpqrstuvwxyz23456789';
 var M_TXT={p:'Был',a:'Нет',e:'Уваж.',l:'Опоздал'}, M_SYM={p:'✓',a:'Н',e:'У',l:'О'};
 var app=document.getElementById('app'), nav=document.getElementById('nav');
@@ -525,9 +524,9 @@ function shortHash(s){return SUB.digest('SHA-256',te.encode(s)).then(function(b)
 /* ================= сервер ================= */
 function api(op,params,body){
   var q='op='+op+(params?'&'+new URLSearchParams(params):''),tried=[],n=0;
-  // два входа на один сервер: функция Yandex и Cloudflare напрямую. Не ответил один — сразу пробуем другой.
+  // запрос ждёт ответа не дольше 12 с (запись — 20 с); если входов несколько, при сбое пробуем следующий
   function one(i){var base=APIS[i],u=base+(base.indexOf('?')>=0?'&':'?')+q,ctl=typeof AbortController!=='undefined'?new AbortController():null,
-      tm=ctl&&setTimeout(function(){ctl.abort();},body?15000:9000),o=body?{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)}:{cache:'no-store'};
+      tm=ctl&&setTimeout(function(){ctl.abort();},body?20000:12000),o=body?{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)}:{cache:'no-store'};
     if(ctl)o.signal=ctl.signal;
     return fetch(u,o).then(function(r){clearTimeout(tm);
       return r.json().catch(function(){return {};}).then(function(j){if(!r.ok){var e=new Error(j.error||('ошибка '+r.status));e.status=r.status;throw e;}
