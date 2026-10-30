@@ -464,10 +464,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 (function(){
 "use strict";
 /* ================= настройки ================= */
-var API_DEFAULT='https://functions.yandexcloud.net/d4e8m5ak49b1ggo0cbkh'; // функция Yandex Cloud (otmetki-api/)
+var API_DEFAULT='https://functions.yandexcloud.net/d4e8m5ak49b1ggo0cbkh'; // функция Yandex Cloud (otmetki-api/proxy.js)
+var API_DIRECT='https://otmetki-api.zarubin-kirillcka.workers.dev/'; // тот же сервер напрямую (Cloudflare), если Yandex не отвечает
 var RUZ='../raspisanie/data/web/'; // зеркало расписания на этом же сайте (ветка ruz-data, папка web)
 var KEY='otmetki.v1', THEME_KEY='safu.mirror.v1';
-var API=(function(){try{return localStorage.getItem('otmetki.api')||API_DEFAULT;}catch(e){return API_DEFAULT;}})();
+var API=(function(){try{return localStorage.getItem('otmetki.api')||'';}catch(e){return '';}})();
+var APIS=API?[API]:[API_DEFAULT,API_DIRECT], API_I=(function(){try{return +sessionStorage.getItem('otmetki.apiI')||0;}catch(e){return 0;}})()%APIS.length;
 var CODE_ABC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', ID_ABC='abcdefghjklmnpqrstuvwxyz23456789';
 var M_TXT={p:'Был',a:'Нет',e:'Уваж.',l:'Опоздал'}, M_SYM={p:'✓',a:'Н',e:'У',l:'О'};
 var app=document.getElementById('app'), nav=document.getElementById('nav');
@@ -522,11 +524,21 @@ function shortHash(s){return SUB.digest('SHA-256',te.encode(s)).then(function(b)
 
 /* ================= сервер ================= */
 function api(op,params,body){
-  if(!API)return Promise.reject(Object.assign(new Error('Сервер ещё не подключён'),{offline:true}));
-  var u=API+(API.indexOf('?')>=0?'&':'?')+'op='+op+(params?'&'+new URLSearchParams(params):'');
-  return fetch(u,body?{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)}:{cache:'no-store'}).then(function(r){
-    return r.json().catch(function(){return {};}).then(function(j){if(!r.ok){var e=new Error(j.error||('ошибка '+r.status));e.status=r.status;throw e;}return j;});
-  },function(e){var x=new Error('Нет связи с сервером');x.offline=true;throw x;});}
+  var q='op='+op+(params?'&'+new URLSearchParams(params):''),tried=[],n=0;
+  // два входа на один сервер: функция Yandex и Cloudflare напрямую. Не ответил один — сразу пробуем другой.
+  function one(i){var base=APIS[i],u=base+(base.indexOf('?')>=0?'&':'?')+q,ctl=typeof AbortController!=='undefined'?new AbortController():null,
+      tm=ctl&&setTimeout(function(){ctl.abort();},body?15000:9000),o=body?{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)}:{cache:'no-store'};
+    if(ctl)o.signal=ctl.signal;
+    return fetch(u,o).then(function(r){clearTimeout(tm);
+      return r.json().catch(function(){return {};}).then(function(j){if(!r.ok){var e=new Error(j.error||('ошибка '+r.status));e.status=r.status;throw e;}
+        if(i!==API_I){API_I=i;try{sessionStorage.setItem('otmetki.apiI',i);}catch(_){}}return j;});
+    },function(){clearTimeout(tm);var x=new Error('Нет связи с сервером');x.offline=true;throw x;});}
+  function next(){var i=(API_I+n)%APIS.length;n++;
+    return one(i).catch(function(e){tried.push(e);var retry=e.offline||e.status>=500;
+      if(retry&&n<APIS.length)return next();
+      if(retry&&tried.some(function(t){return !t.offline;}))e.offline=false;
+      throw e;});}
+  return next();}
 /* очередь: если нет интернета, сохранённое лежит в телефоне (уже зашифрованным) и уходит при первой возможности */
 function outbox(){return store().out||[];}
 function setOutbox(o){var s=store();s.out=o;save(s);}
