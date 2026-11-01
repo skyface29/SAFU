@@ -1,0 +1,8 @@
+{
+  "name": "arktika-ruz-mirror",
+  "private": true,
+  "type": "module",
+  "description": "Сборщик зеркала расписания arktika-app.ru/raspisanie/ (РУЗ САФУ и колледжи)",
+  "scripts": { "test": "node --test tests/*.test.mjs" },
+  "dependencies": { "pdfjs-dist": "4.10.38" }
+}

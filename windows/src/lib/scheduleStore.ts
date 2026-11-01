@@ -13,6 +13,7 @@ import {
 } from './ruz'
 import { startOfDay, weekKey, monday, isToday, isTomorrow, relativeAgo } from './date'
 import { notify } from './notify'
+import { loadMirrorGroup, mirrorOnly } from './mirror'
 
 const KEY = 'schedule.v1'
 
@@ -385,6 +386,32 @@ export const scheduleStore = {
 
     useSchedule.setState({ syncing: true })
     try {
+      // сначала зеркало arktika-app.ru: там вся группа с начала семестра одним файлом, колледжи и копия на случай, если РУЗ лежит
+      let fromMirror: Awaited<ReturnType<typeof loadMirrorGroup>> = null
+      if (data.ruzGroupNumber) { try { fromMirror = await loadMirrorGroup(data.ruzGroupNumber) } catch { fromMirror = null } }
+      if (fromMirror || mirrorOnly(data.ruzInstitution)) {
+        const r = fromMirror || { events: [], at: 0 }
+        const cur = useSchedule.getState().data
+        const before = upcomingMap(cur)
+        let d: ScheduleData = cur
+        if (r.events.length) d = mergeRuz(d, r.events)
+        const lastMethod = kv.get<string | null>('ruz.lastMethod', null)
+        kv.set('ruz.lastMethod', 'зеркало')
+        if (before.size && r.events.length && lastMethod === 'зеркало') {
+          const found = diffChanges(before, upcomingMap(d))
+          if (found.length) {
+            const s = useSchedule.getState()
+            setChanges([...found, ...s.changes].slice(0, 50), s.unseen + found.length)
+            notifyChanges(found)
+          }
+        }
+        const info = r.events.length ? `Загружено пар: ${r.events.length} · зеркало arktika-app.ru`
+          : fromMirror ? 'В расписании пока нет пар для этой группы' : `Группы ${data.ruzGroupNumber} пока нет в расписании колледжа. Проверь номер или загляни позже.`
+        d = { ...d, lastSync: Date.now(), syncInfo: info }
+        setData(d)
+        useSchedule.setState({ syncMessage: info })
+        return
+      }
       let id = data.ruzGroupID
       if (!id) {
         const found = data.ruzGroupNumber ? await findGroupID(data.ruzGroupNumber, data.ruzInstitution) : null

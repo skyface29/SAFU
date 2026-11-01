@@ -176,3 +176,14 @@ test('zip для .docx: правильный CRC и сигнатуры', () => {
   const z = makeZip([['a.txt', 'hi']])
   assert.equal(z[0], 0x50); assert.equal(z[1], 0x4b)
 })
+
+test('зеркало: файл группы → пары, подгруппа и поток в примечании', async () => {
+  const { eventsFromGroupFile, groupFile, mirrorOnly } = await import('../src/lib/mirror')
+  const ev = eventsFromGroupFile({ v: 2, at: 0, n: '151621', base: 29842880, S: ['Алгебра', 'Практика', 'Кочкин С.А.', '44', 'наб. Северной Двины, д. 2', '', '1'], L: [[0, 95, 0, 1, 2, 3, 4, 5, 6]] })
+  assert.equal(ev.length, 1)
+  assert.equal(ev[0].start, 29842880 * 60_000)
+  assert.equal(ev[0].end - ev[0].start, 95 * 60_000)
+  assert.deepEqual([ev[0].subject, ev[0].kind, ev[0].teacher, ev[0].room, ev[0].note], ['Алгебра', 'Практика', 'Кочкин С.А.', '44', 'Подгруппа 1'])
+  assert.ok(groupFile('151621 Д').endsWith('/g/151621_%D0%94.json'))
+  assert.ok(mirrorOnly(1001) && mirrorOnly(23) && !mirrorOnly(3))
+})
