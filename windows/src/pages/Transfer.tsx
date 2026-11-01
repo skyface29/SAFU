@@ -9,10 +9,11 @@ import { safu } from '../lib/bridge'
 import { go } from '../lib/nav'
 import { plural } from '../lib/date'
 
+import { L } from '../lib/i18n'
 export default function TransferPage() {
   return (
     <>
-      <PageHeader title="Перенос с iPhone" subtitle="Файлы предметов, фото доски, ДЗ и настройки — по Wi‑Fi, напрямую: без кабеля, облаков и пересылки себе в Telegram" />
+      <PageHeader title={L("Перенос с iPhone")} subtitle={L("Файлы предметов, фото доски, ДЗ и настройки — по Wi‑Fi, напрямую: без кабеля, облаков и пересылки себе в Telegram")} />
       <TransferPanel />
     </>
   )
@@ -35,7 +36,7 @@ export function TransferPanel({ onClose }: { onClose?: () => void }) {
   return (
     <Card style={{ padding: 28, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(700px 320px at 15% 0%, rgba(var(--brand-rgb), .18), transparent)', pointerEvents: 'none' }} />
-      {onClose && <button className="btn icon sm ghost" onClick={onClose} style={{ position: 'absolute', top: 14, right: 14 }} title="Закрыть"><X size={16} /></button>}
+      {onClose && <button className="btn icon sm ghost" onClick={onClose} style={{ position: 'absolute', top: 14, right: 14 }} title={L("Закрыть")}><X size={16} /></button>}
       <AnimatePresence mode="wait">
         {(s.phase === 'starting' || s.phase === 'waiting' || s.phase === 'connected' || (s.phase === 'idle' && !s.expired)) && <Waiting key="wait" />}
         {s.phase === 'idle' && s.expired && <Expired key="expired" />}
@@ -66,7 +67,7 @@ function QrBox({ url, connected }: { url: string; connected: boolean }) {
                   animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 1.6, repeat: Infinity }}>
                   <Smartphone size={40} />
                 </motion.div>
-                <div className="bold">Телефон подключился</div>
+                <div className="bold">{L("Телефон подключился")}</div>
               </div>
             </motion.div>
           ) : m ? (
@@ -104,28 +105,28 @@ function Waiting() {
       <div className="col" style={{ alignItems: 'center', gap: 14 }}>
         <QrBox url={s.url} connected={connected} />
         <div className="small muted tc" style={{ maxWidth: 296 }}>
-          {connected ? <>Выбери на iPhone, что перенести, и нажми <b>«Перенести»</b></> : <>Наведи камеру iPhone на код</>}
+          {connected ? <>{L("Выбери на iPhone, что перенести, и нажми")} <b>{L("«Перенести»")}</b></> : <>{L("Наведи камеру iPhone на код")}</>}
         </div>
       </div>
       <div className="col grow" style={{ gap: 20, minWidth: 300, paddingTop: 6 }}>
         <div>
-          <div className="h-card" style={{ fontSize: '1.35rem' }}>{connected ? `${s.device} на связи` : 'Перенеси всё с iPhone за минуту'}</div>
-          <div className="sub mt4">Файлы предметов, фото доски по парам, ДЗ, задачи, заметки, оценки и настройки. Повторный перенос шлёт только новое.</div>
+          <div className="h-card" style={{ fontSize: '1.35rem' }}>{connected ? L`${s.device} на связи` : L('Перенеси всё с iPhone за минуту')}</div>
+          <div className="sub mt4">{L("Файлы предметов, фото доски по парам, ДЗ, задачи, заметки, оценки и настройки. Повторный перенос шлёт только новое.")}</div>
         </div>
-        <Step n={1} icon={<Camera size={20} />} title="Открой камеру iPhone и наведи на код"
-          sub={<>Откроется Арктика. Или в самой Арктике: <b>Профиль → Перенос на компьютер</b></>} />
+        <Step n={1} icon={<Camera size={20} />} title={L("Открой камеру iPhone и наведи на код")}
+          sub={<>{L("Откроется Арктика. Или в самой Арктике:")} <b>{L("Профиль → Перенос на компьютер")}</b></>} />
         {s.hosts.length ? (
-          <Step n={2} icon={<Wifi size={20} />} title="Телефон и компьютер — в одной сети Wi‑Fi"
-            sub={<>Этот компьютер в сети: <span className="mono">{s.hosts[0]}</span>. Нет общего Wi‑Fi — включи на iPhone «Режим модема», подключи к нему компьютер и нажми «Новый код»</>} />
+          <Step n={2} icon={<Wifi size={20} />} title={L("Телефон и компьютер — в одной сети Wi‑Fi")}
+            sub={<>{L("Этот компьютер в сети:")} <span className="mono">{s.hosts[0]}</span>{L(". Нет общего Wi‑Fi — включи на iPhone «Режим модема», подключи к нему компьютер и нажми «Новый код»")}</>} />
         ) : (
-          <Step n={2} warn icon={<Wifi size={20} />} title="Компьютер не подключён к сети"
-            sub="Подключи его к Wi‑Fi (к той же сети, что и телефон) или включи на iPhone «Режим модема» и подключи к нему компьютер — и нажми «Новый код»" />
+          <Step n={2} warn icon={<Wifi size={20} />} title={L("Компьютер не подключён к сети")}
+            sub={L("Подключи его к Wi‑Fi (к той же сети, что и телефон) или включи на iPhone «Режим модема» и подключи к нему компьютер — и нажми «Новый код»")} />
         )}
-        <Step n={3} icon={<ShieldCheck size={20} />} title="Windows спросит про доступ к сети — нажми «Разрешить»"
-          sub="Файлы идут напрямую, по воздуху, и шифруются AES‑256. Ключ есть только в этом QR-коде и меняется каждый раз — в общей сети их никто не подсмотрит" />
+        <Step n={3} icon={<ShieldCheck size={20} />} title={L("Windows спросит про доступ к сети — нажми «Разрешить»")}
+          sub={L("Файлы идут напрямую, по воздуху, и шифруются AES‑256. Ключ есть только в этом QR-коде и меняется каждый раз — в общей сети их никто не подсмотрит")} />
         <div className="row gap8">
-          <button className="btn sm" onClick={() => transfer.start()}><RefreshCw size={14} /> Новый код</button>
-          <span className="tiny faint">Код работает 15 минут{s.pc ? ` · ${s.pc}` : ''}</span>
+          <button className="btn sm" onClick={() => transfer.start()}><RefreshCw size={14} /> {L("Новый код")}</button>
+          <span className="tiny faint">{L("Код работает 15 минут")}{s.pc ? ` · ${s.pc}` : ''}</span>
         </div>
       </div>
     </motion.div>
@@ -136,9 +137,9 @@ function Expired() {
   return (
     <motion.div {...enter} className="col center" style={{ gap: 14, padding: '40px 0' }}>
       <div className="icon-tile" style={{ width: 64, height: 64, borderRadius: 20, background: 'linear-gradient(135deg,#64748b,#334155)' }}><RotateCcw size={28} /></div>
-      <div className="h-card">Код устарел</div>
-      <div className="sub tc" style={{ maxWidth: 380 }}>Телефон долго не подключался, и приём закрылся — так безопаснее. Новый код — одной кнопкой.</div>
-      <button className="btn primary" onClick={() => transfer.start()}><RefreshCw size={15} /> Показать новый код</button>
+      <div className="h-card">{L("Код устарел")}</div>
+      <div className="sub tc" style={{ maxWidth: 380 }}>{L("Телефон долго не подключался, и приём закрылся — так безопаснее. Новый код — одной кнопкой.")}</div>
+      <button className="btn primary" onClick={() => transfer.start()}><RefreshCw size={15} /> {L("Показать новый код")}</button>
     </motion.div>
   )
 }
@@ -148,9 +149,9 @@ function Failed() {
   return (
     <motion.div {...enter} className="col center" style={{ gap: 14, padding: '40px 0' }}>
       <div className="icon-tile" style={{ width: 64, height: 64, borderRadius: 20, background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}><AlertTriangle size={28} /></div>
-      <div className="h-card">Не получилось</div>
+      <div className="h-card">{L("Не получилось")}</div>
       <div className="sub tc" style={{ maxWidth: 420 }}>{s.error}</div>
-      <button className="btn primary" onClick={() => transfer.start()}><RefreshCw size={15} /> Попробовать снова</button>
+      <button className="btn primary" onClick={() => transfer.start()}><RefreshCw size={15} /> {L("Попробовать снова")}</button>
     </motion.div>
   )
 }
@@ -188,7 +189,7 @@ function Sending() {
   const s = useTransfer()
   const frac = s.total ? s.done / s.total : 0
   const left = s.speed > 0 ? Math.max(0, (s.total - s.done) / s.speed) : 0
-  const eta = left < 60 ? `${Math.max(1, Math.round(left))} с` : `${Math.round(left / 60)} мин`
+  const eta = left < 60 ? L`${Math.max(1, Math.round(left))} с` : L`${Math.round(left / 60)} мин`
   return (
     <motion.div {...enter} className="col" style={{ gap: 26, alignItems: 'center', padding: '10px 0' }}>
       <div className="row" style={{ gap: 24, alignItems: 'center' }}>
@@ -205,23 +206,23 @@ function Sending() {
             animate={{ scale: s.flying.length ? [1, 1.08, 1] : 1 }} transition={{ duration: 0.5, repeat: s.flying.length ? Infinity : 0 }}>
             <Laptop size={34} />
           </motion.div>
-          <div className="small bold ellipsis" style={{ maxWidth: 120 }}>{s.pc || 'Компьютер'}</div>
+          <div className="small bold ellipsis" style={{ maxWidth: 120 }}>{s.pc || L('Компьютер')}</div>
         </div>
       </div>
       <Ring value={frac} size={150} stroke={11}>
         <div className="col" style={{ alignItems: 'center', gap: 0 }}>
           <div style={{ fontSize: '2.1rem', fontWeight: 900 }} className="mono">{Math.floor(frac * 100)}%</div>
-          <div className="tiny faint">{s.total ? formatBytes(s.done) : 'готовлю…'}</div>
+          <div className="tiny faint">{s.total ? formatBytes(s.done) : L('готовлю…')}</div>
         </div>
       </Ring>
       <div className="col" style={{ alignItems: 'center', gap: 6 }}>
         <div className="bold">
-          {s.filesTotal ? `${s.files} из ${s.filesTotal} ${plural(s.filesTotal, 'файла', 'файлов', 'файлов')}` : 'Телефон готовит список…'}
-          {s.total ? ` · ${formatBytes(s.done)} из ${formatBytes(s.total)}` : ''}
+          {s.filesTotal ? L`${s.files} из ${s.filesTotal} ${plural(s.filesTotal, L('файла'), L('файлов'), L('файлов'))}` : L('Телефон готовит список…')}
+          {s.total ? L` · ${formatBytes(s.done)} из ${formatBytes(s.total)}` : ''}
         </div>
         <div className="sub">
-          {s.speed > 0 ? `${formatBytes(s.speed)}/с · осталось ≈ ${eta}` : 'Считаю скорость…'}
-          {s.skipped ? ` · ${s.skipped} уже ${plural(s.skipped, 'был', 'были', 'были')} на компьютере` : ''}
+          {s.speed > 0 ? L`${formatBytes(s.speed)}/с · осталось ≈ ${eta}` : L('Считаю скорость…')}
+          {s.skipped ? L` · ${s.skipped} уже ${plural(s.skipped, L('был'), L('были'), L('были'))} на компьютере` : ''}
         </div>
         <div className="tiny faint ellipsis" style={{ maxWidth: 520 }}>{s.name}</div>
       </div>
@@ -238,22 +239,22 @@ function Done({ onClose }: { onClose?: () => void }) {
         initial={{ scale: 0, rotate: -40 }} animate={{ scale: 1, rotate: 0 }} transition={bouncy}>
         <Check size={46} strokeWidth={3} />
       </motion.div>
-      <div style={{ fontSize: '1.6rem', fontWeight: 900 }}>Всё на компьютере</div>
+      <div style={{ fontSize: '1.6rem', fontWeight: 900 }}>{L("Всё на компьютере")}</div>
       <div className="sub tc" style={{ maxWidth: 520 }}>
-        {sum && sum.files ? `${sum.files} ${plural(sum.files, 'файл', 'файла', 'файлов')}, ${formatBytes(sum.bytes)} — за ${sum.seconds < 60 ? `${Math.max(1, sum.seconds)} с` : `${Math.round(sum.seconds / 60)} мин`}.` : 'Новых файлов не было — всё уже лежало на месте.'}
-        {sum && sum.skipped ? ` Ещё ${sum.skipped} уже ${plural(sum.skipped, 'был', 'были', 'были')} здесь — их не трогали.` : ''}
-        {s.dataApplied ? ' ДЗ, задачи, заметки, оценки, расписание и настройки — тоже.' : ''}
+        {sum && sum.files ? L`${sum.files} ${plural(sum.files, L('файл'), L('файла'), L('файлов'))}, ${formatBytes(sum.bytes)} — за ${sum.seconds < 60 ? L`${Math.max(1, sum.seconds)} с` : L`${Math.round(sum.seconds / 60)} мин`}.` : L('Новых файлов не было — всё уже лежало на месте.')}
+        {sum && sum.skipped ? L` Ещё ${sum.skipped} уже ${plural(sum.skipped, L('был'), L('были'), L('были'))} здесь — их не трогали.` : ''}
+        {s.dataApplied ? L(' ДЗ, задачи, заметки, оценки, расписание и настройки — тоже.') : ''}
       </div>
       {s.error && <div className="small tc" style={{ color: '#f59e0b', maxWidth: 520 }}>{s.error}</div>}
       <div className="row gap8 mt8">
         {s.dataApplied ? (
-          <button className="btn primary lg" onClick={() => safu.app.relaunch()}><RefreshCw size={16} /> Перезапустить и открыть</button>
+          <button className="btn primary lg" onClick={() => safu.app.relaunch()}><RefreshCw size={16} /> {L("Перезапустить и открыть")}</button>
         ) : (
-          <button className="btn primary lg" onClick={() => { transfer.reset(); onClose?.(); go('files') }}><FolderOpen size={16} /> Открыть файлы</button>
+          <button className="btn primary lg" onClick={() => { transfer.reset(); onClose?.(); go('files') }}><FolderOpen size={16} /> {L("Открыть файлы")}</button>
         )}
-        <button className="btn lg" onClick={() => transfer.start()}><RotateCcw size={16} /> Перенести ещё</button>
+        <button className="btn lg" onClick={() => transfer.start()}><RotateCcw size={16} /> {L("Перенести ещё")}</button>
       </div>
-      {s.dataApplied && <div className="tiny faint">Данные уже сохранены — перезапуск нужен, чтобы все разделы их подхватили</div>}
+      {s.dataApplied && <div className="tiny faint">{L("Данные уже сохранены — перезапуск нужен, чтобы все разделы их подхватили")}</div>}
     </motion.div>
   )
 }

@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { kv, usePref } from '../lib/kv'
 
+import { L } from '../lib/i18n'
 const STEPS = [
-  { emoji: '🏠', title: 'Главная', text: 'Текущая пара с таймером, ДЗ, погода и сайты вуза одной кнопкой.' },
-  { emoji: '🌐', title: 'Сайты как мини-приложения', text: 'Sakai, почта и личный кабинет открываются карточкой. Esc или тяни вниз — свернуть, вернёшься на ту же страницу.' },
-  { emoji: '🔎', title: 'Ctrl + K', text: 'Быстрый поиск по всему: предметы, ДЗ, сайты, инструменты. Ctrl+N — записать ДЗ.' },
-  { emoji: '🕒', title: 'Трей и мини-окно', text: 'Закрыл окно — Арктика остаётся у часов и напоминает о парах. Мини-окно пары висит поверх всех окон.' },
-  { emoji: '🎨', title: 'Оформление', text: 'Профиль → Оформление: 25 цветов, живые фоны, стили карточек, шрифты.' }
+  { emoji: '🏠', title: L('Главная'), text: L('Текущая пара с таймером, ДЗ, погода и сайты вуза одной кнопкой.') },
+  { emoji: '🌐', title: L('Сайты как мини-приложения'), text: L('Sakai, почта и личный кабинет открываются карточкой. Esc или тяни вниз — свернуть, вернёшься на ту же страницу.') },
+  { emoji: '🔎', title: 'Ctrl + K', text: L('Быстрый поиск по всему: предметы, ДЗ, сайты, инструменты. Ctrl+N — записать ДЗ.') },
+  { emoji: '🕒', title: L('Трей и мини-окно'), text: L('Закрыл окно — Арктика остаётся у часов и напоминает о парах. Мини-окно пары висит поверх всех окон.') },
+  { emoji: '🎨', title: L('Оформление'), text: L('Профиль → Оформление: 25 цветов, живые фоны, стили карточек, шрифты.') }
 ]
 
 export function Tour() {
@@ -36,8 +37,8 @@ export function Tour() {
               {STEPS.map((_, j) => <motion.div key={j} animate={{ width: j === i ? 22 : 7 }} style={{ height: 7, borderRadius: 4, background: j === i ? 'var(--brand)' : 'var(--fill2)' }} />)}
             </div>
             <div className="row">
-              <button className="btn ghost grow" onClick={close}>Пропустить</button>
-              <button className="btn primary grow" onClick={() => i < STEPS.length - 1 ? setI(i + 1) : close()}>{i < STEPS.length - 1 ? 'Дальше' : 'Понятно'}</button>
+              <button className="btn ghost grow" onClick={close}>{L("Пропустить")}</button>
+              <button className="btn primary grow" onClick={() => i < STEPS.length - 1 ? setI(i + 1) : close()}>{i < STEPS.length - 1 ? L('Дальше') : L('Понятно')}</button>
             </div>
           </motion.div>
         </div>

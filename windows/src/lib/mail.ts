@@ -5,6 +5,7 @@ import { creds } from './creds'
 import { notify } from './notify'
 import { advanceMail, type MailBoxState } from './mailstate'
 
+import { L } from './i18n'
 export type MailReport = { ok: boolean; via?: 'ximss' | 'imap'; unseen?: number; total?: number; messages?: { uid: number; from: string; subject: string; seen: boolean }[]; validity?: number; maxUID?: number; error?: string; kind?: string }
 
 let running = false
@@ -21,14 +22,14 @@ export const mailWatch = {
   },
 
   async check(doNotify = true): Promise<MailReport> {
-    if (running) return { ok: false, error: 'Проверка уже идёт' }
+    if (running) return { ok: false, error: L('Проверка уже идёт') }
     running = true
     try {
       await creds.load()
       const acc = creds.mailAccount()
       kv.set('mail.lastCheck', Date.now())
       if (!acc) {
-        const r = { ok: false, error: 'Нет сохранённого пароля. Открой почту в приложении и войди — пароль сохранится.' }
+        const r = { ok: false, error: L('Нет сохранённого пароля. Открой почту в приложении и войди — пароль сохранится.') }
         kv.set('mail.lastError', r.error)
         return r
       }
@@ -36,7 +37,7 @@ export const mailWatch = {
         user: acc.user.trim(), pass: acc.pass, server: mailWatch.server(), port: mailWatch.port(),
         transport: mailWatch.transport(), preferImap: kv.get('mail.via', '') === 'imap'
       })
-      if (!r.ok) { kv.set('mail.lastError', r.error || 'Почта недоступна'); return r }
+      if (!r.ok) { kv.set('mail.lastError', r.error || L('Почта недоступна')); return r }
       kv.set('mail.lastError', null)
       kv.set('mail.lastSuccess', Date.now())
       kv.set('mail.via', r.via)
@@ -52,8 +53,8 @@ export const mailWatch = {
       kv.set(iKey, true)
       kv.set('mail.recent', msgs.slice(0, 10))
       if (doNotify && fresh.length) {
-        for (const m of fresh.slice(-3)) notify.show({ title: m.from || 'Почта САФУ', body: m.subject || '(без темы)', route: 'site:mail' })
-        if (fresh.length > 3) notify.show({ title: 'Почта САФУ', body: `И ещё ${fresh.length - 3} новых писем`, route: 'site:mail' })
+        for (const m of fresh.slice(-3)) notify.show({ title: m.from || L('Почта САФУ'), body: m.subject || L('(без темы)'), route: 'site:mail' })
+        if (fresh.length > 3) notify.show({ title: L('Почта САФУ'), body: L`И ещё ${fresh.length - 3} новых писем`, route: 'site:mail' })
       }
       return r
     } finally {
@@ -62,6 +63,6 @@ export const mailWatch = {
   },
 
   sendTest() {
-    notify.schedule('mail-test', [{ id: 'mail-test', at: Date.now() + 5000, title: 'Иванов И. И.', body: 'Так будет выглядеть уведомление о новом письме', route: 'site:mail' }])
+    notify.schedule('mail-test', [{ id: 'mail-test', at: Date.now() + 5000, title: L('Иванов И. И.'), body: L('Так будет выглядеть уведомление о новом письме'), route: 'site:mail' }])
   }
 }

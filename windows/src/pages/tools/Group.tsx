@@ -9,13 +9,14 @@ import { slotsRange, kindStyle, type Slot, subjects } from '../../lib/schedule'
 import { addDays, startOfDay, shortDayTime, fullDay, hm, dayMonth, ymd, toLocalInput, fromLocalInput, plural } from '../../lib/date'
 import { safu } from '../../lib/bridge'
 
+import { L } from '../../lib/i18n'
 // ---------- модель (ключ attendance.v1 как в iOS) ----------
 
 export type Mark = 'present' | 'absent' | 'excused'
 const MARKS: { id: Mark; sym: string; title: string; color: string }[] = [
-  { id: 'present', sym: '+', title: 'Был', color: '#29bf6b' },
-  { id: 'absent', sym: '−', title: 'Н/б', color: '#f2474d' },
-  { id: 'excused', sym: 'У', title: 'Уваж.', color: '#ff9e1a' }
+  { id: 'present', sym: '+', title: L('Был'), color: '#29bf6b' },
+  { id: 'absent', sym: '−', title: L('Н/б'), color: '#f2474d' },
+  { id: 'excused', sym: L('У'), title: L('Уваж.'), color: '#ff9e1a' }
 ]
 type Student = { id: string; name: string }
 type ALesson = { key: string; subject: string; kind: string; start: number }
@@ -63,14 +64,14 @@ const att = {
     const m = d.marks[keyOf(s)] || {}
     const list = sorted(d.students)
     const by = (x: Mark) => list.filter(st => m[st.id] === x).map(st => st.name)
-    const lines = [`📋 ${s.subject} (${kindStyle(s.kind).label.toLowerCase()}), ${dayMonth(s.start)}, ${hm(s.start)}`, `Были: ${by('present').length} из ${list.length}`]
-    if (by('absent').length) lines.push(`Отсутствовали: ${by('absent').join(', ')}`)
-    if (by('excused').length) lines.push(`По уважительной: ${by('excused').join(', ')}`)
+    const lines = [`📋 ${s.subject} (${kindStyle(s.kind).label.toLowerCase()}), ${dayMonth(s.start)}, ${hm(s.start)}`, L`Были: ${by('present').length} из ${list.length}`]
+    if (by('absent').length) lines.push(L`Отсутствовали: ${by('absent').join(', ')}`)
+    if (by('excused').length) lines.push(L`По уважительной: ${by('excused').join(', ')}`)
     return lines.join('\n')
   },
   csv(d: AData, subject?: string) {
     const lessons = Object.values(d.lessons).filter(l => (!subject || l.subject === subject) && Object.keys(d.marks[l.key] || {}).length).sort((a, b) => a.start - b.start)
-    const head = ['Студент', ...lessons.map(l => `${ymd(l.start)} ${hm(l.start)} ${l.subject} (${kindStyle(l.kind).label})`), 'Был', 'Н/б', 'Уваж.']
+    const head = [L('Студент'), ...lessons.map(l => `${ymd(l.start)} ${hm(l.start)} ${l.subject} (${kindStyle(l.kind).label})`), L('Был'), L('Н/б'), L('Уваж.')]
     const rows = sorted(d.students).map(st => {
       const s = att.stats(d, st, subject)
       return [st.name, ...lessons.map(l => MARKS.find(m => m.id === d.marks[l.key]?.[st.id])?.sym || ''), s.p, s.a, s.e]
@@ -98,17 +99,17 @@ export function Attendance({ slot: slotParam }: { slot?: number; subject?: strin
 
   return (
     <>
-      <PageHeader title="Посещаемость" subtitle={`${d.students.length} ${plural(d.students.length, 'человек', 'человека', 'человек')} в группе`} right={<>
-        <button className="btn" onClick={() => setStats(true)}><BarChart3 size={16} /> Статистика и таблица</button>
-        <button className="btn" onClick={() => setRoster(true)}><Users size={16} /> Список группы</button>
+      <PageHeader title={L("Посещаемость")} subtitle={L`${d.students.length} ${plural(d.students.length, L('человек'), L('человека'), L('человек'))} в группе`} right={<>
+        <button className="btn" onClick={() => setStats(true)}><BarChart3 size={16} /> {L("Статистика и таблица")}</button>
+        <button className="btn" onClick={() => setRoster(true)}><Users size={16} /> {L("Список группы")}</button>
       </>} />
       {!d.students.length ? (
-        <Empty emoji="👥" title="Сначала добавь группу" text="Один раз внеси список ребят — можно вставить сразу всех, по одному в строке." action={<button className="btn primary" onClick={() => setRoster(true)}><UserPlus size={16} /> Добавить студентов</button>} />
+        <Empty emoji="👥" title={L("Сначала добавь группу")} text={L("Один раз внеси список ребят — можно вставить сразу всех, по одному в строке.")} action={<button className="btn primary" onClick={() => setRoster(true)}><UserPlus size={16} /> {L("Добавить студентов")}</button>} />
       ) : (
         <div className="grid" style={{ gridTemplateColumns: '320px minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
           <Card className="col gap6" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-            <div className="tiny faint bold mb8">ЗАНЯТИЯ ЗА НЕДЕЛЮ</div>
-            {!recent.length && <div className="sub">Нет занятий за последнюю неделю</div>}
+            <div className="tiny faint bold mb8">{L("ЗАНЯТИЯ ЗА НЕДЕЛЮ")}</div>
+            {!recent.length && <div className="sub">{L("Нет занятий за последнюю неделю")}</div>}
             {recent.map(s => {
               const n = Object.keys(d.marks[keyOf(s)] || {}).length
               return (
@@ -125,16 +126,16 @@ export function Attendance({ slot: slotParam }: { slot?: number; subject?: strin
             <Card>
               <div className="row top mb12">
                 <div className="grow"><div className="h-card">{slot.subject}</div><div className="row gap6 mt4"><KindBadge kind={slot.kind} /><span className="sub cap">{fullDay(slot.start)}, {hm(slot.start)}</span></div></div>
-                <div className="tc"><div className="heavy" style={{ fontSize: '1.6rem' }}>{present}/{list.length}</div><div className="tiny muted">были</div></div>
+                <div className="tc"><div className="heavy" style={{ fontSize: '1.6rem' }}>{present}/{list.length}</div><div className="tiny muted">{L("были")}</div></div>
               </div>
               <Progress value={list.length ? present / list.length : 0} />
               <div className="row mt12 mb12 wrap-row">
-                <button className="btn sm" onClick={() => att.all('present', slot)}><Check size={14} /> Все были</button>
-                <button className="btn sm" onClick={() => att.all(null, slot)}>Сбросить</button>
+                <button className="btn sm" onClick={() => att.all('present', slot)}><Check size={14} /> {L("Все были")}</button>
+                <button className="btn sm" onClick={() => att.all(null, slot)}>{L("Сбросить")}</button>
                 <span className="spacer" />
-                <button className="btn sm primary" onClick={() => { safu.clipboard.write(att.report(d, slot)); toast('Отчёт скопирован — вставь в чат') }}><Copy size={14} /> Отчёт по занятию</button>
+                <button className="btn sm primary" onClick={() => { safu.clipboard.write(att.report(d, slot)); toast(L('Отчёт скопирован — вставь в чат')) }}><Copy size={14} /> {L("Отчёт по занятию")}</button>
               </div>
-              <div className="tiny faint mb8">Нажимай + (был), − (не было) или У (уважительная). Повторное нажатие снимает отметку.</div>
+              <div className="tiny faint mb8">{L("Нажимай + (был), − (не было) или У (уважительная). Повторное нажатие снимает отметку.")}</div>
               <div className="col gap6">
                 {list.map((st, i) => (
                   <motion.div key={st.id} className="row" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 20) * 0.015 }}
@@ -165,13 +166,13 @@ function RosterSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
   const d = attendanceStore.use()
   const [text, setText] = useState('')
   return (
-    <Sheet open={open} onClose={onClose} title="Список группы" size="wide" footer={<button className="btn primary" onClick={onClose}>Готово</button>}>
+    <Sheet open={open} onClose={onClose} title={L("Список группы")} size="wide" footer={<button className="btn primary" onClick={onClose}>{L("Готово")}</button>}>
       <div className="grid g2" style={{ gap: 20 }}>
         <div>
-          <Field label="Вставить список целиком" hint="По одному человеку в строке. Можно скопировать список из беседы группы.">
-            <textarea className="textarea" style={{ minHeight: 220 }} value={text} onChange={e => setText(e.target.value)} placeholder={'Иванов Иван\nПетрова Анна\n…'} />
+          <Field label={L("Вставить список целиком")} hint={L("По одному человеку в строке. Можно скопировать список из беседы группы.")}>
+            <textarea className="textarea" style={{ minHeight: 220 }} value={text} onChange={e => setText(e.target.value)} placeholder={L('Иванов Иван\nПетрова Анна\n…')} />
           </Field>
-          <button className="btn primary" disabled={!text.trim()} onClick={() => { att.add(text.split(/\r?\n/).map(s => s.replace(/^\d+[.)]\s*/, ''))); setText(''); toast('Добавлено') }}><UserPlus size={15} /> Добавить всех</button>
+          <button className="btn primary" disabled={!text.trim()} onClick={() => { att.add(text.split(/\r?\n/).map(s => s.replace(/^\d+[.)]\s*/, ''))); setText(''); toast(L('Добавлено')) }}><UserPlus size={15} /> {L("Добавить всех")}</button>
         </div>
         <div className="col gap6" style={{ maxHeight: 360, overflowY: 'auto' }}>
           {sorted(d.students).map((s, i) => (
@@ -180,7 +181,7 @@ function RosterSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
               <button className="btn icon sm ghost" onClick={() => att.remove(s.id)}><X size={14} /></button>
             </div>
           ))}
-          {!d.students.length && <div className="sub">Пока никого</div>}
+          {!d.students.length && <div className="sub">{L("Пока никого")}</div>}
         </div>
       </div>
     </Sheet>
@@ -193,11 +194,11 @@ function StatsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [subject, setSubject] = useState('')
   const recorded = Object.values(d.lessons).filter(l => (!subject || l.subject === subject) && Object.keys(d.marks[l.key] || {}).length).length
   return (
-    <Sheet open={open} onClose={onClose} title="Статистика" size="wide" footer={<>
-      <button className="btn" onClick={() => { safu.clipboard.write(att.csv(d, subject || undefined)); toast('Таблица скопирована') }}><Copy size={15} /> Копировать</button>
-      <button className="btn primary" onClick={async () => { const p = await safu.dialog.save({ name: `Посещаемость ${subject || 'все предметы'} ${ymd(Date.now())}.csv`, text: att.csv(d, subject || undefined), filters: [{ name: 'Таблица', extensions: ['csv'] }] }); if (p) toast('Таблица сохранена — открывается в Excel и Р7') }}><Download size={15} /> Таблица для Excel</button>
+    <Sheet open={open} onClose={onClose} title={L("Статистика")} size="wide" footer={<>
+      <button className="btn" onClick={() => { safu.clipboard.write(att.csv(d, subject || undefined)); toast(L('Таблица скопирована')) }}><Copy size={15} /> {L("Копировать")}</button>
+      <button className="btn primary" onClick={async () => { const p = await safu.dialog.save({ name: L`Посещаемость ${subject || L('все предметы')} ${ymd(Date.now())}.csv`, text: att.csv(d, subject || undefined), filters: [{ name: L('Таблица'), extensions: ['csv'] }] }); if (p) toast(L('Таблица сохранена — открывается в Excel и Р7')) }}><Download size={15} /> {L("Таблица для Excel")}</button>
     </>}>
-      <div className="row mb12"><select className="select" style={{ width: 320 }} value={subject} onChange={e => setSubject(e.target.value)}><option value="">Все предметы</option>{subjects(data).map(s => <option key={s} value={s}>{s}</option>)}</select><span className="sub">Отмечено занятий: {recorded}</span></div>
+      <div className="row mb12"><select className="select" style={{ width: 320 }} value={subject} onChange={e => setSubject(e.target.value)}><option value="">{L("Все предметы")}</option>{subjects(data).map(s => <option key={s} value={s}>{s}</option>)}</select><span className="sub">{L("Отмечено занятий:")} {recorded}</span></div>
       <div className="col gap6">
         {sorted(d.students).map(st => {
           const s = att.stats(d, st, subject || undefined)
@@ -206,7 +207,7 @@ function StatsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           return (
             <div key={st.id} className="row" style={{ padding: '8px 12px', borderRadius: 12, background: 'var(--fill)' }}>
               <span className="grow small bold">{st.name}</span>
-              <span className="tiny muted">был {s.p} · н/б {s.a} · уваж. {s.e}</span>
+              <span className="tiny muted">{L("был")} {s.p} {L("· н/б")} {s.a} {L("· уваж.")} {s.e}</span>
               <div style={{ width: 120 }}><Progress value={tot ? s.p / tot : 0} /></div>
               <span className="small heavy" style={{ width: 44, textAlign: 'right', color: pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444' }}>{pct}%</span>
             </div>
@@ -230,36 +231,36 @@ export function Broadcast() {
   const s = slots.find(x => x.key === key)
   let text = ''
   if (s) {
-    const when = `${fullDay(s.start)} в ${hm(s.start)}`
+    const when = L`${fullDay(s.start)} в ${hm(s.start)}`
     const what = `«${s.subject}» (${kindStyle(s.kind).label.toLowerCase()})`
     text = [
-      `📢 Перенос: пара ${what}, ${when}, переносится на ${fullDay(newTime)} в ${hm(newTime)}.`,
-      `❌ Отмена: пары ${what}, ${when}, не будет.`,
-      `🚪 Аудитория: пара ${what}, ${when}, пройдёт в ауд. ${room || '…'}.`,
-      `⏰ Напоминание: ${when} — ${what}${s.room ? `, ауд. ${s.room}` : ''}.`,
+      L`📢 Перенос: пара ${what}, ${when}, переносится на ${fullDay(newTime)} в ${hm(newTime)}.`,
+      L`❌ Отмена: пары ${what}, ${when}, не будет.`,
+      L`🚪 Аудитория: пара ${what}, ${when}, пройдёт в ауд. ${room || '…'}.`,
+      L`⏰ Напоминание: ${when} — ${what}${s.room ? L`, ауд. ${s.room}` : ''}.`,
       ''
     ][kind]
   }
   if (extra) text += (text ? '\n' : '') + extra
   return (
     <>
-      <PageHeader title="Рассылка группе" subtitle="Готовое сообщение для чата группы за пару кликов" />
+      <PageHeader title={L("Рассылка группе")} subtitle={L("Готовое сообщение для чата группы за пару кликов")} />
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <Card>
-          <Field label="Что случилось"><div className="row wrap-row gap6">{['Перенос', 'Отмена', 'Другая аудитория', 'Напоминание', 'Своё'].map((k, i) => <button key={k} className={`chip ${kind === i ? 'on' : ''}`} onClick={() => setKind(i)}>{k}</button>)}</div></Field>
-          {kind !== 4 && <Field label="Пара"><select className="select" value={key} onChange={e => setKey(e.target.value)}>{slots.map(x => <option key={x.key} value={x.key}>{shortDayTime(x.start)} · {x.subject}</option>)}</select></Field>}
-          {kind === 0 && <Field label="Новое время"><input type="datetime-local" className="input" value={toLocalInput(newTime)} onChange={e => setNewTime(fromLocalInput(e.target.value) || newTime)} /></Field>}
-          {kind === 2 && <Field label="Новая аудитория"><input className="input" value={room} onChange={e => setRoom(e.target.value)} /></Field>}
-          <Field label="Добавить от себя"><textarea className="textarea" value={extra} onChange={e => setExtra(e.target.value)} /></Field>
+          <Field label={L("Что случилось")}><div className="row wrap-row gap6">{[L('Перенос'), L('Отмена'), L('Другая аудитория'), L('Напоминание'), L('Своё')].map((k, i) => <button key={k} className={`chip ${kind === i ? 'on' : ''}`} onClick={() => setKind(i)}>{k}</button>)}</div></Field>
+          {kind !== 4 && <Field label={L("Пара")}><select className="select" value={key} onChange={e => setKey(e.target.value)}>{slots.map(x => <option key={x.key} value={x.key}>{shortDayTime(x.start)} · {x.subject}</option>)}</select></Field>}
+          {kind === 0 && <Field label={L("Новое время")}><input type="datetime-local" className="input" value={toLocalInput(newTime)} onChange={e => setNewTime(fromLocalInput(e.target.value) || newTime)} /></Field>}
+          {kind === 2 && <Field label={L("Новая аудитория")}><input className="input" value={room} onChange={e => setRoom(e.target.value)} /></Field>}
+          <Field label={L("Добавить от себя")}><textarea className="textarea" value={extra} onChange={e => setExtra(e.target.value)} /></Field>
         </Card>
         <Card>
-          <div className="row mb12"><Megaphone size={18} color="var(--brand)" /><div className="h-card">Сообщение</div></div>
+          <div className="row mb12"><Megaphone size={18} color="var(--brand)" /><div className="h-card">{L("Сообщение")}</div></div>
           <AnimatePresence mode="wait">
-            <motion.div key={text} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="wrap" style={{ padding: 16, borderRadius: 16, background: 'rgba(var(--brand-rgb), .12)', minHeight: 100, lineHeight: 1.5, userSelect: 'text' }}>{text || <span className="faint">Заполни поля слева</span>}</motion.div>
+            <motion.div key={text} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="wrap" style={{ padding: 16, borderRadius: 16, background: 'rgba(var(--brand-rgb), .12)', minHeight: 100, lineHeight: 1.5, userSelect: 'text' }}>{text || <span className="faint">{L("Заполни поля слева")}</span>}</motion.div>
           </AnimatePresence>
           <div className="row mt12">
-            <button className="btn primary grow" disabled={!text} onClick={() => { safu.clipboard.write(text); toast('Скопировано — вставь в чат группы') }}><Copy size={15} /> Скопировать</button>
-            <button className="btn grow" disabled={!text} onClick={() => safu.shell.open(`https://t.me/share/url?url=${encodeURIComponent(' ')}&text=${encodeURIComponent(text)}`)}><Send size={15} /> В Telegram</button>
+            <button className="btn primary grow" disabled={!text} onClick={() => { safu.clipboard.write(text); toast(L('Скопировано — вставь в чат группы')) }}><Copy size={15} /> {L("Скопировать")}</button>
+            <button className="btn grow" disabled={!text} onClick={() => safu.shell.open(`https://t.me/share/url?url=${encodeURIComponent(' ')}&text=${encodeURIComponent(text)}`)}><Send size={15} /> {L("В Telegram")}</button>
           </div>
         </Card>
       </div>
@@ -274,18 +275,18 @@ const pollsStore = createCollection<Poll[]>('polls.v1', [])
 const MARK_EMOJI = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣']
 
 const pollText = {
-  invite: (p: Poll) => `📊 Опрос: ${p.question}\n\n${p.options.map((o, i) => `${MARK_EMOJI[Math.min(i, 7)]} ${o}`).join('\n')}\n\nОтветьте цифрой 🙏`,
+  invite: (p: Poll) => L`📊 Опрос: ${p.question}\n\n${p.options.map((o, i) => `${MARK_EMOJI[Math.min(i, 7)]} ${o}`).join('\n')}\n\nОтветьте цифрой 🙏`,
   results(p: Poll, st: Student[]) {
-    let t = `📊 Итоги: ${p.question}\n\n`
+    let t = L`📊 Итоги: ${p.question}\n\n`
     p.options.forEach((o, i) => {
       const names = st.filter(s => p.answers[s.id] === i).map(s => s.name)
       t += `${MARK_EMOJI[Math.min(i, 7)]} ${o} — ${names.length}${names.length ? ': ' + names.join(', ') : ''}\n`
     })
     const silent = st.filter(s => p.answers[s.id] == null)
-    if (silent.length) t += `\nНе ответили: ${silent.map(s => s.name).join(', ')}`
+    if (silent.length) t += L`\nНе ответили: ${silent.map(s => s.name).join(', ')}`
     return t
   },
-  nudge: (p: Poll, st: Student[]) => `⏰ Напоминаю про опрос «${p.question}».\nЕщё не ответили: ${st.filter(s => p.answers[s.id] == null).map(s => s.name).join(', ')}`
+  nudge: (p: Poll, st: Student[]) => L`⏰ Напоминаю про опрос «${p.question}».\nЕщё не ответили: ${st.filter(s => p.answers[s.id] == null).map(s => s.name).join(', ')}`
 }
 
 export function Polls() {
@@ -300,41 +301,41 @@ export function Polls() {
   const update = (np: Poll) => pollsStore.set(l => l.map(x => x.id === np.id ? np : x))
   return (
     <>
-      <PageHeader title="Опросы" subtitle="Кто что ответил в чате — без хаоса" right={<button className="btn primary" onClick={() => setCreating(true)}><Plus size={16} /> Опрос</button>} />
-      {!polls.length && <Empty emoji="📊" title="Опросов нет" text="Создай опрос, скопируй приглашение в чат и отмечай, кто что ответил." />}
+      <PageHeader title={L("Опросы")} subtitle={L("Кто что ответил в чате — без хаоса")} right={<button className="btn primary" onClick={() => setCreating(true)}><Plus size={16} /> {L("Опрос")}</button>} />
+      {!polls.length && <Empty emoji="📊" title={L("Опросов нет")} text={L("Создай опрос, скопируй приглашение в чат и отмечай, кто что ответил.")} />}
       <div className="grid gauto">
         {polls.map((x, i) => {
           const answered = Object.keys(x.answers).length
           return (
             <Card key={x.id} press delay={i * 0.03} onClick={() => setOpen(x.id)}>
               <div className="row"><ClipboardList size={18} color="var(--brand)" /><div className="bold grow clamp2">{x.question}</div>{x.closed && <Lock size={14} className="faint" />}</div>
-              <div className="sub mt8">{answered} из {list.length} ответили</div>
+              <div className="sub mt8">{answered} {L("из")} {list.length} {L("ответили")}</div>
               <div className="mt8"><Progress value={list.length ? answered / list.length : 0} /></div>
             </Card>
           )
         })}
       </div>
-      <Sheet open={creating} onClose={() => setCreating(false)} title="Новый опрос" footer={<button className="btn primary" disabled={!q.trim() || opts.filter(o => o.trim()).length < 2} onClick={() => {
+      <Sheet open={creating} onClose={() => setCreating(false)} title={L("Новый опрос")} footer={<button className="btn primary" disabled={!q.trim() || opts.filter(o => o.trim()).length < 2} onClick={() => {
         pollsStore.set(l => [{ id: uid(), question: q.trim(), options: opts.map(o => o.trim()).filter(Boolean), created: Date.now(), answers: {}, closed: false }, ...l])
         setCreating(false); setQ(''); setOpts(['', ''])
-      }}>Создать</button>}>
-        <Field label="Вопрос"><input className="input" autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Кто идёт на консультацию?" /></Field>
-        <Field label="Варианты">
+      }}>{L("Создать")}</button>}>
+        <Field label={L("Вопрос")}><input className="input" autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={L("Кто идёт на консультацию?")} /></Field>
+        <Field label={L("Варианты")}>
           <div className="col gap6">
             {opts.map((o, i) => <div key={i} className="row"><span>{MARK_EMOJI[i]}</span><input className="input grow" value={o} onChange={e => setOpts(opts.map((x, j) => j === i ? e.target.value : x))} />{opts.length > 2 && <button className="btn icon sm ghost" onClick={() => setOpts(opts.filter((_, j) => j !== i))}><X size={14} /></button>}</div>)}
-            {opts.length < 8 && <button className="btn sm" onClick={() => setOpts([...opts, ''])}><Plus size={14} /> Вариант</button>}
+            {opts.length < 8 && <button className="btn sm" onClick={() => setOpts([...opts, ''])}><Plus size={14} /> {L("Вариант")}</button>}
           </div>
         </Field>
       </Sheet>
       <Sheet open={!!p} onClose={() => setOpen(null)} size="wide" title={p?.question}
         headRight={p && <>
-          <button className="btn icon sm ghost" title={p.closed ? 'Открыть' : 'Закрыть'} onClick={() => update({ ...p, closed: !p.closed })}>{p.closed ? <Unlock size={16} /> : <Lock size={16} />}</button>
-          <button className="btn icon sm ghost danger" onClick={async () => { if (await confirmDialog('Удалить опрос?', undefined, 'Удалить', true)) { pollsStore.set(l => l.filter(x => x.id !== p.id)); setOpen(null) } }}><Trash2 size={16} /></button>
+          <button className="btn icon sm ghost" title={p.closed ? L('Открыть') : L('Закрыть')} onClick={() => update({ ...p, closed: !p.closed })}>{p.closed ? <Unlock size={16} /> : <Lock size={16} />}</button>
+          <button className="btn icon sm ghost danger" onClick={async () => { if (await confirmDialog(L('Удалить опрос?'), undefined, L('Удалить'), true)) { pollsStore.set(l => l.filter(x => x.id !== p.id)); setOpen(null) } }}><Trash2 size={16} /></button>
         </>}
         footer={p && <>
-          <button className="btn" onClick={() => { safu.clipboard.write(pollText.invite(p)); toast('Приглашение скопировано') }}>Приглашение</button>
-          <button className="btn" onClick={() => { safu.clipboard.write(pollText.nudge(p, list)); toast('Напоминание скопировано') }}>Напомнить молчунам</button>
-          <button className="btn primary" onClick={() => { safu.clipboard.write(pollText.results(p, list)); toast('Итоги скопированы') }}>Итоги</button>
+          <button className="btn" onClick={() => { safu.clipboard.write(pollText.invite(p)); toast(L('Приглашение скопировано')) }}>{L("Приглашение")}</button>
+          <button className="btn" onClick={() => { safu.clipboard.write(pollText.nudge(p, list)); toast(L('Напоминание скопировано')) }}>{L("Напомнить молчунам")}</button>
+          <button className="btn primary" onClick={() => { safu.clipboard.write(pollText.results(p, list)); toast(L('Итоги скопированы')) }}>{L("Итоги")}</button>
         </>}>
         {p && (
           <>
@@ -344,7 +345,7 @@ export function Polls() {
                 return <Card key={i} tight><div className="tiny muted ellipsis">{MARK_EMOJI[i]} {o}</div><div className="heavy" style={{ fontSize: '1.6rem' }}>{n}</div><Progress value={list.length ? n / list.length : 0} /></Card>
               })}
             </div>
-            {!list.length && <div className="sub">Добавь список группы в «Посещаемости»</div>}
+            {!list.length && <div className="sub">{L("Добавь список группы в «Посещаемости»")}</div>}
             <div className="col gap6">
               {list.map(st => (
                 <div key={st.id} className="row" style={{ padding: '6px 10px', borderRadius: 12, background: 'var(--fill)' }}>

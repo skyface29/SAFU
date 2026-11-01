@@ -5,6 +5,7 @@
 import { session } from 'electron'
 import * as tls from 'node:tls'
 
+import { L } from '../src/lib/i18n'
 export type MailAccount = {
   user: string
   pass: string
@@ -149,7 +150,7 @@ async function ximssCheck(acc: MailAccount): Promise<MailReport> {
       const text = await res.text()
       return { code: res.status, root: parseXML(text), head: text.slice(0, 200) }
     } catch (e) {
-      throw new MailError('network', (e as Error).name === 'AbortError' ? 'нет ответа от сервера' : (e as Error).message)
+      throw new MailError('network', (e as Error).name === 'AbortError' ? L('нет ответа от сервера') : (e as Error).message)
     } finally {
       clearTimeout(t)
     }
@@ -174,9 +175,9 @@ async function ximssCheck(acc: MailAccount): Promise<MailReport> {
       if (looksLikeAuth(e)) { lastAuth = e; continue }
       throw new MailError('server', e)
     }
-    throw new MailError('server', `Сайт почты не пустил приложение (HTTP ${a.code})`)
+    throw new MailError('server', L`Сайт почты не пустил приложение (HTTP ${a.code})`)
   }
-  if (!urlID) throw new MailError('login', lastAuth || 'Сервер не принял логин или пароль')
+  if (!urlID) throw new MailError('login', lastAuth || L('Сервер не принял логин или пароль'))
 
   let counter = 0
   const request = async (xml: string) => {
@@ -187,7 +188,7 @@ async function ximssCheck(acc: MailAccount): Promise<MailReport> {
       body: `<XIMSS>${xml}</XIMSS>`
     })
     if (r.code !== 200) throw new MailError('server', `HTTP ${r.code}`)
-    if (!r.root) throw new MailError('server', `непонятный ответ: ${r.head.slice(0, 80)}`)
+    if (!r.root) throw new MailError('server', L`непонятный ответ: ${r.head.slice(0, 80)}`)
     return r.root
   }
   const respError = (root: XNode, id: string) => all(root, 'response').find(r => attr(r, 'id') === id)?.attrs.errorText
@@ -205,7 +206,7 @@ async function ximssCheck(acc: MailAccount): Promise<MailReport> {
       sorted = !!sort
       break
     }
-    if (!opened) throw new MailError('server', `Не открылась папка «Входящие»: ${lastErr}`)
+    if (!opened) throw new MailError('server', L`Не открылась папка «Входящие»: ${lastErr}`)
     const head = all(opened, 'folderReport')[0]
     const total = head && attr(head, 'messages') ? Number(attr(head, 'messages')) : undefined
     const unseenAttr = head && attr(head, 'unseen') ? Number(attr(head, 'unseen')) : undefined
@@ -263,8 +264,8 @@ async function imapCheck(acc: MailAccount): Promise<MailReport> {
   sock.on('data', (d: string) => { buffer += d; const w = waiters; waiters = []; w.forEach(f => f()) })
   const fail = (e: Error) => { closed = e; const w = waiters; waiters = []; w.forEach(f => f()) }
   sock.on('error', e => fail(new MailError('network', e.message)))
-  sock.on('close', () => fail(new MailError('network', 'сервер закрыл соединение')))
-  sock.on('timeout', () => { fail(new MailError('network', 'нет ответа от сервера')); sock.destroy() })
+  sock.on('close', () => fail(new MailError('network', L('сервер закрыл соединение'))))
+  sock.on('timeout', () => { fail(new MailError('network', L('нет ответа от сервера'))); sock.destroy() })
 
   const waitData = () => new Promise<void>(res => { if (closed) res(); else waiters.push(res) })
   const readLine = async () => {
@@ -305,7 +306,7 @@ async function imapCheck(acc: MailAccount): Promise<MailReport> {
         throw e
       }
     }
-    if (!ok) throw new MailError('login', lastNo || 'логин не принят')
+    if (!ok) throw new MailError('login', lastNo || L('логин не принят'))
     const sel = await command('EXAMINE INBOX')
     const validity = Number(/UIDVALIDITY (\d+)/.exec(sel)?.[1] || 0)
     // номер, который получит следующее письмо: по нему видно самое свежее, даже если всё прочитано
@@ -337,7 +338,7 @@ async function imapCheck(acc: MailAccount): Promise<MailReport> {
 }
 
 export async function checkMail(acc: MailAccount): Promise<MailReport> {
-  if (!acc.user || !acc.pass) return { ok: false, error: 'Нет сохранённого пароля от почты', kind: 'login' }
+  if (!acc.user || !acc.pass) return { ok: false, error: L('Нет сохранённого пароля от почты'), kind: 'login' }
   const order: ('ximss' | 'imap')[] =
     acc.transport === 'ximss' ? ['ximss'] : acc.transport === 'imap' ? ['imap'] : acc.preferImap ? ['imap', 'ximss'] : ['ximss', 'imap']
   let last: MailError | null = null
@@ -346,9 +347,9 @@ export async function checkMail(acc: MailAccount): Promise<MailReport> {
       return t === 'imap' ? await imapCheck(acc) : await ximssCheck(acc)
     } catch (e) {
       const err = e instanceof MailError ? e : new MailError('network', (e as Error).message)
-      if (err.kind === 'login') return { ok: false, error: `Сервер не принял логин или пароль. ${err.message}`, kind: 'login' }
+      if (err.kind === 'login') return { ok: false, error: L`Сервер не принял логин или пароль. ${err.message}`, kind: 'login' }
       last = err
     }
   }
-  return { ok: false, error: last?.message || 'Почта недоступна', kind: last?.kind || 'network' }
+  return { ok: false, error: last?.message || L('Почта недоступна'), kind: last?.kind || 'network' }
 }

@@ -4,6 +4,7 @@ import { safu } from './bridge'
 import { kv } from './kv'
 import { startOfDay, monday as mondayOf, moscowDate, DAY, pad } from './date'
 
+import { L } from './i18n'
 export type RuzEvent = {
   start: number
   end: number
@@ -264,8 +265,8 @@ export async function loadGroup(groupID: string): Promise<RuzResult> {
   const events = [...page, ...extra]
   let notice: string | undefined
   if (!events.length) {
-    if (html.toLowerCase().includes('modeus')) notice = 'В РУЗ пока нет пар для этой группы. Нажми «Обновить», чтобы проверить ещё раз.'
-    else if (html.includes('отсутствуют')) notice = 'В РУЗ пока нет пар на эти недели.'
+    if (html.toLowerCase().includes('modeus')) notice = L('В РУЗ пока нет пар для этой группы. Нажми «Обновить», чтобы проверить ещё раз.')
+    else if (html.includes('отсутствуют')) notice = L('В РУЗ пока нет пар на эти недели.')
   }
   const method = page.length ? 'страница РУЗ' : extra.length ? 'iCal' : 'страница РУЗ'
   return { events, method, notice }

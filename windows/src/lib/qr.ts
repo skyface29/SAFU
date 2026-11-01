@@ -1,3 +1,4 @@
+import { L } from './i18n'
 // QR-код без сторонних библиотек: байтовый режим, коррекция M, версия и маска подбираются сами.
 // Алгоритм — по стандарту ISO/IEC 18004 (так же устроены все генераторы QR).
 
@@ -83,7 +84,7 @@ export function encodeQr(text: string, ecl: Ecl = 'M'): QrMatrix {
     const countBits = ver <= 9 ? 8 : 16
     if (4 + countBits + bytes.length * 8 <= dataCodewords(ver, ecl) * 8) break
   }
-  if (ver > 40) throw new Error('Слишком длинный текст для QR-кода')
+  if (ver > 40) throw new Error(L('Слишком длинный текст для QR-кода'))
 
   // биты: режим «байты», длина, данные, конец, выравнивание, заполнители
   const bits: number[] = []

@@ -1,3 +1,4 @@
+import { L } from './i18n'
 // Скачивание с сайтов: в какую папку класть файл и как найти все файлы на странице.
 // Из GradeSync.swift (SubjectMatch) и WebScreen.swift (WebFile.findScript).
 
@@ -69,5 +70,5 @@ export type PageFile = { u: string; t: string }
 /** Понятное имя для пункта списка: текст ссылки или имя файла из адреса */
 export function pageFileName(f: PageFile): string {
   if (f.t) return f.t
-  try { return decodeURIComponent(new URL(f.u).pathname.split('/').filter(Boolean).pop() || 'Файл') } catch { return 'Файл' }
+  try { return decodeURIComponent(new URL(f.u).pathname.split('/').filter(Boolean).pop() || L('Файл')) } catch { return L('Файл') }
 }

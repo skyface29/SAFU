@@ -2,6 +2,7 @@
 // он хранится зашифрованным и используется только здесь, в главном процессе.
 import Anthropic from '@anthropic-ai/sdk'
 
+import { L } from '../src/lib/i18n'
 export type SummaryRequest = { apiKey: string; subject: string; minutes: number; style: string; transcript: string }
 
 const SYSTEM = `Ты делаешь конспект университетской лекции для студента САФУ по автоматической расшифровке речи.
@@ -44,15 +45,15 @@ export async function summarizeLecture(r: SummaryRequest) {
       }]
     } as any)
     const msg: any = await stream.finalMessage()
-    if (msg.stop_reason === 'refusal') return { ok: false, error: 'Claude отказался делать конспект по этой записи' }
-    if (msg.stop_reason === 'max_tokens') return { ok: false, error: 'Конспект не поместился — попробуй стиль «Шпаргалка»' }
+    if (msg.stop_reason === 'refusal') return { ok: false, error: L('Claude отказался делать конспект по этой записи') }
+    if (msg.stop_reason === 'max_tokens') return { ok: false, error: L('Конспект не поместился — попробуй стиль «Шпаргалка»') }
     const text = (msg.content as any[]).filter(b => b.type === 'text').map(b => b.text).join('')
     return { ok: true, summary: JSON.parse(text) }
   } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError) return { ok: false, error: 'Неверный ключ Claude API' }
-    if (e instanceof Anthropic.RateLimitError) return { ok: false, error: 'Слишком много запросов — попробуй через минуту' }
-    if (e instanceof Anthropic.APIConnectionError) return { ok: false, error: 'Нет связи с Claude API (из России может понадобиться VPN)' }
-    if (e instanceof Anthropic.APIError) return { ok: false, error: `Claude API ответил ${e.status}: ${e.message.slice(0, 200)}` }
-    return { ok: false, error: 'Не удалось разобрать ответ ИИ' }
+    if (e instanceof Anthropic.AuthenticationError) return { ok: false, error: L('Неверный ключ Claude API') }
+    if (e instanceof Anthropic.RateLimitError) return { ok: false, error: L('Слишком много запросов — попробуй через минуту') }
+    if (e instanceof Anthropic.APIConnectionError) return { ok: false, error: L('Нет связи с Claude API (из России может понадобиться VPN)') }
+    if (e instanceof Anthropic.APIError) return { ok: false, error: L`Claude API ответил ${e.status}: ${e.message.slice(0, 200)}` }
+    return { ok: false, error: L('Не удалось разобрать ответ ИИ') }
   }
 }

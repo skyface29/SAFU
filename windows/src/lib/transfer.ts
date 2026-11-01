@@ -7,6 +7,7 @@ import { convertIOS } from './backup'
 import { celebrations } from '../fx/Celebrations'
 import { plural } from './date'
 
+import { L } from './i18n'
 export type TransferPhase = 'idle' | 'starting' | 'waiting' | 'connected' | 'sending' | 'done' | 'error'
 
 export type FlyingFile = { id: number; name: string; ext: string; size: number }
@@ -67,7 +68,7 @@ function applyData(b64: string) {
     kv.replaceAll({ ...kv.all(), ...converted, onboarded: true })
     set({ dataApplied: true })
   } catch (e) {
-    set({ error: 'Файлы перенесены, но настройки с iPhone прочитать не получилось: ' + String((e as Error).message || e) })
+    set({ error: L('Файлы перенесены, но настройки с iPhone прочитать не получилось: ') + String((e as Error).message || e) })
   }
 }
 
@@ -90,8 +91,8 @@ function onEvent(e: any) {
       break
     case 'done': {
       set({ phase: 'done', summary: { files: e.files, bytes: e.bytes, skipped: e.skipped, seconds: e.seconds }, files: e.files })
-      const what = e.files ? `${e.files} ${plural(e.files, 'файл', 'файла', 'файлов')}` : 'Всё уже было на месте'
-      celebrations.fire({ title: 'Перенесено! 🎉', subtitle: `${what}${e.data ? ' и все данные' : ''} — с iPhone на компьютер`, style: { kind: 'confetti' }, force: true })
+      const what = e.files ? `${e.files} ${plural(e.files, L('файл'), L('файла'), L('файлов'))}` : L('Всё уже было на месте')
+      celebrations.fire({ title: L('Перенесено! 🎉'), subtitle: L`${what}${e.data ? L(' и все данные') : ''} — с iPhone на компьютер`, style: { kind: 'confetti' }, force: true })
       safu.app.flash()
       break
     }
@@ -111,12 +112,12 @@ export const transfer = {
     try {
       const info = await safu.transfer.start()
       if (!info) {
-        set({ phase: 'error', error: 'Перенос работает в приложении для Windows' })
+        set({ phase: 'error', error: L('Перенос работает в приложении для Windows') })
         return
       }
       set({ phase: 'waiting', url: info.url, hosts: info.hosts, pc: info.name })
     } catch (e) {
-      set({ phase: 'error', error: 'Не получилось открыть приём: ' + String((e as Error).message || e) })
+      set({ phase: 'error', error: L('Не получилось открыть приём: ') + String((e as Error).message || e) })
     }
   },
   stop() {
@@ -132,8 +133,8 @@ export const transfer = {
 }
 
 export function formatBytes(n: number): string {
-  if (n < 1024) return `${n} Б`
-  if (n < 1024 * 1024) return `${Math.round(n / 1024)} КБ`
-  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(n < 10 * 1024 * 1024 ? 1 : 0).replace('.', ',')} МБ`
-  return `${(n / 1024 / 1024 / 1024).toFixed(2).replace('.', ',')} ГБ`
+  if (n < 1024) return L`${n} Б`
+  if (n < 1024 * 1024) return L`${Math.round(n / 1024)} КБ`
+  if (n < 1024 * 1024 * 1024) return L`${(n / 1024 / 1024).toFixed(n < 10 * 1024 * 1024 ? 1 : 0).replace('.', ',')} МБ`
+  return L`${(n / 1024 / 1024 / 1024).toFixed(2).replace('.', ',')} ГБ`
 }

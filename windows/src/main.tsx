@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import './styles/app.css'
 import { isWidget, safu } from './lib/bridge'
 
+import { L } from './lib/i18n'
+import { Lang } from './lib/i18n'
 // Если интерфейс упал — не чёрное окно, а понятный экран с кнопками. Ошибка уходит в журнал
 // (папка «САФУ\logs» в AppData), по нему видно, что сломалось
 function logError(e: unknown) {
@@ -15,7 +17,7 @@ function showFatal(e: unknown) {
   const root = document.getElementById('root')
   if (!root) return
   const msg = e instanceof Error ? e.message : String(e)
-  root.innerHTML = `
+  root.innerHTML = L`
     <div style="height:100vh;display:grid;place-items:center;background:#0a0d14;color:#e8ecf4;font-family:'Segoe UI',sans-serif">
       <div style="max-width:440px;padding:28px">
         <div style="font-size:44px">❄️</div>
@@ -48,6 +50,7 @@ window.addEventListener('error', e => logError(e.error || e.message))
 window.addEventListener('unhandledrejection', e => logError(e.reason))
 
 async function boot() {
+  document.documentElement.lang = Lang.code
   const root = createRoot(document.getElementById('root')!)
   if (isWidget) {
     document.body.classList.add('widget-body')

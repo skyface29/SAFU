@@ -2,68 +2,69 @@
 // Перенесено из Sources/Design.swift, Appearance.swift, Themes.swift.
 import { kv } from './kv'
 
+import { L } from './i18n'
 export type Accent = { id: string; title: string; c1: string; c2: string; c1d?: string; c2d?: string; strict?: boolean }
 
 export const ACCENTS: Accent[] = [
-  { id: 'blue', title: 'Синяя', c1: '#2973fa', c2: '#4dccfa' },
-  { id: 'violet', title: 'Фиолет', c1: '#8559fa', c2: '#e666e6' },
-  { id: 'teal', title: 'Бирюза', c1: '#1aada8', c2: '#59d973' },
-  { id: 'orange', title: 'Апельсин', c1: '#fa802e', c2: '#fac740' },
-  { id: 'pink', title: 'Розовая', c1: '#f24d8c', c2: '#fa8c66' },
-  { id: 'cyber', title: 'Кибер', c1: '#00c7f2', c2: '#b859ff' },
-  { id: 'aurora', title: 'Сияние', c1: '#29cc9e', c2: '#7366f2' },
-  { id: 'ice', title: 'Лёд', c1: '#59a8f2', c2: '#b3e6ff' },
-  { id: 'lime', title: 'Лайм', c1: '#73cc1a', c2: '#1abf99' },
-  { id: 'crimson', title: 'Алая', c1: '#e6294d', c2: '#ff804d' },
-  { id: 'gold', title: 'Золото', c1: '#eba61f', c2: '#fa664d' },
-  { id: 'graphite', title: 'Графит', c1: '#616b80', c2: '#9ea8bd' },
-  { id: 'autumn', title: 'Осень', c1: '#ed731f', c2: '#cc2938' },
-  { id: 'ios6', title: 'Классика', c1: '#3373cc', c2: '#6ba6eb' },
-  { id: 'rust', title: 'Ржавчина', c1: '#b8662b', c2: '#5e8f7a' },
-  { id: 'navy', title: 'Тёмно-синяя', c1: '#1B3A6B', c2: '#2F5288', c1d: '#5B7FC4', c2d: '#7896D0', strict: true },
-  { id: 'safu', title: 'САФУ', c1: '#004C97', c2: '#1F66B0', c1d: '#3D84D6', c2d: '#6AA2E0', strict: true },
-  { id: 'bordeaux', title: 'Бордо', c1: '#7A1F2B', c2: '#96323F', c1d: '#B5525E', c2d: '#C56D77', strict: true },
-  { id: 'forest', title: 'Хвоя', c1: '#1F5A3D', c2: '#2F7250', c1d: '#4F9A6E', c2d: '#6BAE86', strict: true },
-  { id: 'petrol', title: 'Петроль', c1: '#0F5561', c2: '#1E6C78', c1d: '#3F939E', c2d: '#5CA8B2', strict: true },
-  { id: 'slate', title: 'Сланец', c1: '#3E4C5C', c2: '#566578', c1d: '#7F8FA3', c2d: '#98A6B8', strict: true },
-  { id: 'olive', title: 'Олива', c1: '#5A5E28', c2: '#72773A', c1d: '#9A9E58', c2d: '#B0B470', strict: true },
-  { id: 'coffee', title: 'Кофе', c1: '#6B4630', c2: '#86593E', c1d: '#A67C5E', c2d: '#BA9276', strict: true },
-  { id: 'plum', title: 'Слива', c1: '#5B2D66', c2: '#74407F', c1d: '#9A6BA6', c2d: '#B085BB', strict: true },
-  { id: 'ink', title: 'Чернила', c1: '#1E2126', c2: '#3A3F47', c1d: '#8C929C', c2d: '#A4AAB3', strict: true }
+  { id: 'blue', title: L('Синяя'), c1: '#2973fa', c2: '#4dccfa' },
+  { id: 'violet', title: L('Фиолет'), c1: '#8559fa', c2: '#e666e6' },
+  { id: 'teal', title: L('Бирюза'), c1: '#1aada8', c2: '#59d973' },
+  { id: 'orange', title: L('Апельсин'), c1: '#fa802e', c2: '#fac740' },
+  { id: 'pink', title: L('Розовая'), c1: '#f24d8c', c2: '#fa8c66' },
+  { id: 'cyber', title: L('Кибер'), c1: '#00c7f2', c2: '#b859ff' },
+  { id: 'aurora', title: L('Сияние'), c1: '#29cc9e', c2: '#7366f2' },
+  { id: 'ice', title: L('Лёд'), c1: '#59a8f2', c2: '#b3e6ff' },
+  { id: 'lime', title: L('Лайм'), c1: '#73cc1a', c2: '#1abf99' },
+  { id: 'crimson', title: L('Алая'), c1: '#e6294d', c2: '#ff804d' },
+  { id: 'gold', title: L('Золото'), c1: '#eba61f', c2: '#fa664d' },
+  { id: 'graphite', title: L('Графит'), c1: '#616b80', c2: '#9ea8bd' },
+  { id: 'autumn', title: L('Осень'), c1: '#ed731f', c2: '#cc2938' },
+  { id: 'ios6', title: L('Классика'), c1: '#3373cc', c2: '#6ba6eb' },
+  { id: 'rust', title: L('Ржавчина'), c1: '#b8662b', c2: '#5e8f7a' },
+  { id: 'navy', title: L('Тёмно-синяя'), c1: '#1B3A6B', c2: '#2F5288', c1d: '#5B7FC4', c2d: '#7896D0', strict: true },
+  { id: 'safu', title: L('САФУ'), c1: '#004C97', c2: '#1F66B0', c1d: '#3D84D6', c2d: '#6AA2E0', strict: true },
+  { id: 'bordeaux', title: L('Бордо'), c1: '#7A1F2B', c2: '#96323F', c1d: '#B5525E', c2d: '#C56D77', strict: true },
+  { id: 'forest', title: L('Хвоя'), c1: '#1F5A3D', c2: '#2F7250', c1d: '#4F9A6E', c2d: '#6BAE86', strict: true },
+  { id: 'petrol', title: L('Петроль'), c1: '#0F5561', c2: '#1E6C78', c1d: '#3F939E', c2d: '#5CA8B2', strict: true },
+  { id: 'slate', title: L('Сланец'), c1: '#3E4C5C', c2: '#566578', c1d: '#7F8FA3', c2d: '#98A6B8', strict: true },
+  { id: 'olive', title: L('Олива'), c1: '#5A5E28', c2: '#72773A', c1d: '#9A9E58', c2d: '#B0B470', strict: true },
+  { id: 'coffee', title: L('Кофе'), c1: '#6B4630', c2: '#86593E', c1d: '#A67C5E', c2d: '#BA9276', strict: true },
+  { id: 'plum', title: L('Слива'), c1: '#5B2D66', c2: '#74407F', c1d: '#9A6BA6', c2d: '#B085BB', strict: true },
+  { id: 'ink', title: L('Чернила'), c1: '#1E2126', c2: '#3A3F47', c1d: '#8C929C', c2d: '#A4AAB3', strict: true }
 ]
 
 export type Backdrop = 'seasonal' | 'glow' | 'leaves' | 'petals' | 'summer' | 'aurora' | 'grid' | 'snow' | 'wash' | 'plain' | 'matrix' | 'soft' | 'linen' | 'workshop'
 
 export const BACKDROPS: { id: Backdrop; title: string; emoji: string }[] = [
-  { id: 'seasonal', title: 'По сезону', emoji: '📅' },
-  { id: 'glow', title: 'Свет', emoji: '✨' },
-  { id: 'aurora', title: 'Сияние', emoji: '🌌' },
-  { id: 'snow', title: 'Снег', emoji: '❄️' },
-  { id: 'leaves', title: 'Листопад', emoji: '🍂' },
-  { id: 'petals', title: 'Цветение', emoji: '🌸' },
-  { id: 'summer', title: 'Лето', emoji: '☀️' },
-  { id: 'grid', title: 'Сетка', emoji: '🔷' },
-  { id: 'matrix', title: 'Матрица', emoji: '💻' },
-  { id: 'wash', title: 'Градиент', emoji: '🎨' },
-  { id: 'soft', title: 'Мягкий', emoji: '🌫️' },
-  { id: 'plain', title: 'Чистый', emoji: '⬜' },
-  { id: 'linen', title: 'Классика', emoji: '📜' },
-  { id: 'workshop', title: 'Мастерская', emoji: '⚙️' }
+  { id: 'seasonal', title: L('По сезону'), emoji: '📅' },
+  { id: 'glow', title: L('Свет'), emoji: '✨' },
+  { id: 'aurora', title: L('Сияние'), emoji: '🌌' },
+  { id: 'snow', title: L('Снег'), emoji: '❄️' },
+  { id: 'leaves', title: L('Листопад'), emoji: '🍂' },
+  { id: 'petals', title: L('Цветение'), emoji: '🌸' },
+  { id: 'summer', title: L('Лето'), emoji: '☀️' },
+  { id: 'grid', title: L('Сетка'), emoji: '🔷' },
+  { id: 'matrix', title: L('Матрица'), emoji: '💻' },
+  { id: 'wash', title: L('Градиент'), emoji: '🎨' },
+  { id: 'soft', title: L('Мягкий'), emoji: '🌫️' },
+  { id: 'plain', title: L('Чистый'), emoji: '⬜' },
+  { id: 'linen', title: L('Классика'), emoji: '📜' },
+  { id: 'workshop', title: L('Мастерская'), emoji: '⚙️' }
 ]
 
 export type CardStyle = 'glass' | 'solid' | 'tinted' | 'neon' | 'minimal' | 'raised' | 'clean' | 'skeuo' | 'rusty'
 export const CARD_STYLES: { id: CardStyle; title: string }[] = [
-  { id: 'glass', title: 'Стекло' }, { id: 'solid', title: 'Сплошные' }, { id: 'tinted', title: 'Цветные' },
-  { id: 'neon', title: 'Неон' }, { id: 'minimal', title: 'Контур' }, { id: 'raised', title: 'Объём' },
-  { id: 'clean', title: 'Чистые' }, { id: 'skeuo', title: 'Классика' }, { id: 'rusty', title: 'Ржавые' }
+  { id: 'glass', title: L('Стекло') }, { id: 'solid', title: L('Сплошные') }, { id: 'tinted', title: L('Цветные') },
+  { id: 'neon', title: L('Неон') }, { id: 'minimal', title: L('Контур') }, { id: 'raised', title: L('Объём') },
+  { id: 'clean', title: L('Чистые') }, { id: 'skeuo', title: L('Классика') }, { id: 'rusty', title: L('Ржавые') }
 ]
 
 export type AppFont = 'rounded' | 'standard' | 'mono' | 'serif'
 export const FONTS: { id: AppFont; title: string; css: string }[] = [
-  { id: 'rounded', title: 'Круглый', css: '"Segoe UI Variable Display", "Nunito", "Segoe UI", system-ui, sans-serif' },
-  { id: 'standard', title: 'Строгий', css: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif' },
-  { id: 'mono', title: 'Код', css: '"Cascadia Code", "Cascadia Mono", Consolas, monospace' },
-  { id: 'serif', title: 'Книжный', css: 'Georgia, "Cambria", "Times New Roman", serif' }
+  { id: 'rounded', title: L('Круглый'), css: '"Segoe UI Variable Display", "Nunito", "Segoe UI", system-ui, sans-serif' },
+  { id: 'standard', title: L('Строгий'), css: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif' },
+  { id: 'mono', title: L('Код'), css: '"Cascadia Code", "Cascadia Mono", Consolas, monospace' },
+  { id: 'serif', title: L('Книжный'), css: 'Georgia, "Cambria", "Times New Roman", serif' }
 ]
 
 export type Scheme = 'system' | 'light' | 'dark'
@@ -78,28 +79,28 @@ export function season(d = new Date()): Season {
 }
 export const SEASON_BACKDROP: Record<Season, Backdrop> = { winter: 'snow', spring: 'petals', summer: 'summer', autumn: 'leaves' }
 export const SEASON_THEME: Record<Season, string> = { winter: 'ice', spring: 'pink', summer: 'lime', autumn: 'autumn' }
-export const SEASON_TITLE: Record<Season, string> = { winter: 'зима — снег', spring: 'весна — цветение', summer: 'лето — солнечные блики', autumn: 'осень — листопад' }
+export const SEASON_TITLE: Record<Season, string> = { winter: L('зима — снег'), spring: L('весна — цветение'), summer: L('лето — солнечные блики'), autumn: L('осень — листопад') }
 
 export type LookPreset = { id: string; title: string; emoji: string; theme: string; backdrop: Backdrop; card: CardStyle; font: AppFont; radius: number; gradTitle: boolean; scheme: Scheme }
 
 export const PRESETS: LookPreset[] = [
-  { id: 'strict', title: 'Строгий', emoji: '📐', theme: 'blue', backdrop: 'soft', card: 'clean', font: 'standard', radius: 0.7, gradTitle: false, scheme: 'system' },
-  { id: 'season', title: 'По сезону', emoji: '📅', theme: SEASON_THEME[season()], backdrop: 'seasonal', card: 'glass', font: 'rounded', radius: 1.05, gradTitle: true, scheme: 'system' },
-  { id: 'autumn', title: 'Осень', emoji: '🍁', theme: 'autumn', backdrop: 'leaves', card: 'glass', font: 'rounded', radius: 1.1, gradTitle: true, scheme: 'system' },
-  { id: 'tech', title: 'Техно', emoji: '🖥️', theme: 'cyber', backdrop: 'grid', card: 'neon', font: 'mono', radius: 0.55, gradTitle: true, scheme: 'dark' },
-  { id: 'arctic', title: 'Арктика', emoji: '❄️', theme: 'ice', backdrop: 'snow', card: 'glass', font: 'rounded', radius: 1.0, gradTitle: false, scheme: 'system' },
-  { id: 'aurora', title: 'Сияние', emoji: '🌌', theme: 'aurora', backdrop: 'aurora', card: 'glass', font: 'rounded', radius: 1.15, gradTitle: true, scheme: 'dark' },
-  { id: 'minimal', title: 'Минимал', emoji: '⚪', theme: 'graphite', backdrop: 'plain', card: 'minimal', font: 'standard', radius: 0.7, gradTitle: false, scheme: 'system' },
-  { id: 'paper', title: 'Конспект', emoji: '📒', theme: 'gold', backdrop: 'wash', card: 'raised', font: 'serif', radius: 0.8, gradTitle: false, scheme: 'light' },
-  { id: 'classic', title: 'Классика', emoji: '💧', theme: 'blue', backdrop: 'glow', card: 'glass', font: 'rounded', radius: 1.0, gradTitle: false, scheme: 'system' },
-  { id: 'hacker', title: 'Хакер', emoji: '🟩', theme: 'lime', backdrop: 'matrix', card: 'neon', font: 'mono', radius: 0.4, gradTitle: true, scheme: 'dark' }
+  { id: 'strict', title: L('Строгий'), emoji: '📐', theme: 'blue', backdrop: 'soft', card: 'clean', font: 'standard', radius: 0.7, gradTitle: false, scheme: 'system' },
+  { id: 'season', title: L('По сезону'), emoji: '📅', theme: SEASON_THEME[season()], backdrop: 'seasonal', card: 'glass', font: 'rounded', radius: 1.05, gradTitle: true, scheme: 'system' },
+  { id: 'autumn', title: L('Осень'), emoji: '🍁', theme: 'autumn', backdrop: 'leaves', card: 'glass', font: 'rounded', radius: 1.1, gradTitle: true, scheme: 'system' },
+  { id: 'tech', title: L('Техно'), emoji: '🖥️', theme: 'cyber', backdrop: 'grid', card: 'neon', font: 'mono', radius: 0.55, gradTitle: true, scheme: 'dark' },
+  { id: 'arctic', title: L('Арктика'), emoji: '❄️', theme: 'ice', backdrop: 'snow', card: 'glass', font: 'rounded', radius: 1.0, gradTitle: false, scheme: 'system' },
+  { id: 'aurora', title: L('Сияние'), emoji: '🌌', theme: 'aurora', backdrop: 'aurora', card: 'glass', font: 'rounded', radius: 1.15, gradTitle: true, scheme: 'dark' },
+  { id: 'minimal', title: L('Минимал'), emoji: '⚪', theme: 'graphite', backdrop: 'plain', card: 'minimal', font: 'standard', radius: 0.7, gradTitle: false, scheme: 'system' },
+  { id: 'paper', title: L('Конспект'), emoji: '📒', theme: 'gold', backdrop: 'wash', card: 'raised', font: 'serif', radius: 0.8, gradTitle: false, scheme: 'light' },
+  { id: 'classic', title: L('Классика'), emoji: '💧', theme: 'blue', backdrop: 'glow', card: 'glass', font: 'rounded', radius: 1.0, gradTitle: false, scheme: 'system' },
+  { id: 'hacker', title: L('Хакер'), emoji: '🟩', theme: 'lime', backdrop: 'matrix', card: 'neon', font: 'mono', radius: 0.4, gradTitle: true, scheme: 'dark' }
 ]
 
 export const PACKS = [
-  { id: '', title: 'Своя', subtitle: 'Всё настраиваешь сам' },
-  { id: 'clear', title: 'Ясный', subtitle: 'Чистый и спокойный: ничего лишнего, всё читается сразу' },
-  { id: 'ios6', title: 'Классика', subtitle: 'Глянцевые панели, полоски и ячейки как в 2012-м' },
-  { id: 'machinarium', title: 'Механизм', subtitle: 'Свалка в смоге: горы ржавого хлама, дирижабль, туман' }
+  { id: '', title: L('Своя'), subtitle: L('Всё настраиваешь сам') },
+  { id: 'clear', title: L('Ясный'), subtitle: L('Чистый и спокойный: ничего лишнего, всё читается сразу') },
+  { id: 'ios6', title: L('Классика'), subtitle: L('Глянцевые панели, полоски и ячейки как в 2012-м') },
+  { id: 'machinarium', title: L('Механизм'), subtitle: L('Свалка в смоге: горы ржавого хлама, дирижабль, туман') }
 ]
 
 export function applyPreset(p: LookPreset) {

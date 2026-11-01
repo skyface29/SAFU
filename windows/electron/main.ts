@@ -18,6 +18,8 @@ import { PairBroker } from './syncpair'
 import { firewallStatus, firewallFix } from './firewall'
 import * as os from 'node:os'
 
+import { L } from '../src/lib/i18n'
+import { Lang, LANG_KEY, plural } from '../src/lib/i18n'
 // Конспекты через Claude — отдельным файлом (claude.js), который грузится только при первом конспекте:
 // библиотека Claude — две трети главного процесса, и раньше она разбиралась при каждом запуске
 type ClaudeModule = typeof import('./claude')
@@ -132,7 +134,7 @@ const relOf = (root: string, full: string) => path.relative(root, full).split(pa
 function inRoot(rel: string): string {
   const root = filesRoot()
   const p = path.resolve(root, rel || '.')
-  if (p !== root && !p.startsWith(root + path.sep)) throw new Error('Путь вне папки файлов')
+  if (p !== root && !p.startsWith(root + path.sep)) throw new Error(L('Путь вне папки файлов'))
   return p
 }
 
@@ -154,7 +156,7 @@ function syncPairing(): SyncPairing | null {
 /** Свести данные просит интерфейс: там живут ДЗ, задачи и заметки */
 function syncInRenderer(body: unknown): Promise<unknown> {
   return new Promise((resolve, reject) => {
-    if (!win || win.isDestroyed()) { reject(new Error('Окно Арктики не открыто')); return }
+    if (!win || win.isDestroyed()) { reject(new Error(L('Окно Арктики не открыто'))); return }
     const rid = Math.random().toString(36).slice(2) + Date.now().toString(36)
     const timer = setTimeout(() => { syncWaiters.delete(rid); reject(new Error('timeout')) }, 15_000)
     syncWaiters.set(rid, r => {
@@ -180,7 +182,7 @@ function askPair(device: string, code: string): Promise<boolean> {
     pairAsks.set(rid, ok => { clearTimeout(timer); resolve(ok) })
     showMain()
     win.flashFrame(true)
-    if (!win.isFocused()) showNotification({ title: `${device} хочет синхронизироваться`, body: `Сверь код ${code} с экраном телефона и нажми «Разрешить»` })
+    if (!win.isFocused()) showNotification({ title: L`${device} хочет синхронизироваться`, body: L`Сверь код ${code} с экраном телефона и нажми «Разрешить»` })
     const send = () => win?.webContents.send('sync:ask', rid, { device, code })
     if (win.webContents.isLoading()) win.webContents.once('did-finish-load', () => setTimeout(send, 600))
     else send()
@@ -229,8 +231,8 @@ function pairedFilesHandler(req: import('node:http').IncomingMessage, res: impor
           fileBatch.timer = setTimeout(() => {
             const n = fileBatch.n
             if (n && (!win || !win.isFocused())) {
-              const word = n % 10 === 1 && n % 100 !== 11 ? 'файл' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'файла' : 'файлов'
-              showNotification({ title: `С iPhone: ${n} ${word}`, body: fileBatch.names.join(', ') + (n > fileBatch.names.length ? '…' : ''), route: 'files' })
+              const word = plural(n, L('файл'), L('файла'), L('файлов'))
+              showNotification({ title: L`С iPhone: ${n} ${word}`, body: fileBatch.names.join(', ') + (n > fileBatch.names.length ? '…' : ''), route: 'files' })
             }
             fileBatch.n = 0; fileBatch.names = []; fileBatch.timer = null
           }, 4000)
@@ -464,7 +466,7 @@ function createWindow() {
     minWidth: 920,
     minHeight: 620,
     show: false,
-    title: 'Арктика',
+    title: L('Арктика'),
     icon: appIcon(),
     // непрозрачный фон: пока интерфейс грузится (или если он не загрузился) — тёмное окно, а не «дыра»
     backgroundColor: mica ? '#00000000' : (darkUI() ? '#0a0d14' : '#eef2f8'),
@@ -492,12 +494,12 @@ function createWindow() {
     let freeMb = -1
     try { freeMb = Math.round(process.getSystemMemoryInfo().free / 1024) } catch { /* нет данных */ }
     logError(`renderer gone: ${d.reason} (${d.exitCode}), сайтов: ${sites}, свободно памяти: ${freeMb} МБ`)
-    recoverOrReload(`Окно приложения упало (${d.reason})`)
+    recoverOrReload(L`Окно приложения упало (${d.reason})`)
   })
   win.webContents.on('did-fail-load', (_e, code, desc, _url, isMain) => {
     if (!isMain || code === -3) return
     logError(`did-fail-load ${code} ${desc}`)
-    recoverOrReload(`Не загрузился интерфейс: ${desc}`)
+    recoverOrReload(L`Не загрузился интерфейс: ${desc}`)
   })
   win.webContents.on('unresponsive', () => logError('renderer unresponsive'))
   win.webContents.on('will-navigate', (e, url) => {
@@ -530,7 +532,7 @@ function createWindow() {
       if (!kv['app.trayHintShown']) {
         kv['app.trayHintShown'] = true
         saveKVSoon()
-        showNotification({ title: 'Арктика работает в трее', body: 'Напомню о парах, заменах и новых письмах. Открыть — значок у часов.' })
+        showNotification({ title: L('Арктика работает в трее'), body: L('Напомню о парах, заменах и новых письмах. Открыть — значок у часов.') })
       }
     }
   })
@@ -569,7 +571,7 @@ function armWatchdog() {
     if (rendererReady || !win || win.isDestroyed()) return
     logError('renderer did not report ready in 20s')
     saveGpuState({ clearShaders: true })
-    recoverOrReload('Интерфейс не загрузился за 20 секунд')
+    recoverOrReload(L('Интерфейс не загрузился за 20 секунд'))
   }, 20_000)
 }
 
@@ -593,16 +595,16 @@ function showRecovery(reason: string) {
   const esc = (s: string) => s.replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]!))
   const btn = (a: string, t: string, primary = false) =>
     `<a href="safu-recover://${a}" style="display:block;margin:8px 0;padding:12px 16px;border-radius:12px;text-decoration:none;font-weight:600;color:#fff;background:${primary ? 'linear-gradient(135deg,#2973fa,#22d3ee)' : 'rgba(255,255,255,.08)'}">${t}</a>`
-  const html = `<!doctype html><meta charset="utf-8"><title>Арктика</title>
+  const html = L`<!doctype html><meta charset="utf-8"><title>Арктика</title>
 <body style="margin:0;height:100vh;display:grid;place-items:center;background:#0a0d14;color:#e8ecf4;font-family:'Segoe UI',sans-serif">
 <div style="max-width:440px;padding:28px">
 <div style="font-size:44px">❄️</div>
 <h2 style="margin:8px 0">Арктика не открылась</h2>
 <p style="opacity:.7;line-height:1.5">${esc(reason)}. Данные (расписание, ДЗ, заметки, пароли) целы — попробуй по порядку:</p>
-${btn('reload', 'Попробовать ещё раз', true)}
-${btn('reset', 'Сбросить открытые сайты и кеш — и открыть')}
-${btn('safe-gpu', 'Перезапустить без ускорения видеокартой')}
-${btn('logs', 'Открыть папку с журналом ошибок')}
+${btn('reload', L('Попробовать ещё раз'), true)}
+${btn('reset', L('Сбросить открытые сайты и кеш — и открыть'))}
+${btn('safe-gpu', L('Перезапустить без ускорения видеокартой'))}
+${btn('logs', L('Открыть папку с журналом ошибок'))}
 </div></body>`
   win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
   if (!win.isVisible() && !process.argv.includes('--hidden')) win.show()
@@ -690,7 +692,7 @@ function toggleWidget(force?: boolean) {
 
 // ---------- трей ----------
 
-let trayState = { tooltip: 'Арктика', line: '' }
+let trayState = { tooltip: L('Арктика'), line: '' }
 
 // Автозапуск читается из реестра Windows — один раз, дальше помним сами
 let autostartCache: boolean | null = null
@@ -702,23 +704,23 @@ function setAutostart(on: boolean) {
 
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
-    { label: trayState.line || 'Арктика', enabled: false },
+    { label: trayState.line || L('Арктика'), enabled: false },
     { type: 'separator' },
-    { label: 'Открыть Арктику', click: () => showMain() },
-    { label: 'Расписание', click: () => showMain('schedule') },
-    { label: 'Записать ДЗ', click: () => showMain('hw') },
-    { label: 'Почта', click: () => showMain('site:mail') },
+    { label: L('Открыть Арктику'), click: () => showMain() },
+    { label: L('Расписание'), click: () => showMain('schedule') },
+    { label: L('Записать ДЗ'), click: () => showMain('hw') },
+    { label: L('Почта'), click: () => showMain('site:mail') },
     { type: 'separator' },
-    { label: widget ? 'Скрыть мини-окно пары' : 'Мини-окно пары поверх окон', click: () => { toggleWidget(); refreshTray() } },
-    { label: 'Обновить расписание', click: () => win?.webContents.send('app:route', 'sync') },
+    { label: widget ? L('Скрыть мини-окно пары') : L('Мини-окно пары поверх окон'), click: () => { toggleWidget(); refreshTray() } },
+    { label: L('Обновить расписание'), click: () => win?.webContents.send('app:route', 'sync') },
     { type: 'separator' },
     {
-      label: 'Запускать вместе с Windows',
+      label: L('Запускать вместе с Windows'),
       type: 'checkbox',
       checked: autostartOn(),
       click: item => { setAutostart(item.checked); refreshTray() }
     },
-    { label: 'Выход', click: () => { quitting = true; app.quit() } }
+    { label: L('Выход'), click: () => { quitting = true; app.quit() } }
   ])
 }
 
@@ -726,6 +728,14 @@ function buildTrayMenu() {
 // поменялось (пара сменилась, открыли мини-окно), — раньше оно пересобиралось и читало реестр каждый раз
 let trayTip = ''
 let trayMenuKey = ''
+/** Сменили язык: меню трея и окна сразу на новом языке */
+function applyLanguage() {
+  Lang.init(kv[LANG_KEY], app.getPreferredSystemLanguages())
+  if (trayState.tooltip === 'Арктика' || trayState.tooltip === 'Arktika') trayState.tooltip = L('Арктика')
+  refreshTray()
+  for (const w of [win, widget]) if (w && !w.isDestroyed()) w.webContents.reload()
+}
+
 function refreshTray() {
   if (!tray) return
   const tip = trayState.tooltip.slice(0, 120)
@@ -844,7 +854,7 @@ async function doFetch(r: FetchReq) {
     res.headers.forEach((v, k) => { headers[k] = v })
     return { ok: res.ok, status: res.status, text, url: res.url, headers }
   } catch (e) {
-    const msg = (e as Error).name === 'AbortError' ? 'Превышено время ожидания' : (e as Error).message
+    const msg = (e as Error).name === 'AbortError' ? L('Превышено время ожидания') : (e as Error).message
     return { ok: false, status: 0, text: '', url: r.url, headers: {}, error: msg }
   } finally {
     clearTimeout(timer)
@@ -1009,7 +1019,7 @@ function setupSiteSession() {
     let dir: string
     try { dir = inRoot(chosen || hint || 'Загрузки') } catch { dir = inRoot('Загрузки') }
     fs.mkdirSync(dir, { recursive: true })
-    const name = item.getFilename() || 'Файл'
+    const name = item.getFilename() || L('Файл')
     const file = uniquePath(path.join(dir, name.replace(/[\\/:*?"<>|]/g, '_')))
     item.setSavePath(file)
     const rel = path.relative(filesRoot(), file).split(path.sep).join('/')
@@ -1023,7 +1033,7 @@ function setupSiteSession() {
     item.once('done', (_ev, state) => {
       send({ state })
       if (state === 'completed' && !win?.isFocused()) {
-        showNotification({ title: `Сохранено в «${folder}»`, body: path.basename(file), silent: true })
+        showNotification({ title: L`Сохранено в «${folder}»`, body: path.basename(file), silent: true })
       }
     })
   })
@@ -1043,25 +1053,25 @@ function setupSiteContents(wc: Electron.WebContents) {
   wc.on('context-menu', (_e, p) => {
     const items: Electron.MenuItemConstructorOptions[] = []
     if (p.linkURL) {
-      if (/^https?:/i.test(p.linkURL)) items.push({ label: 'Скачать в Файлы', click: () => wc.downloadURL(p.linkURL) })
-      items.push({ label: 'Открыть ссылку в браузере', click: () => shell.openExternal(p.linkURL) })
-      items.push({ label: 'Копировать ссылку', click: () => clipboard.writeText(p.linkURL) })
+      if (/^https?:/i.test(p.linkURL)) items.push({ label: L('Скачать в Файлы'), click: () => wc.downloadURL(p.linkURL) })
+      items.push({ label: L('Открыть ссылку в браузере'), click: () => shell.openExternal(p.linkURL) })
+      items.push({ label: L('Копировать ссылку'), click: () => clipboard.writeText(p.linkURL) })
       items.push({ type: 'separator' })
     }
-    if (p.selectionText) items.push({ label: 'Копировать', role: 'copy' })
+    if (p.selectionText) items.push({ label: L('Копировать'), role: 'copy' })
     if (p.isEditable) {
-      items.push({ label: 'Вырезать', role: 'cut' }, { label: 'Вставить', role: 'paste' }, { label: 'Выделить всё', role: 'selectAll' })
+      items.push({ label: L('Вырезать'), role: 'cut' }, { label: L('Вставить'), role: 'paste' }, { label: L('Выделить всё'), role: 'selectAll' })
     }
     if (p.mediaType === 'image' && p.srcURL) {
-      items.push({ label: 'Сохранить картинку', click: () => wc.downloadURL(p.srcURL) })
+      items.push({ label: L('Сохранить картинку'), click: () => wc.downloadURL(p.srcURL) })
     }
     if ((p.mediaType === 'video' || p.mediaType === 'audio') && /^https?:/i.test(p.srcURL)) {
-      items.push({ label: p.mediaType === 'video' ? 'Сохранить видео' : 'Сохранить запись', click: () => wc.downloadURL(p.srcURL) })
+      items.push({ label: p.mediaType === 'video' ? L('Сохранить видео') : L('Сохранить запись'), click: () => wc.downloadURL(p.srcURL) })
     }
     items.push({ type: 'separator' })
-    items.push({ label: 'Назад', enabled: wc.navigationHistory.canGoBack(), click: () => wc.navigationHistory.goBack() })
-    items.push({ label: 'Обновить', click: () => wc.reload() })
-    items.push({ label: 'Открыть в браузере', click: () => shell.openExternal(wc.getURL()) })
+    items.push({ label: L('Назад'), enabled: wc.navigationHistory.canGoBack(), click: () => wc.navigationHistory.goBack() })
+    items.push({ label: L('Обновить'), click: () => wc.reload() })
+    items.push({ label: L('Открыть в браузере'), click: () => shell.openExternal(wc.getURL()) })
     Menu.buildFromTemplate(items).popup()
   })
 }
@@ -1074,7 +1084,9 @@ function registerIPC() {
     if (value === undefined || value === null) delete kv[key]
     else kv[key] = value
     saveKVSoon()
+    if (key === LANG_KEY) applyLanguage()
   })
+  ipcMain.on('lang:get', e => { e.returnValue = { choice: kv[LANG_KEY] ?? 'system', system: app.getPreferredSystemLanguages() } })
   ipcMain.on('kv:replace', (_e, all: Record<string, unknown>) => {
     kv = all || {}
     saveKVNow()
@@ -1146,7 +1158,7 @@ function registerIPC() {
   })
   ipcMain.handle('fs:import', async (_e, rel: string, folders = false) => {
     const r = await dialog.showOpenDialog(win!, {
-      title: 'Добавить файлы',
+      title: L('Добавить файлы'),
       properties: folders ? ['openDirectory', 'multiSelections'] : ['openFile', 'multiSelections']
     })
     if (r.canceled) return []
@@ -1162,7 +1174,7 @@ function registerIPC() {
   ipcMain.handle('fs:rename', async (_e, rel: string, name: string) => {
     const from = inRoot(rel)
     const safe = name.replace(/[\\/:*?"<>|]/g, '_').trim()
-    if (!safe) throw new Error('Пустое имя')
+    if (!safe) throw new Error(L('Пустое имя'))
     const to = uniquePath(path.join(path.dirname(from), safe))
     await fs.promises.rename(from, to)
     return relOf(filesRoot(), to)
@@ -1192,7 +1204,7 @@ function registerIPC() {
   ipcMain.handle('fs:exists', async (_e, rel: string) => { try { return await exists(inRoot(rel)) } catch { return false } })
   ipcMain.handle('fs:thumb', (_e, rel: string, size = 256) => fileThumb(rel, size).catch(() => null))
   ipcMain.handle('fs:chooseRoot', async () => {
-    const r = await dialog.showOpenDialog(win!, { title: 'Папка для файлов Арктики', properties: ['openDirectory', 'createDirectory'] })
+    const r = await dialog.showOpenDialog(win!, { title: L('Папка для файлов Арктики'), properties: ['openDirectory', 'createDirectory'] })
     if (r.canceled || !r.filePaths[0]) return null
     kv['files.root'] = r.filePaths[0]
     saveKVNow()
@@ -1259,7 +1271,7 @@ function registerIPC() {
     if (process.platform === 'win32') {
       if (count > 0) {
         const label = count > 99 ? '99+' : String(count)
-        win.setOverlayIcon(badgeImage(label), `${label} новых`)
+        win.setOverlayIcon(badgeImage(label), L`${label} новых`)
       } else {
         win.setOverlayIcon(null, '')
       }
@@ -1300,7 +1312,7 @@ function registerIPC() {
   ipcMain.handle('backup:readIOS', async (_e, given?: string) => {
     let file = given
     if (!file) {
-      const r = await dialog.showOpenDialog(win!, { title: 'Резервная копия Арктики', properties: ['openFile'], filters: [{ name: 'Копия Арктики', extensions: ['safubackup', 'safu', 'zip', 'json'] }] })
+      const r = await dialog.showOpenDialog(win!, { title: L('Резервная копия Арктики'), properties: ['openFile'], filters: [{ name: L('Копия Арктики'), extensions: ['safubackup', 'safu', 'zip', 'json'] }] })
       if (r.canceled || !r.filePaths[0]) return null
       file = r.filePaths[0]
     }
@@ -1308,7 +1320,7 @@ function registerIPC() {
     if (buf[0] !== 0x50 || buf[1] !== 0x4b) return { kind: 'text', name: path.basename(file), text: buf.toString('utf8') }
     let eocd = -1
     for (let i = buf.length - 22; i >= Math.max(0, buf.length - 70000); i--) if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break }
-    if (eocd < 0) throw new Error('Повреждённый архив')
+    if (eocd < 0) throw new Error(L('Повреждённый архив'))
     let count = buf.readUInt16LE(eocd + 10)
     let cd = buf.readUInt32LE(eocd + 16)
     let plist: string | null = null
@@ -1397,7 +1409,7 @@ function registerIPC() {
 
   ipcMain.handle('ai:summarize', async (_e, r: { subject: string; minutes: number; style: string; transcript: string }) => {
     const apiKey = secrets['claude.key']
-    if (!apiKey) return { ok: false, error: 'Добавь ключ Claude API в настройках лекций' }
+    if (!apiKey) return { ok: false, error: L('Добавь ключ Claude API в настройках лекций') }
     return claude().summarizeLecture({ ...r, apiKey })
   })
 
@@ -1478,6 +1490,7 @@ async function pruneCrashDumps() {
 
 app.whenReady().then(() => {
   loadKV()
+  Lang.init(kv[LANG_KEY], app.getPreferredSystemLanguages())
   loadSecrets()
   loadScheduled()
 

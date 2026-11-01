@@ -1,6 +1,7 @@
 // Расшифровка речи на компьютере (Whisper через transformers.js). Модель скачивается один раз (~150 МБ) и кешируется.
 import { pipeline, env } from '@huggingface/transformers'
 
+import { L } from '../lib/i18n'
 env.allowLocalModels = false
 let asr: any = null
 
@@ -12,7 +13,7 @@ self.onmessage = async (e: MessageEvent) => {
         progress_callback: (p: any) => { if (p.status === 'progress') (self as any).postMessage({ type: 'download', file: p.file, progress: p.progress }) }
       } as any)
     }
-    ;(self as any).postMessage({ type: 'stage', text: 'Распознаю речь…' })
+    ;(self as any).postMessage({ type: 'stage', text: L('Распознаю речь…') })
     const out = await asr(audio, { language: 'russian', task: 'transcribe', chunk_length_s: 30, stride_length_s: 5, return_timestamps: true })
     ;(self as any).postMessage({ type: 'done', out })
   } catch (err) {

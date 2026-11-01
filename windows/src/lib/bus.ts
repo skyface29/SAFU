@@ -5,8 +5,9 @@ import { weekday, startOfDay, addDays, hm } from './date'
 import { notify, type Note } from './notify'
 import { weather, weatherLine, advice } from './weather'
 
+import { L } from './i18n'
 export type BusDayType = 'weekday' | 'saturday' | 'sunday'
-export const BUS_DAYS: { id: BusDayType; title: string }[] = [{ id: 'weekday', title: 'Пн–Пт' }, { id: 'saturday', title: 'Суббота' }, { id: 'sunday', title: 'Воскресенье' }]
+export const BUS_DAYS: { id: BusDayType; title: string }[] = [{ id: 'weekday', title: L('Пн–Пт') }, { id: 'saturday', title: L('Суббота') }, { id: 'sunday', title: L('Воскресенье') }]
 export const dayType = (t: number): BusDayType => { const w = weekday(t); return w === 6 ? 'saturday' : w === 7 ? 'sunday' : 'weekday' }
 
 export type BusRoute = {
@@ -49,7 +50,7 @@ export function normalizeTimes(raw: string): string {
   return [...set].sort((a, b) => a - b).map(v => `${String(Math.floor(v / 60)).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}`).join(' ')
 }
 
-export const routeTitle = (r: BusRoute) => r.number ? `Автобус ${r.number}` : 'Автобус'
+export const routeTitle = (r: BusRoute) => r.number ? L`Автобус ${r.number}` : L('Автобус')
 export const routeText = (r: BusRoute) => `${r.homeCity || r.homeStop} ⇄ ${r.campusCity || r.campusStop}`
 export const times = (r: BusRoute, d: Direction, type: BusDayType) => ((d === 'toCampus' ? r.toCampus : r.toHome)[type] || '').split(' ').filter(Boolean)
 
@@ -133,10 +134,10 @@ export const commute = {
       if (!first || !trip) continue
       const at = trip.departure - home - 10 * 60_000
       if (at <= Date.now()) continue
-      let body = `Автобус ${r.number} в ${hm(trip.departure)}${r.homeStop ? ` с ${r.homeStop}` : ''}. Пара «${first.subject}» в ${hm(first.start)}.`
+      let body = L`Автобус ${r.number} в ${hm(trip.departure)}${r.homeStop ? L` с ${r.homeStop}` : ''}. Пара «${first.subject}» в ${hm(first.start)}.`
       const w = weather.hourAt(trip.departure)
       if (w) body += '\n' + weatherLine(w) + (advice(w) ? '. ' + advice(w) : '')
-      list.push({ id: `commute-${i}`, at, title: 'Через 10 мин выходи 🚌', body, route: 'bus' })
+      list.push({ id: `commute-${i}`, at, title: L('Через 10 мин выходи 🚌'), body, route: 'bus' })
     }
     notify.schedule('commute-', list)
   }

@@ -20,6 +20,7 @@ import { safu } from '../lib/bridge'
 import { useSyncLast } from '../lib/sync'
 import { relativeAgo } from '../lib/date'
 
+import { L } from '../lib/i18n'
 const TAB_ICONS: Record<string, React.ComponentType<any>> = {
   home: Home, schedule: CalendarDays, homework: BookMarked, tasks: ListChecks, files: Folder, subjects: Library,
   attendance: UserCheck, developer: Code2, profile: UserCircle2
@@ -34,10 +35,10 @@ export function Titlebar() {
         <span style={{ display: 'grid', color: 'var(--brand)', animation: 'spin 24s linear infinite' }}>
           <Snowflake size={16} strokeWidth={2.6} />
         </span>
-        Арктика
+        {L("Арктика")}
       </div>
       <div className="search" onClick={() => setModals({ palette: true })}>
-        <Search size={14} /> Поиск: пары, предметы, ДЗ, сайты, инструменты
+        <Search size={14} /> {L("Поиск: пары, предметы, ДЗ, сайты, инструменты")}
         <kbd>Ctrl K</kbd>
       </div>
     </div>
@@ -85,20 +86,20 @@ export function Sidebar() {
           badge={t === 'homework' ? hwBadge : t === 'schedule' ? unseen : 0} />
       ))}
       <div className="side-sep" />
-      <SideItem id="tools" title="Инструменты" Icon={Wrench} active={page === 'tools'} collapsed={collapsed} />
+      <SideItem id="tools" title={L("Инструменты")} Icon={Wrench} active={page === 'tools'} collapsed={collapsed} />
       <div className="side-sep" />
       <PhoneLink collapsed={collapsed} />
       <div className={`side-profile ${page === 'profile' ? 'active' : ''}`} style={{ marginTop: 4 }} onClick={() => go('profile')}>
         <Avatar size={34} />
         {!collapsed && (
           <div className="grow">
-            <div className="bold ellipsis">{p.first || 'Профиль'} {p.last}</div>
-            <div className="tiny muted ellipsis">{p.teacher ? 'Преподаватель' : p.group ? `Группа ${p.group} · ${ROLE_TITLES[p.role] || ''}` : 'Настроить'}</div>
+            <div className="bold ellipsis">{p.first || L('Профиль')} {p.last}</div>
+            <div className="tiny muted ellipsis">{p.teacher ? L('Преподаватель') : p.group ? L`Группа ${p.group} · ${ROLE_TITLES[p.role] || ''}` : L('Настроить')}</div>
           </div>
         )}
       </div>
-      <button className="btn ghost sm" style={{ justifyContent: collapsed ? 'center' : 'flex-start', marginTop: 4 }} onClick={() => setCollapsed(!collapsed)} title="Свернуть панель">
-        {collapsed ? <PanelLeftOpen size={16} /> : <><PanelLeftClose size={16} /> Свернуть</>}
+      <button className="btn ghost sm" style={{ justifyContent: collapsed ? 'center' : 'flex-start', marginTop: 4 }} onClick={() => setCollapsed(!collapsed)} title={L("Свернуть панель")}>
+        {collapsed ? <PanelLeftOpen size={16} /> : <><PanelLeftClose size={16} /> {L("Свернуть")}</>}
       </button>
     </nav>
   )
@@ -124,7 +125,7 @@ function PhoneLink({ collapsed }: { collapsed: boolean }) {
   }, [])
   if (paired === null) return null
   const online = !!paired && !!last && Date.now() - last.at < 30_000
-  const text = !paired ? 'iPhone не связан' : online ? `${last!.device} · на связи` : last ? `iPhone · ${relativeAgo(last.at)}` : 'iPhone · жду телефон'
+  const text = !paired ? L('iPhone не связан') : online ? L`${last!.device} · на связи` : last ? `iPhone · ${relativeAgo(last.at)}` : L('iPhone · жду телефон')
   const color = online ? '#22c55e' : paired ? '#f59e0b' : 'var(--text3)'
   return (
     <div className="phone-link" style={{ marginTop: 'auto', justifyContent: collapsed ? 'center' : 'flex-start' }} onClick={() => go('sync')} title={text}>
@@ -173,9 +174,9 @@ export function Splash({ onDone }: { onDone: () => void }) {
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, type: 'spring', stiffness: 300, damping: 24 }}
-          style={{ fontSize: '2.6rem', fontWeight: 900, letterSpacing: '-.03em' }}>Арктика</motion.div>
-        <motion.div className="muted" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>всё для учёбы в одном месте</motion.div>
-        <motion.div className="tiny faint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>для Windows · версия {version}</motion.div>
+          style={{ fontSize: '2.6rem', fontWeight: 900, letterSpacing: '-.03em' }}>{L("Арктика")}</motion.div>
+        <motion.div className="muted" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>{L("всё для учёбы в одном месте")}</motion.div>
+        <motion.div className="tiny faint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>{L("для Windows · версия")} {version}</motion.div>
         <motion.div style={{ width: 160, height: 3, borderRadius: 3, background: 'var(--fill2)', overflow: 'hidden', marginTop: 10 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
           <motion.div style={{ height: '100%', background: 'var(--grad)' }} initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 1, ease: 'easeInOut' }} />
         </motion.div>
@@ -211,20 +212,20 @@ export function CommandPalette() {
     const list: Cmd[] = []
     for (const [id, m] of Object.entries(TAB_META)) {
       const Icon = TAB_ICONS[id]
-      list.push({ id: 'tab-' + id, group: 'Разделы', title: m.title, icon: <Icon size={16} />, run: close(() => go(id as PageId)) })
+      list.push({ id: 'tab-' + id, group: L('Разделы'), title: m.title, icon: <Icon size={16} />, run: close(() => go(id as PageId)) })
     }
-    for (const t of TOOLS) list.push({ id: 'tool-' + t.id, group: 'Инструменты', title: t.title, sub: t.subtitle, icon: <t.Icon size={16} />, run: close(() => go(t.page)) })
-    list.push({ id: 'new-hw', group: 'Действия', title: 'Записать ДЗ', sub: 'Ctrl+N', icon: <BookMarked size={16} />, run: close(() => openHomeworkEditor({})) })
-    list.push({ id: 'appearance', group: 'Действия', title: 'Оформление', sub: 'темы, фоны, шрифты', icon: <Command size={16} />, run: close(() => go('appearance')) })
-    for (const s of allSubjects(data)) list.push({ id: 'subj-' + s, group: 'Предметы', title: s, icon: <Library size={16} />, run: close(() => openSubject(s)) })
-    for (const r of resourcesStore.get()) list.push({ id: 'site-' + r.id, group: 'Сайты', title: r.title, sub: r.subtitle, icon: <Globe size={16} />, run: close(() => openSite(r)) })
-    for (const h of hw.active().slice(0, 40)) list.push({ id: 'hw-' + h.id, group: 'Домашка', title: hwTitle(h), sub: h.subject, icon: <BookMarked size={16} />, run: close(() => openHomework(h.id)) })
+    for (const t of TOOLS) list.push({ id: 'tool-' + t.id, group: L('Инструменты'), title: t.title, sub: t.subtitle, icon: <t.Icon size={16} />, run: close(() => go(t.page)) })
+    list.push({ id: 'new-hw', group: L('Действия'), title: L('Записать ДЗ'), sub: 'Ctrl+N', icon: <BookMarked size={16} />, run: close(() => openHomeworkEditor({})) })
+    list.push({ id: 'appearance', group: L('Действия'), title: L('Оформление'), sub: L('темы, фоны, шрифты'), icon: <Command size={16} />, run: close(() => go('appearance')) })
+    for (const s of allSubjects(data)) list.push({ id: 'subj-' + s, group: L('Предметы'), title: s, icon: <Library size={16} />, run: close(() => openSubject(s)) })
+    for (const r of resourcesStore.get()) list.push({ id: 'site-' + r.id, group: L('Сайты'), title: L(r.title), sub: L(r.subtitle), icon: <Globe size={16} />, run: close(() => openSite(r)) })
+    for (const h of hw.active().slice(0, 40)) list.push({ id: 'hw-' + h.id, group: L('Домашка'), title: hwTitle(h), sub: h.subject, icon: <BookMarked size={16} />, run: close(() => openHomework(h.id)) })
     return list
   }, [open, data])
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
-    if (!s) return cmds.filter(c => c.group === 'Разделы' || c.group === 'Действия' || c.group === 'Инструменты').slice(0, 30)
+    if (!s) return cmds.filter(c => c.group === L('Разделы') || c.group === L('Действия') || c.group === L('Инструменты')).slice(0, 30)
     return cmds.filter(c => (c.title + ' ' + (c.sub || '') + ' ' + c.group).toLowerCase().includes(s)).slice(0, 40)
   }, [q, cmds])
 
@@ -239,7 +240,7 @@ export function CommandPalette() {
             initial={{ opacity: 0, y: -20, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -12, scale: 0.97 }} transition={spring}>
             <div className="row" style={{ padding: '14px 18px', borderBottom: '1px solid var(--line)' }}>
               <Search size={18} className="faint" />
-              <input ref={input} className="grow" value={q} onChange={e => setQ(e.target.value)} placeholder="Что найти?"
+              <input ref={input} className="grow" value={q} onChange={e => setQ(e.target.value)} placeholder={L("Что найти?")}
                 style={{ background: 'none', border: 'none', outline: 'none', fontSize: '1.05rem' }}
                 onKeyDown={e => {
                   if (e.key === 'ArrowDown') { e.preventDefault(); setSel(s => Math.min(filtered.length - 1, s + 1)) }
@@ -261,7 +262,7 @@ export function CommandPalette() {
                   </motion.div>
                 </React.Fragment>
               ))}
-              {!filtered.length && <div className="empty small">Ничего не нашлось</div>}
+              {!filtered.length && <div className="empty small">{L("Ничего не нашлось")}</div>}
             </div>
           </motion.div>
         </div>

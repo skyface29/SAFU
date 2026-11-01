@@ -2,6 +2,7 @@
 // подставляется заглушка на localStorage — приложение открывается и там.
 import type { SafuAPI } from '../../electron/preload'
 
+import { L } from './i18n'
 /** Кеш больших данных (архив пар, расписание всей школы): объект на входе и на выходе */
 type CacheAPI = { get: (name: string) => Promise<unknown>; set: (name: string, value: unknown) => Promise<unknown> }
 type Bridge = SafuAPI & { cache: CacheAPI }
@@ -71,8 +72,8 @@ function browserFallback(): Bridge {
       onAskDone: () => () => {}, answer: (rid: string, ok: boolean) => console.info('[sync] ответ', rid, ok), onChanged: () => () => {},
       stats: async () => ({ hosts: ['192.168.1.5'], port: 47823, seenAt: 0, seenFrom: '', name: 'DESKTOP' }), onFile: () => () => {}
     },
-    ai: { summarize: async () => ({ ok: false, error: 'Конспекты ИИ работают в приложении для Windows' }) },
-    mail: { check: async () => ({ ok: false, error: 'Почта проверяется только в приложении для Windows' }) },
+    ai: { summarize: async () => ({ ok: false, error: L('Конспекты ИИ работают в приложении для Windows') }) },
+    mail: { check: async () => ({ ok: false, error: L('Почта проверяется только в приложении для Windows') }) },
     sites: { clear: noop, preload: async () => '', downloadHint: () => undefined }
   }
   return api as Bridge

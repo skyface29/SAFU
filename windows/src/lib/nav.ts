@@ -2,6 +2,7 @@
 import { create } from 'zustand'
 import { kv } from './kv'
 
+import { L } from './i18n'
 export type PageId =
   | 'home' | 'schedule' | 'homework' | 'tasks' | 'files' | 'subjects' | 'attendance' | 'developer' | 'profile'
   | 'grades' | 'session' | 'polls' | 'broadcast' | 'teachers' | 'rooms' | 'map' | 'boards' | 'wake' | 'lectures'
@@ -9,9 +10,9 @@ export type PageId =
   | 'share' | 'tools' | 'game' | 'mailnotify' | 'celebrations' | 'hwsettings' | 'customize' | 'legal' | 'transfer' | 'sync'
 
 export const TAB_META: Record<string, { title: string }> = {
-  home: { title: 'Главная' }, schedule: { title: 'Пары' }, homework: { title: 'ДЗ' }, tasks: { title: 'Задачи' },
-  files: { title: 'Файлы' }, subjects: { title: 'Предметы' }, attendance: { title: 'Посещаемость' },
-  developer: { title: 'Автор' }, profile: { title: 'Профиль' }
+  home: { title: L('Главная') }, schedule: { title: L('Пары') }, homework: { title: L('ДЗ') }, tasks: { title: L('Задачи') },
+  files: { title: L('Файлы') }, subjects: { title: L('Предметы') }, attendance: { title: L('Посещаемость') },
+  developer: { title: L('Автор') }, profile: { title: L('Профиль') }
 }
 
 export const ALL_TABS = ['home', 'schedule', 'homework', 'tasks', 'files', 'subjects', 'attendance', 'developer', 'profile']

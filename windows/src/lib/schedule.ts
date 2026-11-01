@@ -4,6 +4,7 @@ import { type RuzEvent, EventText, eventId } from './ruz'
 import { startOfDay, addDays, monday, weekKey, weekday, DAY, shortDayTime, hm } from './date'
 import { uid } from './kv'
 
+import { L } from './i18n'
 // ---------- модель ----------
 
 export type Lesson = {
@@ -148,14 +149,14 @@ export type KindStyle = { label: string; color: string; icon: string }
 
 export function kindStyle(kind: string): KindStyle {
   const k = (kind || '').toLowerCase()
-  if (k.startsWith('лекц')) return { label: 'Лекция', color: '#4085ff', icon: 'lecture' }
-  if (k.startsWith('практ')) return { label: 'Практика', color: '#29bf6b', icon: 'practice' }
-  if (k.startsWith('лаб')) return { label: 'Лабораторная', color: '#ff8c1a', icon: 'lab' }
-  if (k.startsWith('семин')) return { label: 'Семинар', color: '#1ab8c7', icon: 'seminar' }
-  if (k.includes('экзам')) return { label: 'Экзамен', color: '#f2404d', icon: 'exam' }
-  if (k.includes('зач')) return { label: 'Зачёт', color: '#ed4d9e', icon: 'credit' }
-  if (k.includes('консул')) return { label: 'Консультация', color: '#9e66f2', icon: 'consult' }
-  return { label: kind || 'Занятие', color: '#8c94a6', icon: 'book' }
+  if (k.startsWith('лекц')) return { label: L('Лекция'), color: '#4085ff', icon: 'lecture' }
+  if (k.startsWith('практ')) return { label: L('Практика'), color: '#29bf6b', icon: 'practice' }
+  if (k.startsWith('лаб')) return { label: L('Лабораторная'), color: '#ff8c1a', icon: 'lab' }
+  if (k.startsWith('семин')) return { label: L('Семинар'), color: '#1ab8c7', icon: 'seminar' }
+  if (k.includes('экзам')) return { label: L('Экзамен'), color: '#f2404d', icon: 'exam' }
+  if (k.includes('зач')) return { label: L('Зачёт'), color: '#ed4d9e', icon: 'credit' }
+  if (k.includes('консул')) return { label: L('Консультация'), color: '#9e66f2', icon: 'consult' }
+  return { label: kind || L('Занятие'), color: '#8c94a6', icon: 'book' }
 }
 
 // ---------- адреса корпусов ----------
@@ -207,7 +208,7 @@ export const AddressFormat = {
   full(raw: string) {
     const t = (raw || '').trim()
     if (!t) return ''
-    if (AddressFormat.isRemote(t)) return 'Дистанционно / вне здания'
+    if (AddressFormat.isRemote(t)) return L('Дистанционно / вне здания')
     const c = AddressFormat.parseCode(t)
     return c ? AddressFormat.addressText(c) : t
   }
@@ -239,7 +240,7 @@ function makeSlot(l: Omit<Slot, 'key' | 'remote'>): Slot {
   }
 }
 
-export const slotPlace = (s: Slot) => [s.room ? `ауд. ${s.room}` : '', s.building].filter(Boolean).join(' · ')
+export const slotPlace = (s: Slot) => [s.room ? L`ауд. ${s.room}` : '', s.building].filter(Boolean).join(' · ')
 
 // кеш: пересчитываем дни, только когда расписание изменилось
 let cacheData: ScheduleData | null = null
@@ -433,16 +434,16 @@ export function upcomingMap(d: ScheduleData, days = 14): Map<string, Slot> {
 export function diffChanges(before: Map<string, Slot>, after: Map<string, Slot>): ScheduleChange[] {
   const out: ScheduleChange[] = []
   for (const [k, s] of before) {
-    if (!after.has(k)) out.push({ id: uid(), date: s.start, text: `Отменена: ${s.subject}, ${shortDayTime(s.start)}` })
+    if (!after.has(k)) out.push({ id: uid(), date: s.start, text: L`Отменена: ${s.subject}, ${shortDayTime(s.start)}` })
   }
   for (const [k, s] of after) {
     const old = before.get(k)
     if (old) {
       if (old.room !== s.room || old.address !== s.address) {
-        out.push({ id: uid(), date: s.start, text: `Новая аудитория: ${s.subject}, ${shortDayTime(s.start)}: ${old.room || '—'} → ${s.room || '—'}` })
+        out.push({ id: uid(), date: s.start, text: L`Новая аудитория: ${s.subject}, ${shortDayTime(s.start)}: ${old.room || '—'} → ${s.room || '—'}` })
       }
     } else {
-      out.push({ id: uid(), date: s.start, text: `Добавлена: ${s.subject}, ${shortDayTime(s.start)}${s.room ? `, ауд. ${s.room}` : ''}` })
+      out.push({ id: uid(), date: s.start, text: L`Добавлена: ${s.subject}, ${shortDayTime(s.start)}${s.room ? L`, ауд. ${s.room}` : ''}` })
     }
   }
   return out.sort((a, b) => a.date - b.date)
@@ -450,7 +451,7 @@ export function diffChanges(before: Map<string, Slot>, after: Map<string, Slot>)
 
 /** Текст пары для «Поделиться» */
 export function slotShareLine(s: Slot) {
-  return `${hm(s.start)}–${hm(s.end)} ${s.subject} (${kindStyle(s.kind).label})${s.room ? `, ауд. ${s.room}` : ''}${s.teacher ? `, ${s.teacher}` : ''}`
+  return `${hm(s.start)}–${hm(s.end)} ${s.subject} (${kindStyle(s.kind).label})${s.room ? L`, ауд. ${s.room}` : ''}${s.teacher ? `, ${s.teacher}` : ''}`
 }
 
 /** Параллельные пары одного предмета в одно время (подгруппы, физкультура по выбору) — одной строкой */

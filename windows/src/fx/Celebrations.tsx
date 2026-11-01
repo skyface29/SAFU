@@ -8,6 +8,7 @@ import { type ScheduleData, slotsOn } from '../lib/schedule'
 import { startOfDay, addDays, weekday, plural } from '../lib/date'
 import { notify, type Note } from '../lib/notify'
 
+import { L } from '../lib/i18n'
 type Style = { kind: 'confetti' } | { kind: 'emoji'; list: string[] } | { kind: 'fireworks'; big: boolean }
 type Celebration = { id: number; title: string; subtitle: string; style: Style; force?: boolean }
 
@@ -24,21 +25,21 @@ function once(id: string) {
 }
 
 export const HOLIDAYS: { id: string; m: number; d: number; title: string; subtitle: string; style: Style }[] = [
-  { id: 'ny', m: 1, d: 1, title: 'С Новым годом! 🎄', subtitle: 'Пусть сессия сдастся сама', style: { kind: 'emoji', list: ['🎄', '❄️', '✨', '🎆'] } },
-  { id: 'xmas', m: 1, d: 7, title: 'С Рождеством! ⭐️', subtitle: 'Тепла и уюта', style: { kind: 'emoji', list: ['⭐️', '❄️', '🕯️'] } },
-  { id: 'tatiana', m: 1, d: 25, title: 'С Днём студента! 🎓', subtitle: 'Татьянин день — это твой праздник', style: { kind: 'emoji', list: ['🎓', '📚', '🎉', '✨'] } },
-  { id: 'feb23', m: 2, d: 23, title: 'С 23 Февраля! 🎖️', subtitle: 'Сил и стойкости', style: { kind: 'emoji', list: ['🎖️', '⭐️'] } },
-  { id: 'mar8', m: 3, d: 8, title: 'С 8 Марта! 💐', subtitle: 'Весны и хорошего настроения', style: { kind: 'emoji', list: ['💐', '🌷', '🌸', '✨'] } },
-  { id: 'cosmos', m: 4, d: 12, title: 'С Днём космонавтики! 🚀', subtitle: 'Поехали!', style: { kind: 'emoji', list: ['🚀', '🪐', '⭐️'] } },
-  { id: 'may1', m: 5, d: 1, title: 'С Первомаем! 🌷', subtitle: 'Весна, труд и отдых', style: { kind: 'emoji', list: ['🌷', '🌼', '☀️'] } },
-  { id: 'may9', m: 5, d: 9, title: 'С Днём Победы', subtitle: 'Помним', style: { kind: 'emoji', list: ['🕊️', '🌷'] } },
-  { id: 'jun12', m: 6, d: 12, title: 'С Днём России!', subtitle: 'Хороших выходных', style: { kind: 'confetti' } },
-  { id: 'sep1', m: 9, d: 1, title: 'С Днём знаний! 📚', subtitle: 'Новый семестр — новый уровень', style: { kind: 'emoji', list: ['📚', '✏️', '🎓', '🍁'] } },
-  { id: 'prog', m: 9, d: 13, title: 'С Днём программиста! 💻', subtitle: '256-й день года — свой праздник', style: { kind: 'emoji', list: ['💻', '⌨️', '🐛', '✨'] } },
-  { id: 'nov4', m: 11, d: 4, title: 'С Днём народного единства!', subtitle: 'Отдыхай', style: { kind: 'confetti' } },
-  { id: 'students', m: 11, d: 17, title: 'С Международным днём студента! 🎓', subtitle: 'Учёба подождёт пять минут', style: { kind: 'emoji', list: ['🎓', '🎉', '📚'] } },
-  { id: 'security', m: 11, d: 30, title: 'С Днём защиты информации! 🔐', subtitle: 'Твой профессиональный праздник', style: { kind: 'emoji', list: ['🔐', '🛡️', '💾', '✨'] } },
-  { id: 'nye', m: 12, d: 31, title: 'Последний день года! 🎆', subtitle: 'Ты хорошо поработал', style: { kind: 'emoji', list: ['🎆', '🎄', '✨', '🥂'] } }
+  { id: 'ny', m: 1, d: 1, title: L('С Новым годом! 🎄'), subtitle: L('Пусть сессия сдастся сама'), style: { kind: 'emoji', list: ['🎄', '❄️', '✨', '🎆'] } },
+  { id: 'xmas', m: 1, d: 7, title: L('С Рождеством! ⭐️'), subtitle: L('Тепла и уюта'), style: { kind: 'emoji', list: ['⭐️', '❄️', '🕯️'] } },
+  { id: 'tatiana', m: 1, d: 25, title: L('С Днём студента! 🎓'), subtitle: L('Татьянин день — это твой праздник'), style: { kind: 'emoji', list: ['🎓', '📚', '🎉', '✨'] } },
+  { id: 'feb23', m: 2, d: 23, title: L('С 23 Февраля! 🎖️'), subtitle: L('Сил и стойкости'), style: { kind: 'emoji', list: ['🎖️', '⭐️'] } },
+  { id: 'mar8', m: 3, d: 8, title: L('С 8 Марта! 💐'), subtitle: L('Весны и хорошего настроения'), style: { kind: 'emoji', list: ['💐', '🌷', '🌸', '✨'] } },
+  { id: 'cosmos', m: 4, d: 12, title: L('С Днём космонавтики! 🚀'), subtitle: L('Поехали!'), style: { kind: 'emoji', list: ['🚀', '🪐', '⭐️'] } },
+  { id: 'may1', m: 5, d: 1, title: L('С Первомаем! 🌷'), subtitle: L('Весна, труд и отдых'), style: { kind: 'emoji', list: ['🌷', '🌼', '☀️'] } },
+  { id: 'may9', m: 5, d: 9, title: L('С Днём Победы'), subtitle: L('Помним'), style: { kind: 'emoji', list: ['🕊️', '🌷'] } },
+  { id: 'jun12', m: 6, d: 12, title: L('С Днём России!'), subtitle: L('Хороших выходных'), style: { kind: 'confetti' } },
+  { id: 'sep1', m: 9, d: 1, title: L('С Днём знаний! 📚'), subtitle: L('Новый семестр — новый уровень'), style: { kind: 'emoji', list: ['📚', '✏️', '🎓', '🍁'] } },
+  { id: 'prog', m: 9, d: 13, title: L('С Днём программиста! 💻'), subtitle: L('256-й день года — свой праздник'), style: { kind: 'emoji', list: ['💻', '⌨️', '🐛', '✨'] } },
+  { id: 'nov4', m: 11, d: 4, title: L('С Днём народного единства!'), subtitle: L('Отдыхай'), style: { kind: 'confetti' } },
+  { id: 'students', m: 11, d: 17, title: L('С Международным днём студента! 🎓'), subtitle: L('Учёба подождёт пять минут'), style: { kind: 'emoji', list: ['🎓', '🎉', '📚'] } },
+  { id: 'security', m: 11, d: 30, title: L('С Днём защиты информации! 🔐'), subtitle: L('Твой профессиональный праздник'), style: { kind: 'emoji', list: ['🔐', '🛡️', '💾', '✨'] } },
+  { id: 'nye', m: 12, d: 31, title: L('Последний день года! 🎆'), subtitle: L('Ты хорошо поработал'), style: { kind: 'emoji', list: ['🎆', '🎄', '✨', '🥂'] } }
 ]
 
 function holidayToday(now = new Date()) {
@@ -71,7 +72,7 @@ export const celebrations = {
       const bd = new Date(b)
       if (bd.getDate() === now.getDate() && bd.getMonth() === now.getMonth() && once('bday')) {
         const name = kv.get('user.first', '')
-        celebrations.fire({ title: `С днём рождения${name ? ', ' + name : ''}! 🎂`, subtitle: 'Пусть все дедлайны будут далеко, а автоматы — близко', style: { kind: 'emoji', list: ['🎂', '🎉', '🎈', '✨'] } })
+        celebrations.fire({ title: L`С днём рождения${name ? ', ' + name : ''}! 🎂`, subtitle: L('Пусть все дедлайны будут далеко, а автоматы — близко'), style: { kind: 'emoji', list: ['🎂', '🎉', '🎈', '✨'] } })
         return
       }
     }
@@ -83,9 +84,9 @@ export const celebrations = {
     if (!last || Date.now() < last.end || Date.now() > last.end + 6 * 3600_000) return
     const restEmpty = weekDone(today, d)
     if (flag('fx.weekEnd') && restEmpty && once('week')) {
-      celebrations.fire({ title: 'Неделя закрыта! 🎆', subtitle: 'Салют в твою честь — свободен до понедельника', style: { kind: 'fireworks', big: true } })
+      celebrations.fire({ title: L('Неделя закрыта! 🎆'), subtitle: L('Салют в твою честь — свободен до понедельника'), style: { kind: 'fireworks', big: true } })
     } else if (flag('fx.dayEnd') && !restEmpty && once('day')) {
-      celebrations.fire({ title: 'Пары всё! 🎉', subtitle: `${slots.length} ${plural(slots.length, 'пара', 'пары', 'пар')} позади. Можно выдохнуть`, style: { kind: 'fireworks', big: false } })
+      celebrations.fire({ title: L('Пары всё! 🎉'), subtitle: L`${slots.length} ${plural(slots.length, L('пара'), L('пары'), L('пар'))} позади. Можно выдохнуть`, style: { kind: 'fireworks', big: false } })
     }
   },
   scheduleNotifications(d: ScheduleData) {
@@ -99,8 +100,8 @@ export const celebrations = {
       const isWeek = weekDone(day, d)
       if (isWeek ? !flag('fx.weekEnd') : !flag('fx.dayEnd')) continue
       list.push({
-        id: `fx.end.${i}`, at: last.end + 20_000, title: isWeek ? 'Неделя закрыта! 🎆' : 'Пары всё! 🎉',
-        body: isWeek ? 'Свободен до понедельника — открой, там салют в твою честь' : `${slots.length} ${plural(slots.length, 'пара', 'пары', 'пар')} позади. Можно выдохнуть`,
+        id: `fx.end.${i}`, at: last.end + 20_000, title: isWeek ? L('Неделя закрыта! 🎆') : L('Пары всё! 🎉'),
+        body: isWeek ? L('Свободен до понедельника — открой, там салют в твою честь') : L`${slots.length} ${plural(slots.length, L('пара'), L('пары'), L('пар'))} позади. Можно выдохнуть`,
         route: 'home'
       })
     }
@@ -108,14 +109,14 @@ export const celebrations = {
   },
   taskDone(title: string, left: number) {
     if (!flag('fx.tasks')) return
-    celebrations.fire({ title: left === 0 ? 'Все задачи сделаны! 🏆' : 'Готово! ✅', subtitle: left === 0 ? 'Ни одного хвоста — красота' : `«${title}» закрыта. Осталось ${left}`, style: { kind: 'confetti' } })
+    celebrations.fire({ title: left === 0 ? L('Все задачи сделаны! 🏆') : L('Готово! ✅'), subtitle: left === 0 ? L('Ни одного хвоста — красота') : L`«${title}» закрыта. Осталось ${left}`, style: { kind: 'confetti' } })
   },
   examPassed(subject: string, grade: string) {
     if (!flag('fx.exams')) return
-    celebrations.fire({ title: 'Сдано! 🎓', subtitle: `${subject} — ${grade}`, style: { kind: 'emoji', list: ['🎓', '🎉', '⭐️', '🔥'] } })
+    celebrations.fire({ title: L('Сдано! 🎓'), subtitle: `${subject} — ${grade}`, style: { kind: 'emoji', list: ['🎓', '🎉', '⭐️', '🔥'] } })
   },
-  test() { celebrations.fire({ title: 'Вот так это выглядит 🎆', subtitle: 'Салют и конфетти на месте', style: { kind: 'fireworks', big: true }, force: true }) },
-  welcome() { celebrations.fire({ title: 'Всё готово! 🎉', subtitle: 'Добро пожаловать в Арктику', style: { kind: 'fireworks', big: false }, force: true }) }
+  test() { celebrations.fire({ title: L('Вот так это выглядит 🎆'), subtitle: L('Салют и конфетти на месте'), style: { kind: 'fireworks', big: true }, force: true }) },
+  welcome() { celebrations.fire({ title: L('Всё готово! 🎉'), subtitle: L('Добро пожаловать в Арктику'), style: { kind: 'fireworks', big: false }, force: true }) }
 }
 
 export function CelebrationOverlay() {

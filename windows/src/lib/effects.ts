@@ -10,6 +10,7 @@ import { onScheduleChanged, scheduleStore } from './scheduleStore'
 import { commute } from './bus'
 import { celebrations } from '../fx/Celebrations'
 
+import { L } from './i18n'
 export const folderName = (s: string) => s.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 120)
 export const subjectFolder = (s: string) => `Предметы/${folderName(s)}`
 
@@ -23,8 +24,8 @@ function pairReminders(d: ScheduleData) {
       if (at <= Date.now()) continue
       list.push({
         id: `pair-${Math.floor(s.start / 1000)}`, at,
-        title: `Через ${mins} мин: ${s.subject}`,
-        body: [kindStyle(s.kind).label, s.room ? `ауд. ${s.room}` : '', s.address].filter(Boolean).join(' · '),
+        title: L`Через ${mins} мин: ${s.subject}`,
+        body: [kindStyle(s.kind).label, s.room ? L`ауд. ${s.room}` : '', s.address].filter(Boolean).join(' · '),
         route: 'schedule'
       })
     }
@@ -43,10 +44,10 @@ function weeklyDigest(d: ScheduleData) {
   const exams = slots.filter(s => { const k = s.kind.toLowerCase(); return k.includes('экзам') || k.includes('зач') })
   const weekEnd = mon + 7 * DAY
   const due = hw.active().filter(h => h.due >= mon && h.due < weekEnd).length
-  const lines = [`Пар: ${slots.length}, лабораторных: ${labs}`]
-  if (exams.length) lines.push('Экзамены и зачёты: ' + exams.map(s => s.subject).join(', '))
-  lines.push(due ? `ДЗ на неделе: ${due}` : 'Дедлайнов на неделе нет')
-  notify.schedule('digest', [{ id: 'digest', at: fire.getTime(), title: 'Следующая неделя 📚', body: lines.join('\n'), route: 'schedule' }])
+  const lines = [L`Пар: ${slots.length}, лабораторных: ${labs}`]
+  if (exams.length) lines.push(L('Экзамены и зачёты: ') + exams.map(s => s.subject).join(', '))
+  lines.push(due ? L`ДЗ на неделе: ${due}` : L('Дедлайнов на неделе нет'))
+  notify.schedule('digest', [{ id: 'digest', at: fire.getTime(), title: L('Следующая неделя 📚'), body: lines.join('\n'), route: 'schedule' }])
 }
 
 /** Утренняя сводка: первая пара, погода — в 7:00 (если включено) */
@@ -62,8 +63,8 @@ function morningBrief(d: ScheduleData) {
     if (at.getTime() <= Date.now() || at.getTime() >= slots[0].start) continue
     list.push({
       id: `morning-${day}`, at: at.getTime(), route: 'schedule',
-      title: `Сегодня ${slots.length} ${slots.length === 1 ? 'пара' : slots.length < 5 ? 'пары' : 'пар'} ☀️`,
-      body: `Первая в ${hm(slots[0].start)}: ${slots[0].subject}${slots[0].room ? `, ауд. ${slots[0].room}` : ''}. Последняя заканчивается в ${hm(slots[slots.length - 1].end)}.`
+      title: L`Сегодня ${slots.length} ${slots.length === 1 ? L('пара') : slots.length < 5 ? L('пары') : L('пар')} ☀️`,
+      body: L`Первая в ${hm(slots[0].start)}: ${slots[0].subject}${slots[0].room ? L`, ауд. ${slots[0].room}` : ''}. Последняя заканчивается в ${hm(slots[slots.length - 1].end)}.`
     })
   }
   notify.schedule('morning-', list)
@@ -111,14 +112,14 @@ export function widgetPayload(d: ScheduleData): WidgetPayload {
 export function trayLine(d: ScheduleData): { tooltip: string; line: string } {
   const p = widgetPayload(d)
   if (p.mode === 'now') {
-    const line = `Сейчас: ${p.subject}${p.room ? `, ауд. ${p.room}` : ''} — до ${hm(p.end)}`
-    return { line, tooltip: `Арктика\n${p.subject}\nещё ${timer(p.end - Date.now())}${p.room ? ` · ауд. ${p.room}` : ''}` }
+    const line = L`Сейчас: ${p.subject}${p.room ? L`, ауд. ${p.room}` : ''} — до ${hm(p.end)}`
+    return { line, tooltip: L`Арктика\n${p.subject}\nещё ${timer(p.end - Date.now())}${p.room ? L` · ауд. ${p.room}` : ''}` }
   }
   if (p.mode === 'next') {
-    const line = `Далее: ${p.subject} в ${hm(p.start)}${p.room ? `, ауд. ${p.room}` : ''}`
-    return { line, tooltip: `Арктика\nСледующая: ${p.subject}\nчерез ${untilText(p.start - Date.now())}` }
+    const line = L`Далее: ${p.subject} в ${hm(p.start)}${p.room ? L`, ауд. ${p.room}` : ''}`
+    return { line, tooltip: L`Арктика\nСледующая: ${p.subject}\nчерез ${untilText(p.start - Date.now())}` }
   }
-  return { line: 'Ближайших пар нет', tooltip: 'Арктика — ближайших пар нет' }
+  return { line: L('Ближайших пар нет'), tooltip: L('Арктика — ближайших пар нет') }
 }
 
 // В трей и мини-окно уходит только то, что поменялось: раньше одно и то же отправлялось каждые 20 секунд

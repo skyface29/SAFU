@@ -5,6 +5,7 @@ import type { Homework } from './homework'
 import { kindStyle, AddressFormat } from './schedule'
 import { hm, MONTHS, WEEKDAYS_SHORT } from './date'
 
+import { L } from './i18n'
 export type Block = { id: number; marker: string; text: string }
 
 // \b в JS не знает кириллицу — границу слова задаём сами
@@ -111,7 +112,7 @@ export function dueLine(h: Homework): string {
   const p = [end ? day : `${day}, ${hm(h.due)}`]
   if (h.dueKind) p.push(kindStyle(h.dueKind).label.toLowerCase())
   const r = h.dueRoom.trim()
-  if (r) p.push(AddressFormat.isRemote(r) ? 'дистант' : `ауд. ${r}`)
+  if (r) p.push(AddressFormat.isRemote(r) ? L('дистант') : L`ауд. ${r}`)
   return p.join(' · ')
 }
 
@@ -124,8 +125,8 @@ function body(h: Homework): string[] {
 }
 
 export function shareText(h: Homework): string {
-  const lines = [`📚 ${h.subject || 'ДЗ'}${h.important ? ' ❗️' : ''}`, ...body(h), `📅 Сдать: ${dueLine(h)}`]
-  if (h.photos.length) lines.push(`📎 ${h.photos.length} фото`)
+  const lines = [`📚 ${h.subject || L('ДЗ')}${h.important ? ' ❗️' : ''}`, ...body(h), L`📅 Сдать: ${dueLine(h)}`]
+  if (h.photos.length) lines.push(L`📎 ${h.photos.length} фото`)
   return lines.join('\n')
 }
 
@@ -133,7 +134,7 @@ export function shareText(h: Homework): string {
 export function shareList(list: Homework[], title: string): string {
   const out = [`📚 ${title}`]
   for (const h of [...list].sort((a, b) => a.due - b.due)) {
-    out.push('', `▫️ ${h.subject || 'Без предмета'} — ${dueLine(h)}`, ...body(h))
+    out.push('', `▫️ ${h.subject || L('Без предмета')} — ${dueLine(h)}`, ...body(h))
   }
   return out.join('\n')
 }

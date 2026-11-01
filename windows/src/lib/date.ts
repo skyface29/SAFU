@@ -1,12 +1,14 @@
+import { L } from './i18n'
+import { plural } from './i18n'
 // Даты по-русски и календарные расчёты (неделя с понедельника, как в Calendar с firstWeekday = 2)
 
 export const DAY = 86_400_000
-export const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
-export const MONTHS_NOM = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
-export const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
-export const WEEKDAYS = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
-export const WEEKDAYS_SHORT = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб']
-export const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+export const MONTHS = [L('января'), L('февраля'), L('марта'), L('апреля'), L('мая'), L('июня'), L('июля'), L('августа'), L('сентября'), L('октября'), L('ноября'), L('декабря')]
+export const MONTHS_NOM = [L('Январь'), L('Февраль'), L('Март'), L('Апрель'), L('Май'), L('Июнь'), L('Июль'), L('Август'), L('Сентябрь'), L('Октябрь'), L('Ноябрь'), L('Декабрь')]
+export const MONTHS_SHORT = [L('янв'), L('фев'), L('мар'), L('апр'), L('мая'), L('июн'), L('июл'), L('авг'), L('сен'), L('окт'), L('ноя'), L('дек')]
+export const WEEKDAYS = [L('воскресенье'), L('понедельник'), L('вторник'), L('среда'), L('четверг'), L('пятница'), L('суббота')]
+export const WEEKDAYS_SHORT = [L('вс'), L('пн'), L('вт'), L('ср'), L('чт'), L('пт'), L('сб')]
+export const DAY_NAMES = [L('Пн'), L('Вт'), L('Ср'), L('Чт'), L('Пт'), L('Сб'), L('Вс')]
 
 export const startOfDay = (t: number | Date) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime() }
 export const addDays = (t: number, n: number) => { const d = new Date(t); d.setDate(d.getDate() + n); return d.getTime() }
@@ -46,28 +48,22 @@ export const shortDayTime = (t: number) => `${WEEKDAYS_SHORT[new Date(t).getDay(
 
 /** «сегодня», «завтра», «вчера» или «пятница, 10 октября» */
 export function relDay(t: number): string {
-  if (isToday(t)) return 'сегодня'
-  if (isTomorrow(t)) return 'завтра'
-  if (isYesterday(t)) return 'вчера'
+  if (isToday(t)) return L('сегодня')
+  if (isTomorrow(t)) return L('завтра')
+  if (isYesterday(t)) return L('вчера')
   return fullDay(t)
 }
 
-export function plural(n: number, one: string, few: string, many: string) {
-  const a = Math.abs(n) % 100, b = a % 10
-  if (a > 10 && a < 20) return many
-  if (b > 1 && b < 5) return few
-  if (b === 1) return one
-  return many
-}
+export { plural }
 
 /** «через 25 мин», «через 2 ч 10 мин» */
 export function untilText(ms: number): string {
   const mins = Math.max(0, Math.round(ms / 60_000))
-  if (mins < 60) return `${mins} мин`
+  if (mins < 60) return L`${mins} мин`
   const h = Math.floor(mins / 60), m = mins % 60
-  if (h < 24) return m ? `${h} ч ${m} мин` : `${h} ч`
+  if (h < 24) return m ? L`${h} ч ${m} мин` : L`${h} ч`
   const d = Math.floor(h / 24)
-  return `${d} ${plural(d, 'день', 'дня', 'дней')}`
+  return `${d} ${plural(d, L('день'), L('дня'), L('дней'))}`
 }
 
 /** Таймер «1:23:45» / «23:45» */
@@ -81,20 +77,20 @@ export function timer(ms: number): string {
 export function relativeAgo(t: number): string {
   const diff = Date.now() - t
   const m = Math.round(diff / 60_000)
-  if (m < 1) return 'только что'
-  if (m < 60) return `${m} ${plural(m, 'минуту', 'минуты', 'минут')} назад`
+  if (m < 1) return L('только что')
+  if (m < 60) return L`${m} ${plural(m, L('минуту'), L('минуты'), L('минут'))} назад`
   const h = Math.round(m / 60)
-  if (h < 24) return `${h} ${plural(h, 'час', 'часа', 'часов')} назад`
+  if (h < 24) return L`${h} ${plural(h, L('час'), L('часа'), L('часов'))} назад`
   const d = Math.round(h / 24)
-  return `${d} ${plural(d, 'день', 'дня', 'дней')} назад`
+  return L`${d} ${plural(d, L('день'), L('дня'), L('дней'))} назад`
 }
 
 export function greeting(now = new Date()): string {
   const h = now.getHours()
-  if (h < 5) return 'Доброй ночи'
-  if (h < 12) return 'Доброе утро'
-  if (h < 17) return 'Добрый день'
-  return 'Добрый вечер'
+  if (h < 5) return L('Доброй ночи')
+  if (h < 12) return L('Доброе утро')
+  if (h < 17) return L('Добрый день')
+  return L('Добрый вечер')
 }
 
 /** Дата в часовом поясе Москвы → момент времени */

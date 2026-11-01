@@ -23,6 +23,7 @@ import { CelebrationOverlay, celebrations } from './fx/Celebrations'
 import { LockGate, appLock } from './pages/AppLock'
 import { Tour } from './pages/Tour'
 
+import { L } from './lib/i18n'
 function useDark() {
   const [scheme] = usePref('ui.scheme', 'dark')
   const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -118,11 +119,11 @@ export default function App() {
   // скачал файл с сайта — говорим, куда он лёг, и даём сразу открыть
   useEffect(() => safu.app.on('download:progress', (p: any) => {
     if (p?.state === 'completed') {
-      const name = String(p.name || 'Файл')
+      const name = String(p.name || L('Файл'))
       const ext = name.includes('.') ? name.split('.').pop()!.toLowerCase() : ''
       toast(`Сохранено в «${p.folder || 'Загрузки'}»: ${name}`, 'ok', p.rel ? { label: 'Открыть', run: () => openFileCard(p.rel, name, ext) } : undefined)
     } else if (p?.state === 'interrupted') {
-      toast(`Не удалось скачать: ${p.name || 'файл'}`, 'warn')
+      toast(L`Не удалось скачать: ${p.name || L('файл')}`, 'warn')
     }
   }), [])
 

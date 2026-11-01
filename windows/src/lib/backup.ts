@@ -5,6 +5,7 @@ import { parseBinaryPlist, type PlistValue } from './plist'
 import { confirmDialog, alertDialog, passwordDialog, toast } from '../ui/kit'
 import { ymd } from './date'
 
+import { L } from './i18n'
 const CACHE_NAMES = (all: Record<string, unknown>) => {
   const g = String(((all['schedule.v1'] as any)?.ruzGroupNumber) || '').replace(/[^\p{L}\p{N}]/gu, '')
   return g ? [`ruz-archive-${g}`] : []
@@ -40,21 +41,21 @@ export async function sealSecrets(secrets: Record<string, string>, password: str
 
 /** Неверный пароль или испорченный файл — исключение */
 export async function openSecrets(s: SealedSecrets, password: string): Promise<Record<string, string>> {
-  if (s?.v !== 1 || s.kdf !== 'PBKDF2-SHA256' || !(s.iter >= 100_000 && s.iter <= 10_000_000)) throw new Error('Неизвестный формат паролей в копии')
+  if (s?.v !== 1 || s.kdf !== 'PBKDF2-SHA256' || !(s.iter >= 100_000 && s.iter <= 10_000_000)) throw new Error(L('Неизвестный формат паролей в копии'))
   const key = await backupKey(password, fromB64(s.salt), s.iter)
   const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(s.iv), additionalData: AAD }, key, fromB64(s.data))
   const out = JSON.parse(new TextDecoder().decode(plain))
-  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('Испорченные данные')
+  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error(L('Испорченные данные'))
   return out as Record<string, string>
 }
 
 async function askNewBackupPassword(): Promise<string | null> {
-  const p1 = await passwordDialog('Пароль для копии', 'Сохранённые пароли сайтов в копии зашифруются этим паролем (AES‑256). Без него их не восстановить, поэтому запомни или запиши его. Не короче 8 символов.')
+  const p1 = await passwordDialog(L('Пароль для копии'), L('Сохранённые пароли сайтов в копии зашифруются этим паролем (AES‑256). Без него их не восстановить, поэтому запомни или запиши его. Не короче 8 символов.'))
   if (p1 == null) return null
-  if (p1.length < 8) { await alertDialog('Слишком короткий пароль', 'Нужно хотя бы 8 символов. Копия не сохранена.'); return null }
-  const p2 = await passwordDialog('Повтори пароль')
+  if (p1.length < 8) { await alertDialog(L('Слишком короткий пароль'), L('Нужно хотя бы 8 символов. Копия не сохранена.')); return null }
+  const p2 = await passwordDialog(L('Повтори пароль'))
   if (p2 == null) return null
-  if (p1 !== p2) { await alertDialog('Пароли не совпали', 'Копия не сохранена — попробуй ещё раз.'); return null }
+  if (p1 !== p2) { await alertDialog(L('Пароли не совпали'), L('Копия не сохранена — попробуй ещё раз.')); return null }
   return p1
 }
 
@@ -71,27 +72,27 @@ export async function makeBackup(includePasswords: boolean) {
   const blob = {
     app: 'safu-windows', version: 2, created: Date.now(), kv: all, caches, secretsEnc
   }
-  const p = await safu.dialog.save({ name: `Арктика копия ${ymd(Date.now())}.safu`, text: JSON.stringify(blob), filters: [{ name: 'Копия Арктики', extensions: ['safu'] }] })
-  if (p) { kv.set('backup.last', Date.now()); toast('Копия сохранена') }
+  const p = await safu.dialog.save({ name: L`Арктика копия ${ymd(Date.now())}.safu`, text: JSON.stringify(blob), filters: [{ name: L('Копия Арктики'), extensions: ['safu'] }] })
+  if (p) { kv.set('backup.last', Date.now()); toast(L('Копия сохранена')) }
   return p
 }
 
 /** Выбрать файл копии и восстановить. true — восстановлено (приложение перезапустится) */
 export async function restoreBackupInteractive(): Promise<boolean> {
   let r: any
-  try { r = await safu.backup.readIOS() } catch (e) { await alertDialog('Не получилось восстановить', String((e as Error).message || e)); return false }
+  try { r = await safu.backup.readIOS() } catch (e) { await alertDialog(L('Не получилось восстановить'), String((e as Error).message || e)); return false }
   if (!r) return false
   try {
     if (r.kind === 'text') {
       const blob = JSON.parse(r.text)
-      if (blob.app !== 'safu-windows' || !blob.kv) throw new Error('Это не резервная копия Арктики')
-      if (!await confirmDialog('Восстановить копию?', `Все текущие данные заменятся данными из «${r.name}».`, 'Восстановить', true)) return false
+      if (blob.app !== 'safu-windows' || !blob.kv) throw new Error(L('Это не резервная копия Арктики'))
+      if (!await confirmDialog(L('Восстановить копию?'), L`Все текущие данные заменятся данными из «${r.name}».`, L('Восстановить'), true)) return false
       let secrets: Record<string, string> | null = null
       if (blob.secretsEnc) {
         while (!secrets) {
-          const pw = await passwordDialog('Пароль копии', 'В копии есть сохранённые пароли сайтов. Введи пароль, которым она зашифрована. «Отмена» — восстановить всё остальное без паролей.')
+          const pw = await passwordDialog(L('Пароль копии'), L('В копии есть сохранённые пароли сайтов. Введи пароль, которым она зашифрована. «Отмена» — восстановить всё остальное без паролей.'))
           if (pw == null) break
-          try { secrets = await openSecrets(blob.secretsEnc, pw) } catch { toast('Пароль не подходит', 'warn') }
+          try { secrets = await openSecrets(blob.secretsEnc, pw) } catch { toast(L('Пароль не подходит'), 'warn') }
         }
       } else if (blob.secrets && typeof blob.secrets === 'object') {
         secrets = blob.secrets // копия старой версии, где пароли лежали без шифрования
@@ -100,16 +101,16 @@ export async function restoreBackupInteractive(): Promise<boolean> {
       for (const [n, v] of Object.entries(blob.caches || {})) await safu.cache.set(n, v)
       if (secrets) await safu.secret.replace(secrets)
     } else {
-      if (!r.plist) throw new Error('Это не резервная копия Арктики')
+      if (!r.plist) throw new Error(L('Это не резервная копия Арктики'))
       const domain = parseBinaryPlist(Uint8Array.from(atob(r.plist), c => c.charCodeAt(0))) as Record<string, PlistValue>
       const converted = convertIOS(domain)
-      if (!await confirmDialog('Перенести данные с iPhone?', `Расписание, ДЗ, задачи, заметки, оценки и настройки из «${r.name}» заменят текущие. Файлов скопировано в папку файлов: ${r.files}.`, 'Перенести', true)) return false
+      if (!await confirmDialog(L('Перенести данные с iPhone?'), L`Расписание, ДЗ, задачи, заметки, оценки и настройки из «${r.name}» заменят текущие. Файлов скопировано в папку файлов: ${r.files}.`, L('Перенести'), true)) return false
       kv.replaceAll({ ...kv.all(), ...converted, onboarded: true })
     }
     setTimeout(() => safu.app.relaunch(), 600)
     return true
   } catch (e) {
-    await alertDialog('Не получилось восстановить', String((e as Error).message || e))
+    await alertDialog(L('Не получилось восстановить'), String((e as Error).message || e))
     return false
   }
 }
