@@ -1,19 +1,21 @@
 // Для старост и преподавателей: посещаемость, рассылка группе, опросы. Из Attendance.swift, Polls.swift, Features.swift.
 import React, { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { UserPlus, Users, Check, Download, Copy, Trash2, Plus, BarChart3, X, Send, Megaphone, ClipboardList, Lock, Unlock } from 'lucide-react'
+import { UserPlus, Users, Check, Download, Copy, Trash2, Plus, BarChart3, X, Send, Megaphone, ClipboardList, Lock, Unlock, Link2 } from 'lucide-react'
 import { PageHeader, Card, Sheet, Empty, Field, Segmented, toast, confirmDialog, KindBadge, Progress, openMenu } from '../../ui/kit'
 import { createCollection, uid } from '../../lib/kv'
 import { useSchedule } from '../../lib/scheduleStore'
 import { slotsRange, kindStyle, type Slot, subjects } from '../../lib/schedule'
 import { addDays, startOfDay, shortDayTime, fullDay, hm, dayMonth, ymd, toLocalInput, fromLocalInput, plural } from '../../lib/date'
 import { safu } from '../../lib/bridge'
+import { SiteAttendance, ConnectSiteSheet, siteLinkStore } from './SiteAttendance'
 
 // ---------- модель (ключ attendance.v1 как в iOS) ----------
 
-export type Mark = 'present' | 'absent' | 'excused'
+export type Mark = 'present' | 'late' | 'absent' | 'excused'
 const MARKS: { id: Mark; sym: string; title: string; color: string }[] = [
   { id: 'present', sym: '+', title: 'Был', color: '#29bf6b' },
+  { id: 'late', sym: 'О', title: 'Опозд.', color: '#5c85ff' },
   { id: 'absent', sym: '−', title: 'Н/б', color: '#f2474d' },
   { id: 'excused', sym: 'У', title: 'Уваж.', color: '#ff9e1a' }
 ]
@@ -51,29 +53,30 @@ const att = {
   },
   remove(id: string) { attendanceStore.set(d => ({ ...d, students: d.students.filter(s => s.id !== id) })) },
   stats(d: AData, st: Student, subject?: string) {
-    let p = 0, a = 0, e = 0
+    let p = 0, a = 0, e = 0, l = 0
     for (const [k, m] of Object.entries(d.marks)) {
       if (subject && d.lessons[k]?.subject !== subject) continue
       const v = m[st.id]
-      if (v === 'present') p++; else if (v === 'absent') a++; else if (v === 'excused') e++
+      if (v === 'present') p++; else if (v === 'late') l++; else if (v === 'absent') a++; else if (v === 'excused') e++
     }
-    return { p, a, e }
+    return { p, a, e, l }
   },
   report(d: AData, s: Slot) {
     const m = d.marks[keyOf(s)] || {}
     const list = sorted(d.students)
     const by = (x: Mark) => list.filter(st => m[st.id] === x).map(st => st.name)
-    const lines = [`📋 ${s.subject} (${kindStyle(s.kind).label.toLowerCase()}), ${dayMonth(s.start)}, ${hm(s.start)}`, `Были: ${by('present').length} из ${list.length}`]
+    const lines = [`📋 ${s.subject} (${kindStyle(s.kind).label.toLowerCase()}), ${dayMonth(s.start)}, ${hm(s.start)}`, `Были: ${by('present').length + by('late').length} из ${list.length}`]
     if (by('absent').length) lines.push(`Отсутствовали: ${by('absent').join(', ')}`)
+    if (by('late').length) lines.push(`Опоздали: ${by('late').join(', ')}`)
     if (by('excused').length) lines.push(`По уважительной: ${by('excused').join(', ')}`)
     return lines.join('\n')
   },
   csv(d: AData, subject?: string) {
     const lessons = Object.values(d.lessons).filter(l => (!subject || l.subject === subject) && Object.keys(d.marks[l.key] || {}).length).sort((a, b) => a.start - b.start)
-    const head = ['Студент', ...lessons.map(l => `${ymd(l.start)} ${hm(l.start)} ${l.subject} (${kindStyle(l.kind).label})`), 'Был', 'Н/б', 'Уваж.']
+    const head = ['Студент', ...lessons.map(l => `${ymd(l.start)} ${hm(l.start)} ${l.subject} (${kindStyle(l.kind).label})`), 'Был', 'Опозд.', 'Н/б', 'Уваж.']
     const rows = sorted(d.students).map(st => {
       const s = att.stats(d, st, subject)
-      return [st.name, ...lessons.map(l => MARKS.find(m => m.id === d.marks[l.key]?.[st.id])?.sym || ''), s.p, s.a, s.e]
+      return [st.name, ...lessons.map(l => MARKS.find(m => m.id === d.marks[l.key]?.[st.id])?.sym || ''), s.p, s.l, s.a, s.e]
     })
     return '﻿' + [head, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n')
   }
@@ -81,7 +84,12 @@ const att = {
 
 // ---------- посещаемость ----------
 
-export function Attendance({ slot: slotParam }: { slot?: number; subject?: string }) {
+export function Attendance(props: { slot?: number; subject?: string }) {
+  const link = siteLinkStore.use()
+  return link.code ? <SiteAttendance /> : <LocalAttendance {...props} />
+}
+
+function LocalAttendance({ slot: slotParam }: { slot?: number; subject?: string }) {
   const data = useSchedule(s => s.data)
   const d = attendanceStore.use()
   const recent = useMemo(() => slotsRange(addDays(startOfDay(Date.now()), -7), 8, data).filter(s => s.start <= Date.now() + 3600_000).reverse(), [data])
@@ -91,14 +99,16 @@ export function Attendance({ slot: slotParam }: { slot?: number; subject?: strin
   })
   const [roster, setRoster] = useState(false)
   const [stats, setStats] = useState(false)
+  const [site, setSite] = useState(false)
   const slot = recent.find(s => s.key === sel)
   const marks = slot ? d.marks[keyOf(slot)] || {} : {}
   const list = sorted(d.students)
-  const present = list.filter(st => marks[st.id] === 'present').length
+  const present = list.filter(st => marks[st.id] === 'present' || marks[st.id] === 'late').length
 
   return (
     <>
       <PageHeader title="Посещаемость" subtitle={`${d.students.length} ${plural(d.students.length, 'человек', 'человека', 'человек')} в группе`} right={<>
+        <button className="btn" onClick={() => setSite(true)}><Link2 size={16} /> Связать с сайтом старост</button>
         <button className="btn" onClick={() => setStats(true)}><BarChart3 size={16} /> Статистика и таблица</button>
         <button className="btn" onClick={() => setRoster(true)}><Users size={16} /> Список группы</button>
       </>} />
@@ -134,7 +144,7 @@ export function Attendance({ slot: slotParam }: { slot?: number; subject?: strin
                 <span className="spacer" />
                 <button className="btn sm primary" onClick={() => { safu.clipboard.write(att.report(d, slot)); toast('Отчёт скопирован — вставь в чат') }}><Copy size={14} /> Отчёт по занятию</button>
               </div>
-              <div className="tiny faint mb8">Нажимай + (был), − (не было) или У (уважительная). Повторное нажатие снимает отметку.</div>
+              <div className="tiny faint mb8">Нажимай + (был), О (опоздал), − (не было) или У (уважительная). Повторное нажатие снимает отметку.</div>
               <div className="col gap6">
                 {list.map((st, i) => (
                   <motion.div key={st.id} className="row" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 20) * 0.015 }}
@@ -157,6 +167,7 @@ export function Attendance({ slot: slotParam }: { slot?: number; subject?: strin
       )}
       <RosterSheet open={roster} onClose={() => setRoster(false)} />
       <StatsSheet open={stats} onClose={() => setStats(false)} />
+      <ConnectSiteSheet open={site} onClose={() => setSite(false)} />
     </>
   )
 }
@@ -201,13 +212,13 @@ function StatsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
       <div className="col gap6">
         {sorted(d.students).map(st => {
           const s = att.stats(d, st, subject || undefined)
-          const tot = s.p + s.a + s.e
-          const pct = tot ? Math.round(s.p / tot * 100) : 0
+          const tot = s.p + s.l + s.a + s.e
+          const pct = tot ? Math.round((s.p + s.l) / tot * 100) : 0
           return (
             <div key={st.id} className="row" style={{ padding: '8px 12px', borderRadius: 12, background: 'var(--fill)' }}>
               <span className="grow small bold">{st.name}</span>
-              <span className="tiny muted">был {s.p} · н/б {s.a} · уваж. {s.e}</span>
-              <div style={{ width: 120 }}><Progress value={tot ? s.p / tot : 0} /></div>
+              <span className="tiny muted">был {s.p} · опозд. {s.l} · н/б {s.a} · уваж. {s.e}</span>
+              <div style={{ width: 120 }}><Progress value={tot ? (s.p + s.l) / tot : 0} /></div>
               <span className="small heavy" style={{ width: 44, textAlign: 'right', color: pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444' }}>{pct}%</span>
             </div>
           )
