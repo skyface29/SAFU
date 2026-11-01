@@ -1,0 +1,109 @@
+# Пост в Telegram от бота Арктики: картинка, подпись и кнопки-ссылки под ней.
+# Картинка — .github/telegram-navigation.jpg. Подпись и кнопки — ниже, в шаге «Отправить».
+# Один раз: токен бота из @BotFather — в Settings → Secrets and variables → Actions под именем TG_BOT_TOKEN;
+# для канала бот должен быть админом с правом «Публикация сообщений» (и «Редактирование» — чтобы править пост).
+# Запуск: Actions → «Пост в Telegram» → Run workflow.
+# Поправить уже опубликованный пост (без нового уведомления подписчикам): в поле «Изменить пост» — ссылка на пост.
+name: Пост в Telegram
+on:
+  workflow_dispatch:
+    inputs:
+      chat:
+        description: 'Куда: @username канала или свой числовой id (для проверки, сначала напиши боту /start)'
+        required: true
+        default: '@Arctica_SAFU'
+      edit:
+        description: 'Изменить пост: ссылка на него (t.me/Arctica_SAFU/123) или номер. Пусто — новый пост'
+        required: false
+        default: ''
+      pin:
+        description: 'Закрепить пост'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github
+      - name: Отправить
+        env:
+          TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          CHAT: ${{ inputs.chat }}
+          EDIT: ${{ inputs.edit }}
+          PIN: ${{ inputs.pin }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::Нет секрета TG_BOT_TOKEN: Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+
+          cat > caption.html <<'EOF'
+          <b>Навигация</b> ❄️
+
+          Друзья, чтобы было удобнее, собрал все сайты Арктики в одном посте. Жмите кнопку — и сразу на нужном сайте 👇
+
+          <b>Расписание</b> — зеркало РУЗ
+          <b>Отметки</b> — для старост
+          <b>Статус</b> — что сейчас лежит
+          <b>Справочник</b> — ответы по учёбе
+          <b>Приложение</b> — все версии
+          EOF
+
+          cat > buttons.json <<'EOF'
+          {"inline_keyboard": [
+            [{"text": "Расписание", "url": "https://arktika-app.ru/raspisanie/"},
+             {"text": "Отметки", "url": "https://arktika-app.ru/otmetki/"}],
+            [{"text": "Статус", "url": "https://arktika-app.ru/status/"},
+             {"text": "Справочник", "url": "https://arktika-app.ru/spravka/"}],
+            [{"text": "Приложение «Арктика»", "url": "https://arktika-app.ru/"}]
+          ]}
+          EOF
+
+          api="https://api.telegram.org/bot$TOKEN"
+          fail() { echo "::error::$1"; exit 1; }
+
+          if [ -n "$EDIT" ]; then
+            # из ссылки t.me/канал/123?single берём номер поста
+            id="${EDIT%%\?*}"; id="${id%/}"; id="${id##*/}"
+            [[ "$id" =~ ^[0-9]+$ ]] || fail "Не понял номер поста из «$EDIT» — вставь ссылку вида t.me/Arctica_SAFU/123"
+            r=$(curl -sS "$api/editMessageCaption" \
+              --form-string "chat_id=$CHAT" \
+              --form-string "message_id=$id" \
+              -F "caption=<caption.html" \
+              --form-string "parse_mode=HTML" \
+              -F "reply_markup=<buttons.json")
+            if [ "$(jq -r .ok <<<"$r")" != true ]; then
+              d=$(jq -r .description <<<"$r")
+              case "$d" in
+                *"not modified"*) echo "Пост уже такой — менять нечего" | tee -a "$GITHUB_STEP_SUMMARY" ;;
+                *) fail "Telegram не дал изменить пост $id: $d" ;;
+              esac
+            else
+              echo "Пост $id изменён" | tee -a "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            # --form-string: «@канал» иначе curl принял бы за имя файла
+            r=$(curl -sS "$api/sendPhoto" \
+              --form-string "chat_id=$CHAT" \
+              -F "photo=@.github/telegram-navigation.jpg" \
+              -F "caption=<caption.html" \
+              --form-string "parse_mode=HTML" \
+              -F "reply_markup=<buttons.json")
+            [ "$(jq -r .ok <<<"$r")" = true ] || fail "Telegram не принял пост: $(jq -r .description <<<"$r")"
+            id=$(jq -r .result.message_id <<<"$r")
+            echo "Опубликовано, пост $id" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "$PIN" = true ]; then
+            p=$(curl -sS "$api/pinChatMessage" --data-urlencode "chat_id=$CHAT" -d "message_id=$id" -d "disable_notification=true")
+            if [ "$(jq -r .ok <<<"$p")" = true ]; then
+              echo "Закреплено" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::Не удалось закрепить: $(jq -r .description <<<"$p") — дай боту право «Закрепление сообщений»"
+            fi
+          fi
