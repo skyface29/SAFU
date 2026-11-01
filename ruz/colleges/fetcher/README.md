@@ -25,7 +25,7 @@ Repository access — только `skyface29/SAFU`, Permissions → Contents: *
 
 ```powershell
 setx ARKTIKA_GITHUB_TOKEN "<токен>"
-schtasks /Create /TN "Arktika college PDF" /SC HOURLY /TR "cmd /c set GITHUB_TOKEN=%ARKTIKA_GITHUB_TOKEN% && node \"%CD%\ruz\colleges\fetcher\fetch.mjs\""
+schtasks /Create /TN "Arktika college PDF" /SC HOURLY /TR "cmd /c set GITHUB_TOKEN=%ARKTIKA_GITHUB_TOKEN%&& node `"$PWD\ruz\colleges\fetcher\fetch.mjs`""
 ```
 
 Работает, только пока компьютер включён; пропущенные часы догонит следующий запуск
