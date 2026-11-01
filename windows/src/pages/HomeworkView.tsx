@@ -9,13 +9,14 @@ import { subjectColor } from '../ui/icons'
 import { safu } from '../lib/bridge'
 import { celebrations } from '../fx/Celebrations'
 
+import { L } from '../lib/i18n'
 export function HomeworkView({ id, onClose }: { id: string | null; onClose: () => void }) {
   const list = homeworkStore.use()
   const h = id ? list.find(x => x.id === id) || null : null
   return (
     <Sheet open={!!h} onClose={onClose} size="wide"
-      title={h ? <span className="row gap8"><span style={{ width: 10, height: 10, borderRadius: 5, background: subjectColor(h.subject) }} />{h.subject || 'Без предмета'}</span> : ''}
-      headRight={h && <button className="btn sm" onClick={() => { onClose(); openHomeworkEditor({ id: h.id }) }}><Pencil size={14} /> Изменить</button>}
+      title={h ? <span className="row gap8"><span style={{ width: 10, height: 10, borderRadius: 5, background: subjectColor(h.subject) }} />{h.subject || L('Без предмета')}</span> : ''}
+      headRight={h && <button className="btn sm" onClick={() => { onClose(); openHomeworkEditor({ id: h.id }) }}><Pencil size={14} /> {L("Изменить")}</button>}
       footer={h && <Footer h={h} />}>
       {h && <Body h={h} />}
     </Sheet>
@@ -30,32 +31,32 @@ function Body({ h }: { h: Homework }) {
     <div className="col" style={{ gap: 14 }}>
       <div className="row wrap-row gap6">
         <span className="badge" style={{ background: `${k.color}26`, color: k.color }}>{k.emoji} {k.title}</span>
-        {h.important && <span className="badge" style={{ background: 'rgba(239,68,68,.15)', color: '#ef4444' }}>Важно</span>}
-        {h.done && <span className="badge" style={{ background: 'rgba(34,197,94,.15)', color: '#22c55e' }}>Сделано</span>}
+        {h.important && <span className="badge" style={{ background: 'rgba(239,68,68,.15)', color: '#ef4444' }}>{L("Важно")}</span>}
+        {h.done && <span className="badge" style={{ background: 'rgba(34,197,94,.15)', color: '#22c55e' }}>{L("Сделано")}</span>}
       </div>
 
       <div className="card tight" style={{ padding: '14px 16px' }}>
         <div className="row">
-          <span className="tiny muted row gap4"><CalendarDays size={13} /> Сдать</span>
+          <span className="tiny muted row gap4"><CalendarDays size={13} /> {L("Сдать")}</span>
           <span className="spacer" />
           <span className="small bold" style={{ color: urgency(h.due, h.done) }}>{h.dueEstimated ? '≈ ' : ''}{chip(h.due, h.done)}</span>
         </div>
         <div className="bold mt4" style={{ fontSize: '1.05rem' }}>{cap(dueLine(h))}</div>
-        {h.dueEstimated && <div className="tiny muted mt4">Срок посчитан по прошлым неделям — РУЗ ещё не выложил расписание</div>}
+        {h.dueEstimated && <div className="tiny muted mt4">{L("Срок посчитан по прошлым неделям — РУЗ ещё не выложил расписание")}</div>}
         {h.shiftNote && <div className="row tiny mt8" style={{ color: '#f59e0b' }}><AlertTriangle size={12} /> {h.shiftNote}</div>}
-        <button className="btn sm ghost mt8" style={{ color: 'var(--brand)', paddingLeft: 0 }} onClick={() => go('schedule', { day: h.due })}>Показать в расписании →</button>
+        <button className="btn sm ghost mt8" style={{ color: 'var(--brand)', paddingLeft: 0 }} onClick={() => go('schedule', { day: h.due })}>{L("Показать в расписании →")}</button>
       </div>
 
       {b.length > 0 && (
         <div className="card tight" style={{ padding: '14px 16px', userSelect: 'text' }}>
-          <div className="tiny muted mb8">Задание</div>
+          <div className="tiny muted mb8">{L("Задание")}</div>
           <div className="col" style={{ gap: 10 }}>{b.map(x => <BlockRow key={x.id} b={x} />)}</div>
         </div>
       )}
 
       {h.steps.length > 0 && (
         <div className="card tight" style={{ padding: '14px 16px' }}>
-          <div className="row mb8"><span className="tiny muted row gap4"><ListChecks size={13} /> Шаги</span><span className="spacer" /><span className="tiny muted">{h.steps.filter(s => s.done).length} из {h.steps.length}</span></div>
+          <div className="row mb8"><span className="tiny muted row gap4"><ListChecks size={13} /> {L("Шаги")}</span><span className="spacer" /><span className="tiny muted">{h.steps.filter(s => s.done).length} {L("из")} {h.steps.length}</span></div>
           <div className="col gap6">
             {h.steps.map(s => (
               <div key={s.id} className="row clickable" style={{ gap: 10 }} onClick={() => hw.toggleStep(h.id, s.id)}>
@@ -71,11 +72,11 @@ function Body({ h }: { h: Homework }) {
 
       {note && (
         <div className="card tight" style={{ padding: '14px 16px' }}>
-          <div className="tiny muted mb8 row gap4"><MessageSquareText size={13} /> Заметка</div>
+          <div className="tiny muted mb8 row gap4"><MessageSquareText size={13} /> {L("Заметка")}</div>
           <div className="sub" style={{ whiteSpace: 'pre-wrap', userSelect: 'text' }}>{note}</div>
         </div>
       )}
-      {h.photos.length > 0 && <div className="tiny muted row gap4"><Paperclip size={12} /> {h.photos.length} фото — на iPhone</div>}
+      {h.photos.length > 0 && <div className="tiny muted row gap4"><Paperclip size={12} /> {h.photos.length} {L("фото — на iPhone")}</div>}
     </div>
   )
 }
@@ -96,19 +97,19 @@ function Rich({ text }: { text: string }) {
 }
 
 function Footer({ h }: { h: Homework }) {
-  const copyText = () => { safu.clipboard.write(shareText(h)); toast('Текст скопирован — вставь в чат группы') }
+  const copyText = () => { safu.clipboard.write(shareText(h)); toast(L('Текст скопирован — вставь в чат группы')) }
   const copyImage = async () => {
     const c = drawCard(h)
     c.toBlob(async b => {
       if (!b) return
-      try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); toast('Картинка в буфере — вставь в чат (Ctrl+V)') }
-      catch { toast('Не получилось скопировать — сохрани файлом', 'warn') }
+      try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); toast(L('Картинка в буфере — вставь в чат (Ctrl+V)')) }
+      catch { toast(L('Не получилось скопировать — сохрани файлом'), 'warn') }
     })
   }
   const saveImage = async () => {
     const url = drawCard(h).toDataURL('image/png')
-    const name = `ДЗ ${(h.subject || 'задание').replace(/[\\/:*?"<>|]/g, ' ').slice(0, 40)}.png`
-    if (await safu.dialog.save({ name, base64: url.split(',')[1], filters: [{ name: 'Картинка', extensions: ['png'] }] })) toast('Картинка сохранена')
+    const name = L`ДЗ ${(h.subject || L('задание')).replace(/[\\/:*?"<>|]/g, ' ').slice(0, 40)}.png`
+    if (await safu.dialog.save({ name, base64: url.split(',')[1], filters: [{ name: L('Картинка'), extensions: ['png'] }] })) toast(L('Картинка сохранена'))
   }
   return (
     <div className="row wrap-row" style={{ gap: 8, width: '100%' }}>
@@ -116,11 +117,11 @@ function Footer({ h }: { h: Homework }) {
         if (!h.done) burst(e.clientX, e.clientY)
         const nowDone = hw.toggle(h.id)
         if (nowDone) celebrations.taskDone(h.subject, hw.active().length)
-      }}>{h.done ? <><Undo2 size={15} /> Вернуть</> : <><Check size={15} /> Сделано</>}</button>
+      }}>{h.done ? <><Undo2 size={15} /> {L("Вернуть")}</> : <><Check size={15} /> {L("Сделано")}</>}</button>
       <span className="spacer" />
-      <button className="btn" onClick={copyText}><Copy size={15} /> Текстом</button>
-      <button className="btn" onClick={saveImage} title="Сохранить картинку"><Download size={15} /></button>
-      <button className="btn primary" onClick={copyImage}><ImageIcon size={15} /> Картинкой ребятам</button>
+      <button className="btn" onClick={copyText}><Copy size={15} /> {L("Текстом")}</button>
+      <button className="btn" onClick={saveImage} title={L("Сохранить картинку")}><Download size={15} /></button>
+      <button className="btn primary" onClick={copyImage}><ImageIcon size={15} /> {L("Картинкой ребятам")}</button>
     </div>
   )
 }
@@ -176,9 +177,9 @@ export function drawCard(h: Homework): HTMLCanvasElement {
     // шапка
     let y = PAD + IN
     ctx.font = `800 52px ${F}`
-    const subj = wrapPlain(ctx, h.subject || 'Без предмета', tw)
+    const subj = wrapPlain(ctx, h.subject || L('Без предмета'), tw)
     ctx.font = `600 26px ${F}`
-    const due = wrapPlain(ctx, 'Сдать: ' + dueLine(h), tw - 40)
+    const due = wrapPlain(ctx, L('Сдать: ') + dueLine(h), tw - 40)
     const headH = IN + 30 + 18 + subj.length * 62 + 12 + due.length * 36 + IN - 10
     if (draw) {
       const g = ctx.createLinearGradient(PAD, PAD, PAD + cw, PAD + headH)
@@ -188,11 +189,11 @@ export function drawCard(h: Homework): HTMLCanvasElement {
       ctx.fillStyle = g; ctx.fillRect(PAD, PAD, cw, headH)
       ctx.restore()
       ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.font = `850 20px ${F}`
-      ctx.fillText('ДОМАШНЕЕ ЗАДАНИЕ', PAD + IN, y + 20)
+      ctx.fillText(L('ДОМАШНЕЕ ЗАДАНИЕ'), PAD + IN, y + 20)
       if (h.important) {
-        const w = ctx.measureText('ВАЖНО').width + 28
+        const w = ctx.measureText(L('ВАЖНО')).width + 28
         ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.roundRect(PAD + cw - IN - w, y - 6, w, 36, 18); ctx.fill()
-        ctx.fillStyle = '#fff'; ctx.fillText('ВАЖНО', PAD + cw - IN - w + 14, y + 19)
+        ctx.fillStyle = '#fff'; ctx.fillText(L('ВАЖНО'), PAD + cw - IN - w + 14, y + 19)
       }
     }
     y += 30 + 18
@@ -238,15 +239,15 @@ export function drawCard(h: Homework): HTMLCanvasElement {
       y += lines.length * 36 + 14
     }
     if (!b.length && !h.steps.length && !note) {
-      if (draw) { ctx.font = font; ctx.fillStyle = '#6b7280'; ctx.fillText('Без описания', PAD + IN, y + 32) }
+      if (draw) { ctx.font = font; ctx.fillStyle = '#6b7280'; ctx.fillText(L('Без описания'), PAD + IN, y + 32) }
       y += 46
     }
     if (h.photos.length) {
-      if (draw) { ctx.font = `600 24px ${F}`; ctx.fillStyle = '#6b7280'; ctx.fillText(`📎 ${h.photos.length} фото — пришлю следом`, PAD + IN, y + 28) }
+      if (draw) { ctx.font = `600 24px ${F}`; ctx.fillStyle = '#6b7280'; ctx.fillText(L`📎 ${h.photos.length} фото — пришлю следом`, PAD + IN, y + 28) }
       y += 42
     }
     y += 10
-    if (draw) { ctx.font = `650 20px ${F}`; ctx.fillStyle = '#9aa1ad'; ctx.fillText('❄ Арктика', PAD + IN, y + 22) }
+    if (draw) { ctx.font = `650 20px ${F}`; ctx.fillStyle = '#9aa1ad'; ctx.fillText(L('❄ Арктика'), PAD + IN, y + 22) }
     y += 22 + IN
     return y + PAD
   }

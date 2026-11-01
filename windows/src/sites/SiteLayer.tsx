@@ -22,6 +22,7 @@ import { subjectFolder } from '../lib/effects'
 import { bestSubject, looksLikeFile, FIND_FILES_SCRIPT, pageFileName, type PageFile } from '../lib/downloads'
 
 
+import { L } from '../lib/i18n'
 let preloadURL = ''
 safu.sites.preload().then(u => { preloadURL = u })
 
@@ -371,7 +372,7 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
       sites.update(tab.id, { loading: true }); setFailed(null)
       if (slow) clearTimeout(slow)
       timedOut = false
-      slow = setTimeout(() => { timedOut = true; setFailed('Сайт долго не отвечает — возможно, он на обслуживании или нет интернета') }, 45_000)
+      slow = setTimeout(() => { timedOut = true; setFailed(L('Сайт долго не отвечает — возможно, он на обслуживании или нет интернета')) }, 45_000)
     }
     const onStop = () => {
       if (slow) { clearTimeout(slow); slow = null }
@@ -396,8 +397,8 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
       if (old && old.host === c.host && old.pass === c.pass && (!c.user || old.user === c.user)) return
       const user = c.user || (old?.host === c.host ? old.user : '')
       creds.set({ host: c.host, user, pass: c.pass }).then(() => {
-        toast(old ? `Пароль для ${c.host} обновлён` : `Пароль для ${c.host} сохранён — дальше вход сам`, 'ok', {
-          label: 'Не сохранять',
+        toast(old ? L`Пароль для ${c.host} обновлён` : L`Пароль для ${c.host} сохранён — дальше вход сам`, 'ok', {
+          label: L('Не сохранять'),
           run: () => { if (old && old.host === c.host) creds.set(old); else creds.remove(c.host) }
         })
       }).catch(() => undefined)
@@ -433,7 +434,7 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
       if (e.errorCode === -3 || !e.isMainFrame) return
       sites.update(tab.id, { loading: false })
       if (slow) { clearTimeout(slow); slow = null }
-      setFailed(e.errorCode <= -200 && e.errorCode >= -220 ? 'Не удалось проверить сертификат сайта — проверь дату и время на компьютере' : e.errorCode === -106 ? 'Нет интернета' : e.errorCode === -105 || e.errorCode === -102 || e.errorCode === -118 ? 'Сайт не отвечает — возможно, он на обслуживании' : `Не удалось открыть страницу (${e.errorDescription || e.errorCode})`)
+      setFailed(e.errorCode <= -200 && e.errorCode >= -220 ? L('Не удалось проверить сертификат сайта — проверь дату и время на компьютере') : e.errorCode === -106 ? L('Нет интернета') : e.errorCode === -105 || e.errorCode === -102 || e.errorCode === -118 ? L('Сайт не отвечает — возможно, он на обслуживании') : L`Не удалось открыть страницу (${e.errorDescription || e.errorCode})`)
     }
     wv.addEventListener('page-title-updated', onTitle)
     wv.addEventListener('did-start-loading', onStart)
@@ -469,28 +470,28 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
     const wv = ref.current
     const subj = subjects(useSchedule.getState().data)
     openMenu(e, tab.kind === 'site' ? [
-      { label: 'Открыть в браузере', icon: <ExternalLink size={15} />, run: () => safu.shell.open(tab.currentURL || tab.url) },
-      { label: 'Копировать ссылку', icon: <Copy size={15} />, run: () => { safu.clipboard.write(tab.currentURL || tab.url); toast('Ссылка скопирована') } },
-      { label: 'На главную сайта', icon: <Home size={15} />, run: () => { if (res) resources.clearLastURL(res); wv?.loadURL(res?.url || tab.url) } },
+      { label: L('Открыть в браузере'), icon: <ExternalLink size={15} />, run: () => safu.shell.open(tab.currentURL || tab.url) },
+      { label: L('Копировать ссылку'), icon: <Copy size={15} />, run: () => { safu.clipboard.write(tab.currentURL || tab.url); toast(L('Ссылка скопирована')) } },
+      { label: L('На главную сайта'), icon: <Home size={15} />, run: () => { if (res) resources.clearLastURL(res); wv?.loadURL(res?.url || tab.url) } },
       { sep: true, label: '' },
-      { label: dark ? 'Обычные цвета' : 'Тёмная тема для сайта', icon: <Moon size={15} />, run: () => { wv?.send('safu:dark', !dark); setDark(!dark) } },
-      { label: 'Крупнее', icon: <ZoomIn size={15} />, run: () => { const z = Math.min(2, zoom + 0.1); setZoom(z); wv?.setZoomFactor(z) } },
-      { label: 'Мельче', icon: <ZoomOut size={15} />, run: () => { const z = Math.max(0.5, zoom - 0.1); setZoom(z); wv?.setZoomFactor(z) } },
-      { label: 'Печать', icon: <Printer size={15} />, run: () => wv?.print() },
+      { label: dark ? L('Обычные цвета') : L('Тёмная тема для сайта'), icon: <Moon size={15} />, run: () => { wv?.send('safu:dark', !dark); setDark(!dark) } },
+      { label: L('Крупнее'), icon: <ZoomIn size={15} />, run: () => { const z = Math.min(2, zoom + 0.1); setZoom(z); wv?.setZoomFactor(z) } },
+      { label: L('Мельче'), icon: <ZoomOut size={15} />, run: () => { const z = Math.max(0.5, zoom - 0.1); setZoom(z); wv?.setZoomFactor(z) } },
+      { label: L('Печать'), icon: <Printer size={15} />, run: () => wv?.print() },
       { sep: true, label: '' },
-      ...(looksLikeFile(tab.currentURL || '') ? [{ label: 'Сохранить этот файл в Файлы', icon: <Download size={15} />, run: () => wv?.downloadURL(tab.currentURL || '') }] : []),
-      { label: 'Файлы на странице…', icon: <FileText size={15} />, run: () => { if (wv) void showPageFiles(e, wv) } },
+      ...(looksLikeFile(tab.currentURL || '') ? [{ label: L('Сохранить этот файл в Файлы'), icon: <Download size={15} />, run: () => wv?.downloadURL(tab.currentURL || '') }] : []),
+      { label: L('Файлы на странице…'), icon: <FileText size={15} />, run: () => { if (wv) void showPageFiles(e, wv) } },
       { sep: true, label: '' },
-      { label: kv.get('download.target', '') ? 'Скачивать в «Загрузки»' : 'Скачивать в папку предмета…', icon: <Download size={15} />, run: () => chooseDownloadTarget(e, subj) },
-      ...(saved ? [{ label: 'Вставить пароль', icon: <KeyRound size={15} />, run: () => wv?.send('safu:fill', saved.user, saved.pass, false) }] : []),
+      { label: kv.get('download.target', '') ? L('Скачивать в «Загрузки»') : L('Скачивать в папку предмета…'), icon: <Download size={15} />, run: () => chooseDownloadTarget(e, subj) },
+      ...(saved ? [{ label: L('Вставить пароль'), icon: <KeyRound size={15} />, run: () => wv?.send('safu:fill', saved.user, saved.pass, false) }] : []),
       { sep: true, label: '' },
-      { label: 'Все вкладки', icon: <Layers size={15} />, run: () => sites.stack() },
-      { label: 'Закрыть', icon: <X size={15} />, danger: true, run: () => closeWithSnapshot(tab.id) }
+      { label: L('Все вкладки'), icon: <Layers size={15} />, run: () => sites.stack() },
+      { label: L('Закрыть'), icon: <X size={15} />, danger: true, run: () => closeWithSnapshot(tab.id) }
     ] : [
-      { label: 'Открыть в программе', icon: <ExternalLink size={15} />, run: () => tab.fileRel && safu.fs.open(tab.fileRel) },
-      { label: 'Показать в папке', icon: <FolderOpen size={15} />, run: () => tab.fileRel && safu.fs.reveal(tab.fileRel) },
-      { label: 'Все вкладки', icon: <Layers size={15} />, run: () => sites.stack() },
-      { label: 'Закрыть', icon: <X size={15} />, danger: true, run: () => closeWithSnapshot(tab.id) }
+      { label: L('Открыть в программе'), icon: <ExternalLink size={15} />, run: () => tab.fileRel && safu.fs.open(tab.fileRel) },
+      { label: L('Показать в папке'), icon: <FolderOpen size={15} />, run: () => tab.fileRel && safu.fs.reveal(tab.fileRel) },
+      { label: L('Все вкладки'), icon: <Layers size={15} />, run: () => sites.stack() },
+      { label: L('Закрыть'), icon: <X size={15} />, danger: true, run: () => closeWithSnapshot(tab.id) }
     ])
   }
 
@@ -511,11 +512,11 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', cursor: 'grab', borderBottom: '1px solid var(--line)', flexShrink: 0, touchAction: 'none' }}
         {...dragHandlers}
       >
-        <button className="btn icon sm ghost round" onClick={() => closeWithSnapshot(tab.id)} title="Закрыть (Ctrl+W)"><X size={18} /></button>
+        <button className="btn icon sm ghost round" onClick={() => closeWithSnapshot(tab.id)} title={L("Закрыть (Ctrl+W)")}><X size={18} /></button>
         {tab.kind === 'site' && <>
-          <button className="btn icon sm ghost round" disabled={!tab.canBack} onClick={() => ref.current?.goBack()} title="Назад"><ArrowLeft size={17} /></button>
-          <button className="btn icon sm ghost round" disabled={!tab.canForward} onClick={() => ref.current?.goForward()} title="Вперёд"><ArrowRight size={17} /></button>
-          <button className="btn icon sm ghost round" onClick={() => ref.current?.reload()} title="Обновить"><RotateCw size={16} className={tab.loading ? 'spin' : ''} /></button>
+          <button className="btn icon sm ghost round" disabled={!tab.canBack} onClick={() => ref.current?.goBack()} title={L("Назад")}><ArrowLeft size={17} /></button>
+          <button className="btn icon sm ghost round" disabled={!tab.canForward} onClick={() => ref.current?.goForward()} title={L("Вперёд")}><ArrowRight size={17} /></button>
+          <button className="btn icon sm ghost round" onClick={() => ref.current?.reload()} title={L("Обновить")}><RotateCw size={16} className={tab.loading ? 'spin' : ''} /></button>
         </>}
         <div className="grow row" style={{ justifyContent: 'center', gap: 10, minWidth: 0 }}>
           <div className="icon-tile" style={{ width: 28, height: 28, borderRadius: 8, background: tab.kind === 'file' ? 'linear-gradient(135deg,#64748b,#334155)' : siteColor(tab.url, tab.title) }}>
@@ -530,13 +531,13 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
           {saved && formHost && (
             <motion.button className="btn sm primary" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
               onClick={() => ref.current?.send('safu:fill', saved.user, saved.pass, true)}>
-              <KeyRound size={14} /> Войти
+              <KeyRound size={14} /> {L("Войти")}
             </motion.button>
           )}
         </AnimatePresence>
         <div className="row" style={{ gap: 0, borderRadius: 999, background: 'var(--fill2)', border: '1px solid var(--line)' }}>
-          <button className="btn icon sm ghost round" onClick={() => minimizeWithSnapshot()} title="Свернуть (Esc)"><ChevronDown size={18} /></button>
-          <button className="btn icon sm ghost round" onClick={menu} title="Ещё"><MoreHorizontal size={18} /></button>
+          <button className="btn icon sm ghost round" onClick={() => minimizeWithSnapshot()} title={L("Свернуть (Esc)")}><ChevronDown size={18} /></button>
+          <button className="btn icon sm ghost round" onClick={menu} title={L("Ещё")}><MoreHorizontal size={18} /></button>
         </div>
       </div>
 
@@ -565,7 +566,7 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
                 <div className="wobble" style={{ fontSize: '3.5rem' }}>🔌</div>
                 <div className="h-card">{failed}</div>
                 <div className="sub">{host}</div>
-                <div className="row"><button className="btn primary" onClick={() => { setFailed(null); ref.current?.reload() }}><RotateCw size={15} /> Ещё раз</button><button className="btn" onClick={() => safu.shell.open(tab.currentURL || tab.url)}><ExternalLink size={15} /> В браузере</button></div>
+                <div className="row"><button className="btn primary" onClick={() => { setFailed(null); ref.current?.reload() }}><RotateCw size={15} /> {L("Ещё раз")}</button><button className="btn" onClick={() => safu.shell.open(tab.currentURL || tab.url)}><ExternalLink size={15} /> {L("В браузере")}</button></div>
               </div>
             </motion.div>
           )}
@@ -586,18 +587,18 @@ const SiteCard = React.memo(function SiteCard({ tab, visible, preload }: { tab: 
 async function showPageFiles(e: React.MouseEvent, wv: any) {
   let list: PageFile[] = []
   try { list = (await wv.executeJavaScript(FIND_FILES_SCRIPT)) || [] } catch { list = [] }
-  if (!list.length) { toast('На этой странице не нашлось файлов', 'info'); return }
+  if (!list.length) { toast(L('На этой странице не нашлось файлов'), 'info'); return }
   const shown = list.slice(0, 25)
   openMenu(e, [
-    ...(list.length > 1 ? [{ label: `Скачать все (${Math.min(list.length, 30)})`, icon: <Download size={15} />, run: () => { for (const f of list.slice(0, 30)) wv.downloadURL(f.u) } }, { sep: true, label: '' }] : []),
+    ...(list.length > 1 ? [{ label: L`Скачать все (${Math.min(list.length, 30)})`, icon: <Download size={15} />, run: () => { for (const f of list.slice(0, 30)) wv.downloadURL(f.u) } }, { sep: true, label: '' }] : []),
     ...shown.map(f => ({ label: pageFileName(f).slice(0, 70), icon: <FileText size={15} />, run: () => wv.downloadURL(f.u) }))
   ])
 }
 
 function chooseDownloadTarget(e: React.MouseEvent, subj: string[]) {
-  if (kv.get('download.target', '')) { kv.set('download.target', ''); toast('Файлы будут скачиваться в «Загрузки» (а с курса Sakai — в папку предмета)', 'info'); return }
+  if (kv.get('download.target', '')) { kv.set('download.target', ''); toast(L('Файлы будут скачиваться в «Загрузки» (а с курса Sakai — в папку предмета)'), 'info'); return }
   openMenu(e, subj.slice(0, 18).map(s => ({
-    label: s, run: () => { kv.set('download.target', `Предметы/${s.replace(/[\\/:*?"<>|]/g, '_')}`); toast(`Скачанное попадёт в папку «${s}»`) }
+    label: s, run: () => { kv.set('download.target', `Предметы/${s.replace(/[\\/:*?"<>|]/g, '_')}`); toast(L`Скачанное попадёт в папку «${s}»`) }
   })))
 }
 
@@ -625,10 +626,10 @@ function FileView({ tab }: { tab: SiteTab }) {
         <motion.div initial={{ scale: 0.6, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 14 }}
           className="icon-tile" style={{ width: 96, height: 96, borderRadius: 26, background: 'var(--grad)' }}><FileText size={46} /></motion.div>
         <div className="h-card">{tab.title}</div>
-        <div className="sub">Этот файл откроется в программе Windows ({ext.toUpperCase() || 'файл'})</div>
+        <div className="sub">{L("Этот файл откроется в программе Windows (")}{ext.toUpperCase() || L('файл')})</div>
         <div className="row">
-          <button className="btn primary" onClick={() => tab.fileRel && safu.fs.open(tab.fileRel)}><ExternalLink size={16} /> Открыть</button>
-          <button className="btn" onClick={() => tab.fileRel && safu.fs.reveal(tab.fileRel)}><FolderOpen size={16} /> В папке</button>
+          <button className="btn primary" onClick={() => tab.fileRel && safu.fs.open(tab.fileRel)}><ExternalLink size={16} /> {L("Открыть")}</button>
+          <button className="btn" onClick={() => tab.fileRel && safu.fs.reveal(tab.fileRel)}><FolderOpen size={16} /> {L("В папке")}</button>
         </div>
       </div>
     </div>
@@ -655,12 +656,12 @@ function Pill({ tabs }: { tabs: SiteTab[] }) {
         </div>
         <div style={{ maxWidth: 220 }}>
           <div className="bold small ellipsis">{last.title}</div>
-          {tabs.length > 1 && <div className="tiny faint">ещё {tabs.length - 1}</div>}
+          {tabs.length > 1 && <div className="tiny faint">{L("ещё")} {tabs.length - 1}</div>}
         </div>
         <div className="row" style={{ gap: 0, borderRadius: 999, background: 'var(--fill2)' }}>
-          <button className="btn icon sm ghost round" title="Развернуть" onClick={e => { e.stopPropagation(); sites.expand(last.id) }}><ChevronUp size={17} /></button>
-          {tabs.length > 1 && <button className="btn icon sm ghost round" title="Все вкладки" onClick={e => { e.stopPropagation(); sites.stack() }}><Layers size={15} /></button>}
-          <button className="btn icon sm ghost round" title="Закрыть" onClick={e => { e.stopPropagation(); sites.close(last.id) }}><X size={16} /></button>
+          <button className="btn icon sm ghost round" title={L("Развернуть")} onClick={e => { e.stopPropagation(); sites.expand(last.id) }}><ChevronUp size={17} /></button>
+          {tabs.length > 1 && <button className="btn icon sm ghost round" title={L("Все вкладки")} onClick={e => { e.stopPropagation(); sites.stack() }}><Layers size={15} /></button>}
+          <button className="btn icon sm ghost round" title={L("Закрыть")} onClick={e => { e.stopPropagation(); sites.close(last.id) }}><X size={16} /></button>
         </div>
       </motion.div>
     </motion.div>
@@ -674,8 +675,8 @@ function Stack({ tabs }: { tabs: SiteTab[] }) {
     <motion.div style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(5,8,14,.6)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 70, overflowY: 'auto' }}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => sites.minimize()}>
       <div className="row" style={{ width: 'min(760px, 90%)', marginBottom: 16, color: '#fff' }} onClick={e => e.stopPropagation()}>
-        <div className="h-card grow">Открыто: {tabs.length}</div>
-        <button className="btn sm" style={{ color: '#fff' }} onClick={() => sites.closeAll()}>Закрыть все</button>
+        <div className="h-card grow">{L("Открыто:")} {tabs.length}</div>
+        <button className="btn sm" style={{ color: '#fff' }} onClick={() => sites.closeAll()}>{L("Закрыть все")}</button>
       </div>
       <div style={{ width: 'min(760px, 90%)', position: 'relative', perspective: 1400 }}>
         {ordered.map((t, i) => (
@@ -698,7 +699,7 @@ function Stack({ tabs }: { tabs: SiteTab[] }) {
           </motion.div>
         ))}
       </div>
-      <div className="tiny" style={{ color: 'rgba(255,255,255,.6)', margin: '26px 0' }}>Нажми на карточку, чтобы открыть · смахни в сторону, чтобы закрыть</div>
+      <div className="tiny" style={{ color: 'rgba(255,255,255,.6)', margin: '26px 0' }}>{L("Нажми на карточку, чтобы открыть · смахни в сторону, чтобы закрыть")}</div>
     </motion.div>
   )
 }

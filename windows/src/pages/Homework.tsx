@@ -14,6 +14,7 @@ import { shareText, shareList } from '../lib/hwpretty'
 import { safu } from '../lib/bridge'
 import { SubjectGlyph, subjectColor } from '../ui/icons'
 
+import { L } from '../lib/i18n'
 type Mode = 'due' | 'subjects' | 'done'
 
 export default function HomeworkPage() {
@@ -31,17 +32,17 @@ export default function HomeworkPage() {
   const groups = useMemo(() => {
     if (mode === 'subjects') {
       const m = new Map<string, Homework[]>()
-      for (const h of list) { const k = h.subject || 'Без предмета'; if (!m.has(k)) m.set(k, []); m.get(k)!.push(h) }
+      for (const h of list) { const k = h.subject || L('Без предмета'); if (!m.has(k)) m.set(k, []); m.get(k)!.push(h) }
       return [...m.entries()].map(([title, items]) => ({ title, items, subject: true }))
     }
-    if (mode === 'done') return [{ title: 'Сделано', items: list, subject: false }]
+    if (mode === 'done') return [{ title: L('Сделано'), items: list, subject: false }]
     const today = startOfDay(Date.now())
     const buckets: { title: string; test: (h: Homework) => boolean }[] = [
-      { title: 'Просрочено', test: h => h.due < Date.now() },
-      { title: 'Сегодня', test: h => isToday(h.due) },
-      { title: 'Завтра', test: h => isTomorrow(h.due) },
-      { title: 'На этой неделе', test: h => h.due < addDays(today, 7) },
-      { title: 'Позже', test: () => true }
+      { title: L('Просрочено'), test: h => h.due < Date.now() },
+      { title: L('Сегодня'), test: h => isToday(h.due) },
+      { title: L('Завтра'), test: h => isTomorrow(h.due) },
+      { title: L('На этой неделе'), test: h => h.due < addDays(today, 7) },
+      { title: L('Позже'), test: () => true }
     ]
     const used = new Set<string>()
     return buckets.map(b => {
@@ -55,52 +56,52 @@ export default function HomeworkPage() {
 
   return (
     <>
-      <PageHeader title="Домашка" subtitle={active.length ? `${active.length} ${plural(active.length, 'задание', 'задания', 'заданий')} в работе · ${hw.badgeCount()} к сдаче в ближайшие сутки` : 'Всё сделано — красота'}
+      <PageHeader title={L("Домашка")} subtitle={active.length ? L`${active.length} ${plural(active.length, L('задание'), L('задания'), L('заданий'))} в работе · ${hw.badgeCount()} к сдаче в ближайшие сутки` : L('Всё сделано — красота')}
         right={<>
           <SyncBadge />
           {active.length > 0 && <button className="btn" onClick={e => openMenu(e, [
-            { label: 'ДЗ на завтра', run: () => copyBatch('tomorrow') },
-            { label: 'ДЗ на неделю', run: () => copyBatch('week') },
-            { label: 'Всё ДЗ', run: () => copyBatch('all') }
-          ])}><Send size={15} /> Отправить ребятам</button>}
-          <button className="btn icon" onClick={() => go('hwsettings')} title="Настройки"><Settings2 size={16} /></button>
-          <button className="btn primary" onClick={() => openHomeworkEditor({})}><Plus size={16} /> Записать <span className="kbd" style={{ color: 'rgba(255,255,255,.8)', borderColor: 'rgba(255,255,255,.4)' }}>Ctrl N</span></button>
+            { label: L('ДЗ на завтра'), run: () => copyBatch('tomorrow') },
+            { label: L('ДЗ на неделю'), run: () => copyBatch('week') },
+            { label: L('Всё ДЗ'), run: () => copyBatch('all') }
+          ])}><Send size={15} /> {L("Отправить ребятам")}</button>}
+          <button className="btn icon" onClick={() => go('hwsettings')} title={L("Настройки")}><Settings2 size={16} /></button>
+          <button className="btn primary" onClick={() => openHomeworkEditor({})}><Plus size={16} /> {L("Записать")} <span className="kbd" style={{ color: 'rgba(255,255,255,.8)', borderColor: 'rgba(255,255,255,.4)' }}>Ctrl N</span></button>
         </>} />
 
       <div className="grid g4 mb16">
         <Card className="row" delay={0}>
           <Ring value={stats.total ? stats.done / stats.total : 0} size={60} stroke={7}><span className="small heavy">{stats.total ? Math.round(stats.done / stats.total * 100) : 0}%</span></Ring>
-          <div><div className="tiny muted">За неделю</div><div className="bold">{stats.done} из {stats.total}</div></div>
+          <div><div className="tiny muted">{L("За неделю")}</div><div className="bold">{stats.done} {L("из")} {stats.total}</div></div>
         </Card>
-        <Stat label="В работе" value={active.length} color="var(--brand)" delay={0.04} />
-        <Stat label="Просрочено" value={active.filter(h => h.due < Date.now()).length} color="#ef4444" delay={0.08} />
-        <Stat label="Важных" value={active.filter(h => h.important).length} color="#f59e0b" delay={0.12} />
+        <Stat label={L("В работе")} value={active.length} color="var(--brand)" delay={0.04} />
+        <Stat label={L("Просрочено")} value={active.filter(h => h.due < Date.now()).length} color="#ef4444" delay={0.08} />
+        <Stat label={L("Важных")} value={active.filter(h => h.important).length} color="#f59e0b" delay={0.12} />
       </div>
 
       <div className="row mb16 wrap-row">
-        <Segmented value={mode} onChange={setMode} options={[{ value: 'due', label: 'По сроку' }, { value: 'subjects', label: 'По предметам' }, { value: 'done', label: `Сделано · ${finished.length}` }]} />
+        <Segmented value={mode} onChange={setMode} options={[{ value: 'due', label: L('По сроку') }, { value: 'subjects', label: L('По предметам') }, { value: 'done', label: L`Сделано · ${finished.length}` }]} />
         <div className="row" style={{ padding: '0 12px', borderRadius: 12, background: 'var(--fill)', border: '1px solid var(--line)', height: 38, minWidth: 240 }}>
           <Search size={15} className="faint" />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск" style={{ background: 'none', border: 'none', outline: 'none', flex: 1 }} />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder={L("Поиск")} style={{ background: 'none', border: 'none', outline: 'none', flex: 1 }} />
           {q && <X size={14} className="clickable faint" onClick={() => setQ('')} />}
         </div>
         <div className="row wrap-row gap6">
           {HW_KINDS.map(k => <button key={k.id} className={`chip ${kind === k.id ? 'on' : ''}`} onClick={() => setKind(kind === k.id ? '' : k.id)}>{k.emoji}</button>)}
         </div>
         <span className="spacer" />
-        {mode === 'done' && finished.length > 0 && <button className="btn sm danger" onClick={async () => { if (await confirmDialog('Очистить сделанное?', undefined, 'Очистить', true)) hw.clearFinished() }}><Trash2 size={14} /> Очистить</button>}
+        {mode === 'done' && finished.length > 0 && <button className="btn sm danger" onClick={async () => { if (await confirmDialog(L('Очистить сделанное?'), undefined, L('Очистить'), true)) hw.clearFinished() }}><Trash2 size={14} /> {L("Очистить")}</button>}
       </div>
 
       {!list.length && (mode === 'done'
-        ? <Empty emoji="📭" title="Сделанного пока нет" />
-        : <Empty emoji="🎉" title={q || kind ? 'Ничего не нашлось' : 'Домашки нет'} text="Записывай ДЗ прямо с пары — срок встанет к следующему занятию и сам подстроится, если РУЗ перенесёт пару." action={<button className="btn primary" onClick={() => openHomeworkEditor({})}><Plus size={16} /> Записать ДЗ</button>} />)}
+        ? <Empty emoji="📭" title={L("Сделанного пока нет")} />
+        : <Empty emoji="🎉" title={q || kind ? L('Ничего не нашлось') : L('Домашки нет')} text={L("Записывай ДЗ прямо с пары — срок встанет к следующему занятию и сам подстроится, если РУЗ перенесёт пару.")} action={<button className="btn primary" onClick={() => openHomeworkEditor({})}><Plus size={16} /> {L("Записать ДЗ")}</button>} />)}
 
       <div className="col gap18">
         {groups.map((g, gi) => (
           <motion.div key={g.title} layout>
             <div className="row" style={{ margin: '0 4px 10px' }}>
               {g.subject && <div className="icon-tile" style={{ width: 28, height: 28, borderRadius: 9, background: subjectColor(g.title) }}><SubjectGlyph subject={g.title} size={14} /></div>}
-              <div className="h-card clickable" style={{ color: g.title === 'Просрочено' ? '#ef4444' : undefined }} onClick={() => g.subject && openSubject(g.title)}>{g.title}</div>
+              <div className="h-card clickable" style={{ color: g.title === L('Просрочено') ? '#ef4444' : undefined }} onClick={() => g.subject && openSubject(g.title)}>{g.title}</div>
               <span className="pill">{g.items.length}</span>
             </div>
             <div className="col gap8">
@@ -119,12 +120,12 @@ export default function HomeworkPage() {
 function copyBatch(scope: 'tomorrow' | 'week' | 'all') {
   const now = Date.now()
   const tomorrow = addDays(startOfDay(now), 1)
-  const DAYS = ['воскресенье', 'понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу']
+  const DAYS = [L('воскресенье'), L('понедельник'), L('вторник'), L('среду'), L('четверг'), L('пятницу'), L('субботу')]
   const list = hw.active().filter(h => scope === 'tomorrow' ? isTomorrow(h.due) : scope === 'week' ? h.due >= now && h.due < now + 7 * DAY : h.due >= now)
-  if (!list.length) { toast(scope === 'tomorrow' ? 'На завтра ничего не задано' : 'Ничего не задано', 'info'); return }
-  const title = scope === 'tomorrow' ? `ДЗ на завтра, ${DAYS[new Date(tomorrow).getDay()]}` : scope === 'week' ? 'ДЗ на неделю' : 'Всё ДЗ'
+  if (!list.length) { toast(scope === 'tomorrow' ? L('На завтра ничего не задано') : L('Ничего не задано'), 'info'); return }
+  const title = scope === 'tomorrow' ? L`ДЗ на завтра, ${DAYS[new Date(tomorrow).getDay()]}` : scope === 'week' ? L('ДЗ на неделю') : L('Всё ДЗ')
   safu.clipboard.write(shareList(list, title))
-  toast(`Скопировано ${list.length} ${plural(list.length, 'задание', 'задания', 'заданий')} — вставь в чат группы`)
+  toast(L`Скопировано ${list.length} ${plural(list.length, L('задание'), L('задания'), L('заданий'))} — вставь в чат группы`)
 }
 
 function Stat({ label, value, color, delay }: { label: string; value: number; color: string; delay: number }) {
@@ -146,13 +147,13 @@ export function HWRow({ h, showSubject, data, later = 0 }: { h: Homework; showSu
       className="card hover lazy-row" style={{ padding: '12px 14px', cursor: 'pointer' }}
       onClick={() => openHomework(h.id)}
       onContextMenu={e => openMenu(e, [
-        { label: 'Изменить', icon: <Pencil size={15} />, run: () => openHomeworkEditor({ id: h.id }) },
-        { label: h.rule === 'pair' ? 'На следующую пару' : 'На день позже', icon: <ArrowRightCircle size={15} />, run: () => { hw.postpone(h.id, data); toast('Срок перенесён') } },
-        { label: 'Отправить ребятам (текстом)', icon: <Send size={15} />, run: () => { safu.clipboard.write(shareText(h)); toast('Скопировано — вставь в чат группы') } },
-        { label: 'Дублировать', icon: <Copy size={15} />, run: () => hw.duplicate(h.id) },
-        { label: 'Предмет', icon: <BookMarked size={15} />, run: () => openSubject(h.subject) },
+        { label: L('Изменить'), icon: <Pencil size={15} />, run: () => openHomeworkEditor({ id: h.id }) },
+        { label: h.rule === 'pair' ? L('На следующую пару') : L('На день позже'), icon: <ArrowRightCircle size={15} />, run: () => { hw.postpone(h.id, data); toast(L('Срок перенесён')) } },
+        { label: L('Отправить ребятам (текстом)'), icon: <Send size={15} />, run: () => { safu.clipboard.write(shareText(h)); toast(L('Скопировано — вставь в чат группы')) } },
+        { label: L('Дублировать'), icon: <Copy size={15} />, run: () => hw.duplicate(h.id) },
+        { label: L('Предмет'), icon: <BookMarked size={15} />, run: () => openSubject(h.subject) },
         { sep: true, label: '' },
-        { label: 'Удалить', icon: <Trash2 size={15} />, danger: true, run: () => { hw.remove(h.id); toast('ДЗ удалено', 'info') } }
+        { label: L('Удалить'), icon: <Trash2 size={15} />, danger: true, run: () => { hw.remove(h.id); toast(L('ДЗ удалено'), 'info') } }
       ])}>
       <Later turn={later} hold={72}>
         <div className="row top" style={{ gap: 14 }}>
@@ -175,10 +176,10 @@ export function HWRow({ h, showSubject, data, later = 0 }: { h: Homework; showSu
             {h.note && <div className="tiny muted clamp2 mt4">{h.note}</div>}
             <div className="row wrap-row gap8 mt8">
               <span className="pill" style={{ color: urgency(h.due, h.done) }}><Clock size={11} /> {chip(h.due, h.done)}</span>
-              {h.dueKind && <span className="tiny muted">{dayTime(h.due)}{h.dueRoom ? ` · ауд. ${h.dueRoom}` : ''}</span>}
+              {h.dueKind && <span className="tiny muted">{dayTime(h.due)}{h.dueRoom ? L` · ауд. ${h.dueRoom}` : ''}</span>}
               {steps > 0 && <span className="pill"><ListChecks size={11} /> {done}/{steps}</span>}
               {h.photos.length > 0 && <span className="pill"><Image size={11} /> {h.photos.length}</span>}
-              {h.dueEstimated && <span className="tiny" style={{ color: '#f59e0b' }}>по прошлым неделям</span>}
+              {h.dueEstimated && <span className="tiny" style={{ color: '#f59e0b' }}>{L("по прошлым неделям")}</span>}
             </div>
             {h.shiftNote && (
               <div className="row tiny mt8" style={{ padding: '6px 10px', borderRadius: 10, background: 'rgba(245,158,11,.12)', color: '#f59e0b' }}>
@@ -216,48 +217,48 @@ export function HomeworkSettings() {
   const [askS, setAskS] = usePref('hw.ask.seminar', true)
   return (
     <>
-      <PageHeader title="Настройки домашки" />
+      <PageHeader title={L("Настройки домашки")} />
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <div>
-          <div className="h-sec" style={{ marginTop: 0 }}>Срок по умолчанию</div>
+          <div className="h-sec" style={{ marginTop: 0 }}>{L("Срок по умолчанию")}</div>
           <Card className="list" style={{ padding: 0 }}>
-            {[['next', 'К следующей паре'], ['nextSame', 'К следующей такой же (практика к практике)'], ['skip1', 'Через одну пару'], ['tomorrow', 'Завтра'], ['week', 'Через неделю']].map(([v, t]) => (
+            {[['next', L('К следующей паре')], ['nextSame', L('К следующей такой же (практика к практике)')], ['skip1', L('Через одну пару')], ['tomorrow', L('Завтра')], ['week', L('Через неделю')]].map(([v, t]) => (
               <Row key={v} title={t} onClick={() => setDefDue(v)} right={defDue === v ? <span style={{ color: 'var(--brand)', fontWeight: 900 }}>✓</span> : null} />
             ))}
           </Card>
-          <div className="h-sec">Расписание</div>
+          <div className="h-sec">{L("Расписание")}</div>
           <Card className="list" style={{ padding: 0 }}>
-            <ToggleRow title="Следить за расписанием" sub="Пару перенесли — срок переезжает вместе с ней" on={follow} onChange={setFollow} />
-            <ToggleRow title="Не считать дистанционные пары" sub="Срок встаёт на ближайшую очную" on={skipRemote} onChange={setSkipRemote} />
-            <ToggleRow title="Сообщать о сдвиге срока" on={shift} onChange={setShift} />
+            <ToggleRow title={L("Следить за расписанием")} sub={L("Пару перенесли — срок переезжает вместе с ней")} on={follow} onChange={setFollow} />
+            <ToggleRow title={L("Не считать дистанционные пары")} sub={L("Срок встаёт на ближайшую очную")} on={skipRemote} onChange={setSkipRemote} />
+            <ToggleRow title={L("Сообщать о сдвиге срока")} on={shift} onChange={setShift} />
           </Card>
-          <div className="h-sec">Удобства</div>
+          <div className="h-sec">{L("Удобства")}</div>
           <Card className="list" style={{ padding: 0 }}>
-            <ToggleRow title="Угадывать тип по тексту" on={guess} onChange={setGuess} />
-            <ToggleRow title="Конфетти за сделанное" on={celebrate} onChange={setCelebrate} />
-            <ToggleRow title="Число на значке и в меню" on={badge} onChange={setBadge} />
-            <Row title="Хранить сделанное" right={<Segmented value={keep} onChange={setKeep} options={[{ value: 7, label: '7 дн' }, { value: 30, label: '30 дн' }, { value: 0, label: 'всегда' }]} />} />
+            <ToggleRow title={L("Угадывать тип по тексту")} on={guess} onChange={setGuess} />
+            <ToggleRow title={L("Конфетти за сделанное")} on={celebrate} onChange={setCelebrate} />
+            <ToggleRow title={L("Число на значке и в меню")} on={badge} onChange={setBadge} />
+            <Row title={L("Хранить сделанное")} right={<Segmented value={keep} onChange={setKeep} options={[{ value: 7, label: L('7 дн') }, { value: 30, label: L('30 дн') }, { value: 0, label: L('всегда') }]} />} />
           </Card>
         </div>
         <div>
-          <div className="h-sec" style={{ marginTop: 0 }}>Напоминания</div>
+          <div className="h-sec" style={{ marginTop: 0 }}>{L("Напоминания")}</div>
           <Card className="list" style={{ padding: 0 }}>
-            <ToggleRow title="Накануне вечером" on={ev} onChange={setEv} />
-            {ev && <Row title="Во сколько" right={<input type="number" className="input" style={{ width: 80 }} min={12} max={23} value={evH} onChange={e => setEvH(+e.target.value)} />} />}
-            <ToggleRow title="Утром в день сдачи" on={mo} onChange={setMo} />
-            {mo && <Row title="Во сколько" right={<input type="number" className="input" style={{ width: 80 }} min={5} max={11} value={moH} onChange={e => setMoH(+e.target.value)} />} />}
-            <ToggleRow title="За час до сдачи" on={hr} onChange={setHr} />
-            <Row title="Пересчитать все напоминания" onClick={() => { hw.rescheduleAll(); toast('Готово') }} />
+            <ToggleRow title={L("Накануне вечером")} on={ev} onChange={setEv} />
+            {ev && <Row title={L("Во сколько")} right={<input type="number" className="input" style={{ width: 80 }} min={12} max={23} value={evH} onChange={e => setEvH(+e.target.value)} />} />}
+            <ToggleRow title={L("Утром в день сдачи")} on={mo} onChange={setMo} />
+            {mo && <Row title={L("Во сколько")} right={<input type="number" className="input" style={{ width: 80 }} min={5} max={11} value={moH} onChange={e => setMoH(+e.target.value)} />} />}
+            <ToggleRow title={L("За час до сдачи")} on={hr} onChange={setHr} />
+            <Row title={L("Пересчитать все напоминания")} onClick={() => { hw.rescheduleAll(); toast(L('Готово')) }} />
           </Card>
-          <div className="h-sec">«Что задали?» после пары</div>
+          <div className="h-sec">{L("«Что задали?» после пары")}</div>
           <Card className="list" style={{ padding: 0 }}>
-            <ToggleRow title="Спрашивать после пары" sub="Уведомление — нажми и сразу записывай" on={ask} onChange={setAsk} />
+            <ToggleRow title={L("Спрашивать после пары")} sub={L("Уведомление — нажми и сразу записывай")} on={ask} onChange={setAsk} />
             {ask && <>
-              <Row title="Через сколько минут" right={<Segmented value={askDelay} onChange={setAskDelay} options={[0, 3, 10, 30].map(v => ({ value: v, label: `${v}` }))} />} />
-              <ToggleRow title="После лекций" on={askL} onChange={setAskL} />
-              <ToggleRow title="После практик" on={askP} onChange={setAskP} />
-              <ToggleRow title="После лабораторных" on={askLab} onChange={setAskLab} />
-              <ToggleRow title="После семинаров" on={askS} onChange={setAskS} />
+              <Row title={L("Через сколько минут")} right={<Segmented value={askDelay} onChange={setAskDelay} options={[0, 3, 10, 30].map(v => ({ value: v, label: `${v}` }))} />} />
+              <ToggleRow title={L("После лекций")} on={askL} onChange={setAskL} />
+              <ToggleRow title={L("После практик")} on={askP} onChange={setAskP} />
+              <ToggleRow title={L("После лабораторных")} on={askLab} onChange={setAskLab} />
+              <ToggleRow title={L("После семинаров")} on={askS} onChange={setAskS} />
             </>}
           </Card>
         </div>

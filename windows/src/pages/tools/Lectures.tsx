@@ -11,19 +11,20 @@ import { safu, fileURL } from '../../lib/bridge'
 import { timer, dayMonth, hm, plural } from '../../lib/date'
 import { toBase64 } from '../../lib/zip'
 
+import { L } from '../../lib/i18n'
 type Segment = { start: number; end: number; text: string }
 
 /** Разрешение отправлять расшифровку в Claude: спрашиваем один раз, сбрасывается вместе с ключом */
 const AI_CONSENT = 'ai.consent.claude'
-const AI_CONSENT_TEXT = 'Чтобы написать конспект, текст расшифровки этой и следующих лекций уйдёт в Anthropic (Claude) по твоему ключу. Аудиозапись, файлы и другие данные не отправляются. Anthropic обрабатывает текст по своим правилам: anthropic.com/legal/privacy. Без разрешения конспект соберётся на компьютере, без ИИ. Отозвать: удали ключ в настройках лекций.'
+const AI_CONSENT_TEXT = L('Чтобы написать конспект, текст расшифровки этой и следующих лекций уйдёт в Anthropic (Claude) по твоему ключу. Аудиозапись, файлы и другие данные не отправляются. Anthropic обрабатывает текст по своим правилам: anthropic.com/legal/privacy. Без разрешения конспект соберётся на компьютере, без ИИ. Отозвать: удали ключ в настройках лекций.')
 type Summary = { title: string; summary: string; keyPoints: string[]; sections: { heading: string; points: string[] }[]; terms: { term: string; definition: string }[]; formulas: string[]; questions: string[]; tasks: string[] }
 type Lecture = { id: string; title: string; subject: string; created: number; duration: number; file: string; marks: number[]; segments: Segment[]; summary: Summary | null; summaryBy: string; notes: string }
 
 const store = createCollection<Lecture[]>('lectures.win', [])
 const STYLES = [
-  { id: 'full', title: 'Подробный', instruction: 'Стиль: подробный конспект — все разделы, примеры и пояснения.' },
-  { id: 'short', title: 'Кратко', instruction: 'Стиль: краткий конспект — только главное, каждый раздел 2–4 пункта.' },
-  { id: 'cheat', title: 'Шпаргалка', instruction: 'Стиль: шпаргалка к экзамену — определения, формулы, вероятные вопросы, минимум воды.' }
+  { id: 'full', title: L('Подробный'), instruction: L('Стиль: подробный конспект — все разделы, примеры и пояснения.') },
+  { id: 'short', title: L('Кратко'), instruction: L('Стиль: краткий конспект — только главное, каждый раздел 2–4 пункта.') },
+  { id: 'cheat', title: L('Шпаргалка'), instruction: L('Стиль: шпаргалка к экзамену — определения, формулы, вероятные вопросы, минимум воды.') }
 ]
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
@@ -82,7 +83,7 @@ export function Lectures() {
       mr.start(5000)
       media.current = mr
       setRec({ start: Date.now(), paused: false, pausedTotal: 0, pauseAt: 0, marks: [], level: 0 })
-    } catch { toast('Нет доступа к микрофону — разреши его в Параметрах Windows → Конфиденциальность', 'warn') }
+    } catch { toast(L('Нет доступа к микрофону — разреши его в Параметрах Windows → Конфиденциальность'), 'warn') }
   }
   const stop = async () => {
     const mr = media.current
@@ -96,7 +97,7 @@ export function Lectures() {
     const id = uid()
     const rel = `Лекции/${dayMonth(rec.start)} ${hm(rec.start).replace(':', '-')}${subject ? ' — ' + subject.slice(0, 40).replace(/[\\/:*?"<>|]/g, '_') : ''}.webm`
     await safu.fs.writeBase64(rel, toBase64(new Uint8Array(await blob.arrayBuffer())))
-    store.set(l => [{ id, title: subject ? `${subject}, ${dayMonth(rec.start)}` : `Запись ${dayMonth(rec.start)}, ${hm(rec.start)}`, subject, created: rec.start, duration: dur, file: rel, marks: rec.marks, segments: [], summary: null, summaryBy: '', notes: '' }, ...l])
+    store.set(l => [{ id, title: subject ? `${subject}, ${dayMonth(rec.start)}` : L`Запись ${dayMonth(rec.start)}, ${hm(rec.start)}`, subject, created: rec.start, duration: dur, file: rel, marks: rec.marks, segments: [], summary: null, summaryBy: '', notes: '' }, ...l])
     setRec(null); media.current = null; analyser.current = null
     setOpen(id)
     void next
@@ -110,13 +111,13 @@ export function Lectures() {
   const lec = list.find(l => l.id === open)
   return (
     <>
-      <PageHeader title="Лекции" subtitle="Запиши лекцию — приложение сделает текст и конспект" right={<button className="btn" onClick={() => setKeyOpen(true)}><KeyRound size={15} /> ИИ для конспектов</button>} />
+      <PageHeader title={L("Лекции")} subtitle={L("Запиши лекцию — приложение сделает текст и конспект")} right={<button className="btn" onClick={() => setKeyOpen(true)}><KeyRound size={15} /> {L("ИИ для конспектов")}</button>} />
       <Card className="mb16" style={{ overflow: 'hidden' }}>
         <AnimatePresence mode="wait">
           {!rec ? (
             <motion.div key="idle" className="row" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.92 }} onClick={start} className="btn primary round" style={{ width: 76, height: 76, borderRadius: 38, background: 'linear-gradient(135deg,#ef4444,#ec4899)', boxShadow: '0 10px 30px rgba(239,68,68,.45)' }}><Mic size={32} /></motion.button>
-              <div className="grow"><div className="h-card">Начать запись</div><div className="sub">Положи ноутбук ближе к преподавателю. Во время записи жми «Важно» — эти места попадут в конспект обязательно.</div></div>
+              <div className="grow"><div className="h-card">{L("Начать запись")}</div><div className="sub">{L("Положи ноутбук ближе к преподавателю. Во время записи жми «Важно» — эти места попадут в конспект обязательно.")}</div></div>
             </motion.div>
           ) : (
             <motion.div key="rec" className="col" style={{ alignItems: 'center', gap: 16 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -125,20 +126,20 @@ export function Lectures() {
               </div>
               <div className="mono heavy" style={{ fontSize: '3rem' }}>{timer(elapsed * 1000)}</div>
               <div className="row">
-                <button className="btn lg" onClick={pause}>{rec.paused ? <><Play size={18} /> Продолжить</> : <><Pause size={18} /> Пауза</>}</button>
-                <motion.button whileTap={{ scale: 0.9 }} className="btn lg" style={{ color: '#f59e0b' }} onClick={() => { setRec({ ...rec, marks: [...rec.marks, elapsed] }); toast('Отмечено как важное', 'info') }}><Star size={18} /> Важно {rec.marks.length > 0 && `(${rec.marks.length})`}</motion.button>
-                <button className="btn lg danger solid" onClick={stop}><Square size={18} /> Стоп</button>
+                <button className="btn lg" onClick={pause}>{rec.paused ? <><Play size={18} /> {L("Продолжить")}</> : <><Pause size={18} /> {L("Пауза")}</>}</button>
+                <motion.button whileTap={{ scale: 0.9 }} className="btn lg" style={{ color: '#f59e0b' }} onClick={() => { setRec({ ...rec, marks: [...rec.marks, elapsed] }); toast(L('Отмечено как важное'), 'info') }}><Star size={18} /> {L("Важно")} {rec.marks.length > 0 && `(${rec.marks.length})`}</motion.button>
+                <button className="btn lg danger solid" onClick={stop}><Square size={18} /> {L("Стоп")}</button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </Card>
-      {!list.length && <Empty emoji="🎙️" title="Записей пока нет" />}
+      {!list.length && <Empty emoji="🎙️" title={L("Записей пока нет")} />}
       <div className="grid gauto">
         {list.map((l, i) => (
           <Card key={l.id} press delay={i * 0.03} onClick={() => setOpen(l.id)}>
-            <div className="row"><div className="icon-tile" style={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)' }}><Mic size={16} /></div><div className="grow"><div className="bold clamp2">{l.summary?.title || l.title}</div><div className="tiny muted">{dayMonth(l.created)} · {Math.round(l.duration / 60)} мин</div></div></div>
-            <div className="row gap6 mt8">{l.segments.length ? <span className="pill">текст</span> : <span className="pill">без текста</span>}{l.summary && <span className="pill" style={{ color: 'var(--brand)' }}><Sparkles size={11} /> конспект</span>}{l.marks.length > 0 && <span className="pill"><Star size={11} /> {l.marks.length}</span>}</div>
+            <div className="row"><div className="icon-tile" style={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)' }}><Mic size={16} /></div><div className="grow"><div className="bold clamp2">{l.summary?.title || l.title}</div><div className="tiny muted">{dayMonth(l.created)} · {Math.round(l.duration / 60)} {L("мин")}</div></div></div>
+            <div className="row gap6 mt8">{l.segments.length ? <span className="pill">{L("текст")}</span> : <span className="pill">{L("без текста")}</span>}{l.summary && <span className="pill" style={{ color: 'var(--brand)' }}><Sparkles size={11} /> {L("конспект")}</span>}{l.marks.length > 0 && <span className="pill"><Star size={11} /> {l.marks.length}</span>}</div>
           </Card>
         ))}
       </div>
@@ -158,7 +159,7 @@ function LectureSheet({ l, onClose }: { l: Lecture | null; onClose: () => void }
   const upd = (p: Partial<Lecture>) => store.set(list => list.map(x => x.id === l.id ? { ...x, ...p } : x))
 
   const transcribe = async () => {
-    setStage('Готовлю звук…'); setProgress(0)
+    setStage(L('Готовлю звук…')); setProgress(0)
     try {
       const b64: string = await safu.fs.readBase64(l.file)
       const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
@@ -169,7 +170,7 @@ function LectureSheet({ l, onClose }: { l: Lecture | null; onClose: () => void }
       await new Promise<void>((res, rej) => {
         worker.onmessage = e => {
           const m = e.data
-          if (m.type === 'download') { setStage(`Скачиваю модель распознавания (один раз)…`); setProgress((m.progress || 0) / 100) }
+          if (m.type === 'download') { setStage(L`Скачиваю модель распознавания (один раз)…`); setProgress((m.progress || 0) / 100) }
           if (m.type === 'stage') { setStage(m.text); setProgress(0) }
           if (m.type === 'done') {
             const segs: Segment[] = (m.out.chunks || []).map((c: any) => ({ start: c.timestamp[0] || 0, end: c.timestamp[1] || c.timestamp[0] || 0, text: String(c.text).trim() })).filter((s: Segment) => s.text)
@@ -181,68 +182,68 @@ function LectureSheet({ l, onClose }: { l: Lecture | null; onClose: () => void }
         worker.postMessage({ audio, model: 'onnx-community/whisper-base' }, [audio.buffer])
       })
       worker.terminate()
-      toast('Текст лекции готов')
+      toast(L('Текст лекции готов'))
       setTab('text')
     } catch (e) {
-      toast(`Не получилось распознать: ${(e as Error).message}`, 'warn')
+      toast(L`Не получилось распознать: ${(e as Error).message}`, 'warn')
     } finally { setStage(null) }
   }
 
   const summarize = async () => {
-    if (!l.segments.length) { toast('Сначала сделай текст', 'warn'); return }
+    if (!l.segments.length) { toast(L('Сначала сделай текст'), 'warn'); return }
     // без разрешения человека текст во внешний ИИ не уходит — конспект собирается на компьютере
     if (await safu.secret.get('claude.key') && !kv.get(AI_CONSENT, false)) {
-      const ok = await confirmDialog('Отправить текст лекции в Claude?', AI_CONSENT_TEXT, 'Разрешить')
-      if (!ok) { upd({ summary: localSummary(l), summaryBy: 'без ИИ' }); setTab('summary'); return }
+      const ok = await confirmDialog(L('Отправить текст лекции в Claude?'), AI_CONSENT_TEXT, L('Разрешить'))
+      if (!ok) { upd({ summary: localSummary(l), summaryBy: L('без ИИ') }); setTab('summary'); return }
       kv.set(AI_CONSENT, true)
     }
-    setStage('Claude пишет конспект…')
+    setStage(L('Claude пишет конспект…'))
     const st = STYLES.find(s => s.id === style) || STYLES[0]
     const r = await safu.ai.summarize({ subject: l.subject, minutes: Math.round(l.duration / 60), style: st.instruction, transcript: transcriptForAI(l) })
     setStage(null)
-    if (r.ok) { upd({ summary: r.summary, summaryBy: 'Claude' }); setTab('summary'); toast('Конспект готов ✨') }
+    if (r.ok) { upd({ summary: r.summary, summaryBy: 'Claude' }); setTab('summary'); toast(L('Конспект готов ✨')) }
     else {
-      toast(r.error || 'Ошибка', 'warn')
-      upd({ summary: localSummary(l), summaryBy: 'без ИИ' }); setTab('summary')
+      toast(r.error || L('Ошибка'), 'warn')
+      upd({ summary: localSummary(l), summaryBy: L('без ИИ') }); setTab('summary')
     }
   }
 
   const s = l.summary
-  const asText = () => s ? [`# ${s.title}`, s.summary, '', '## Главное', ...s.keyPoints.map(p => `- ${p}`), ...s.sections.flatMap(x => ['', `## ${x.heading}`, ...x.points.map(p => `- ${p}`)]),
-    ...(s.terms.length ? ['', '## Термины', ...s.terms.map(t => `- **${t.term}** — ${t.definition}`)] : []), ...(s.formulas.length ? ['', '## Формулы', ...s.formulas.map(f => `- ${f}`)] : []),
-    ...(s.questions.length ? ['', '## Вопросы к экзамену', ...s.questions.map(q => `- ${q}`)] : []), ...(s.tasks.length ? ['', '## Задания', ...s.tasks.map(t => `- ${t}`)] : [])].join('\n') : ''
+  const asText = () => s ? [`# ${s.title}`, s.summary, '', L('## Главное'), ...s.keyPoints.map(p => `- ${p}`), ...s.sections.flatMap(x => ['', `## ${x.heading}`, ...x.points.map(p => `- ${p}`)]),
+    ...(s.terms.length ? ['', L('## Термины'), ...s.terms.map(t => `- **${t.term}** — ${t.definition}`)] : []), ...(s.formulas.length ? ['', L('## Формулы'), ...s.formulas.map(f => `- ${f}`)] : []),
+    ...(s.questions.length ? ['', L('## Вопросы к экзамену'), ...s.questions.map(q => `- ${q}`)] : []), ...(s.tasks.length ? ['', L('## Задания'), ...s.tasks.map(t => `- ${t}`)] : [])].join('\n') : ''
 
   return (
     <Sheet open={!!l} onClose={onClose} size="xwide" title={s?.title || l.title}
       headRight={<>
-        <button className="btn icon sm ghost" onClick={async () => { const t = await promptDialog('Название', l.title); if (t) upd({ title: t }) }}><FileText size={16} /></button>
+        <button className="btn icon sm ghost" onClick={async () => { const t = await promptDialog(L('Название'), l.title); if (t) upd({ title: t }) }}><FileText size={16} /></button>
         <button className="btn icon sm ghost" onClick={() => safu.fs.reveal(l.file)}><FolderOpen size={16} /></button>
-        <button className="btn icon sm ghost danger" onClick={async () => { if (await confirmDialog('Удалить запись?', 'Аудиофайл попадёт в корзину.', 'Удалить', true)) { await safu.fs.trash(l.file).catch(() => null); store.set(x => x.filter(y => y.id !== l.id)); onClose() } }}><Trash2 size={16} /></button>
+        <button className="btn icon sm ghost danger" onClick={async () => { if (await confirmDialog(L('Удалить запись?'), L('Аудиофайл попадёт в корзину.'), L('Удалить'), true)) { await safu.fs.trash(l.file).catch(() => null); store.set(x => x.filter(y => y.id !== l.id)); onClose() } }}><Trash2 size={16} /></button>
       </>}>
       <audio src={fileURL(l.file)} controls style={{ width: '100%', marginBottom: 12 }} />
       <div className="row wrap-row mb12">
-        <select className="select" style={{ width: 280 }} value={l.subject} onChange={e => upd({ subject: e.target.value })}><option value="">Предмет не выбран</option>{subjects(data).map(x => <option key={x} value={x}>{x}</option>)}</select>
+        <select className="select" style={{ width: 280 }} value={l.subject} onChange={e => upd({ subject: e.target.value })}><option value="">{L("Предмет не выбран")}</option>{subjects(data).map(x => <option key={x} value={x}>{x}</option>)}</select>
         <span className="spacer" />
-        <button className="btn" disabled={!!stage} onClick={transcribe}><Wand2 size={15} /> {l.segments.length ? 'Распознать заново' : 'Сделать текст'}</button>
+        <button className="btn" disabled={!!stage} onClick={transcribe}><Wand2 size={15} /> {l.segments.length ? L('Распознать заново') : L('Сделать текст')}</button>
         <Segmented value={style} onChange={setStyle} options={STYLES.map(x => ({ value: x.id, label: x.title }))} />
-        <button className="btn primary" disabled={!!stage || !l.segments.length} onClick={summarize}><Sparkles size={15} /> Конспект</button>
+        <button className="btn primary" disabled={!!stage || !l.segments.length} onClick={summarize}><Sparkles size={15} /> {L("Конспект")}</button>
       </div>
       {stage && <div className="card tight mb12 row"><Loader2 size={18} className="spin" color="var(--brand)" /><div className="grow"><div className="small bold">{stage}</div>{progress > 0 && <div className="mt4"><Progress value={progress} /></div>}</div></div>}
-      <Segmented value={tab} onChange={setTab} options={[{ value: 'summary', label: 'Конспект' }, { value: 'text', label: `Текст${l.segments.length ? ` · ${l.segments.length}` : ''}` }]} />
+      <Segmented value={tab} onChange={setTab} options={[{ value: 'summary', label: L('Конспект') }, { value: 'text', label: L`Текст${l.segments.length ? ` · ${l.segments.length}` : ''}` }]} />
       <div className="mt12">
         {tab === 'summary' ? (s ? (
           <div className="col gap14">
-            <div className="row"><span className="pill"><Sparkles size={11} /> {l.summaryBy}</span><span className="spacer" /><button className="btn sm" onClick={() => { safu.clipboard.write(asText()); toast('Конспект скопирован') }}><Copy size={13} /> Копировать</button>
+            <div className="row"><span className="pill"><Sparkles size={11} /> {l.summaryBy}</span><span className="spacer" /><button className="btn sm" onClick={() => { safu.clipboard.write(asText()); toast(L('Конспект скопирован')) }}><Copy size={13} /> {L("Копировать")}</button>
               <button className="btn sm" onClick={async () => { const rel = l.file.replace(/\.webm$/, ' — конспект.md'); await safu.fs.writeText(rel, asText()); toast('Сохранено рядом с записью') }}>Сохранить .md</button></div>
             {s.summary && <Card tight style={{ background: 'rgba(var(--brand-rgb), .1)' }}><div style={{ lineHeight: 1.6 }}>{s.summary}</div></Card>}
-            {s.keyPoints.length > 0 && <Block title="⭐ Главное" items={s.keyPoints} />}
+            {s.keyPoints.length > 0 && <Block title={L("⭐ Главное")} items={s.keyPoints} />}
             {s.sections.map((x, i) => <Block key={i} title={x.heading} items={x.points} />)}
-            {s.terms.length > 0 && <Card tight><div className="bold mb8">📘 Термины</div>{s.terms.map((t, i) => <div key={i} className="small mb8"><b>{t.term}</b> — {t.definition}</div>)}</Card>}
-            {s.formulas.length > 0 && <Block title="🧮 Формулы" items={s.formulas} mono />}
-            {s.questions.length > 0 && <Block title="❓ Вероятные вопросы" items={s.questions} />}
-            {s.tasks.length > 0 && <Block title="📝 Задания" items={s.tasks} />}
+            {s.terms.length > 0 && <Card tight><div className="bold mb8">{L("📘 Термины")}</div>{s.terms.map((t, i) => <div key={i} className="small mb8"><b>{t.term}</b> — {t.definition}</div>)}</Card>}
+            {s.formulas.length > 0 && <Block title={L("🧮 Формулы")} items={s.formulas} mono />}
+            {s.questions.length > 0 && <Block title={L("❓ Вероятные вопросы")} items={s.questions} />}
+            {s.tasks.length > 0 && <Block title={L("📝 Задания")} items={s.tasks} />}
           </div>
-        ) : <Empty emoji="✨" title="Конспекта пока нет" text="Сделай текст, затем нажми «Конспект». Без ключа Claude приложение соберёт конспект само — из важных мест и ключевых фраз." />)
+        ) : <Empty emoji="✨" title={L("Конспекта пока нет")} text={L("Сделай текст, затем нажми «Конспект». Без ключа Claude приложение соберёт конспект само — из важных мест и ключевых фраз.")} />)
           : l.segments.length ? (
             <div className="col gap6" style={{ userSelect: 'text' }}>
               {l.segments.map((x, i) => {
@@ -250,7 +251,7 @@ function LectureSheet({ l, onClose }: { l: Lecture | null; onClose: () => void }
                 return <div key={i} className="row top small" style={{ padding: '6px 10px', borderRadius: 10, background: imp ? 'rgba(245,158,11,.12)' : undefined }}><span className="mono faint" style={{ width: 48 }}>{mmss(x.start)}</span><span className="grow">{x.text}</span>{imp && <Star size={12} color="#f59e0b" />}</div>
               })}
             </div>
-          ) : <Empty emoji="📝" title="Текста пока нет" text="Распознавание идёт на твоём компьютере: модель скачается один раз (~150 МБ), запись никуда не отправляется." />}
+          ) : <Empty emoji="📝" title={L("Текста пока нет")} text={L("Распознавание идёт на твоём компьютере: модель скачается один раз (~150 МБ), запись никуда не отправляется.")} />}
       </div>
     </Sheet>
   )
@@ -265,15 +266,15 @@ function KeySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [has, setHas] = useState(false)
   useEffect(() => { if (open) safu.secret.get('claude.key').then(k => { setHas(!!k); setKey('') }) }, [open])
   return (
-    <Sheet open={open} onClose={onClose} title="ИИ для конспектов" footer={<>
-      {has && <button className="btn danger" onClick={async () => { await safu.secret.set('claude.key', null); kv.remove(AI_CONSENT); setHas(false); toast('Ключ удалён') }}>Удалить ключ</button>}
+    <Sheet open={open} onClose={onClose} title={L("ИИ для конспектов")} footer={<>
+      {has && <button className="btn danger" onClick={async () => { await safu.secret.set('claude.key', null); kv.remove(AI_CONSENT); setHas(false); toast(L('Ключ удалён')) }}>{L("Удалить ключ")}</button>}
       <span className="spacer" />
-      <button className="btn primary" disabled={!key.trim().startsWith('sk-')} onClick={async () => { await safu.secret.set('claude.key', key.trim()); toast('Ключ сохранён'); onClose() }}>Сохранить</button>
+      <button className="btn primary" disabled={!key.trim().startsWith('sk-')} onClick={async () => { await safu.secret.set('claude.key', key.trim()); toast(L('Ключ сохранён')); onClose() }}>{L("Сохранить")}</button>
     </>}>
-      <div className="sub mb12" style={{ lineHeight: 1.5 }}>Конспекты делает Claude (модель Claude Opus 5.5). Нужен свой ключ API с console.anthropic.com. Ключ хранится зашифрованным средствами Windows и отправляется только в Anthropic. Перед первой отправкой текста лекции приложение спросит разрешение. Без ключа приложение соберёт конспект само, проще.</div>
-      <div className="pill mb12">{has ? '✓ Ключ сохранён' : 'Ключ не задан'}</div>
-      <Field label="Ключ Claude API"><input className="input" type="password" value={key} onChange={e => setKey(e.target.value)} placeholder="sk-ant-…" /></Field>
-      <button className="btn ghost" onClick={() => safu.shell.open('https://console.anthropic.com/settings/keys')}>Получить ключ</button>
+      <div className="sub mb12" style={{ lineHeight: 1.5 }}>{L("Конспекты делает Claude (модель Claude Opus 5.5). Нужен свой ключ API с console.anthropic.com. Ключ хранится зашифрованным средствами Windows и отправляется только в Anthropic. Перед первой отправкой текста лекции приложение спросит разрешение. Без ключа приложение соберёт конспект само, проще.")}</div>
+      <div className="pill mb12">{has ? L('✓ Ключ сохранён') : L('Ключ не задан')}</div>
+      <Field label={L("Ключ Claude API")}><input className="input" type="password" value={key} onChange={e => setKey(e.target.value)} placeholder="sk-ant-…" /></Field>
+      <button className="btn ghost" onClick={() => safu.shell.open('https://console.anthropic.com/settings/keys')}>{L("Получить ключ")}</button>
     </Sheet>
   )
 }

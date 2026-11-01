@@ -21,15 +21,17 @@ import { toast, alertDialog, Sheet } from '../ui/kit'
 import { TransferPanel } from './Transfer'
 import { transfer } from '../lib/transfer'
 
+import { L } from '../lib/i18n'
+import { LanguageSwitch } from '../ui/LanguagePicker'
 export const SCHOOLS = [
-  { id: 3, short: 'ВШИТАС', full: 'Высшая школа информационных технологий и автоматизированных систем', about: 'ИТ, программирование, автоматизация, связь', Icon: Cpu },
-  { id: 15, short: 'ВИШ', full: 'Высшая инженерная школа', about: 'Строительство, транспорт, машиностроение', Icon: Cog },
-  { id: 1, short: 'ВШЕНиТ', full: 'Высшая школа естественных наук и технологий', about: 'Биология, химия, география, экология', Icon: Leaf },
-  { id: 4, short: 'ВШСГНиМК', full: 'Высшая школа социально-гуманитарных наук и международной коммуникации', about: 'Филология, история, языки, журналистика', Icon: Globe2 },
-  { id: 28, short: 'ВШЭУиП', full: 'Высшая школа экономики, управления и права', about: 'Экономика, менеджмент, юриспруденция', Icon: LineChart },
-  { id: 12, short: 'ВШЭНиГ', full: 'Высшая школа энергетики, нефти и газа', about: 'Энергетика, нефтегазовое дело', Icon: Zap },
-  { id: 13, short: 'ВШППиФК', full: 'Высшая школа психологии, педагогики и физической культуры', about: 'Психология, педагогика, спорт', Icon: Dumbbell },
-  { id: 36, short: 'ВШ рыболовства', full: 'Высшая школа рыболовства', about: 'Рыболовство, водные биоресурсы', Icon: Fish }
+  { id: 3, short: L('ВШИТАС'), full: L('Высшая школа информационных технологий и автоматизированных систем'), about: L('ИТ, программирование, автоматизация, связь'), Icon: Cpu },
+  { id: 15, short: L('ВИШ'), full: L('Высшая инженерная школа'), about: L('Строительство, транспорт, машиностроение'), Icon: Cog },
+  { id: 1, short: L('ВШЕНиТ'), full: L('Высшая школа естественных наук и технологий'), about: L('Биология, химия, география, экология'), Icon: Leaf },
+  { id: 4, short: L('ВШСГНиМК'), full: L('Высшая школа социально-гуманитарных наук и международной коммуникации'), about: L('Филология, история, языки, журналистика'), Icon: Globe2 },
+  { id: 28, short: L('ВШЭУиП'), full: L('Высшая школа экономики, управления и права'), about: L('Экономика, менеджмент, юриспруденция'), Icon: LineChart },
+  { id: 12, short: L('ВШЭНиГ'), full: L('Высшая школа энергетики, нефти и газа'), about: L('Энергетика, нефтегазовое дело'), Icon: Zap },
+  { id: 13, short: L('ВШППиФК'), full: L('Высшая школа психологии, педагогики и физической культуры'), about: L('Психология, педагогика, спорт'), Icon: Dumbbell },
+  { id: 36, short: L('ВШ рыболовства'), full: L('Высшая школа рыболовства'), about: L('Рыболовство, водные биоресурсы'), Icon: Fish }
 ]
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5   // welcome, name, school, group, extras, setup
@@ -89,9 +91,9 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
     try {
       const list = await loadGroups(school.id, force)
       setGroups(list)
-      if (!list.length) setGroupsError('РУЗ не вернул список групп. Введи номер группы вручную.')
+      if (!list.length) setGroupsError(L('РУЗ не вернул список групп. Введи номер группы вручную.'))
     } catch {
-      setGroupsError('Нет связи с РУЗ. Проверь интернет или введи номер группы вручную.')
+      setGroupsError(L('Нет связи с РУЗ. Проверь интернет или введи номер группы вручную.'))
     } finally { setLoading(false) }
   }
 
@@ -119,11 +121,11 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
   const runSetup = async () => {
     setFinished(false)
     setTasks([
-      { id: 0, title: 'Профиль', detail: '', state: 'waiting' },
-      { id: 1, title: teacher ? 'Ваши пары по всем группам САФУ' : `Расписание группы ${groupNumber} из РУЗ`, detail: '', state: 'waiting' },
-      { id: 2, title: 'Папки предметов', detail: '', state: 'waiting' },
-      { id: 3, title: 'Уведомления о парах и заменах', detail: '', state: 'waiting' },
-      { id: 4, title: 'Трей и мини-окно пары', detail: '', state: 'waiting' }
+      { id: 0, title: L('Профиль'), detail: '', state: 'waiting' },
+      { id: 1, title: teacher ? L('Ваши пары по всем группам САФУ') : L`Расписание группы ${groupNumber} из РУЗ`, detail: '', state: 'waiting' },
+      { id: 2, title: L('Папки предметов'), detail: '', state: 'waiting' },
+      { id: 3, title: L('Уведомления о парах и заменах'), detail: '', state: 'waiting' },
+      { id: 4, title: L('Трей и мини-окно пары'), detail: '', state: 'waiting' }
     ])
     await sleep(300)
     setTask(0, 'running'); saveProfile(); await sleep(250)
@@ -134,7 +136,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
     const inst = school?.id ?? 3
     if (teacher) {
       scheduleStore.connectTeacher(inst)
-      const ticker = setInterval(() => { const p = useSchedule.getState().teacherProgress; if (p != null) setTask(1, 'running', `Просмотрено групп: ${Math.round(p * 100)}%`) }, 400)
+      const ticker = setInterval(() => { const p = useSchedule.getState().teacherProgress; if (p != null) setTask(1, 'running', L`Просмотрено групп: ${Math.round(p * 100)}%`) }, 400)
       await scheduleStore.sync(true)
       clearInterval(ticker)
     } else {
@@ -142,18 +144,18 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
       await scheduleStore.sync(true)
     }
     const count = useSchedule.getState().data.ruzEvents.length
-    if (count > 0) setTask(1, 'done', `Загружено пар: ${count}`)
-    else setTask(1, 'warn', useSchedule.getState().syncMessage || 'Пока пусто — попробую ещё раз позже')
+    if (count > 0) setTask(1, 'done', L`Загружено пар: ${count}`)
+    else setTask(1, 'warn', useSchedule.getState().syncMessage || L('Пока пусто — попробую ещё раз позже'))
 
     setTask(2, 'running')
     const subj = subjects(useSchedule.getState().data)
     if (subj.length) await safu.fs.ensureDirs(subj.map(subjectFolder))
-    setTask(2, subj.length ? 'done' : 'warn', subj.length ? `Предметов: ${subj.length} — в папке «Предметы»` : 'Появятся вместе с расписанием')
+    setTask(2, subj.length ? 'done' : 'warn', subj.length ? L`Предметов: ${subj.length} — в папке «Предметы»` : L('Появятся вместе с расписанием'))
 
     setTask(3, 'running'); await sleep(300)
-    setTask(3, 'done', 'Напомню о парах, заменах и отменах — уведомлениями Windows')
+    setTask(3, 'done', L('Напомню о парах, заменах и отменах — уведомлениями Windows'))
     setTask(4, 'running'); await sleep(300)
-    setTask(4, 'done', 'Значок у часов показывает текущую пару, а мини-окно висит поверх всех окон')
+    setTask(4, 'done', L('Значок у часов показывает текущую пару, а мини-окно висит поверх всех окон'))
     setFinished(true)
     celebrations.welcome()
   }
@@ -176,6 +178,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
             </div>
           ))}
         </div>
+        {step === 0 && <LanguageSwitch />}
         {canClose && step !== 5 ? <button className="btn icon round" onClick={onDone}><X size={18} /></button> : <div style={{ width: 38 }} />}
       </div>
 
@@ -198,9 +201,9 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                       <motion.div animate={{ rotate: [-30, 30, -30] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}><Snowflake size={58} color="#fff" /></motion.div>
                     </motion.div>
                   </div>
-                  <Appear delay={0.25}><div style={{ fontSize: '3rem', fontWeight: 900 }}>Привет! <motion.span style={{ display: 'inline-block', transformOrigin: '70% 80%' }} animate={{ rotate: [-8, 18, -8] }} transition={{ duration: 1, repeat: Infinity }}>👋</motion.span></div></Appear>
-                  <Appear delay={0.4}><div className="muted" style={{ fontSize: '1.1rem' }}>Твои пары, файлы и оценки САФУ — в одном красивом месте.<br />Теперь и на компьютере.</div></Appear>
-                  <Appear delay={0.5}><div className="tiny faint">Неофициальное студенческое приложение · данные остаются на твоём компьютере</div></Appear>
+                  <Appear delay={0.25}><div style={{ fontSize: '3rem', fontWeight: 900 }}>{L("Привет!")} <motion.span style={{ display: 'inline-block', transformOrigin: '70% 80%' }} animate={{ rotate: [-8, 18, -8] }} transition={{ duration: 1, repeat: Infinity }}>👋</motion.span></div></Appear>
+                  <Appear delay={0.4}><div className="muted" style={{ fontSize: '1.1rem' }}>{L("Твои пары, файлы и оценки САФУ — в одном красивом месте.")}<br />{L("Теперь и на компьютере.")}</div></Appear>
+                  <Appear delay={0.5}><div className="tiny faint">{L("Неофициальное студенческое приложение · данные остаются на твоём компьютере")}</div></Appear>
                   <div className="grid g2" style={{ width: '100%', maxWidth: 520 }}>
                     {[false, true].map((isT, i) => {
                       const on = teacher === isT
@@ -209,8 +212,8 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                           <motion.div onClick={() => setTeacher(isT)} whileHover={{ y: -3 }} whileTap={{ scale: 0.96 }} animate={{ scale: on ? 1.03 : 0.98 }}
                             className="col" style={{ alignItems: 'center', gap: 8, padding: '20px 10px', borderRadius: 22, cursor: 'pointer', background: on ? 'var(--grad)' : 'var(--fill)', color: on ? '#fff' : undefined, boxShadow: on ? '0 12px 30px rgba(var(--brand-rgb), .4)' : undefined, border: '1px solid var(--line)' }}>
                             {isT ? <Presentation size={28} /> : <GraduationCap size={28} />}
-                            <div className="bold row gap6">{isT ? 'Я преподаватель' : 'Я студент'}{isT && <span className="badge" style={{ background: '#f59e0b', color: '#fff' }}>бета</span>}</div>
-                            <div className="tiny" style={{ opacity: 0.8 }}>{isT ? 'Свои пары во всех группах' : 'Группа, пары, файлы, оценки'}</div>
+                            <div className="bold row gap6">{isT ? L('Я преподаватель') : L('Я студент')}{isT && <span className="badge" style={{ background: '#f59e0b', color: '#fff' }}>{L("бета")}</span>}</div>
+                            <div className="tiny" style={{ opacity: 0.8 }}>{isT ? L('Свои пары во всех группах') : L('Группа, пары, файлы, оценки')}</div>
                           </motion.div>
                         </Appear>
                       )
@@ -218,10 +221,10 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                   </div>
                   <Appear delay={0.9}>
                     <div className="row gap8 wrap-row" style={{ justifyContent: 'center' }}>
-                      <button className="btn" onClick={() => setXfer(true)}><QrCode size={16} /> Перенести всё с iPhone</button>
-                      <button className="btn ghost" onClick={async () => { if (await restoreBackupInteractive()) { toast('Копия восстановлена'); onDone() } }}><ArchiveRestore size={16} /> У меня есть резервная копия</button>
+                      <button className="btn" onClick={() => setXfer(true)}><QrCode size={16} /> {L("Перенести всё с iPhone")}</button>
+                      <button className="btn ghost" onClick={async () => { if (await restoreBackupInteractive()) { toast(L('Копия восстановлена')); onDone() } }}><ArchiveRestore size={16} /> {L("У меня есть резервная копия")}</button>
                     </div>
-                    <Sheet open={xfer} onClose={() => { setXfer(false); transfer.stop() }} title="Перенос с iPhone" size="xwide">
+                    <Sheet open={xfer} onClose={() => { setXfer(false); transfer.stop() }} title={L("Перенос с iPhone")} size="xwide">
                       <TransferPanel />
                     </Sheet>
                   </Appear>
@@ -230,21 +233,21 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
 
               {step === 1 && (
                 <>
-                  <Header title={teacher ? 'Как вас зовут?' : 'Как тебя зовут?'} text={teacher ? 'Фамилия нужна, чтобы найти ваши пары в РУЗ.' : 'Для приветствия и титульных листов.'} />
-                  <Appear delay={0.08}><Input label="Имя" value={first} onChange={setFirst} autoFocus placeholder="Кирилл" /></Appear>
+                  <Header title={teacher ? L('Как вас зовут?') : L('Как тебя зовут?')} text={teacher ? L('Фамилия нужна, чтобы найти ваши пары в РУЗ.') : L('Для приветствия и титульных листов.')} />
+                  <Appear delay={0.08}><Input label={L("Имя")} value={first} onChange={setFirst} autoFocus placeholder={L("Кирилл")} /></Appear>
                   {(showMore || teacher) ? (
                     <>
-                      <Appear delay={0.12}><Input label="Фамилия" value={last} onChange={setLast} placeholder="Иванов" /></Appear>
-                      <Appear delay={0.16}><Input label="Отчество" value={middle} onChange={setMiddle} placeholder="Иванович" /></Appear>
+                      <Appear delay={0.12}><Input label={L("Фамилия")} value={last} onChange={setLast} placeholder={L("Иванов")} /></Appear>
+                      <Appear delay={0.16}><Input label={L("Отчество")} value={middle} onChange={setMiddle} placeholder={L("Иванович")} /></Appear>
                     </>
-                  ) : <button className="btn ghost" onClick={() => setShowMore(true)}><Plus size={15} /> Фамилия и отчество — для титульников</button>}
-                  <div className="tiny faint mt16">Всё хранится только на твоём компьютере.</div>
+                  ) : <button className="btn ghost" onClick={() => setShowMore(true)}><Plus size={15} /> {L("Фамилия и отчество — для титульников")}</button>}
+                  <div className="tiny faint mt16">{L("Всё хранится только на твоём компьютере.")}</div>
                 </>
               )}
 
               {step === 2 && (
                 <>
-                  <Header title={teacher ? 'Где вы преподаёте' : 'Твоя высшая школа'} text="Выбери школу — оттуда подтянется список групп." />
+                  <Header title={teacher ? L('Где вы преподаёте') : L('Твоя высшая школа')} text={L("Выбери школу — оттуда подтянется список групп.")} />
                   <div className="grid g2">
                     {SCHOOLS.map((s, i) => {
                       const on = school?.id === s.id
@@ -265,23 +268,23 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
 
               {step === 3 && !teacher && (
                 <>
-                  <Header title="Твоя группа" text={school ? `${school.short}: выбери группу — расписание подтянется само.` : ''} />
+                  <Header title={L("Твоя группа")} text={school ? L`${school.short}: выбери группу — расписание подтянется само.` : ''} />
                   {!manualMode ? (
                     <>
                       <div className="row mb12">
                         <div className="row grow" style={{ padding: '0 12px', borderRadius: 12, background: 'var(--fill)', border: '1px solid var(--line2)' }}>
                           <Search size={16} className="faint" />
-                          <input className="input" style={{ border: 'none', background: 'none', boxShadow: 'none' }} placeholder="Номер или направление" value={query} onChange={e => setQuery(e.target.value)} autoFocus />
+                          <input className="input" style={{ border: 'none', background: 'none', boxShadow: 'none' }} placeholder={L("Номер или направление")} value={query} onChange={e => setQuery(e.target.value)} autoFocus />
                         </div>
-                        <button className="btn icon" onClick={() => loadList(true)} title="Обновить список"><RefreshCw size={16} className={loading ? 'spin' : ''} /></button>
+                        <button className="btn icon" onClick={() => loadList(true)} title={L("Обновить список")}><RefreshCw size={16} className={loading ? 'spin' : ''} /></button>
                       </div>
                       {courses.length > 1 && (
                         <div className="row wrap-row gap6 mb12">
-                          <button className={`chip ${course == null ? 'on' : ''}`} onClick={() => setCourse(null)}>Все курсы</button>
-                          {courses.map(c => <button key={c} className={`chip ${course === c ? 'on' : ''}`} onClick={() => setCourse(c)}>{c} курс</button>)}
+                          <button className={`chip ${course == null ? 'on' : ''}`} onClick={() => setCourse(null)}>{L("Все курсы")}</button>
+                          {courses.map(c => <button key={c} className={`chip ${course === c ? 'on' : ''}`} onClick={() => setCourse(c)}>{c} {L("курс")}</button>)}
                         </div>
                       )}
-                      {loading && <div className="col gap8">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 54 }} />)}<div className="sub tc">Загружаю группы из РУЗ…</div></div>}
+                      {loading && <div className="col gap8">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 54 }} />)}<div className="sub tc">{L("Загружаю группы из РУЗ…")}</div></div>}
                       {groupsError && <div className="row" style={{ padding: 14, borderRadius: 14, background: 'rgba(245,158,11,.12)', color: '#f59e0b' }}><AlertCircle size={18} />{groupsError}</div>}
                       <div className="col gap6">
                         {filtered.slice(0, 120).map((g, i) => {
@@ -291,20 +294,20 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                               onClick={() => setPicked(g)} className="row" whileHover={{ x: 3 }}
                               style={{ padding: '11px 14px', borderRadius: 14, cursor: 'pointer', background: on ? 'rgba(var(--brand-rgb), .16)' : 'var(--fill)', border: `1.5px solid ${on ? 'var(--brand)' : 'transparent'}` }}>
                               <div className="heavy mono" style={{ width: 80, fontSize: '1.05rem' }}>{g.number}</div>
-                              <div className="grow small muted ellipsis">{g.title || 'Направление не указано'}</div>
-                              {g.course && <span className="pill">{g.course} курс</span>}
+                              <div className="grow small muted ellipsis">{g.title || L('Направление не указано')}</div>
+                              {g.course && <span className="pill">{g.course} {L("курс")}</span>}
                               {on && <Check size={18} color="var(--brand)" />}
                             </motion.div>
                           )
                         })}
                       </div>
-                      <button className="btn ghost mt12" onClick={() => setManualMode(true)}><Keyboard size={15} /> Нет в списке — ввести номер</button>
+                      <button className="btn ghost mt12" onClick={() => setManualMode(true)}><Keyboard size={15} /> {L("Нет в списке — ввести номер")}</button>
                     </>
                   ) : (
                     <>
-                      <Input label="Номер группы" value={manual} onChange={setManual} autoFocus placeholder="151621" />
-                      <div className="tiny faint">Номер группы — на студенческом или в РУЗ. Приложение найдёт её само, даже если она в другой высшей школе.</div>
-                      <button className="btn ghost mt12" onClick={() => setManualMode(false)}>Выбрать из списка</button>
+                      <Input label={L("Номер группы")} value={manual} onChange={setManual} autoFocus placeholder="151621" />
+                      <div className="tiny faint">{L("Номер группы — на студенческом или в РУЗ. Приложение найдёт её само, даже если она в другой высшей школе.")}</div>
+                      <button className="btn ghost mt12" onClick={() => setManualMode(false)}>{L("Выбрать из списка")}</button>
                     </>
                   )}
                 </>
@@ -312,28 +315,28 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
 
               {step === 3 && teacher && (
                 <>
-                  <Header title="Как вы записаны в РУЗ" text="Обычно «Фамилия И.О.». Найду все ваши пары во всех группах САФУ." />
-                  <Input label="Фамилия и инициалы" value={teacherQuery} onChange={setTeacherQuery} autoFocus placeholder="Иванов И.И." />
-                  <div className="tiny faint">Если фамилия с инициалами не находится — оставьте только фамилию.</div>
+                  <Header title={L("Как вы записаны в РУЗ")} text={L("Обычно «Фамилия И.О.». Найду все ваши пары во всех группах САФУ.")} />
+                  <Input label={L("Фамилия и инициалы")} value={teacherQuery} onChange={setTeacherQuery} autoFocus placeholder={L("Иванов И.И.")} />
+                  <div className="tiny faint">{L("Если фамилия с инициалами не находится — оставьте только фамилию.")}</div>
                   <div className="row mt16" style={{ padding: 14, borderRadius: 14, background: 'rgba(245,158,11,.1)' }}><AlertCircle size={18} color="#f59e0b" /><span className="small">{teacherMode.betaNote}</span></div>
                 </>
               )}
 
               {step === 4 && (
                 <>
-                  <Header title="Роль и дорога" text="Можно поменять потом в Профиле." />
-                  <div className="bold mb8">Кто ты в группе</div>
+                  <Header title={L("Роль и дорога")} text={L("Можно поменять потом в Профиле.")} />
+                  <div className="bold mb8">{L("Кто ты в группе")}</div>
                   <div className="grid g3 mb8">
-                    {[[0, 'Студент', User], [1, 'Староста', Star], [2, 'Зам', StarHalf]].map(([r, t, I]: any) => (
+                    {[[0, L('Студент'), User], [1, L('Староста'), Star], [2, L('Зам'), StarHalf]].map(([r, t, I]: any) => (
                       <motion.div key={r} onClick={() => setRole(r)} whileTap={{ scale: 0.95 }} className="col" style={{ alignItems: 'center', gap: 6, padding: 16, borderRadius: 18, cursor: 'pointer', background: role === r ? 'var(--grad)' : 'var(--fill)', color: role === r ? '#fff' : undefined }}>
                         <I size={20} /><span className="bold small">{t}</span>
                       </motion.div>
                     ))}
                   </div>
-                  <div className="tiny muted mb16">{role === 0 ? 'Всё для учёбы: пары, файлы, оценки.' : 'Откроется «Посещаемость»: отметки ребят на каждой паре и рассылка группе.'}</div>
-                  <div className="bold mb8">Как добираешься</div>
-                  <Option on={!farAway} title="Живу рядом" text="Хожу пешком или езжу по городу" Icon={Footprints} onClick={() => setFarAway(false)} />
-                  <Option on={farAway} title="Езжу на автобусе" text="Выбери свой — подскажу, когда выезжать, чтобы успеть к паре" Icon={Bus} onClick={() => setFarAway(true)} />
+                  <div className="tiny muted mb16">{role === 0 ? L('Всё для учёбы: пары, файлы, оценки.') : L('Откроется «Посещаемость»: отметки ребят на каждой паре и рассылка группе.')}</div>
+                  <div className="bold mb8">{L("Как добираешься")}</div>
+                  <Option on={!farAway} title={L("Живу рядом")} text={L("Хожу пешком или езжу по городу")} Icon={Footprints} onClick={() => setFarAway(false)} />
+                  <Option on={farAway} title={L("Езжу на автобусе")} text={L("Выбери свой — подскажу, когда выезжать, чтобы успеть к паре")} Icon={Bus} onClick={() => setFarAway(true)} />
                   <AnimatePresence>
                     {farAway && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="col gap8 mt8">
@@ -342,7 +345,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                           return (
                             <div key={r.id} className="row" onClick={() => { bus.activate(r.id); setActiveBus(r.id) }} style={{ padding: 10, borderRadius: 16, background: 'var(--fill)', cursor: 'pointer', border: `1.5px solid ${on ? 'var(--brand)' : 'transparent'}` }}>
                               <div className="icon-tile heavy" style={{ width: 50, height: 40, borderRadius: 11, background: '#' + r.colorHex }}>{r.number || '?'}</div>
-                              <div className="grow"><div className="bold small">{routeText(r)}</div><div className="tiny muted">в пути {r.travelMinutes} мин</div></div>
+                              <div className="grow"><div className="bold small">{routeText(r)}</div><div className="tiny muted">{L("в пути")} {r.travelMinutes} {L("мин")}</div></div>
                               {on ? <Check size={18} color="var(--brand)" /> : <Circle size={18} className="faint" />}
                             </div>
                           )
@@ -351,10 +354,10 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                           <button className="btn grow" onClick={async () => {
                             const t = await safu.clipboard.read()
                             const r = fromShareCode(t)
-                            if (r) { bus.upsert(r); bus.activate(r.id); setActiveBus(r.id); toast(`Автобус ${r.number} добавлен и выбран`) }
-                            else alertDialog('Автобус', 'В буфере нет кода автобуса. Попроси одногруппника нажать «Поделиться» в его автобусе и скопируй код.')
-                          }}><ClipboardPaste size={15} /> Код от друга</button>
-                          <button className="btn grow" onClick={() => { const r = { ...newRoute(), number: 'Свой' }; bus.upsert(r); toast('Маршрут добавлен — настрой его в «Дороге» после регистрации', 'info') }}><Plus size={15} /> Свой автобус</button>
+                            if (r) { bus.upsert(r); bus.activate(r.id); setActiveBus(r.id); toast(L`Автобус ${r.number} добавлен и выбран`) }
+                            else alertDialog(L('Автобус'), L('В буфере нет кода автобуса. Попроси одногруппника нажать «Поделиться» в его автобусе и скопируй код.'))
+                          }}><ClipboardPaste size={15} /> {L("Код от друга")}</button>
+                          <button className="btn grow" onClick={() => { const r = { ...newRoute(), number: L('Свой') }; bus.upsert(r); toast(L('Маршрут добавлен — настрой его в «Дороге» после регистрации'), 'info') }}><Plus size={15} /> {L("Свой автобус")}</button>
                         </div>
                       </motion.div>
                     )}
@@ -364,8 +367,8 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
 
               {step === 5 && (
                 <>
-                  <Header title={finished ? `Готово, ${first.trim()}! 🎉` : 'Настраиваю всё…'}
-                    text={finished ? (teacher ? 'Ваше расписание собрано из РУЗ.' : `Приложение настроено под группу ${groupNumber}.`) : teacher ? 'Просматриваю расписания всех групп САФУ — несколько минут, ваша школа первой.' : 'Это займёт несколько секунд.'} />
+                  <Header title={finished ? L`Готово, ${first.trim()}! 🎉` : L('Настраиваю всё…')}
+                    text={finished ? (teacher ? L('Ваше расписание собрано из РУЗ.') : L`Приложение настроено под группу ${groupNumber}.`) : teacher ? L('Просматриваю расписания всех групп САФУ — несколько минут, ваша школа первой.') : L('Это займёт несколько секунд.')} />
                   <div className="card" style={{ padding: '6px 18px' }}>
                     {tasks.map((t, i) => (
                       <motion.div key={t.id} className="row top" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} style={{ padding: '12px 0', borderBottom: i < tasks.length - 1 ? '1px solid var(--line)' : 'none' }}>
@@ -382,9 +385,9 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                   </div>
                   {finished && next && (
                     <motion.div className="card mt16" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                      <div className="tiny heavy" style={{ color: 'var(--brand)' }}>БЛИЖАЙШАЯ ПАРА</div>
+                      <div className="tiny heavy" style={{ color: 'var(--brand)' }}>{L("БЛИЖАЙШАЯ ПАРА")}</div>
                       <div className="h-card mt4">{next.subject}</div>
-                      <div className="sub cap">{fullDay(next.start)}, {hm(next.start)}{next.room ? ` · ауд. ${next.room}` : ''}</div>
+                      <div className="sub cap">{fullDay(next.start)}, {hm(next.start)}{next.room ? L` · ауд. ${next.room}` : ''}</div>
                     </motion.div>
                   )}
                 </>
@@ -399,7 +402,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
           <motion.button className="btn primary lg block" disabled={!canContinue} style={{ opacity: step === 5 && !finished ? 0 : 1, height: 54, fontSize: '1.05rem' }}
             whileHover={{ scale: canContinue ? 1.01 : 1 }} whileTap={{ scale: 0.97 }}
             onClick={() => step === 5 ? onDone() : go(1)}>
-            {step === 0 ? 'Начать' : step === 4 ? 'Настроить всё' : step === 5 ? 'Поехали 🚀' : 'Дальше'}
+            {step === 0 ? L('Начать') : step === 4 ? L('Настроить всё') : step === 5 ? L('Поехали 🚀') : L('Дальше')}
           </motion.button>
         </div>
       </div>

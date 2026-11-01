@@ -25,18 +25,19 @@ import { safu } from '../lib/bridge'
 import { mapsURL } from '../lib/maps'
 import { celebrations } from '../fx/Celebrations'
 
+import { L } from '../lib/i18n'
 export const HOME_SECTIONS: { id: string; title: string }[] = [
-  { id: 'now', title: 'Сейчас / следующая пара' },
-  { id: 'quick', title: 'Быстрые кнопки сайтов' },
-  { id: 'homework', title: 'Домашка' },
-  { id: 'weather', title: 'Погода и что надеть' },
-  { id: 'commute', title: 'Дорога (мой автобус)' },
-  { id: 'session', title: 'Отсчёт до сессии' },
-  { id: 'today', title: 'Неделя и дедлайны' },
-  { id: 'tools', title: 'Инструменты' },
-  { id: 'recents', title: 'Недавние сайты' },
-  { id: 'sites', title: 'Все сайты' },
-  { id: 'teacher', title: 'Преподавателю' }
+  { id: 'now', title: L('Сейчас / следующая пара') },
+  { id: 'quick', title: L('Быстрые кнопки сайтов') },
+  { id: 'homework', title: L('Домашка') },
+  { id: 'weather', title: L('Погода и что надеть') },
+  { id: 'commute', title: L('Дорога (мой автобус)') },
+  { id: 'session', title: L('Отсчёт до сессии') },
+  { id: 'today', title: L('Неделя и дедлайны') },
+  { id: 'tools', title: L('Инструменты') },
+  { id: 'recents', title: L('Недавние сайты') },
+  { id: 'sites', title: L('Все сайты') },
+  { id: 'teacher', title: L('Преподавателю') }
 ]
 const cap = (s: string) => s ? s[0].toUpperCase() + s.slice(1) : s
 
@@ -79,7 +80,7 @@ export default function Home() {
               default: return null
             }
           })}
-          {!sections.length && <Empty emoji="🏠" title="Главная пустая" text="Добавь блоки в настройках главной" action={<button className="btn primary" onClick={() => go('customize')}>Настроить главную</button>} />}
+          {!sections.length && <Empty emoji="🏠" title={L("Главная пустая")} text={L("Добавь блоки в настройках главной")} action={<button className="btn primary" onClick={() => go('customize')}>{L("Настроить главную")}</button>} />}
         </div>
         {side.length > 0 && (
           <div className="col gap14">
@@ -88,7 +89,7 @@ export default function Home() {
         )}
       </div>
       <div className="row mt24" style={{ justifyContent: 'center' }}>
-        <button className="btn ghost sm" onClick={() => go('customize')}><Settings2 size={15} /> Настроить главную</button>
+        <button className="btn ghost sm" onClick={() => go('customize')}><Settings2 size={15} /> {L("Настроить главную")}</button>
       </div>
     </>
   )
@@ -102,18 +103,18 @@ function Hero({ name, week, syncing }: { name: string; week: number | null; sync
   return (
     <div className="row top fall-in" style={{ margin: '12px 4px 18px' }}>
       <div className="grow">
-        <div className="muted" style={{ fontSize: '.95rem' }}>{cap(fullDay(Date.now()))}{week ? ` · ${week}-я учебная неделя` : ''}</div>
+        <div className="muted" style={{ fontSize: '.95rem' }}>{cap(fullDay(Date.now()))}{week ? L` · ${week}-я учебная неделя` : ''}</div>
         <h1 className="h-page" style={{ marginTop: 4 }}>
           {greeting()}{name ? ', ' : ''}<span className="grad-text">{name}</span>
           <span className="wave" style={{ marginLeft: 10 }}>👋</span>
         </h1>
         <div className="muted" style={{ marginTop: 6 }}>
-          {today.length === 0 ? 'Сегодня пар нет — отдыхай 😌' : left === 0 ? 'Пары на сегодня закончились 🎉' : `Сегодня ${today.length} ${plural(today.length, 'пара', 'пары', 'пар')}, осталось ${left}`}
+          {today.length === 0 ? L('Сегодня пар нет — отдыхай 😌') : left === 0 ? L('Пары на сегодня закончились 🎉') : L`Сегодня ${today.length} ${plural(today.length, L('пара'), L('пары'), L('пар'))}, осталось ${left}`}
         </div>
       </div>
       {usesRuz(data) && (
         <button className="btn sm" onClick={() => scheduleStore.sync(true)} title={msg || ''}>
-          <RefreshCw size={14} className={syncing ? 'spin' : ''} /> {syncing ? 'Обновляю…' : scheduleStore.lastSyncText()}
+          <RefreshCw size={14} className={syncing ? 'spin' : ''} /> {syncing ? L('Обновляю…') : scheduleStore.lastSyncText()}
         </button>
       )}
     </div>
@@ -131,7 +132,7 @@ function QuickSites() {
     <div className="grid" style={{ gridTemplateColumns: `repeat(${quick.length + 1}, minmax(0, 1fr))`, gap: 12 }}>
       {quick.map((r, i) => (
         <div key={r.id} className="card hover press tight row rise-in hov-up tap" style={{ gap: 12, padding: '12px 14px', animationDelay: `${i * 0.05}s` }} onClick={() => openSite(r)}
-          onContextMenu={e => openMenu(e, [{ label: 'Открыть с главной страницы', run: () => openSite(r, { fresh: true }) }, { label: 'Открыть в браузере', run: () => safu.shell.open(r.url) }, { label: 'Выбрать кнопки…', run: () => go('customize') }])}>
+          onContextMenu={e => openMenu(e, [{ label: L('Открыть с главной страницы'), run: () => openSite(r, { fresh: true }) }, { label: L('Открыть в браузере'), run: () => safu.shell.open(r.url) }, { label: L('Выбрать кнопки…'), run: () => go('customize') }])}>
           <div className="icon-tile wiggle" style={{ width: 42, height: 42, borderRadius: 13, background: siteColor(r.url, r.title), position: 'relative' }}>
             <SiteGlyph icon={r.icon} size={20} />
             {mailOn && unseen > 0 && r.url.includes('edu.narfu') && (
@@ -139,8 +140,8 @@ function QuickSites() {
             )}
           </div>
           <div className="grow">
-            <div className="bold ellipsis">{r.title}</div>
-            <div className="tiny muted ellipsis">{r.subtitle}</div>
+            <div className="bold ellipsis">{L(r.title)}</div>
+            <div className="tiny muted ellipsis">{L(r.subtitle)}</div>
           </div>
         </div>
       ))}
@@ -151,8 +152,8 @@ function QuickSites() {
           <SiteGlyph icon="books.vertical.fill" size={20} />
         </div>
         <div className="grow">
-          <div className="bold ellipsis">Библиотеки</div>
-          <div className="tiny muted ellipsis">Знаниум, Лань, Юрайт…</div>
+          <div className="bold ellipsis">{L("Библиотеки")}</div>
+          <div className="tiny muted ellipsis">{L("Знаниум, Лань, Юрайт…")}</div>
         </div>
       </div>
     </div>
@@ -162,13 +163,13 @@ function QuickSites() {
           transition={{ type: 'spring', stiffness: 320, damping: 32 }} style={{ overflow: 'hidden' }}>
           <Card style={{ padding: 18 }}>
             <div className="row mb12" style={{ alignItems: 'baseline', gap: 10 }}>
-              <div className="h-card">Библиотеки</div>
-              <div className="tiny muted grow">ЭБС для студентов САФУ</div>
+              <div className="h-card">{L("Библиотеки")}</div>
+              <div className="tiny muted grow">{L("ЭБС для студентов САФУ")}</div>
             </div>
             <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10 }}>
               {LIBRARIES.map(l => (
                 <div key={l.url} className="card hover press tight row hov-up tap" style={{ gap: 10, padding: '10px 12px' }} onClick={() => openSite({ title: l.title, url: l.url, icon: l.icon })}
-                  onContextMenu={e => openMenu(e, [{ label: 'Открыть в браузере', run: () => safu.shell.open(l.url) }])}>
+                  onContextMenu={e => openMenu(e, [{ label: L('Открыть в браузере'), run: () => safu.shell.open(l.url) }])}>
                   <div className="icon-tile" style={{ width: 36, height: 36, borderRadius: 11, background: 'var(--grad)' }}><SiteGlyph icon={l.icon} size={17} /></div>
                   <div className="grow" style={{ minWidth: 0 }}>
                     <div className="bold ellipsis">{l.title}</div>
@@ -177,7 +178,7 @@ function QuickSites() {
                 </div>
               ))}
             </div>
-            <div className="tiny faint mt12">Подписку на ЭБС оплачивает университет: зарегистрируйся в нужной библиотеке из сети САФУ — потом вход по своему логину работает и из дома. Что подключено сейчас — на сайте «Библиотека САФУ».</div>
+            <div className="tiny faint mt12">{L("Подписку на ЭБС оплачивает университет: зарегистрируйся в нужной библиотеке из сети САФУ — потом вход по своему логину работает и из дома. Что подключено сейчас — на сайте «Библиотека САФУ».")}</div>
           </Card>
         </motion.div>
       )}
@@ -196,14 +197,14 @@ function NowCard() {
     return (
       <Card className="col" style={{ justifyContent: 'center', minHeight: 230 }}>
         <div style={{ fontSize: '2.4rem' }}>📅</div>
-        <div className="h-card">Какая сейчас пара?</div>
-        <div className="sub">Подключи расписание из РУЗ, и здесь будет текущая пара, аудитория и адрес</div>
-        <div><button className="btn primary mt8" onClick={() => go('schedule')}>Подключить расписание</button></div>
+        <div className="h-card">{L("Какая сейчас пара?")}</div>
+        <div className="sub">{L("Подключи расписание из РУЗ, и здесь будет текущая пара, аудитория и адрес")}</div>
+        <div><button className="btn primary mt8" onClick={() => go('schedule')}>{L("Подключить расписание")}</button></div>
       </Card>
     )
   }
   if (!s) {
-    return <Card className="center" style={{ minHeight: 230 }}><Empty emoji="🏖️" title="На ближайшую неделю пар нет" text="Можно выдохнуть. Расписание обновится само." /></Card>
+    return <Card className="center" style={{ minHeight: 230 }}><Empty emoji="🏖️" title={L("На ближайшую неделю пар нет")} text={L("Можно выдохнуть. Расписание обновится само.")} /></Card>
   }
   const st = kindStyle(s.kind)
   const live = !!current
@@ -211,7 +212,7 @@ function NowCard() {
   const progress = live ? (now - s.start) / total : 0
   const after = live ? next : nowAndNext(s.start + 60_000, data).next
   const sameDayAfter = after && startOfDay(after.start) === startOfDay(s.start) ? after : null
-  const dayLabel = live ? 'Сейчас идёт' : isToday(s.start) ? 'Следующая пара' : `${relDay(s.start)[0].toUpperCase()}${relDay(s.start).slice(1)}`
+  const dayLabel = live ? L('Сейчас идёт') : isToday(s.start) ? L('Следующая пара') : `${relDay(s.start)[0].toUpperCase()}${relDay(s.start).slice(1)}`
   const left = live ? s.end - now : s.start - now
 
   return (
@@ -226,25 +227,25 @@ function NowCard() {
               {live ? <span className="live-dot" /> : <Clock size={14} color="var(--brand)" />}
               <span className="tiny heavy" style={{ textTransform: 'uppercase', letterSpacing: '.08em', color: live ? '#22c55e' : 'var(--brand)' }}>{dayLabel}</span>
               <KindBadge kind={s.kind} size="md" />
-              {s.pair > 0 && <span className="pill">{s.pair}-я пара</span>}
+              {s.pair > 0 && <span className="pill">{L`${s.pair}-я пара`}</span>}
             </div>
             <div className="clickable" onClick={() => openSubject(s.subject)} style={{ fontSize: '1.7rem', fontWeight: 850, lineHeight: 1.15, margin: '12px 0 10px', letterSpacing: '-.02em' }}>{s.subject}</div>
             <div className="col gap6 muted">
               <div className="row gap8"><Clock size={15} /> {hm(s.start)}–{hm(s.end)}</div>
-              {(s.room || s.address) && <div className="row gap8"><MapPin size={15} /> <span>{s.room && <b style={{ color: 'var(--text)' }}>ауд. {s.room}</b>}{s.room && s.address ? ' · ' : ''}{s.address}</span></div>}
+              {(s.room || s.address) && <div className="row gap8"><MapPin size={15} /> <span>{s.room && <b style={{ color: 'var(--text)' }}>{L("ауд.")} {s.room}</b>}{s.room && s.address ? ' · ' : ''}{s.address}</span></div>}
               {s.teacher && <div className="row gap8"><User size={15} /> {s.teacher}</div>}
             </div>
             <div className="row gap8 mt16">
-              {s.address && !s.remote && <button className="btn sm" onClick={() => safu.shell.open(mapsURL(s.address))}><MapPin size={14} /> На карте</button>}
-              <button className="btn sm" onClick={() => openHomeworkEditor({ subject: s.subject, slotStart: s.start })}><BookMarked size={14} /> Записать ДЗ</button>
-              <button className="btn sm ghost" onClick={() => useModals.getState().set({ lesson: s })}>Подробнее <ChevronRight size={14} /></button>
+              {s.address && !s.remote && <button className="btn sm" onClick={() => safu.shell.open(mapsURL(s.address))}><MapPin size={14} /> {L("На карте")}</button>}
+              <button className="btn sm" onClick={() => openHomeworkEditor({ subject: s.subject, slotStart: s.start })}><BookMarked size={14} /> {L("Записать ДЗ")}</button>
+              <button className="btn sm ghost" onClick={() => useModals.getState().set({ lesson: s })}>{L("Подробнее")} <ChevronRight size={14} /></button>
             </div>
           </div>
           <div className="col" style={{ alignItems: 'center', gap: 8 }}>
             <Ring value={live ? progress : Math.max(0.02, 1 - Math.min(1, left / (3 * 3600_000)))} size={128} stroke={10} color={live ? st.color : undefined}>
               <div className="tc">
                 <LiveLeft target={live ? s.end : s.start} />
-                <div className="tiny muted">{live ? 'до конца' : 'до начала'}</div>
+                <div className="tiny muted">{live ? L('до конца') : L('до начала')}</div>
               </div>
             </Ring>
           </div>
@@ -253,9 +254,9 @@ function NowCard() {
       {live && <div className="mt16"><Progress value={progress} /></div>}
       {sameDayAfter && (
         <div className="row sub mt12" style={{ paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-          <span className="faint">Потом</span>
+          <span className="faint">{L("Потом")}</span>
           <span className="bold ellipsis" style={{ color: 'var(--text)' }}>{sameDayAfter.subject}</span>
-          <span>{hm(sameDayAfter.start)}{sameDayAfter.room ? ` · ауд. ${sameDayAfter.room}` : ''}</span>
+          <span>{hm(sameDayAfter.start)}{sameDayAfter.room ? L` · ауд. ${sameDayAfter.room}` : ''}</span>
         </div>
       )}
     </Card>
@@ -280,10 +281,10 @@ function DayTimeline({ now }: { now: number }) {
   return (
     <Card delay={0.05} className="col" style={{ gap: 10 }}>
       <div className="row">
-        <div className="h-card grow">{isToday(day) ? 'Сегодня' : cap(relDay(day))}</div>
-        <button className="btn sm ghost" onClick={() => go('schedule')}>Все пары <ChevronRight size={14} /></button>
+        <div className="h-card grow">{isToday(day) ? L('Сегодня') : cap(relDay(day))}</div>
+        <button className="btn sm ghost" onClick={() => go('schedule')}>{L("Все пары")} <ChevronRight size={14} /></button>
       </div>
-      {!list.length && <div className="sub">Пар нет</div>}
+      {!list.length && <div className="sub">{L("Пар нет")}</div>}
       <div className="col gap8" style={{ maxHeight: 340, overflowY: 'auto', margin: '0 -4px', padding: '0 4px' }}>
         {groupParallel(list).map(g => <SlotRow key={g.slot.key} s={g.slot} alts={g.alts} now={now} compact />)}
       </div>
@@ -300,13 +301,13 @@ function HomeworkCard({ delay }: { delay: number }) {
       <div className="row mb12">
         <div className="icon-tile" style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}><BookMarked size={17} /></div>
         <div className="grow">
-          <div className="h-card">Домашка</div>
-          <div className="tiny muted">{active.length ? `${active.length} ${plural(active.length, 'задание', 'задания', 'заданий')} · за неделю сделано ${stats.done} из ${stats.total}` : 'Всё сделано'}</div>
+          <div className="h-card">{L("Домашка")}</div>
+          <div className="tiny muted">{active.length ? L`${active.length} ${plural(active.length, L('задание'), L('задания'), L('заданий'))} · за неделю сделано ${stats.done} из ${stats.total}` : L('Всё сделано')}</div>
         </div>
-        <button className="btn sm primary" onClick={() => openHomeworkEditor({})}><Plus size={14} /> Записать</button>
+        <button className="btn sm primary" onClick={() => openHomeworkEditor({})}><Plus size={14} /> {L("Записать")}</button>
         <button className="btn sm ghost" onClick={() => go('homework')}><ChevronRight size={16} /></button>
       </div>
-      {!active.length && <div className="row sub" style={{ padding: '6px 2px' }}><Coffee size={16} /> Дедлайнов нет, можно выдохнуть</div>}
+      {!active.length && <div className="row sub" style={{ padding: '6px 2px' }}><Coffee size={16} /> {L("Дедлайнов нет, можно выдохнуть")}</div>}
       <div className="col gap6">
         <AnimatePresence initial={false}>
           {active.slice(0, 5).map(h => (
@@ -339,13 +340,13 @@ function WeekCard({ delay }: { delay: number }) {
     <Card delay={delay}>
       <div className="row mb12">
         <div className="icon-tile" style={{ background: 'linear-gradient(135deg,#6366f1,#06b6d4)' }}><Clock size={17} /></div>
-        <div className="h-card grow">Неделя и дедлайны</div>
-        <span className="sub">{counts.reduce((a, b) => a + b, 0)} пар за 7 дней</span>
+        <div className="h-card grow">{L("Неделя и дедлайны")}</div>
+        <span className="sub">{counts.reduce((a, b) => a + b, 0)} {L("пар за 7 дней")}</span>
       </div>
       <div className="row" style={{ alignItems: 'flex-end', gap: 10, height: 130 }}>
         {days.map((d, i) => (
           <div key={d} className="col grow clickable" style={{ alignItems: 'center', gap: 6 }} onClick={() => go('schedule', { day: d })}>
-            <div className="tiny bold" style={{ color: deadlines[i] ? '#f59e0b' : 'transparent' }}>{deadlines[i] ? `ДЗ ${deadlines[i]}` : '·'}</div>
+            <div className="tiny bold" style={{ color: deadlines[i] ? '#f59e0b' : 'transparent' }}>{deadlines[i] ? L`ДЗ ${deadlines[i]}` : '·'}</div>
             <div style={{ position: 'relative', width: '100%', maxWidth: 40, height: (counts[i] / max) * 80 + 4 }}>
               <div style={{
                 position: 'absolute', inset: 0, borderRadius: 10, background: i === 0 ? 'var(--grad)' : 'var(--fill2)', boxShadow: i === 0 ? '0 6px 18px rgba(var(--brand-rgb),.4)' : undefined,
@@ -368,8 +369,8 @@ function ToolsCard({ delay }: { delay: number }) {
   return (
     <Card delay={delay}>
       <div className="row mb12">
-        <div className="h-card grow">Инструменты</div>
-        <button className="btn sm ghost" onClick={() => go('tools')}>Все <ChevronRight size={14} /></button>
+        <div className="h-card grow">{L("Инструменты")}</div>
+        <button className="btn sm ghost" onClick={() => go('tools')}>{L("Все")} <ChevronRight size={14} /></button>
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
         {list.map((t, i) => (
@@ -389,19 +390,19 @@ function SitesCard({ delay }: { delay: number }) {
   return (
     <Card delay={delay}>
       <div className="row mb12">
-        <div className="h-card grow">Сайты университета</div>
-        <button className="btn sm ghost" onClick={() => go('profile', { section: 'sites' })}>Изменить</button>
+        <div className="h-card grow">{L("Сайты университета")}</div>
+        <button className="btn sm ghost" onClick={() => go('profile', { section: 'sites' })}>{L("Изменить")}</button>
       </div>
       {cats.map(c => (
         <div key={c} className="mb12">
-          <div className="tiny faint bold mb8" style={{ textTransform: 'uppercase', letterSpacing: '.06em' }}>{c}</div>
+          <div className="tiny faint bold mb8" style={{ textTransform: 'uppercase', letterSpacing: '.06em' }}>{L(c)}</div>
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 8 }}>
             {list.filter(r => r.category === c).map(r => (
               <div key={r.id} className="row hov-right" onClick={() => openSite(r)}
-                onContextMenu={e => openMenu(e, [{ label: 'Открыть в браузере', run: () => safu.shell.open(r.url) }, { label: r.pinned ? 'Открепить' : 'Закрепить', run: () => resources.togglePin(r.id) }])}
+                onContextMenu={e => openMenu(e, [{ label: L('Открыть в браузере'), run: () => safu.shell.open(r.url) }, { label: r.pinned ? L('Открепить') : L('Закрепить'), run: () => resources.togglePin(r.id) }])}
                 style={{ padding: 8, borderRadius: 12, cursor: 'pointer', background: 'var(--fill)', gap: 10 }}>
                 <div className="icon-tile" style={{ width: 30, height: 30, borderRadius: 9, background: siteColor(r.url, r.title) }}><SiteGlyph icon={r.icon} size={15} /></div>
-                <div className="grow"><div className="bold small ellipsis">{r.title}</div><div className="tiny muted ellipsis">{r.subtitle}</div></div>
+                <div className="grow"><div className="bold small ellipsis">{L(r.title)}</div><div className="tiny muted ellipsis">{L(r.subtitle)}</div></div>
               </div>
             ))}
           </div>
@@ -417,9 +418,9 @@ function RecentsCard() {
   if (!list.length) return null
   return (
     <Card>
-      <div className="h-card mb12">Недавние сайты</div>
+      <div className="h-card mb12">{L("Недавние сайты")}</div>
       <div className="row wrap-row gap8">
-        {list.map(r => <button key={r.id} className="chip" onClick={() => openSite(r)}><SiteGlyph icon={r.icon} size={14} />{r.title}</button>)}
+        {list.map(r => <button key={r.id} className="chip" onClick={() => openSite(r)}><SiteGlyph icon={r.icon} size={14} />{L(r.title)}</button>)}
       </div>
     </Card>
   )
@@ -430,7 +431,7 @@ function WeatherCard({ delay }: { delay: number }) {
   const city = weather.city()
   const now = weather.hourAt(Date.now(), hours)
   if (!now) {
-    return <Card delay={delay}><div className="h-card">Погода</div><div className="sub mt8">{loading ? 'Загружаю прогноз…' : 'Нет прогноза — проверь интернет'}</div></Card>
+    return <Card delay={delay}><div className="h-card">{L("Погода")}</div><div className="sub mt8">{loading ? L('Загружаю прогноз…') : L('Нет прогноза — проверь интернет')}</div></Card>
   }
   const soon = hours.filter(h => h.time > Date.now() && h.time < Date.now() + 8 * 3600_000)
   const strip = hours.filter(h => h.time > Date.now() - 3600_000).slice(0, 12)
@@ -441,8 +442,8 @@ function WeatherCard({ delay }: { delay: number }) {
         <div className="bob" style={{ fontSize: '3rem' }}>{weatherEmoji(now.code)}</div>
         <div className="grow">
           <div style={{ fontSize: '2.3rem', fontWeight: 850, lineHeight: 1 }}>{deg(now.temp)}</div>
-          <div className="sub">{sky(now.code)} · ощущается {deg(now.feels)}</div>
-          <div className="tiny faint row gap4"><Wind size={11} /> {Math.round(now.wind)} м/с · {city === 'severodvinsk' ? 'Северодвинск' : 'Архангельск'}</div>
+          <div className="sub">{sky(now.code)} {L("· ощущается")} {deg(now.feels)}</div>
+          <div className="tiny faint row gap4"><Wind size={11} /> {Math.round(now.wind)} {L("м/с ·")} {city === 'severodvinsk' ? L('Северодвинск') : L('Архангельск')}</div>
         </div>
       </div>
       <div className="col gap6 mt12">
@@ -480,22 +481,22 @@ function CommuteCard({ now }: { now: number }) {
     <Card>
       <div className="row mb12">
         <div className="icon-tile heavy" style={{ background: color, width: 44 }}>{r.number || <Bus size={16} />}</div>
-        <div className="grow"><div className="h-card">Дорога</div><div className="tiny muted">{routeTitle(r)} · в пути {r.travelMinutes} мин</div></div>
+        <div className="grow"><div className="h-card">{L("Дорога")}</div><div className="tiny muted">{routeTitle(r)} {L("· в пути")} {r.travelMinutes} {L("мин")}</div></div>
         <button className="btn sm ghost" onClick={() => go('bus')}><ChevronRight size={16} /></button>
       </div>
       {morning && first ? (
         <div style={{ padding: 12, borderRadius: 14, background: `${color}1f`, border: `1px solid ${color}55` }}>
-          <div className="tiny muted">{isToday(first.start) ? 'Сегодня' : isTomorrow(first.start) ? 'Завтра' : relDay(first.start)} к паре в {hm(first.start)}</div>
+          <div className="tiny muted">{isToday(first.start) ? L('Сегодня') : isTomorrow(first.start) ? L('Завтра') : relDay(first.start)} {L("к паре в")} {hm(first.start)}</div>
           <div className="row" style={{ alignItems: 'baseline' }}>
             <span style={{ fontSize: '1.8rem', fontWeight: 850 }}>{hm(morning.departure)}</span>
-            <span className="sub">→ {hm(morning.arrival)}{r.homeStop ? ` · с ${r.homeStop}` : ''}</span>
+            <span className="sub">→ {hm(morning.arrival)}{r.homeStop ? L` · с ${r.homeStop}` : ''}</span>
           </div>
-          {morning.departure > now && <div className="tiny bold" style={{ color }}>выезд через {untilText(morning.departure - now)}</div>}
+          {morning.departure > now && <div className="tiny bold" style={{ color }}>{L("выезд через")} {untilText(morning.departure - now)}</div>}
         </div>
-      ) : <div className="sub">Пар в корпусе в ближайшие дни нет</div>}
+      ) : <div className="sub">{L("Пар в корпусе в ближайшие дни нет")}</div>}
       {home.length > 0 && (
         <div className="mt12">
-          <div className="tiny faint bold mb8">ДОМОЙ</div>
+          <div className="tiny faint bold mb8">{L("ДОМОЙ")}</div>
           <div className="row gap6">{home.map(t => <span key={t.departure} className="pill">{hm(t.departure)}</span>)}</div>
         </div>
       )}
@@ -511,14 +512,14 @@ function SessionCard() {
     <Card className="press" onClick={() => go('session')}>
       <div className="row">
         <div className="icon-tile" style={{ background: 'linear-gradient(135deg,#ef4444,#f97316)' }}><GraduationCap size={17} /></div>
-        <div className="h-card grow">Сессия</div>
+        <div className="h-card grow">{L("Сессия")}</div>
       </div>
       {next ? (
         <div className="row mt12" style={{ alignItems: 'flex-end' }}>
           <div style={{ fontSize: '2.6rem', fontWeight: 900, lineHeight: 1 }} className="grad-text"><AnimatedNumber value={daysLeft(next)} /></div>
-          <div className="grow"><div className="small muted">{plural(daysLeft(next), 'день', 'дня', 'дней')} до «{next.subject}»</div><div className="tiny faint">{next.kind} · {relDay(next.start)}</div></div>
+          <div className="grow"><div className="small muted">{plural(daysLeft(next), L('день'), L('дня'), L('дней'))} {L("до «")}{next.subject}»</div><div className="tiny faint">{L(next.kind)} · {relDay(next.start)}</div></div>
         </div>
-      ) : <div className="sub mt8">Экзаменов пока нет в РУЗ</div>}
+      ) : <div className="sub mt8">{L("Экзаменов пока нет в РУЗ")}</div>}
     </Card>
   )
 }
@@ -532,21 +533,21 @@ function TeacherCard() {
   return (
     <Card>
       <div className="row">
-        <span className="tiny heavy" style={{ color: 'var(--brand)', textTransform: 'uppercase' }}>Преподаватель</span>
-        <span className="badge" style={{ background: '#f59e0b', color: '#fff' }}>бета</span>
+        <span className="tiny heavy" style={{ color: 'var(--brand)', textTransform: 'uppercase' }}>{L("Преподаватель")}</span>
+        <span className="badge" style={{ background: '#f59e0b', color: '#fff' }}>{L("бета")}</span>
         <span className="spacer" />
         <button className="btn icon sm ghost" onClick={() => scheduleStore.sync(true)}><RefreshCw size={14} className={syncing ? 'spin' : ''} /></button>
       </div>
       <div className="grid g3 mt12">
-        {[[today, 'сегодня'], [week, 'за 7 дней'], [groups.length, 'групп']].map(([v, t]) => (
+        {[[today, L('сегодня')], [week, L('за 7 дней')], [groups.length, L('групп')]].map(([v, t]) => (
           <div key={t as string}><div className="heavy" style={{ fontSize: '1.6rem' }}><AnimatedNumber value={v as number} /></div><div className="tiny muted">{t}</div></div>
         ))}
       </div>
       <div className="row wrap-row gap6 mt12">{groups.map(g => <span key={g} className="pill mono">{g}</span>)}</div>
-      <div className="tiny faint mt12">В разработке: пары из РУЗ могут быть неполными</div>
+      <div className="tiny faint mt12">{L("В разработке: пары из РУЗ могут быть неполными")}</div>
       <div className="row mt12">
-        <button className="btn sm grow" onClick={() => go('attendance')}>Посещаемость</button>
-        <button className="btn sm grow" onClick={() => go('broadcast')}>Рассылка</button>
+        <button className="btn sm grow" onClick={() => go('attendance')}>{L("Посещаемость")}</button>
+        <button className="btn sm grow" onClick={() => go('broadcast')}>{L("Рассылка")}</button>
       </div>
     </Card>
   )

@@ -9,6 +9,7 @@ import { subjects } from '../lib/schedule'
 import { uid } from '../lib/kv'
 import { dayMon, relativeAgo } from '../lib/date'
 
+import { L } from '../lib/i18n'
 export default function Notes({ subject }: { subject?: string }) {
   const list = notesStore.use()
   const [q, setQ] = useState('')
@@ -17,13 +18,13 @@ export default function Notes({ subject }: { subject?: string }) {
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updated - a.updated)
   return (
     <>
-      <PageHeader title="Заметки" subtitle={`${list.length} шт.`} right={<>
+      <PageHeader title={L("Заметки")} subtitle={L`${list.length} шт.`} right={<>
         <div className="row" style={{ padding: '0 12px', borderRadius: 12, background: 'var(--fill)', border: '1px solid var(--line)', height: 38, width: 260 }}>
-          <Search size={15} className="faint" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск" style={{ background: 'none', border: 'none', outline: 'none', flex: 1 }} />
+          <Search size={15} className="faint" /><input value={q} onChange={e => setQ(e.target.value)} placeholder={L("Поиск")} style={{ background: 'none', border: 'none', outline: 'none', flex: 1 }} />
         </div>
-        <button className="btn primary" onClick={() => setEdit(blankNote(subject))}><Plus size={16} /> Заметка</button>
+        <button className="btn primary" onClick={() => setEdit(blankNote(subject))}><Plus size={16} /> {L("Заметка")}</button>
       </>} />
-      {!shown.length && <Empty emoji="🗒️" title="Заметок нет" text="Мысли, списки покупок к лабе, вопросы к экзамену — всё здесь." />}
+      {!shown.length && <Empty emoji="🗒️" title={L("Заметок нет")} text={L("Мысли, списки покупок к лабе, вопросы к экзамену — всё здесь.")} />}
       <div style={{ columns: '280px', columnGap: 14 }}>
         <AnimatePresence>
           {shown.map((n, i) => <NoteCard key={n.id} n={n} i={i} onOpen={() => setEdit(n)} />)}
@@ -41,8 +42,8 @@ export function NoteCard({ n, i, onOpen }: { n: Note; i: number; onOpen: () => v
       className="card hover press note-in" style={{ breakInside: 'avoid', marginBottom: 14, padding: 16, background: c !== 'transparent' ? `linear-gradient(160deg, ${c}38, ${c}12)` : undefined, borderColor: c !== 'transparent' ? `${c}66` : undefined, animationDelay: `${Math.min(i, 12) * 0.025}s` }}
       onClick={onOpen}
       onContextMenu={e => openMenu(e, [
-        { label: n.pinned ? 'Открепить' : 'Закрепить', icon: <Pin size={15} />, run: () => notes.togglePin(n.id) },
-        { label: 'Удалить', icon: <Trash2 size={15} />, danger: true, run: () => notes.remove(n.id) }
+        { label: n.pinned ? L('Открепить') : L('Закрепить'), icon: <Pin size={15} />, run: () => notes.togglePin(n.id) },
+        { label: L('Удалить'), icon: <Trash2 size={15} />, danger: true, run: () => notes.remove(n.id) }
       ])}>
       <div className="row top"><div className="bold grow">{noteTitle(n)}</div>{n.pinned && <Pin size={14} color="var(--brand)" />}</div>
       {notePreview(n) && <div className="small muted clamp3 mt4 wrap">{notePreview(n)}</div>}
@@ -59,14 +60,14 @@ export function NoteEditor({ note, onClose }: { note: Note | null; onClose: () =
   if (!n) return <Sheet open={false} onClose={onClose} />
   const close = () => { notes.upsert(n); onClose() }
   return (
-    <Sheet open={!!note} onClose={close} size="wide" title={<input value={n.title} onChange={e => setN({ ...n, title: e.target.value })} placeholder="Заголовок" style={{ background: 'none', border: 'none', outline: 'none', fontSize: '1.25rem', fontWeight: 800, width: '100%' }} />}
+    <Sheet open={!!note} onClose={close} size="wide" title={<input value={n.title} onChange={e => setN({ ...n, title: e.target.value })} placeholder={L("Заголовок")} style={{ background: 'none', border: 'none', outline: 'none', fontSize: '1.25rem', fontWeight: 800, width: '100%' }} />}
       headRight={<>
-        <button className="btn icon sm ghost" title="Цвет" onClick={e => openMenu(e, NOTE_COLORS.map((c, i) => ({ label: ['Без цвета', 'Жёлтый', 'Зелёный', 'Синий', 'Розовый', 'Фиолетовый'][i], icon: <span style={{ width: 14, height: 14, borderRadius: 7, background: c === 'transparent' ? 'var(--fill2)' : c, display: 'block' }} />, run: () => setN({ ...n, color: i }) })))}><Palette size={16} /></button>
-        <button className="btn icon sm ghost" title="Закрепить" onClick={() => setN({ ...n, pinned: !n.pinned })}><Pin size={16} color={n.pinned ? 'var(--brand)' : undefined} /></button>
+        <button className="btn icon sm ghost" title={L("Цвет")} onClick={e => openMenu(e, NOTE_COLORS.map((c, i) => ({ label: [L('Без цвета'), L('Жёлтый'), L('Зелёный'), L('Синий'), L('Розовый'), L('Фиолетовый')][i], icon: <span style={{ width: 14, height: 14, borderRadius: 7, background: c === 'transparent' ? 'var(--fill2)' : c, display: 'block' }} />, run: () => setN({ ...n, color: i }) })))}><Palette size={16} /></button>
+        <button className="btn icon sm ghost" title={L("Закрепить")} onClick={() => setN({ ...n, pinned: !n.pinned })}><Pin size={16} color={n.pinned ? 'var(--brand)' : undefined} /></button>
         <button className="btn icon sm ghost danger" onClick={() => { notes.remove(n.id); onClose() }}><Trash2 size={16} /></button>
       </>}
-      footer={<button className="btn primary" onClick={close}>Готово</button>}>
-      <textarea className="textarea" autoFocus value={n.text} onChange={e => setN({ ...n, text: e.target.value })} placeholder="Текст заметки…" style={{ minHeight: 200, fontSize: '1rem' }} />
+      footer={<button className="btn primary" onClick={close}>{L("Готово")}</button>}>
+      <textarea className="textarea" autoFocus value={n.text} onChange={e => setN({ ...n, text: e.target.value })} placeholder={L("Текст заметки…")} style={{ minHeight: 200, fontSize: '1rem' }} />
       <div className="col gap6 mt12">
         {n.items.map(it => (
           <div key={it.id} className="row">
@@ -75,9 +76,9 @@ export function NoteEditor({ note, onClose }: { note: Note | null; onClose: () =
             <button className="btn icon sm ghost" onClick={() => setN({ ...n, items: n.items.filter(x => x.id !== it.id) })}><X size={14} /></button>
           </div>
         ))}
-        <div><button className="btn sm" onClick={() => setN({ ...n, items: [...n.items, { id: uid(), text: '', done: false }] })}><ListChecks size={14} /> Пункт списка</button></div>
+        <div><button className="btn sm" onClick={() => setN({ ...n, items: [...n.items, { id: uid(), text: '', done: false }] })}><ListChecks size={14} /> {L("Пункт списка")}</button></div>
       </div>
-      <Field label="Предмет"><select className="select mt12" value={n.subject} onChange={e => setN({ ...n, subject: e.target.value })}><option value="">Без предмета</option>{subjects(data).map(s => <option key={s} value={s}>{s}</option>)}</select></Field>
+      <Field label={L("Предмет")}><select className="select mt12" value={n.subject} onChange={e => setN({ ...n, subject: e.target.value })}><option value="">{L("Без предмета")}</option>{subjects(data).map(s => <option key={s} value={s}>{s}</option>)}</select></Field>
     </Sheet>
   )
 }

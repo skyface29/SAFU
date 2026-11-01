@@ -6,6 +6,7 @@ import { Lock, Delete, Snowflake } from 'lucide-react'
 import { kv, usePref } from '../lib/kv'
 import { safu } from '../lib/bridge'
 
+import { L } from '../lib/i18n'
 export async function hashPin(pin: string) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('safu:' + pin))
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('')
@@ -63,7 +64,7 @@ export function LockGate() {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.05 }}>
           <div className="col" style={{ alignItems: 'center', gap: 18, color: '#fff' }}>
             <motion.div animate={{ rotate: [0, -10, 10, 0] }} transition={{ duration: 0.6 }} className="icon-tile" style={{ width: 72, height: 72, borderRadius: 22, background: 'var(--grad)' }}><Lock size={32} /></motion.div>
-            <div className="h-card">Введи PIN-код Арктики</div>
+            <div className="h-card">{L("Введи PIN-код Арктики")}</div>
             <motion.div className="row" key={shake} animate={shake ? { x: [0, -14, 14, -10, 10, 0] } : {}} transition={{ duration: 0.4 }} style={{ gap: 14, height: 18 }}>
               {Array.from({ length: Math.max(4, pin.length) }).map((_, i) => (
                 <motion.div key={i} animate={{ scale: i < pin.length ? 1.15 : 1 }} style={{ width: 14, height: 14, borderRadius: 7, border: '2px solid #fff', background: i < pin.length ? '#fff' : 'transparent' }} />
@@ -77,13 +78,13 @@ export function LockGate() {
                 </motion.button>
               ) : <div key={i} />)}
             </div>
-            <div className="tiny" style={{ opacity: 0.6 }}>Можно набирать с клавиатуры</div>
+            <div className="tiny" style={{ opacity: 0.6 }}>{L("Можно набирать с клавиатуры")}</div>
           </div>
         </motion.div>
       ) : shieldOn && blurred ? (
         <motion.div key="shield" style={{ position: 'fixed', inset: 0, zIndex: 940, display: 'grid', placeItems: 'center', background: 'var(--glass-strong)' }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-          <div className="col" style={{ alignItems: 'center', gap: 10 }}><Snowflake size={52} color="var(--brand)" /><div className="h-card">Арктика</div></div>
+          <div className="col" style={{ alignItems: 'center', gap: 10 }}><Snowflake size={52} color="var(--brand)" /><div className="h-card">{L("Арктика")}</div></div>
         </motion.div>
       ) : null}
     </AnimatePresence>

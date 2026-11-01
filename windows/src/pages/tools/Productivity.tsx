@@ -13,6 +13,7 @@ import { titlePageDocx, toBase64 } from '../../lib/zip'
 import { homeworkStore } from '../../lib/homework'
 import { attendanceStore } from './Group'
 
+import { L } from '../../lib/i18n'
 // ---------- фокус ----------
 
 type Phase = 'work' | 'short' | 'long'
@@ -48,7 +49,7 @@ export function Focus() {
     st.left = dur(st.phase)
     st.running = kv.get('focus.auto', true)
     st.endsAt = Date.now() + st.left
-    notify.show({ title: was === 'work' ? 'Фокус закончен 🎉' : 'Перерыв всё', body: was === 'work' ? `Отдохни ${st.phase === 'long' ? long : short} минут` : 'Снова за дело 💪', route: 'focus' })
+    notify.show({ title: was === 'work' ? L('Фокус закончен 🎉') : L('Перерыв всё'), body: was === 'work' ? L`Отдохни ${st.phase === 'long' ? long : short} минут` : L('Снова за дело 💪'), route: 'focus' })
     safu.app.flash()
   }
   const start = () => { st.running = true; st.endsAt = Date.now() + st.left; tick(x => x + 1) }
@@ -61,43 +62,43 @@ export function Focus() {
 
   return (
     <>
-      <PageHeader title="Фокус" subtitle="Помодоро: 25 минут работы, 5 отдыха — и так по кругу" />
+      <PageHeader title={L("Фокус")} subtitle={L("Помодоро: 25 минут работы, 5 отдыха — и так по кругу")} />
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
         <Card className="col" style={{ alignItems: 'center', padding: 30, gap: 20 }}>
-          <Segmented value={st.phase} onChange={setPhase} options={[{ value: 'work', label: 'Фокус' }, { value: 'short', label: 'Перерыв' }, { value: 'long', label: 'Длинный' }]} />
+          <Segmented value={st.phase} onChange={setPhase} options={[{ value: 'work', label: L('Фокус') }, { value: 'short', label: L('Перерыв') }, { value: 'long', label: L('Длинный') }]} />
           <motion.div animate={{ scale: st.running ? [1, 1.015, 1] : 1 }} transition={{ duration: 2, repeat: st.running ? Infinity : 0 }}>
             <Ring value={1 - left / total} size={300} stroke={16} color={st.phase === 'work' ? undefined : '#22c55e'}>
               <div className="tc">
                 <div className="mono" style={{ fontSize: '4.2rem', fontWeight: 800, letterSpacing: '-.03em' }}>{timer(left)}</div>
-                <div className="muted">{st.phase === 'work' ? (subject || 'Работаем') : 'Отдыхаем'}</div>
-                <div className="tiny faint mt4">цикл {st.cycle % 4 + 1} из 4</div>
+                <div className="muted">{st.phase === 'work' ? (subject || L('Работаем')) : L('Отдыхаем')}</div>
+                <div className="tiny faint mt4">{L("цикл")} {st.cycle % 4 + 1} {L("из 4")}</div>
               </div>
             </Ring>
           </motion.div>
           <div className="row">
-            <button className="btn icon lg round" onClick={reset} title="Сначала"><RotateCcw size={20} /></button>
+            <button className="btn icon lg round" onClick={reset} title={L("Сначала")}><RotateCcw size={20} /></button>
             <motion.button whileTap={{ scale: 0.9 }} className="btn primary lg round" style={{ width: 90, height: 90, borderRadius: 45, background: color }} onClick={st.running ? pause : start}>
               {st.running ? <Pause size={36} /> : <Play size={36} />}
             </motion.button>
-            <button className="btn icon lg round" onClick={finish} title="Дальше"><SkipForward size={20} /></button>
+            <button className="btn icon lg round" onClick={finish} title={L("Дальше")}><SkipForward size={20} /></button>
           </div>
-          <select className="select" style={{ maxWidth: 360 }} value={subject} onChange={e => setSubject(e.target.value)}><option value="">Без предмета</option>{subjects(data).map(s => <option key={s} value={s}>{s}</option>)}</select>
+          <select className="select" style={{ maxWidth: 360 }} value={subject} onChange={e => setSubject(e.target.value)}><option value="">{L("Без предмета")}</option>{subjects(data).map(s => <option key={s} value={s}>{s}</option>)}</select>
         </Card>
         <div className="col gap14">
           <Card>
-            <div className="tiny muted">Сегодня в фокусе</div>
-            <div className="heavy grad-text" style={{ fontSize: '2.6rem' }}><AnimatedNumber value={today} /> мин</div>
+            <div className="tiny muted">{L("Сегодня в фокусе")}</div>
+            <div className="heavy grad-text" style={{ fontSize: '2.6rem' }}><AnimatedNumber value={today} /> {L("мин")}</div>
             <div className="row" style={{ alignItems: 'flex-end', gap: 8, height: 90, marginTop: 10 }}>
               {week.map((m, i) => <div key={i} className="col grow" style={{ alignItems: 'center', gap: 4 }}>
                 <motion.div initial={{ height: 0 }} animate={{ height: Math.max(4, Math.min(70, m / 3)) }} style={{ width: '100%', maxWidth: 30, borderRadius: 8, background: i === (new Date().getDay() + 6) % 7 ? 'var(--grad)' : 'var(--fill2)' }} />
-                <span className="tiny faint">{['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'][i]}</span>
+                <span className="tiny faint">{[L('пн'), L('вт'), L('ср'), L('чт'), L('пт'), L('сб'), L('вс')][i]}</span>
               </div>)}
             </div>
           </Card>
           <Card>
-            <Field label="Фокус, минут"><Segmented value={work} onChange={setWork} options={[15, 25, 45, 50, 90].map(v => ({ value: v, label: `${v}` }))} /></Field>
-            <Field label="Перерыв"><Segmented value={short} onChange={setShort} options={[3, 5, 10].map(v => ({ value: v, label: `${v}` }))} /></Field>
-            <Field label="Длинный перерыв (каждый 4-й)"><Segmented value={long} onChange={setLong} options={[10, 15, 20, 30].map(v => ({ value: v, label: `${v}` }))} /></Field>
+            <Field label={L("Фокус, минут")}><Segmented value={work} onChange={setWork} options={[15, 25, 45, 50, 90].map(v => ({ value: v, label: `${v}` }))} /></Field>
+            <Field label={L("Перерыв")}><Segmented value={short} onChange={setShort} options={[3, 5, 10].map(v => ({ value: v, label: `${v}` }))} /></Field>
+            <Field label={L("Длинный перерыв (каждый 4-й)")}><Segmented value={long} onChange={setLong} options={[10, 15, 20, 30].map(v => ({ value: v, label: `${v}` }))} /></Field>
           </Card>
         </div>
       </div>
@@ -107,7 +108,7 @@ export function Focus() {
 
 // ---------- титульник ----------
 
-const KINDS = ['Лабораторная работа', 'Практическая работа', 'Курсовая работа', 'Реферат', 'Отчёт по практике']
+const KINDS = [L('Лабораторная работа'), L('Практическая работа'), L('Курсовая работа'), L('Реферат'), L('Отчёт по практике')]
 
 export function Report() {
   const data = useSchedule(s => s.data)
@@ -121,47 +122,47 @@ export function Report() {
   const [discipline, setDiscipline] = usePref('report.discipline', '')
   const [topic, setTopic] = usePref('report.topic', '')
   const [created, setCreated] = useState<string | null>(null)
-  const workTitle = kind === 0 ? `ЛАБОРАТОРНАЯ РАБОТА № ${number}` : kind === 1 ? `ПРАКТИЧЕСКАЯ РАБОТА № ${number}` : ['', '', 'КУРСОВАЯ РАБОТА', 'РЕФЕРАТ', 'ОТЧЁТ ПО ПРАКТИКЕ'][kind]
+  const workTitle = kind === 0 ? `ЛАБОРАТОРНАЯ РАБОТА № ${number}` : kind === 1 ? `ПРАКТИЧЕСКАЯ РАБОТА № ${number}` : ['', '', L('КУРСОВАЯ РАБОТА'), L('РЕФЕРАТ'), L('ОТЧЁТ ПО ПРАКТИКЕ')][kind]
   const create = async () => {
     const bytes = titlePageDocx({ school, workTitle, discipline, topic, student, group, supervisor, position, year: new Date().getFullYear() })
     const short = kind < 2 ? `${kind === 0 ? 'ЛР' : 'ПР'}_${number}` : KINDS[kind]
     const rel = `Отчёты/Титульник ${short}${discipline ? ' — ' + discipline.slice(0, 30) : ''}.docx`.replace(/[\\:*?"<>|]/g, '-')
     await safu.fs.writeBase64(rel, toBase64(bytes))
     setCreated(rel)
-    toast('Титульник готов — открываю в Word')
+    toast(L('Титульник готов — открываю в Word'))
     safu.fs.open(rel)
   }
   const line = (t: string, bold = false, size = 1) => <div style={{ fontWeight: bold ? 700 : 400, fontSize: `${size * 0.62}rem`, textAlign: 'center' }}>{t}</div>
   return (
     <>
-      <PageHeader title="Титульник" subtitle="По СТО САФУ: Times New Roman 14, поля по стандарту, сразу в Word" />
+      <PageHeader title={L("Титульник")} subtitle={L("По СТО САФУ: Times New Roman 14, поля по стандарту, сразу в Word")} />
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 400px', gap: 16, alignItems: 'start' }}>
         <Card>
-          <Field label="Вид работы"><div className="row wrap-row gap6">{KINDS.map((k, i) => <button key={k} className={`chip ${kind === i ? 'on' : ''}`} onClick={() => setKind(i)}>{k}</button>)}</div></Field>
+          <Field label={L("Вид работы")}><div className="row wrap-row gap6">{KINDS.map((k, i) => <button key={k} className={`chip ${kind === i ? 'on' : ''}`} onClick={() => setKind(i)}>{k}</button>)}</div></Field>
           <div className="grid g2">
-            {kind < 2 && <Field label="Номер"><input className="input" value={number} onChange={e => setNumber(e.target.value)} /></Field>}
-            <Field label="Дисциплина"><input className="input" list="r-subj" value={discipline} onChange={e => setDiscipline(e.target.value)} /><datalist id="r-subj">{subjects(data).map(s => <option key={s} value={s} />)}</datalist></Field>
+            {kind < 2 && <Field label={L("Номер")}><input className="input" value={number} onChange={e => setNumber(e.target.value)} /></Field>}
+            <Field label={L("Дисциплина")}><input className="input" list="r-subj" value={discipline} onChange={e => setDiscipline(e.target.value)} /><datalist id="r-subj">{subjects(data).map(s => <option key={s} value={s} />)}</datalist></Field>
           </div>
-          <Field label="Тема"><input className="input" value={topic} onChange={e => setTopic(e.target.value)} /></Field>
+          <Field label={L("Тема")}><input className="input" value={topic} onChange={e => setTopic(e.target.value)} /></Field>
           <div className="grid g2">
-            <Field label="ФИО студента"><input className="input" value={student} onChange={e => setStudent(e.target.value)} placeholder="Иванов Иван Иванович" /></Field>
-            <Field label="Группа"><input className="input" value={group} onChange={e => setGroup(e.target.value)} /></Field>
+            <Field label={L("ФИО студента")}><input className="input" value={student} onChange={e => setStudent(e.target.value)} placeholder={L("Иванов Иван Иванович")} /></Field>
+            <Field label={L("Группа")}><input className="input" value={group} onChange={e => setGroup(e.target.value)} /></Field>
           </div>
-          <Field label="Высшая школа"><input className="input" value={school} onChange={e => setSchool(e.target.value)} /></Field>
+          <Field label={L("Высшая школа")}><input className="input" value={school} onChange={e => setSchool(e.target.value)} /></Field>
           <div className="grid g2">
-            <Field label="Руководитель"><input className="input" value={supervisor} onChange={e => setSupervisor(e.target.value)} placeholder="Петров П.П." /></Field>
-            <Field label="Должность"><input className="input" value={position} onChange={e => setPosition(e.target.value)} placeholder="доцент" /></Field>
+            <Field label={L("Руководитель")}><input className="input" value={supervisor} onChange={e => setSupervisor(e.target.value)} placeholder={L("Петров П.П.")} /></Field>
+            <Field label={L("Должность")}><input className="input" value={position} onChange={e => setPosition(e.target.value)} placeholder={L("доцент")} /></Field>
           </div>
           <div className="row mt8">
-            <button className="btn primary lg" onClick={create}><FileText size={18} /> Создать титульник .docx</button>
-            {created && <button className="btn" onClick={() => safu.fs.reveal(created)}><FolderOpen size={15} /> Показать в папке</button>}
+            <button className="btn primary lg" onClick={create}><FileText size={18} /> {L("Создать титульник .docx")}</button>
+            {created && <button className="btn" onClick={() => safu.fs.reveal(created)}><FolderOpen size={15} /> {L("Показать в папке")}</button>}
           </div>
-          <div className="tiny faint mt12">Файл сохраняется в папку «Отчёты» рядом с файлами предметов. Сверь с методичкой преподавателя: на кафедрах бывают свои требования.</div>
+          <div className="tiny faint mt12">{L("Файл сохраняется в папку «Отчёты» рядом с файлами предметов. Сверь с методичкой преподавателя: на кафедрах бывают свои требования.")}</div>
         </Card>
         <motion.div layout className="col" style={{ background: '#fff', color: '#111', aspectRatio: '210/297', borderRadius: 8, padding: '28px 22px 22px 34px', fontFamily: '"Times New Roman", serif', boxShadow: '0 20px 60px rgba(0,0,0,.4)', justifyContent: 'space-between' }}>
           <div className="col gap4">{line('МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ', false, 0.85)}{line('федеральное государственное автономное образовательное учреждение высшего образования', false, 0.85)}{line('«Северный (Арктический) федеральный университет имени М.В. Ломоносова»', true, 0.85)}<div style={{ height: 6 }} />{line(school || 'Высшая школа…')}</div>
           <div className="col gap4">{line(workTitle, true, 1.25)}{discipline && line(`по дисциплине «${discipline}»`)}{topic && line(`на тему: «${topic}»`)}</div>
-          <div style={{ marginLeft: '48%', fontSize: '.62rem' }}><div>Выполнил:</div><div>студент группы {group}</div><div>{student || 'ФИО'}</div><div style={{ height: 6 }} /><div>Проверил:</div>{position && <div>{position}</div>}<div>{supervisor || 'ФИО'}</div></div>
+          <div style={{ marginLeft: '48%', fontSize: '.62rem' }}><div>Выполнил:</div><div>студент группы {group}</div><div>{student || L('ФИО')}</div><div style={{ height: 6 }} /><div>Проверил:</div>{position && <div>{position}</div>}<div>{supervisor || L('ФИО')}</div></div>
           {line(`Архангельск ${new Date().getFullYear()}`)}
         </motion.div>
       </div>
@@ -225,8 +226,8 @@ function MatrixInput({ m, setM, title }: { m: M; setM: (m: M) => void; title: st
   return (
     <Card>
       <div className="row mb12"><div className="h-card grow">{title}</div>
-        <span className="tiny muted">строк</span><button className="btn icon sm" onClick={() => resize(Math.max(1, rows - 1), cols)}><Minus size={13} /></button><b>{rows}</b><button className="btn icon sm" onClick={() => resize(Math.min(8, rows + 1), cols)}><Plus size={13} /></button>
-        <span className="tiny muted">столбцов</span><button className="btn icon sm" onClick={() => resize(rows, Math.max(1, cols - 1))}><Minus size={13} /></button><b>{cols}</b><button className="btn icon sm" onClick={() => resize(rows, Math.min(8, cols + 1))}><Plus size={13} /></button>
+        <span className="tiny muted">{L("строк")}</span><button className="btn icon sm" onClick={() => resize(Math.max(1, rows - 1), cols)}><Minus size={13} /></button><b>{rows}</b><button className="btn icon sm" onClick={() => resize(Math.min(8, rows + 1), cols)}><Plus size={13} /></button>
+        <span className="tiny muted">{L("столбцов")}</span><button className="btn icon sm" onClick={() => resize(rows, Math.max(1, cols - 1))}><Minus size={13} /></button><b>{cols}</b><button className="btn icon sm" onClick={() => resize(rows, Math.min(8, cols + 1))}><Plus size={13} /></button>
       </div>
       <div className="grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 64px))`, gap: 6, justifyContent: 'center' }}>
         {m.map((r, i) => r.map((v, j) => (
@@ -256,18 +257,18 @@ export function Matrix() {
   const [op, setOp] = useState('det')
   const result = useMemo((): { text?: string; m?: M; err?: string } => {
     try {
-      if (op === 'det') return a.length !== a[0].length ? { err: 'Определитель — только у квадратной матрицы' } : { text: `det A = ${fmt(det(a))}` }
-      if (op === 'inv') { if (a.length !== a[0].length) return { err: 'Нужна квадратная матрица' }; const r = inverse(a); return r ? { m: r } : { err: 'Матрица вырожденная (det = 0), обратной нет' } }
+      if (op === 'det') return a.length !== a[0].length ? { err: L('Определитель — только у квадратной матрицы') } : { text: `det A = ${fmt(det(a))}` }
+      if (op === 'inv') { if (a.length !== a[0].length) return { err: L('Нужна квадратная матрица') }; const r = inverse(a); return r ? { m: r } : { err: L('Матрица вырожденная (det = 0), обратной нет') } }
       if (op === 't') return { m: transpose(a) }
       if (op === 'rank') return { text: `rang A = ${rank(a)}` }
-      if (op === 'mul') { const r = mul(a, b); return r ? { m: r } : { err: 'Число столбцов A должно совпадать с числом строк B' } }
+      if (op === 'mul') { const r = mul(a, b); return r ? { m: r } : { err: L('Число столбцов A должно совпадать с числом строк B') } }
       if (op === 'solve') {
-        if (a.length !== a[0].length || b.length !== a.length) return { err: 'A — квадратная, B — столбец той же высоты' }
+        if (a.length !== a[0].length || b.length !== a.length) return { err: L('A — квадратная, B — столбец той же высоты') }
         const inv = inverse(a)
-        if (!inv) return { err: `det A = 0: система либо несовместна, либо имеет бесконечно много решений (rang A = ${rank(a)})` }
+        if (!inv) return { err: L`det A = 0: система либо несовместна, либо имеет бесконечно много решений (rang A = ${rank(a)})` }
         return { m: mul(inv, b.map(r => [r[0]]))!, text: 'x = A⁻¹·B' }
       }
-      if (op === 'sq') { const r = mul(a, a); return r ? { m: r } : { err: 'Нужна квадратная матрица' } }
+      if (op === 'sq') { const r = mul(a, a); return r ? { m: r } : { err: L('Нужна квадратная матрица') } }
     } catch { /* */ }
     return {}
   }, [a, b, op])
@@ -278,18 +279,18 @@ export function Matrix() {
   }
   return (
     <>
-      <PageHeader title="Матрицы" subtitle="Определитель, обратная, ранг, СЛАУ — с дробями, как в тетради" right={<button className="btn" onClick={toWolfram}><ExternalLink size={15} /> Проверить в Wolfram</button>} />
+      <PageHeader title={L("Матрицы")} subtitle={L("Определитель, обратная, ранг, СЛАУ — с дробями, как в тетради")} right={<button className="btn" onClick={toWolfram}><ExternalLink size={15} /> {L("Проверить в Wolfram")}</button>} />
       <div className="row wrap-row gap6 mb16">
-        {[['det', 'Определитель'], ['inv', 'Обратная'], ['t', 'Транспонировать'], ['rank', 'Ранг'], ['sq', 'A²'], ['mul', 'A × B'], ['solve', 'Решить A·x = B']].map(([k, t]) => <button key={k} className={`chip ${op === k ? 'on' : ''}`} onClick={() => setOp(k)}>{t}</button>)}
+        {[['det', L('Определитель')], ['inv', L('Обратная')], ['t', L('Транспонировать')], ['rank', L('Ранг')], ['sq', 'A²'], ['mul', 'A × B'], ['solve', L('Решить A·x = B')]].map(([k, t]) => <button key={k} className={`chip ${op === k ? 'on' : ''}`} onClick={() => setOp(k)}>{t}</button>)}
       </div>
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <div className="col gap14">
-          <MatrixInput m={a} setM={setA} title="Матрица A" />
-          {(op === 'mul' || op === 'solve') && <MatrixInput m={b} setM={setB} title={op === 'solve' ? 'Столбец B' : 'Матрица B'} />}
+          <MatrixInput m={a} setM={setA} title={L("Матрица A")} />
+          {(op === 'mul' || op === 'solve') && <MatrixInput m={b} setM={setB} title={op === 'solve' ? L('Столбец B') : L('Матрица B')} />}
         </div>
         <Card style={{ minHeight: 220 }}>
-          <div className="row mb16"><Calculator size={18} color="var(--brand)" /><div className="h-card grow">Ответ</div>
-            {result.m && <button className="btn sm" onClick={() => { safu.clipboard.write(result.m!.map(r => r.map(fmt).join('\t')).join('\n')); toast('Скопировано') }}><Copy size={13} /> Копировать</button>}</div>
+          <div className="row mb16"><Calculator size={18} color="var(--brand)" /><div className="h-card grow">{L("Ответ")}</div>
+            {result.m && <button className="btn sm" onClick={() => { safu.clipboard.write(result.m!.map(r => r.map(fmt).join('\t')).join('\n')); toast(L('Скопировано')) }}><Copy size={13} /> {L("Копировать")}</button>}</div>
           <AnimatePresence mode="wait">
             <motion.div key={JSON.stringify(result)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               {result.err && <div style={{ color: '#ef4444' }}>{result.err}</div>}
@@ -330,15 +331,15 @@ export function Stats() {
   const week = academicWeek(data.semesterStart)
   return (
     <>
-      <PageHeader title="Статистика семестра" subtitle={week ? `${week}-я неделя семестра` : undefined} />
+      <PageHeader title={L("Статистика семестра")} subtitle={week ? L`${week}-я неделя семестра` : undefined} />
       <div className="grid g4 mb16">
-        {[[st.past.length, 'пар позади', 'var(--brand)'], [Math.round(st.hours), 'часов на парах', '#8b5cf6'], [Math.max(0, st.all.length - st.past.length), 'пар впереди', '#f59e0b'], [done, 'ДЗ сделано', '#22c55e']].map(([v, t, c], i) => (
+        {[[st.past.length, L('пар позади'), 'var(--brand)'], [Math.round(st.hours), L('часов на парах'), '#8b5cf6'], [Math.max(0, st.all.length - st.past.length), L('пар впереди'), '#f59e0b'], [done, L('ДЗ сделано'), '#22c55e']].map(([v, t, c], i) => (
           <Card key={t as string} delay={i * 0.04}><div className="heavy" style={{ fontSize: '2.4rem', color: c as string }}><AnimatedNumber value={v as number} /></div><div className="sub">{t}</div></Card>
         ))}
       </div>
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <Card>
-          <div className="h-card mb12">Предметы</div>
+          <div className="h-card mb12">{L("Предметы")}</div>
           <div className="col gap8">
             {st.bySubj.map(([s, n], i) => (
               <div key={s}><div className="row small"><span className="grow ellipsis">{s}</span><b>{n}</b></div>
@@ -348,25 +349,25 @@ export function Stats() {
         </Card>
         <div className="col gap14">
           <Card>
-            <div className="h-card mb12">Виды занятий</div>
+            <div className="h-card mb12">{L("Виды занятий")}</div>
             <div className="row wrap-row gap8">{st.byKind.map(([k, n]) => <span key={k} className="pill" style={{ background: `${kindStyle(k).color}26`, color: kindStyle(k).color, fontSize: '.85rem', padding: '6px 12px' }}>{k}: {n}</span>)}</div>
           </Card>
           <Card>
-            <div className="h-card mb12">По дням недели</div>
+            <div className="h-card mb12">{L("По дням недели")}</div>
             <div className="row" style={{ alignItems: 'flex-end', gap: 10, height: 110 }}>
               {st.byWeekday.slice(0, 6).map((n, i) => (
                 <div key={i} className="col grow" style={{ alignItems: 'center', gap: 4 }}>
                   <span className="tiny bold">{n}</span>
                   <motion.div initial={{ height: 0 }} animate={{ height: Math.max(4, (n / Math.max(1, ...st.byWeekday)) * 80) }} style={{ width: '100%', maxWidth: 36, borderRadius: 8, background: 'var(--grad)' }} />
-                  <span className="tiny faint">{['пн', 'вт', 'ср', 'чт', 'пт', 'сб'][i]}</span>
+                  <span className="tiny faint">{[L('пн'), L('вт'), L('ср'), L('чт'), L('пт'), L('сб')][i]}</span>
                 </div>
               ))}
             </div>
           </Card>
-          <Card><div className="row"><span style={{ fontSize: '2rem' }}>🌅</span><div><div className="bold">Ранних пар (до 9:00): {st.earliest}</div><div className="sub">Это {st.earliest} {plural(st.earliest, 'утро', 'утра', 'утр')}, когда ты встал раньше будильника соседа</div></div></div></Card>
+          <Card><div className="row"><span style={{ fontSize: '2rem' }}>🌅</span><div><div className="bold">{L("Ранних пар (до 9:00):")} {st.earliest}</div><div className="sub">{L("Это")} {st.earliest} {plural(st.earliest, L('утро'), L('утра'), L('утр'))}{L(", когда ты встал раньше будильника соседа")}</div></div></div></Card>
         </div>
       </div>
-      <div className="tiny faint mt16">Посещаемость группы: отмечено занятий {Object.keys(att.marks).length}</div>
+      <div className="tiny faint mt16">{L("Посещаемость группы: отмечено занятий")} {Object.keys(att.marks).length}</div>
     </>
   )
 }

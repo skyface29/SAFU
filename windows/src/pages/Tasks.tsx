@@ -10,6 +10,7 @@ import { chip, urgency } from '../lib/homework'
 import { toLocalInput, fromLocalInput, plural, isToday, isTomorrow, addDays, startOfDay } from '../lib/date'
 import { celebrations } from '../fx/Celebrations'
 
+import { L } from '../lib/i18n'
 export default function Tasks() {
   const list = tasksStore.use()
   const [edit, setEdit] = useState<StudyTask | null>(null)
@@ -19,7 +20,7 @@ export default function Tasks() {
   const groups: { title: string; items: StudyTask[] }[] = []
   const today = startOfDay(Date.now())
   for (const t of shown) {
-    const title = t.done ? 'Сделано' : t.due < Date.now() ? 'Просрочено' : isToday(t.due) ? 'Сегодня' : isTomorrow(t.due) ? 'Завтра' : t.due < addDays(today, 7) ? 'На неделе' : 'Позже'
+    const title = t.done ? L('Сделано') : t.due < Date.now() ? L('Просрочено') : isToday(t.due) ? L('Сегодня') : isTomorrow(t.due) ? L('Завтра') : t.due < addDays(today, 7) ? L('На неделе') : L('Позже')
     let g = groups.find(x => x.title === title)
     if (!g) { g = { title, items: [] }; groups.push(g) }
     g.items.push(t)
@@ -28,29 +29,29 @@ export default function Tasks() {
   const starts = groups.reduce<number[]>((a, g, i) => (a.push(i ? a[i - 1] + groups[i - 1].items.length : 0), a), [])
   return (
     <>
-      <PageHeader title="Задачи" subtitle={open.length ? `${open.length} ${plural(open.length, 'задача', 'задачи', 'задач')} в работе` : 'Хвостов нет'}
+      <PageHeader title={L("Задачи")} subtitle={open.length ? L`${open.length} ${plural(open.length, L('задача'), L('задачи'), L('задач'))} в работе` : L('Хвостов нет')}
         right={<>
-          <Segmented value={filter} onChange={setFilter} options={[{ value: 'open', label: 'В работе' }, { value: 'done', label: 'Сделано' }, { value: 'all', label: 'Все' }]} />
-          {filter === 'done' && list.some(t => t.done) && <button className="btn danger" onClick={async () => { if (await confirmDialog('Удалить сделанные задачи?', undefined, 'Удалить', true)) tasks.clearDone() }}><Trash2 size={15} /></button>}
-          <button className="btn primary" onClick={() => setEdit(blankTask())}><Plus size={16} /> Задача</button>
+          <Segmented value={filter} onChange={setFilter} options={[{ value: 'open', label: L('В работе') }, { value: 'done', label: L('Сделано') }, { value: 'all', label: L('Все') }]} />
+          {filter === 'done' && list.some(t => t.done) && <button className="btn danger" onClick={async () => { if (await confirmDialog(L('Удалить сделанные задачи?'), undefined, L('Удалить'), true)) tasks.clearDone() }}><Trash2 size={15} /></button>}
+          <button className="btn primary" onClick={() => setEdit(blankTask())}><Plus size={16} /> {L("Задача")}</button>
         </>} />
-      {!shown.length && <Empty emoji="✅" title={filter === 'done' ? 'Пока ничего не сделано' : 'Задач нет'} text="Курсовые, отчёты, долги — всё с дедлайном и напоминанием за день и за 3 часа." action={<button className="btn primary" onClick={() => setEdit(blankTask())}><Plus size={16} /> Добавить задачу</button>} />}
+      {!shown.length && <Empty emoji="✅" title={filter === 'done' ? L('Пока ничего не сделано') : L('Задач нет')} text={L("Курсовые, отчёты, долги — всё с дедлайном и напоминанием за день и за 3 часа.")} action={<button className="btn primary" onClick={() => setEdit(blankTask())}><Plus size={16} /> {L("Добавить задачу")}</button>} />}
       <div className="col gap18">
         {groups.map((g, gi) => (
           <div key={g.title}>
-            <div className="h-card" style={{ margin: '0 4px 10px', color: g.title === 'Просрочено' ? '#ef4444' : undefined }}>{g.title}</div>
+            <div className="h-card" style={{ margin: '0 4px 10px', color: g.title === L('Просрочено') ? '#ef4444' : undefined }}>{g.title}</div>
             <div className="grid gauto">
               <AnimatePresence>
                 {g.items.map((t, i) => (
                   <motion.div key={t.id} layout exit={{ opacity: 0, scale: 0.9 }}
                     className="card hover press pop-in lazy-row" style={{ padding: 14 }} onClick={() => setEdit(t)}
-                    onContextMenu={e => openMenu(e, [{ label: 'Удалить', danger: true, icon: <Trash2 size={15} />, run: () => tasks.remove(t.id) }])}>
+                    onContextMenu={e => openMenu(e, [{ label: L('Удалить'), danger: true, icon: <Trash2 size={15} />, run: () => tasks.remove(t.id) }])}>
                     <Later turn={revealTurn(starts[gi] + i)} hold={58}>
                       <div className="row top">
                         <button className="tap-hard" onClick={e => { e.stopPropagation(); if (!t.done) burst(e.clientX, e.clientY); if (tasks.toggle(t.id)) celebrations.taskDone(t.title, tasksStore.get().filter(x => !x.done).length) }}
                           style={{ width: 24, height: 24, borderRadius: 12, border: '2.4px solid var(--brand)', background: t.done ? 'var(--brand)' : 'transparent', cursor: 'pointer', flexShrink: 0 }} />
                         <div className="grow">
-                          <div className="bold" style={{ textDecoration: t.done ? 'line-through' : undefined, opacity: t.done ? 0.6 : 1 }}>{t.title || 'Без названия'}</div>
+                          <div className="bold" style={{ textDecoration: t.done ? 'line-through' : undefined, opacity: t.done ? 0.6 : 1 }}>{t.title || L('Без названия')}</div>
                           {t.subject && <div className="tiny muted">{t.subject}</div>}
                           {t.note && <div className="tiny faint clamp2 mt4">{t.note}</div>}
                           <div className="row gap6 mt8">
@@ -79,17 +80,17 @@ function TaskEditor({ t, onClose }: { t: StudyTask | null; onClose: () => void }
   if (!v) return <Sheet open={false} onClose={onClose} />
   const exists = tasksStore.get().some(x => x.id === v.id)
   return (
-    <Sheet open={!!t} onClose={onClose} title={exists ? 'Задача' : 'Новая задача'}
+    <Sheet open={!!t} onClose={onClose} title={exists ? L('Задача') : L('Новая задача')}
       footer={<>
-        {exists && <button className="btn danger" onClick={() => { tasks.remove(v.id); onClose() }}><Trash2 size={15} /> Удалить</button>}
+        {exists && <button className="btn danger" onClick={() => { tasks.remove(v.id); onClose() }}><Trash2 size={15} /> {L("Удалить")}</button>}
         <span className="spacer" />
-        <button className="btn primary" onClick={() => { if (v.title.trim()) { tasks.upsert({ ...v, title: v.title.trim() }); onClose() } }}>Сохранить</button>
+        <button className="btn primary" onClick={() => { if (v.title.trim()) { tasks.upsert({ ...v, title: v.title.trim() }); onClose() } }}>{L("Сохранить")}</button>
       </>}>
-      <Field label="Что сделать"><input className="input" autoFocus value={v.title} onChange={e => setV({ ...v, title: e.target.value })} placeholder="Сдать курсовую" /></Field>
-      <Field label="Предмет"><input className="input" list="t-subj" value={v.subject} onChange={e => setV({ ...v, subject: e.target.value })} /><datalist id="t-subj">{subjects(data).map(s => <option key={s} value={s} />)}</datalist></Field>
-      <Field label="Дедлайн"><input type="datetime-local" className="input" value={toLocalInput(v.due)} onChange={e => setV({ ...v, due: fromLocalInput(e.target.value) || v.due })} /></Field>
-      <Field label="Заметка"><textarea className="textarea" value={v.note} onChange={e => setV({ ...v, note: e.target.value })} /></Field>
-      <div className="row"><div className="grow bold small">Напомнить за день и за 3 часа</div><Toggle on={v.remind} onChange={r => setV({ ...v, remind: r })} /></div>
+      <Field label={L("Что сделать")}><input className="input" autoFocus value={v.title} onChange={e => setV({ ...v, title: e.target.value })} placeholder={L("Сдать курсовую")} /></Field>
+      <Field label={L("Предмет")}><input className="input" list="t-subj" value={v.subject} onChange={e => setV({ ...v, subject: e.target.value })} /><datalist id="t-subj">{subjects(data).map(s => <option key={s} value={s} />)}</datalist></Field>
+      <Field label={L("Дедлайн")}><input type="datetime-local" className="input" value={toLocalInput(v.due)} onChange={e => setV({ ...v, due: fromLocalInput(e.target.value) || v.due })} /></Field>
+      <Field label={L("Заметка")}><textarea className="textarea" value={v.note} onChange={e => setV({ ...v, note: e.target.value })} /></Field>
+      <div className="row"><div className="grow bold small">{L("Напомнить за день и за 3 часа")}</div><Toggle on={v.remind} onChange={r => setV({ ...v, remind: r })} /></div>
     </Sheet>
   )
 }

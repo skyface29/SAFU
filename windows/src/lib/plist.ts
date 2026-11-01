@@ -1,10 +1,11 @@
+import { L } from './i18n'
 // Разбор binary plist (bplist00) — настройки из резервной копии iPhone
 export type PlistValue = null | boolean | number | string | Uint8Array | Date | PlistValue[] | { [k: string]: PlistValue }
 
 export function parseBinaryPlist(buf: Uint8Array): PlistValue {
   const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
   const magic = new TextDecoder().decode(buf.subarray(0, 8))
-  if (!magic.startsWith('bplist0')) throw new Error('Это не binary plist')
+  if (!magic.startsWith('bplist0')) throw new Error(L('Это не binary plist'))
   const t = buf.length - 32
   const offSize = dv.getUint8(t + 6), refSize = dv.getUint8(t + 7)
   const num = Number(dv.getBigUint64(t + 8)), top = Number(dv.getBigUint64(t + 16)), tableOff = Number(dv.getBigUint64(t + 24))

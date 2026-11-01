@@ -8,6 +8,8 @@ const on = (channel: string, cb: (...a: any[]) => void) => {
 }
 
 const api = {
+  /** Язык интерфейса: выбор в настройках и языки Windows */
+  lang: (): { choice: unknown; system: string[] } => ipcRenderer.sendSync('lang:get'),
   kv: {
     all: (): Record<string, unknown> => ipcRenderer.sendSync('kv:all'),
     set: (key: string, value: unknown) => ipcRenderer.send('kv:set', key, value),

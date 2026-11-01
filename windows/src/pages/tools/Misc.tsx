@@ -19,6 +19,7 @@ import { useProfile } from '../../lib/profile'
 import { subjectFolder } from '../../lib/effects'
 import { toBase64 } from '../../lib/zip'
 
+import { L } from '../../lib/i18n'
 // ---------- дорога ----------
 
 export function BusPage() {
@@ -41,25 +42,25 @@ export function BusPage() {
   useEffect(() => { commute.scheduleNotifications(data) }, [enabled, notifyOn, walk, home, activeId, routes])
   return (
     <>
-      <PageHeader title="Дорога" subtitle="Свой автобус: когда выезжать к первой паре и как вернуться домой" right={<>
-        <button className="btn" onClick={async () => { const t = await safu.clipboard.read(); const nr = fromShareCode(t); if (nr) { bus.upsert(nr); toast(`${routeTitle(nr)} добавлен`) } else alertDialog('В буфере нет кода автобуса', 'Попроси одногруппника нажать «Поделиться» в его автобусе и скопируй код.') }}><ClipboardPaste size={15} /> Код от друга</button>
-        <button className="btn primary" onClick={() => setEdit(newRoute())}><Plus size={15} /> Автобус</button>
+      <PageHeader title={L("Дорога")} subtitle={L("Свой автобус: когда выезжать к первой паре и как вернуться домой")} right={<>
+        <button className="btn" onClick={async () => { const t = await safu.clipboard.read(); const nr = fromShareCode(t); if (nr) { bus.upsert(nr); toast(L`${routeTitle(nr)} добавлен`) } else alertDialog(L('В буфере нет кода автобуса'), L('Попроси одногруппника нажать «Поделиться» в его автобусе и скопируй код.')) }}><ClipboardPaste size={15} /> {L("Код от друга")}</button>
+        <button className="btn primary" onClick={() => setEdit(newRoute())}><Plus size={15} /> {L("Автобус")}</button>
       </>} />
       <div className="grid" style={{ gridTemplateColumns: '320px minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
         <div className="col gap8">
           {routes.map(x => (
             <motion.div key={x.id} whileHover={{ x: 3 }} className="card tight row" style={{ cursor: 'pointer', borderColor: x.id === r.id ? '#' + x.colorHex : undefined }} onClick={() => setActive(x.id)}>
               <div className="icon-tile heavy" style={{ width: 50, height: 40, borderRadius: 11, background: '#' + x.colorHex }}>{x.number || '?'}</div>
-              <div className="grow"><div className="bold small">{routeText(x)}</div><div className="tiny muted">в пути {x.travelMinutes} мин</div></div>
+              <div className="grow"><div className="bold small">{routeText(x)}</div><div className="tiny muted">{L("в пути")} {x.travelMinutes} {L("мин")}</div></div>
               {x.id === r.id && <Check size={18} color={'#' + x.colorHex} />}
             </motion.div>
           ))}
-          {!routes.some(x => x.id === 'builtin-150') && <button className="btn" onClick={() => bus.restore150()}>Вернуть автобус 150</button>}
+          {!routes.some(x => x.id === 'builtin-150') && <button className="btn" onClick={() => bus.restore150()}>{L("Вернуть автобус 150")}</button>}
           <Card className="list" style={{ padding: 0 }}>
-            <ToggleRow title="Езжу на автобусе" sub="Карточка «Дорога» на главной" on={enabled} onChange={setEnabled} />
-            <ToggleRow title="«Через 10 мин выходи»" sub="Уведомление перед автобусом" on={notifyOn} onChange={setNotifyOn} />
-            <Row title="До остановки от дома" right={<input className="input" type="number" style={{ width: 70 }} value={home} onChange={e => setHome(+e.target.value)} />} />
-            <Row title="От корпуса до остановки" right={<input className="input" type="number" style={{ width: 70 }} value={walk} onChange={e => setWalk(+e.target.value)} />} />
+            <ToggleRow title={L("Езжу на автобусе")} sub={L("Карточка «Дорога» на главной")} on={enabled} onChange={setEnabled} />
+            <ToggleRow title={L("«Через 10 мин выходи»")} sub={L("Уведомление перед автобусом")} on={notifyOn} onChange={setNotifyOn} />
+            <Row title={L("До остановки от дома")} right={<input className="input" type="number" style={{ width: 70 }} value={home} onChange={e => setHome(+e.target.value)} />} />
+            <Row title={L("От корпуса до остановки")} right={<input className="input" type="number" style={{ width: 70 }} value={walk} onChange={e => setWalk(+e.target.value)} />} />
           </Card>
         </div>
         <div className="col gap14">
@@ -68,18 +69,18 @@ export function BusPage() {
             <div className="row" style={{ position: 'relative' }}>
               <motion.div animate={{ x: [0, 6, 0] }} transition={{ duration: 2, repeat: Infinity }} className="icon-tile heavy" style={{ width: 64, height: 50, borderRadius: 14, background: color, fontSize: '1.3rem' }}>{r.number}</motion.div>
               <div className="grow"><div className="h-card">{routeTitle(r)}</div><div className="sub">{r.homeStop || r.homeCity} ⇄ {r.campusStop || r.campusCity}</div></div>
-              <button className="btn sm" onClick={() => openURL(mapURL(r), 'Яндекс Карты')}><MapPin size={14} /> На карте</button>
-              <button className="btn sm" onClick={() => { safu.clipboard.write(shareCode(r)); toast('Код скопирован — скинь в чат группы') }}><Share2 size={14} /> Поделиться</button>
-              <button className="btn sm" onClick={() => setEdit({ ...r })}>Изменить</button>
+              <button className="btn sm" onClick={() => openURL(mapURL(r), L('Яндекс Карты'))}><MapPin size={14} /> {L("На карте")}</button>
+              <button className="btn sm" onClick={() => { safu.clipboard.write(shareCode(r)); toast(L('Код скопирован — скинь в чат группы')) }}><Share2 size={14} /> {L("Поделиться")}</button>
+              <button className="btn sm" onClick={() => setEdit({ ...r })}>{L("Изменить")}</button>
             </div>
-            {nextTrip && <div className="mt12" style={{ position: 'relative' }}><span className="tiny muted">Ближайший {dir === 'toCampus' ? 'в город' : 'домой'}: </span><b style={{ fontSize: '1.4rem' }}>{hm(nextTrip.departure)}</b> <span className="sub">через {untilText(nextTrip.departure - now)}</span></div>}
+            {nextTrip && <div className="mt12" style={{ position: 'relative' }}><span className="tiny muted">{L("Ближайший")} {dir === 'toCampus' ? L('в город') : L('домой')}: </span><b style={{ fontSize: '1.4rem' }}>{hm(nextTrip.departure)}</b> <span className="sub">{L("через")} {untilText(nextTrip.departure - now)}</span></div>}
           </Card>
           <Card>
             <div className="row wrap-row mb12">
-              <Segmented value={dir} onChange={setDir} options={[{ value: 'toCampus', label: `→ ${r.campusCity || 'К универу'}` }, { value: 'toHome', label: `→ ${r.homeCity || 'Домой'}` }]} />
+              <Segmented value={dir} onChange={setDir} options={[{ value: 'toCampus', label: `→ ${r.campusCity || L('К универу')}` }, { value: 'toHome', label: `→ ${r.homeCity || L('Домой')}` }]} />
               <Segmented value={dt} onChange={setDt} options={BUS_DAYS.map(d => ({ value: d.id, label: d.title }))} />
             </div>
-            {!list.length ? <div className="sub">Расписание не заполнено — нажми «Изменить»</div> : (
+            {!list.length ? <div className="sub">{L("Расписание не заполнено — нажми «Изменить»")}</div> : (
               <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 8 }}>
                 {list.map((t, i) => {
                   const isNext = nextTrip && hm(nextTrip.departure) === t.replace(/^0/, '')
@@ -89,15 +90,15 @@ export function BusPage() {
             )}
           </Card>
           <Card>
-            <div className="h-card mb12">Неделя: когда выезжать</div>
+            <div className="h-card mb12">{L("Неделя: когда выезжать")}</div>
             <div className="col gap6">
               {Array.from({ length: 7 }, (_, i) => addDays(startOfDay(now), i)).map(d => {
                 const first = commute.firstPair(d, data)
                 const t = first ? commute.morning(first) : null
                 return (
                   <div key={d} className="row small" style={{ padding: '8px 12px', borderRadius: 10, background: 'var(--fill)' }}>
-                    <span className="bold cap" style={{ width: 150 }}>{isToday(d) ? 'Сегодня' : relDay(d).split(',')[0]}</span>
-                    {first ? <><span className="grow muted">пара в {hm(first.start)} · {first.subject}</span>{t ? <b style={{ color }}>выезд {hm(t.departure)}</b> : <span className="faint">рейса нет</span>}</> : <span className="faint">пар в корпусе нет</span>}
+                    <span className="bold cap" style={{ width: 150 }}>{isToday(d) ? L('Сегодня') : relDay(d).split(',')[0]}</span>
+                    {first ? <><span className="grow muted">{L("пара в")} {hm(first.start)} · {first.subject}</span>{t ? <b style={{ color }}>{L("выезд")} {hm(t.departure)}</b> : <span className="faint">{L("рейса нет")}</span>}</> : <span className="faint">{L("пар в корпусе нет")}</span>}
                   </div>
                 )
               })}
@@ -117,26 +118,26 @@ function RouteEditor({ r, onClose }: { r: BusRoute | null; onClose: () => void }
   const exists = busStore.get().some(x => x.id === v.id)
   const set = (p: Partial<BusRoute>) => setV({ ...v, ...p })
   return (
-    <Sheet open={!!r} onClose={onClose} size="wide" title={exists ? routeTitle(v) : 'Новый автобус'} footer={<>
-      {exists && busStore.get().length > 1 && <button className="btn danger" onClick={() => { bus.remove(v.id); onClose() }}><Trash2 size={15} /> Удалить</button>}
+    <Sheet open={!!r} onClose={onClose} size="wide" title={exists ? routeTitle(v) : L('Новый автобус')} footer={<>
+      {exists && busStore.get().length > 1 && <button className="btn danger" onClick={() => { bus.remove(v.id); onClose() }}><Trash2 size={15} /> {L("Удалить")}</button>}
       <span className="spacer" />
-      <button className="btn primary" onClick={() => { bus.upsert(v); if (busStore.get().length === 1) bus.activate(v.id); onClose() }}>Сохранить</button>
+      <button className="btn primary" onClick={() => { bus.upsert(v); if (busStore.get().length === 1) bus.activate(v.id); onClose() }}>{L("Сохранить")}</button>
     </>}>
       <div className="grid g3">
-        <Field label="Номер"><input className="input" value={v.number} onChange={e => set({ number: e.target.value })} /></Field>
-        <Field label="В пути, минут"><input className="input" type="number" value={v.travelMinutes} onChange={e => set({ travelMinutes: +e.target.value })} /></Field>
-        <Field label="Выезжать за, минут до пары"><input className="input" type="number" value={v.leadMinutes} onChange={e => set({ leadMinutes: +e.target.value })} /></Field>
-        <Field label="Откуда (город)"><input className="input" value={v.homeCity} onChange={e => set({ homeCity: e.target.value })} /></Field>
-        <Field label="Остановка у дома"><input className="input" value={v.homeStop} onChange={e => set({ homeStop: e.target.value })} /></Field>
-        <Field label="Цвет"><div className="row gap6">{BUS_PALETTE.map(c => <button key={c} onClick={() => set({ colorHex: c })} style={{ width: 24, height: 24, borderRadius: 12, border: v.colorHex === c ? '3px solid var(--text)' : 'none', background: '#' + c, cursor: 'pointer' }} />)}</div></Field>
-        <Field label="Куда (город)"><input className="input" value={v.campusCity} onChange={e => set({ campusCity: e.target.value })} /></Field>
-        <Field label="Остановка у универа"><input className="input" value={v.campusStop} onChange={e => set({ campusStop: e.target.value })} /></Field>
-        <Field label="Ссылка на Яндекс Карты"><input className="input" value={v.mapLink} onChange={e => set({ mapLink: e.target.value })} /></Field>
+        <Field label={L("Номер")}><input className="input" value={v.number} onChange={e => set({ number: e.target.value })} /></Field>
+        <Field label={L("В пути, минут")}><input className="input" type="number" value={v.travelMinutes} onChange={e => set({ travelMinutes: +e.target.value })} /></Field>
+        <Field label={L("Выезжать за, минут до пары")}><input className="input" type="number" value={v.leadMinutes} onChange={e => set({ leadMinutes: +e.target.value })} /></Field>
+        <Field label={L("Откуда (город)")}><input className="input" value={v.homeCity} onChange={e => set({ homeCity: e.target.value })} /></Field>
+        <Field label={L("Остановка у дома")}><input className="input" value={v.homeStop} onChange={e => set({ homeStop: e.target.value })} /></Field>
+        <Field label={L("Цвет")}><div className="row gap6">{BUS_PALETTE.map(c => <button key={c} onClick={() => set({ colorHex: c })} style={{ width: 24, height: 24, borderRadius: 12, border: v.colorHex === c ? '3px solid var(--text)' : 'none', background: '#' + c, cursor: 'pointer' }} />)}</div></Field>
+        <Field label={L("Куда (город)")}><input className="input" value={v.campusCity} onChange={e => set({ campusCity: e.target.value })} /></Field>
+        <Field label={L("Остановка у универа")}><input className="input" value={v.campusStop} onChange={e => set({ campusStop: e.target.value })} /></Field>
+        <Field label={L("Ссылка на Яндекс Карты")}><input className="input" value={v.mapLink} onChange={e => set({ mapLink: e.target.value })} /></Field>
       </div>
-      <div className="tiny faint mb8">Время рейсов — любым текстом: «6.20, 7:40; 8:15». Приложение само разложит по порядку.</div>
+      <div className="tiny faint mb8">{L("Время рейсов — любым текстом: «6.20, 7:40; 8:15». Приложение само разложит по порядку.")}</div>
       {(['toCampus', 'toHome'] as Direction[]).map(d => (
         <div key={d} className="mb12">
-          <div className="bold small mb8">{d === 'toCampus' ? `Из ${v.homeCity || 'дома'} → ${v.campusCity || 'к универу'}` : `Обратно → ${v.homeCity || 'домой'}`}</div>
+          <div className="bold small mb8">{d === 'toCampus' ? L`Из ${v.homeCity || L('дома')} → ${v.campusCity || L('к универу')}` : L`Обратно → ${v.homeCity || L('домой')}`}</div>
           <div className="grid g3">{BUS_DAYS.map(t => (
             <Field key={t.id} label={t.title}><textarea className="textarea" style={{ minHeight: 70 }} defaultValue={times(v, d, t.id).join(' ')}
               onBlur={e => { const n = normalizeTimes(e.target.value); set(d === 'toCampus' ? { toCampus: { ...v.toCampus, [t.id]: n } } : { toHome: { ...v.toHome, [t.id]: n } }) }} /></Field>
@@ -160,42 +161,42 @@ export function Wake() {
     const first = slotsOn(d, data).find(s => !s.remote) || slotsOn(d, data)[0]
     if (!first) return { d, first: null, wake: 0, leave: 0, note: '' }
     let leave = first.start - walkTo * 60_000
-    let note = `Идти ${walkTo} мин`
-    if (useBus && !first.remote) { const t = commute.morning(first); if (t) { leave = t.departure - commute.homeMinutes() * 60_000; note = `Автобус ${bus.active().number} в ${hm(t.departure)}` } }
-    if (first.remote) { leave = first.start - 5 * 60_000; note = 'Дистанционно' }
+    let note = L`Идти ${walkTo} мин`
+    if (useBus && !first.remote) { const t = commute.morning(first); if (t) { leave = t.departure - commute.homeMinutes() * 60_000; note = L`Автобус ${bus.active().number} в ${hm(t.departure)}` } }
+    if (first.remote) { leave = first.start - 5 * 60_000; note = L('Дистанционно') }
     const w = weather.hourAt(leave, hours)
     let extra = 0
-    if (w && w.feels <= -25) { extra = 10; note += ' · мороз: +10 мин' } else if (w && ((w.code >= 71 && w.code <= 77) || w.code === 85 || w.code === 86) && w.precip >= 1) { extra = 10; note += ' · снегопад: +10 мин' }
+    if (w && w.feels <= -25) { extra = 10; note += L(' · мороз: +10 мин') } else if (w && ((w.code >= 71 && w.code <= 77) || w.code === 85 || w.code === 86) && w.precip >= 1) { extra = 10; note += L(' · снегопад: +10 мин') }
     return { d, first, leave: leave - extra * 60_000, wake: leave - extra * 60_000 - prep * 60_000, note }
   }), [data, prep, walkTo, hours, useBus])
   useEffect(() => {
     if (!on) { notify.cancel('wake-'); return }
     const list: Note[] = plans.filter(p => p.first && p.wake > Date.now()).map(p => ({
-      id: `wake-${p.d}`, at: p.wake, title: '⏰ Пора вставать', route: 'home',
-      body: `${p.first!.subject} в ${hm(p.first!.start)}. Выйти в ${hm(p.leave)} — ${p.note}.`
+      id: `wake-${p.d}`, at: p.wake, title: L('⏰ Пора вставать'), route: 'home',
+      body: L`${p.first!.subject} в ${hm(p.first!.start)}. Выйти в ${hm(p.leave)} — ${p.note}.`
     }))
     notify.schedule('wake-', list)
   }, [on, plans])
   return (
     <>
-      <PageHeader title="Подъём" subtitle="Будильник к первой паре с учётом дороги и погоды" right={<div className="row"><span className="bold">Будить уведомлением</span><Toggle on={on} onChange={setOn} /></div>} />
+      <PageHeader title={L("Подъём")} subtitle={L("Будильник к первой паре с учётом дороги и погоды")} right={<div className="row"><span className="bold">{L("Будить уведомлением")}</span><Toggle on={on} onChange={setOn} /></div>} />
       <div className="grid g2 mb16">
-        <Card><Field label="На сборы, минут"><Segmented value={prep} onChange={setPrep} options={[30, 45, 60, 90].map(v => ({ value: v, label: `${v}` }))} /></Field></Card>
-        <Card><Field label={useBus ? 'Дорога считается по автобусу' : 'Дорога пешком, минут'}>{useBus ? <div className="sub">Автобус {bus.active().number}: {routeText(bus.active())}</div> : <Segmented value={walkTo} onChange={setWalkTo} options={[10, 20, 30, 45].map(v => ({ value: v, label: `${v}` }))} />}</Field></Card>
+        <Card><Field label={L("На сборы, минут")}><Segmented value={prep} onChange={setPrep} options={[30, 45, 60, 90].map(v => ({ value: v, label: `${v}` }))} /></Field></Card>
+        <Card><Field label={useBus ? L('Дорога считается по автобусу') : L('Дорога пешком, минут')}>{useBus ? <div className="sub">{L("Автобус")} {bus.active().number}: {routeText(bus.active())}</div> : <Segmented value={walkTo} onChange={setWalkTo} options={[10, 20, 30, 45].map(v => ({ value: v, label: `${v}` }))} />}</Field></Card>
       </div>
       <div className="col gap8">
         {plans.map((p, i) => (
           <motion.div key={p.d} className="card row" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-            <div style={{ width: 150 }} className="bold cap">{isToday(p.d) ? 'Сегодня' : relDay(p.d).split(',')[0]}<div className="tiny muted">{dayMon(p.d)}</div></div>
+            <div style={{ width: 150 }} className="bold cap">{isToday(p.d) ? L('Сегодня') : relDay(p.d).split(',')[0]}<div className="tiny muted">{dayMon(p.d)}</div></div>
             {p.first ? <>
-              <div className="tc" style={{ width: 110 }}><div className="heavy grad-text" style={{ fontSize: '2rem' }}>{hm(p.wake)}</div><div className="tiny faint">подъём</div></div>
-              <div className="grow"><div className="bold small">{p.first.subject} · {hm(p.first.start)}</div><div className="tiny muted">выйти в {hm(p.leave)} · {p.note}</div></div>
+              <div className="tc" style={{ width: 110 }}><div className="heavy grad-text" style={{ fontSize: '2rem' }}>{hm(p.wake)}</div><div className="tiny faint">{L("подъём")}</div></div>
+              <div className="grow"><div className="bold small">{p.first.subject} · {hm(p.first.start)}</div><div className="tiny muted">{L("выйти в")} {hm(p.leave)} · {p.note}</div></div>
               <AlarmClock size={20} color={on ? 'var(--brand)' : 'var(--text3)'} />
-            </> : <div className="sub">Пар нет — выспись 😴</div>}
+            </> : <div className="sub">{L("Пар нет — выспись 😴")}</div>}
           </motion.div>
         ))}
       </div>
-      <div className="tiny faint mt12">Уведомление придёт, если Арктика запущена (она живёт в трее). Для надёжности включи «Запускать вместе с Windows» в Профиле.</div>
+      <div className="tiny faint mt12">{L("Уведомление придёт, если Арктика запущена (она живёт в трее). Для надёжности включи «Запускать вместе с Windows» в Профиле.")}</div>
       {hours.length > 0 && plans[0].first && <div className="tiny faint">{weatherLine(weather.hourAt(plans[0].leave, hours) || hours[0])}{advice(weather.hourAt(plans[0].leave, hours) || hours[0]) ? ' · ' + advice(weather.hourAt(plans[0].leave, hours) || hours[0]) : ''}</div>}
     </>
   )
@@ -224,13 +225,13 @@ export function ShareImage() {
     if (theme === 'brand') { bg.addColorStop(0, c1); bg.addColorStop(1, c2) } else if (theme === 'dark') { bg.addColorStop(0, '#0b0f1a'); bg.addColorStop(1, '#151b2e') } else { bg.addColorStop(0, '#f6f8fc'); bg.addColorStop(1, '#e8eef8') }
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H)
     const fg = theme === 'light' ? '#111827' : '#ffffff', sub = theme === 'light' ? '#6b7280' : 'rgba(255,255,255,.7)'
-    ctx.fillStyle = fg; ctx.font = '800 56px "Segoe UI", sans-serif'; ctx.fillText(mode === 'week' ? 'Пары на неделю' : mode === 'tomorrow' ? 'Пары на завтра' : 'Пары на сегодня', 60, 110)
-    ctx.fillStyle = sub; ctx.font = '500 30px "Segoe UI", sans-serif'; ctx.fillText(`${data.ruzGroupNumber || p.group ? 'Группа ' + (data.ruzGroupNumber || p.group) + ' · ' : ''}${mode === 'week' ? `${dayMon(days[0])} — ${dayMon(days[5])}` : fullDay(days[0])}`, 60, 158)
+    ctx.fillStyle = fg; ctx.font = '800 56px "Segoe UI", sans-serif'; ctx.fillText(mode === 'week' ? L('Пары на неделю') : mode === 'tomorrow' ? L('Пары на завтра') : L('Пары на сегодня'), 60, 110)
+    ctx.fillStyle = sub; ctx.font = '500 30px "Segoe UI", sans-serif'; ctx.fillText(`${data.ruzGroupNumber || p.group ? L('Группа ') + (data.ruzGroupNumber || p.group) + ' · ' : ''}${mode === 'week' ? `${dayMon(days[0])} — ${dayMon(days[5])}` : fullDay(days[0])}`, 60, 158)
     let y = 210
     days.forEach((d, di) => {
       if (mode === 'week') { ctx.fillStyle = fg; ctx.font = '800 34px "Segoe UI", sans-serif'; ctx.fillText(`${DAY_NAMES[weekday(d) - 1]}, ${dayMon(d)}`, 60, y + 44); y += dayHead }
       const l = lists[di]
-      if (!l.length) { ctx.fillStyle = sub; ctx.font = '500 30px "Segoe UI", sans-serif'; ctx.fillText('пар нет 🎉', 60, y + 50); y += rowH }
+      if (!l.length) { ctx.fillStyle = sub; ctx.font = '500 30px "Segoe UI", sans-serif'; ctx.fillText(L('пар нет 🎉'), 60, y + 50); y += rowH }
       for (const s of l) {
         const st = kindStyle(s.kind)
         ctx.fillStyle = theme === 'light' ? 'rgba(0,0,0,.05)' : 'rgba(255,255,255,.08)'
@@ -242,25 +243,25 @@ export function ShareImage() {
         const subj = s.subject.length > 42 ? s.subject.slice(0, 41) + '…' : s.subject
         ctx.fillText(subj, 220, y + 48)
         ctx.fillStyle = st.color; ctx.font = '800 22px "Segoe UI", sans-serif'; ctx.fillText(st.label.toUpperCase(), 220, y + 78)
-        ctx.fillStyle = sub; ctx.font = '500 22px "Segoe UI", sans-serif'; ctx.fillText(`${s.room ? 'ауд. ' + s.room : ''}${s.teacher ? '  ·  ' + s.teacher : ''}`, 220 + ctx.measureText(st.label.toUpperCase()).width + 30, y + 78)
+        ctx.fillStyle = sub; ctx.font = '500 22px "Segoe UI", sans-serif'; ctx.fillText(`${s.room ? L('ауд. ') + s.room : ''}${s.teacher ? '  ·  ' + s.teacher : ''}`, 220 + ctx.measureText(st.label.toUpperCase()).width + 30, y + 78)
         y += rowH
       }
       y += 20
     })
-    ctx.fillStyle = sub; ctx.font = '600 22px "Segoe UI", sans-serif'; ctx.fillText('❄ Арктика — приложение для студентов САФУ', 60, H - 40)
+    ctx.fillStyle = sub; ctx.font = '600 22px "Segoe UI", sans-serif'; ctx.fillText(L('❄ Арктика — приложение для студентов САФУ'), 60, H - 40)
   }, [mode, theme, data])
   const save = async () => {
     const url = ref.current!.toDataURL('image/png')
-    const p2 = await safu.dialog.save({ name: `Пары ${ymd(Date.now())}.png`, base64: url.split(',')[1], filters: [{ name: 'Картинка', extensions: ['png'] }] })
-    if (p2) toast('Картинка сохранена')
+    const p2 = await safu.dialog.save({ name: L`Пары ${ymd(Date.now())}.png`, base64: url.split(',')[1], filters: [{ name: L('Картинка'), extensions: ['png'] }] })
+    if (p2) toast(L('Картинка сохранена'))
   }
   const copy = async () => {
-    ref.current!.toBlob(async b => { if (!b) return; try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); toast('Картинка в буфере — вставь в чат (Ctrl+V)') } catch { toast('Не получилось скопировать — сохрани файлом', 'warn') } })
+    ref.current!.toBlob(async b => { if (!b) return; try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); toast(L('Картинка в буфере — вставь в чат (Ctrl+V)')) } catch { toast(L('Не получилось скопировать — сохрани файлом'), 'warn') } })
   }
   return (
     <>
-      <PageHeader title="Расписание картинкой" subtitle="Красивая картинка для чата группы" right={<><button className="btn" onClick={copy}><Copy size={15} /> Копировать</button><button className="btn primary" onClick={save}><Download size={15} /> Сохранить PNG</button></>} />
-      <div className="row mb16"><Segmented value={mode} onChange={setMode} options={[{ value: 'day', label: 'Сегодня' }, { value: 'tomorrow', label: 'Завтра' }, { value: 'week', label: 'Неделя' }]} /><Segmented value={theme} onChange={setTheme} options={[{ value: 'dark', label: 'Тёмная' }, { value: 'light', label: 'Светлая' }, { value: 'brand', label: 'Цвет темы' }]} /></div>
+      <PageHeader title={L("Расписание картинкой")} subtitle={L("Красивая картинка для чата группы")} right={<><button className="btn" onClick={copy}><Copy size={15} /> {L("Копировать")}</button><button className="btn primary" onClick={save}><Download size={15} /> {L("Сохранить PNG")}</button></>} />
+      <div className="row mb16"><Segmented value={mode} onChange={setMode} options={[{ value: 'day', label: L('Сегодня') }, { value: 'tomorrow', label: L('Завтра') }, { value: 'week', label: L('Неделя') }]} /><Segmented value={theme} onChange={setTheme} options={[{ value: 'dark', label: L('Тёмная') }, { value: 'light', label: L('Светлая') }, { value: 'brand', label: L('Цвет темы') }]} /></div>
       <motion.canvas key={mode + theme} ref={ref} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} style={{ width: 'min(540px, 100%)', borderRadius: 20, boxShadow: '0 20px 60px rgba(0,0,0,.4)', display: 'block' }} />
     </>
   )
@@ -272,8 +273,8 @@ type BoardShot = FileInfo & { subj: string; day: number }
 
 /** «Сегодня», «Вчера», «Понедельник, 12 октября» */
 function boardDayTitle(t: number) {
-  if (isToday(t)) return 'Сегодня'
-  if (isYesterday(t)) return 'Вчера'
+  if (isToday(t)) return L('Сегодня')
+  if (isYesterday(t)) return L('Вчера')
   const s = fullDay(t)
   const y = new Date(t).getFullYear()
   return s.charAt(0).toUpperCase() + s.slice(1) + (y !== new Date().getFullYear() ? ` ${y}` : '')
@@ -331,30 +332,30 @@ export function Boards() {
 
   const add = async () => {
     const s = subject || slotsOn(Date.now(), data).find(x => x.start <= Date.now() && x.end > Date.now())?.subject || subjects(data)[0]
-    if (!s) { toast('Сначала подключи расписание', 'warn'); return }
+    if (!s) { toast(L('Сначала подключи расписание'), 'warn'); return }
     const folder = subject ? `Предметы/${subject}/Доска` : `${subjectFolder(s)}/Доска`
     const r = await safu.fs.import(folder)
-    if (r.length) { toast(`Добавлено в «${subject || s}»: ${r.length}`); load() }
+    if (r.length) { toast(L`Добавлено в «${subject || s}»: ${r.length}`); load() }
   }
 
   const back = subject && day != null
     ? <button className="btn" onClick={() => setDay(null)}><ChevronLeft size={15} /> {subject}</button>
-    : subject ? <button className="btn" onClick={() => setSubject(null)}><ChevronLeft size={15} /> Все предметы</button> : null
+    : subject ? <button className="btn" onClick={() => setSubject(null)}><ChevronLeft size={15} /> {L("Все предметы")}</button> : null
 
-  const title = day != null ? boardDayTitle(day) : subject || 'Фото доски'
+  const title = day != null ? boardDayTitle(day) : subject || L('Фото доски')
   const subtitle = day != null
-    ? `${subject} · ${photos.length} фото · по времени съёмки`
-    : subject ? `${days.length} ${plural(days.length, 'дата', 'даты', 'дат')} · нажми на дату, чтобы открыть фото`
-    : 'Нажми на предмет — увидишь даты, когда фотографировал доску'
+    ? L`${subject} · ${photos.length} фото · по времени съёмки`
+    : subject ? L`${days.length} ${plural(days.length, L('дата'), L('даты'), L('дат'))} · нажми на дату, чтобы открыть фото`
+    : L('Нажми на предмет — увидишь даты, когда фотографировал доску')
 
   return (
     <>
       <PageHeader title={title} subtitle={subtitle} right={<>
         {back}
         {subject && <button className="btn" onClick={() => safu.fs.openRoot(`Предметы/${subject}/Доска`)}><FolderOpen size={15} /> Папка</button>}
-        <button className="btn primary" onClick={add}><Upload size={15} /> Добавить фото</button>
+        <button className="btn primary" onClick={add}><Upload size={15} /> {L("Добавить фото")}</button>
       </>} />
-      {loaded && !bySubject.length && <Empty emoji="📸" title="Фото пока нет" text="Перенеси фото с iPhone по QR-коду (Профиль → Перенос с iPhone) или добавь кнопкой выше. Снимки лягут в папку предмета, по датам." />}
+      {loaded && !bySubject.length && <Empty emoji="📸" title={L("Фото пока нет")} text={L("Перенеси фото с iPhone по QR-коду (Профиль → Перенос с iPhone) или добавь кнопкой выше. Снимки лягут в папку предмета, по датам.")} />}
       <AnimatePresence mode="wait">
         {!subject && (
           <motion.div key="subjects" className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 }}
@@ -369,7 +370,7 @@ export function Boards() {
                 </div>
                 <div style={{ padding: '12px 14px' }}>
                   <div className="bold clamp2">{s.name}</div>
-                  <div className="tiny faint mt4">{s.days} {plural(s.days, 'дата', 'даты', 'дат')} · последнее {isToday(s.last.mtime) ? 'сегодня' : isYesterday(s.last.mtime) ? 'вчера' : dayMon(s.last.mtime)}</div>
+                  <div className="tiny faint mt4">{s.days} {plural(s.days, L('дата'), L('даты'), L('дат'))} {L("· последнее")} {isToday(s.last.mtime) ? L('сегодня') : isYesterday(s.last.mtime) ? L('вчера') : dayMon(s.last.mtime)}</div>
                 </div>
               </motion.div>
             ))}
@@ -388,7 +389,7 @@ export function Boards() {
                 </div>
                 <div className="grow">
                   <div className="bold">{boardDayTitle(d.day)}</div>
-                  <div className="sub mt4">{d.list.length} фото · {hm(d.list[0].mtime)}{d.list.length > 1 ? `–${hm(d.list[d.list.length - 1].mtime)}` : ''}</div>
+                  <div className="sub mt4">{d.list.length} {L("фото ·")} {hm(d.list[0].mtime)}{d.list.length > 1 ? `–${hm(d.list[d.list.length - 1].mtime)}` : ''}</div>
                 </div>
                 <ChevronRight size={18} className="faint" />
               </motion.div>
@@ -415,7 +416,7 @@ export function Boards() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.img key={photos[view].rel} src={fileURL(photos[view].rel)} initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               style={{ maxWidth: '90vw', maxHeight: '86vh', borderRadius: 12 }} />
-            <div className="tiny" style={{ position: 'absolute', bottom: 22, color: 'rgba(255,255,255,.8)' }}>{view + 1} из {photos.length} · {hm(photos[view].mtime)} · ← → листать, Esc — закрыть</div>
+            <div className="tiny" style={{ position: 'absolute', bottom: 22, color: 'rgba(255,255,255,.8)' }}>{view + 1} {L("из")} {photos.length} · {hm(photos[view].mtime)} {L("· ← → листать, Esc — закрыть")}</div>
             {view > 0 && <button className="btn icon round" style={{ position: 'absolute', left: 24 }} onClick={e => { e.stopPropagation(); setView(view - 1) }}><ChevronLeft size={20} /></button>}
             {view < photos.length - 1 && <button className="btn icon round" style={{ position: 'absolute', right: 24 }} onClick={e => { e.stopPropagation(); setView(view + 1) }}><ChevronRight size={20} /></button>}
           </motion.div>
@@ -428,16 +429,16 @@ export function Boards() {
 // ---------- праздники ----------
 
 export function CelebrationSettings() {
-  const keys: [string, string, string][] = [['fx.on', 'Салюты и конфетти', 'Главный переключатель'], ['fx.dayEnd', 'Конец пар', 'Салют, когда закончилась последняя пара'], ['fx.weekEnd', 'Конец недели', 'Большой салют в пятницу или субботу'], ['fx.tasks', 'Сделанные задачи', 'Конфетти за ДЗ и задачи'], ['fx.exams', 'Сданные экзамены', 'Когда вписал оценку в БРС'], ['fx.holidays', 'Праздники', 'Новый год, Татьянин день, День программиста…'], ['fx.birthday', 'День рождения', 'Поздравление в твой день']]
+  const keys: [string, string, string][] = [['fx.on', L('Салюты и конфетти'), L('Главный переключатель')], ['fx.dayEnd', L('Конец пар'), L('Салют, когда закончилась последняя пара')], ['fx.weekEnd', L('Конец недели'), L('Большой салют в пятницу или субботу')], ['fx.tasks', L('Сделанные задачи'), L('Конфетти за ДЗ и задачи')], ['fx.exams', L('Сданные экзамены'), L('Когда вписал оценку в БРС')], ['fx.holidays', L('Праздники'), L('Новый год, Татьянин день, День программиста…')], ['fx.birthday', L('День рождения'), L('Поздравление в твой день')]]
   const [bday, setBday] = usePref<number | null>('user.birthday', null)
   return (
     <>
-      <PageHeader title="Праздники" subtitle="Маленькие поводы порадоваться" right={<button className="btn primary" onClick={() => celebrations.test()}><PartyPopper size={15} /> Показать салют</button>} />
+      <PageHeader title={L("Праздники")} subtitle={L("Маленькие поводы порадоваться")} right={<button className="btn primary" onClick={() => celebrations.test()}><PartyPopper size={15} /> {L("Показать салют")}</button>} />
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <Card className="list" style={{ padding: 0 }}>{keys.map(([k, t, s]) => <FlagRow key={k} k={k} t={t} s={s} />)}
-          <Row title="Мой день рождения" right={<input type="date" className="input" style={{ width: 170 }} value={bday ? ymd(bday) : ''} onChange={e => setBday(e.target.value ? new Date(e.target.value + 'T12:00').getTime() : null)} />} />
+          <Row title={L("Мой день рождения")} right={<input type="date" className="input" style={{ width: 170 }} value={bday ? ymd(bday) : ''} onChange={e => setBday(e.target.value ? new Date(e.target.value + 'T12:00').getTime() : null)} />} />
         </Card>
-        <Card><div className="h-card mb12">Праздники в приложении</div><div className="col gap6">{HOLIDAYS.map(h => <div key={h.id} className="row small"><span className="mono faint" style={{ width: 54 }}>{String(h.d).padStart(2, '0')}.{String(h.m).padStart(2, '0')}</span><span>{h.title}</span></div>)}</div></Card>
+        <Card><div className="h-card mb12">{L("Праздники в приложении")}</div><div className="col gap6">{HOLIDAYS.map(h => <div key={h.id} className="row small"><span className="mono faint" style={{ width: 54 }}>{String(h.d).padStart(2, '0')}.{String(h.m).padStart(2, '0')}</span><span>{h.title}</span></div>)}</div></Card>
       </div>
     </>
   )
@@ -484,7 +485,7 @@ export function Game() {
       ctx.fillStyle = '#bfdbfe'; for (let i = 0; i < 4; i++) ctx.fillRect(x - 50 + i * 26, busY - 22, 20, 18)
       ctx.fillStyle = '#fff'; ctx.font = '800 18px "Segoe UI"'; ctx.fillText('150', x - 16, busY + 22)
       ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(x - 34, busY + 30, 10, 0, 7); ctx.arc(x + 34, busY + 30, 10, 0, 7); ctx.fill()
-      ctx.fillStyle = '#fff'; ctx.font = '800 26px "Segoe UI"'; ctx.fillText(`${Math.floor(sc)} м`, 20, 40)
+      ctx.fillStyle = '#fff'; ctx.font = '800 26px "Segoe UI"'; ctx.fillText(L`${Math.floor(sc)} м`, 20, 40)
       setScore(Math.floor(sc))
       if (!alive) { setState('over'); setBest((b: number) => Math.max(b, Math.floor(sc))); return }
       raf = requestAnimationFrame(frame)
@@ -494,7 +495,7 @@ export function Game() {
   }, [state])
   return (
     <>
-      <PageHeader title="Автобус 150" subtitle="Доберись до Архангельска: ↑ и ↓ — смена полосы" right={<span className="pill">рекорд: {best} м</span>} />
+      <PageHeader title={L("Автобус 150")} subtitle={L("Доберись до Архангельска: ↑ и ↓ — смена полосы")} right={<span className="pill">{L("рекорд:")} {best} {L("м")}</span>} />
       <Card flush style={{ position: 'relative' }}>
         <canvas ref={ref} width={900} height={420} style={{ width: '100%', display: 'block' }} />
         <AnimatePresence>
@@ -502,8 +503,8 @@ export function Game() {
             <motion.div className="center" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.55)', color: '#fff' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <div className="col" style={{ alignItems: 'center', gap: 12 }}>
                 <div style={{ fontSize: '3.5rem' }}>{state === 'over' ? '💥' : '🚌'}</div>
-                <div className="h-card" style={{ fontSize: '1.6rem' }}>{state === 'over' ? `Проехал ${score} м` : 'Объезжай ямы и машины'}</div>
-                <button className="btn primary lg" onClick={() => setState('play')}>{state === 'over' ? <><RotateCcw size={18} /> Ещё раз</> : <><Gamepad2 size={18} /> Поехали</>}</button>
+                <div className="h-card" style={{ fontSize: '1.6rem' }}>{state === 'over' ? L`Проехал ${score} м` : L('Объезжай ямы и машины')}</div>
+                <button className="btn primary lg" onClick={() => setState('play')}>{state === 'over' ? <><RotateCcw size={18} /> {L("Ещё раз")}</> : <><Gamepad2 size={18} /> {L("Поехали")}</>}</button>
               </div>
             </motion.div>
           )}
@@ -519,7 +520,7 @@ export function ToolsPage() {
   const p = useProfile()
   return (
     <>
-      <PageHeader title="Инструменты" subtitle="Всё, что помогает учиться" />
+      <PageHeader title={L("Инструменты")} subtitle={L("Всё, что помогает учиться")} />
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 }}>
         {TOOLS.filter(t => !t.headOnly || p.head).map((t, i) => (
           <Card key={t.id} press tilt delay={i * 0.025} onClick={() => go(t.page)} style={{ overflow: 'hidden' }}>
@@ -530,7 +531,7 @@ export function ToolsPage() {
           </Card>
         ))}
       </div>
-      {!p.head && <div className="tiny faint mt16">Посещаемость, рассылка и опросы появятся, если в Профиле выбрать роль «Староста» или «Зам».</div>}
+      {!p.head && <div className="tiny faint mt16">{L("Посещаемость, рассылка и опросы появятся, если в Профиле выбрать роль «Староста» или «Зам».")}</div>}
     </>
   )
 }

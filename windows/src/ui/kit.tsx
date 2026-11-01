@@ -7,6 +7,7 @@ import { kindStyle } from '../lib/schedule'
 import { KindIcon } from './icons'
 import { fxNow } from '../fx/perf'
 
+import { L } from '../lib/i18n'
 export const spring = { type: 'spring' as const, stiffness: 420, damping: 34 }
 export const softSpring = { type: 'spring' as const, stiffness: 260, damping: 28 }
 export const bouncy = { type: 'spring' as const, stiffness: 500, damping: 22 }
@@ -276,7 +277,7 @@ export function Sheet({ open, onClose, title, children, footer, size, headRight,
               <div className="sheet-head">
                 <div className="sheet-title">{title}</div>
                 {headRight}
-                <button className="btn icon sm ghost round" onClick={onClose} title="Закрыть (Esc)"><X size={18} /></button>
+                <button className="btn icon sm ghost round" onClick={onClose} title={L("Закрыть (Esc)")}><X size={18} /></button>
               </div>
             )}
             <div className="sheet-body" style={noPad ? { padding: 0, flex: 1, display: 'flex', flexDirection: 'column' } : undefined}>{children}</div>
@@ -305,7 +306,7 @@ export function DialogHost({ children }: { children: React.ReactNode }) {
       {children}
       <Sheet open={!!req} onClose={() => close(req?.kind === 'confirm' ? false : null)} title={req?.title}
         footer={<>
-          {req?.kind !== 'alert' && <button className="btn" onClick={() => close(req?.kind === 'confirm' ? false : null)}>Отмена</button>}
+          {req?.kind !== 'alert' && <button className="btn" onClick={() => close(req?.kind === 'confirm' ? false : null)}>{L("Отмена")}</button>}
           <button className={`btn ${req?.danger ? 'danger solid' : 'primary'}`} autoFocus={req?.kind !== 'prompt'}
             onClick={() => close(req?.kind === 'prompt' ? val : true)}>{req?.ok || 'OK'}</button>
         </>}>
@@ -321,10 +322,10 @@ export function DialogHost({ children }: { children: React.ReactNode }) {
 
 const dialogRef: { current: (r: Omit<DialogReq, 'resolve'>) => Promise<any> } = { current: async () => null }
 export const useDialog = () => useContext(DialogCtx)
-export const confirmDialog = (title: string, text?: string, ok = 'Да', danger = false): Promise<boolean> => dialogRef.current({ kind: 'confirm', title, text, ok, danger })
-export const promptDialog = (title: string, value = '', placeholder = '', text?: string): Promise<string | null> => dialogRef.current({ kind: 'prompt', title, value, placeholder, text, ok: 'Готово' })
+export const confirmDialog = (title: string, text?: string, ok = L('Да'), danger = false): Promise<boolean> => dialogRef.current({ kind: 'confirm', title, text, ok, danger })
+export const promptDialog = (title: string, value = '', placeholder = '', text?: string): Promise<string | null> => dialogRef.current({ kind: 'prompt', title, value, placeholder, text, ok: L('Готово') })
 /** Ввод пароля: символы скрыты */
-export const passwordDialog = (title: string, text?: string, ok = 'Готово'): Promise<string | null> => dialogRef.current({ kind: 'prompt', title, value: '', placeholder: 'Пароль', text, ok, secret: true })
+export const passwordDialog = (title: string, text?: string, ok = L('Готово')): Promise<string | null> => dialogRef.current({ kind: 'prompt', title, value: '', placeholder: L('Пароль'), text, ok, secret: true })
 export const alertDialog = (title: string, text?: string): Promise<boolean> => dialogRef.current({ kind: 'alert', title, text })
 
 // ---------- всплывающие сообщения ----------

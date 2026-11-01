@@ -15,21 +15,22 @@ import { useSchedule } from '../lib/scheduleStore'
 import { subjects } from '../lib/schedule'
 import { subjectFolder } from '../lib/effects'
 
+import { L } from '../lib/i18n'
 export const fileKind = (ext: string) => {
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'svg'].includes(ext)) return { Icon: FileImage, color: '#10b981', label: 'Изображение' }
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'svg'].includes(ext)) return { Icon: FileImage, color: '#10b981', label: L('Изображение') }
   if (['pdf'].includes(ext)) return { Icon: FileText, color: '#ef4444', label: 'PDF' }
-  if (['doc', 'docx', 'odt', 'rtf'].includes(ext)) return { Icon: FileText, color: '#2563eb', label: 'Документ' }
-  if (['xls', 'xlsx', 'ods', 'csv'].includes(ext)) return { Icon: FileSpreadsheet, color: '#16a34a', label: 'Таблица' }
-  if (['ppt', 'pptx', 'odp', 'key'].includes(ext)) return { Icon: Presentation, color: '#ea580c', label: 'Презентация' }
-  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return { Icon: FileArchive, color: '#a16207', label: 'Архив' }
-  if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return { Icon: FileVideo, color: '#9333ea', label: 'Видео' }
-  if (['mp3', 'wav', 'm4a', 'ogg', 'flac'].includes(ext)) return { Icon: FileAudio, color: '#db2777', label: 'Аудио' }
-  if (['txt', 'md', 'log'].includes(ext)) return { Icon: StickyNote, color: '#eab308', label: 'Текст' }
-  if (['py', 'js', 'ts', 'c', 'cpp', 'cs', 'java', 'html', 'css', 'json', 'swift', 'go', 'rs', 'ipynb', 'sql'].includes(ext)) return { Icon: FileCode, color: '#0891b2', label: 'Код' }
-  return { Icon: File, color: '#64748b', label: ext.toUpperCase() || 'Файл' }
+  if (['doc', 'docx', 'odt', 'rtf'].includes(ext)) return { Icon: FileText, color: '#2563eb', label: L('Документ') }
+  if (['xls', 'xlsx', 'ods', 'csv'].includes(ext)) return { Icon: FileSpreadsheet, color: '#16a34a', label: L('Таблица') }
+  if (['ppt', 'pptx', 'odp', 'key'].includes(ext)) return { Icon: Presentation, color: '#ea580c', label: L('Презентация') }
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return { Icon: FileArchive, color: '#a16207', label: L('Архив') }
+  if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return { Icon: FileVideo, color: '#9333ea', label: L('Видео') }
+  if (['mp3', 'wav', 'm4a', 'ogg', 'flac'].includes(ext)) return { Icon: FileAudio, color: '#db2777', label: L('Аудио') }
+  if (['txt', 'md', 'log'].includes(ext)) return { Icon: StickyNote, color: '#eab308', label: L('Текст') }
+  if (['py', 'js', 'ts', 'c', 'cpp', 'cs', 'java', 'html', 'css', 'json', 'swift', 'go', 'rs', 'ipynb', 'sql'].includes(ext)) return { Icon: FileCode, color: '#0891b2', label: L('Код') }
+  return { Icon: File, color: '#64748b', label: ext.toUpperCase() || L('Файл') }
 }
 
-export const fmtSize = (b: number) => b < 1024 ? `${b} Б` : b < 1048576 ? `${(b / 1024).toFixed(0)} КБ` : b < 1073741824 ? `${(b / 1048576).toFixed(1)} МБ` : `${(b / 1073741824).toFixed(2)} ГБ`
+export const fmtSize = (b: number) => b < 1024 ? L`${b} Б` : b < 1048576 ? L`${(b / 1024).toFixed(0)} КБ` : b < 1073741824 ? L`${(b / 1048576).toFixed(1)} МБ` : L`${(b / 1073741824).toFixed(2)} ГБ`
 
 const CARD_EXT = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'txt', 'md', 'mp4', 'webm', 'mp3', 'wav', 'ogg', 'm4a', 'json', 'csv', 'log', 'html', 'htm']
 
@@ -177,34 +178,34 @@ export default function Files({ path: startPath }: { path?: string }) {
     const paths = [...e.dataTransfer.files].map(f => safu.fs.pathFor(f)).filter(Boolean)
     if (!paths.length) return
     const r: string[] = await safu.fs.importPaths(path, paths)
-    toast(`Добавлено: ${r.length}`)
+    toast(L`Добавлено: ${r.length}`)
     load()
   }
 
   const menu = (e: React.MouseEvent, f: FileInfo) => openMenu(e, [
-    { label: f.dir ? 'Открыть' : 'Открыть карточкой', icon: <PanelTop size={15} />, run: () => f.dir ? setPath(f.rel) : openFile(f) },
-    ...(!f.dir ? [{ label: 'Открыть в программе', icon: <ExternalLink size={15} />, run: () => safu.fs.open(f.rel) }] : []),
-    { label: 'Показать в Проводнике', icon: <FolderOpen size={15} />, run: () => safu.fs.reveal(f.rel) },
-    { label: 'Переименовать', icon: <Pencil size={15} />, run: async () => { const n = await promptDialog('Новое имя', f.name); if (n && n !== f.name) { await safu.fs.rename(f.rel, n); load() } } },
-    { label: 'Переместить в предмет…', icon: <MoveRight size={15} />, run: () => openMenu(e, subjects(data).slice(0, 20).map(s => ({ label: s, run: async () => { await safu.fs.move(f.rel, subjectFolder(s)); toast(`Перемещено в «${s}»`); load() } }))) },
+    { label: f.dir ? L('Открыть') : L('Открыть карточкой'), icon: <PanelTop size={15} />, run: () => f.dir ? setPath(f.rel) : openFile(f) },
+    ...(!f.dir ? [{ label: L('Открыть в программе'), icon: <ExternalLink size={15} />, run: () => safu.fs.open(f.rel) }] : []),
+    { label: L('Показать в Проводнике'), icon: <FolderOpen size={15} />, run: () => safu.fs.reveal(f.rel) },
+    { label: L('Переименовать'), icon: <Pencil size={15} />, run: async () => { const n = await promptDialog(L('Новое имя'), f.name); if (n && n !== f.name) { await safu.fs.rename(f.rel, n); load() } } },
+    { label: L('Переместить в предмет…'), icon: <MoveRight size={15} />, run: () => openMenu(e, subjects(data).slice(0, 20).map(s => ({ label: s, run: async () => { await safu.fs.move(f.rel, subjectFolder(s)); toast(L`Перемещено в «${s}»`); load() } }))) },
     { sep: true, label: '' },
-    { label: 'В корзину', icon: <Trash2 size={15} />, danger: true, run: async () => { if (await confirmDialog(`Удалить «${f.name}»?`, 'Файл попадёт в корзину Windows.', 'Удалить', true)) { await safu.fs.trash(f.rel); load() } } }
+    { label: L('В корзину'), icon: <Trash2 size={15} />, danger: true, run: async () => { if (await confirmDialog(L`Удалить «${f.name}»?`, L('Файл попадёт в корзину Windows.'), L('Удалить'), true)) { await safu.fs.trash(f.rel); load() } } }
   ])
 
   return (
     <div onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={e => { if (e.currentTarget === e.target) setDrag(false) }} onDrop={onDrop}>
-      <PageHeader title="Файлы" subtitle={<span className="clickable" onClick={() => safu.fs.openRoot('')}>{root || 'Документы\\Арктика'}</span>}
+      <PageHeader title={L("Файлы")} subtitle={<span className="clickable" onClick={() => safu.fs.openRoot('')}>{root || L('Документы\\Арктика')}</span>}
         right={<>
-          <button className="btn icon" onClick={load} title="Обновить"><RefreshCw size={16} className={loading ? 'spin' : ''} /></button>
-          <button className="btn" onClick={async () => { const n = await promptDialog('Новая папка', '', 'Название'); if (n) { await safu.fs.mkdir((path ? path + '/' : '') + n.replace(/[\\/:*?"<>|]/g, '_')); load() } }}><FolderPlus size={16} /> Папка</button>
-          <button className="btn" onClick={async () => { const n = await promptDialog('Новая заметка', '', 'Название'); if (n) { await safu.fs.writeText(`${path ? path + '/' : ''}${n.replace(/[\\/:*?"<>|]/g, '_')}.txt`, ''); load() } }}><StickyNote size={16} /> Текст</button>
-          <button className="btn" onClick={() => go('transfer')} title="Перенести файлы с iPhone по QR-коду"><QrCode size={16} /> С iPhone</button>
-          <button className="btn primary" onClick={async () => { const r = await safu.fs.import(path); if (r.length) { toast(`Добавлено: ${r.length}`); load() } }}><Upload size={16} /> Добавить файлы</button>
+          <button className="btn icon" onClick={load} title={L("Обновить")}><RefreshCw size={16} className={loading ? 'spin' : ''} /></button>
+          <button className="btn" onClick={async () => { const n = await promptDialog(L('Новая папка'), '', L('Название')); if (n) { await safu.fs.mkdir((path ? path + '/' : '') + n.replace(/[\\/:*?"<>|]/g, '_')); load() } }}><FolderPlus size={16} /> {L("Папка")}</button>
+          <button className="btn" onClick={async () => { const n = await promptDialog(L('Новая заметка'), '', L('Название')); if (n) { await safu.fs.writeText(`${path ? path + '/' : ''}${n.replace(/[\\/:*?"<>|]/g, '_')}.txt`, ''); load() } }}><StickyNote size={16} /> {L("Текст")}</button>
+          <button className="btn" onClick={() => go('transfer')} title={L("Перенести файлы с iPhone по QR-коду")}><QrCode size={16} /> {L("С iPhone")}</button>
+          <button className="btn primary" onClick={async () => { const r = await safu.fs.import(path); if (r.length) { toast(L`Добавлено: ${r.length}`); load() } }}><Upload size={16} /> {L("Добавить файлы")}</button>
         </>} />
 
       <div className="row mb16 wrap-row">
         <div className="row" style={{ gap: 2, padding: 4, borderRadius: 12, background: 'var(--fill)', border: '1px solid var(--line)' }}>
-          <button className="btn sm ghost" onClick={() => setPath('')}><Home size={14} /> Файлы</button>
+          <button className="btn sm ghost" onClick={() => setPath('')}><Home size={14} /> {L("Файлы")}</button>
           {crumbs.map((c, i) => (
             <React.Fragment key={i}>
               <ChevronRight size={14} className="faint" />
@@ -214,15 +215,15 @@ export default function Files({ path: startPath }: { path?: string }) {
         </div>
         <span className="spacer" />
         <div className="row" style={{ padding: '0 12px', borderRadius: 12, background: 'var(--fill)', border: '1px solid var(--line)', height: 38, width: 260 }}>
-          <Search size={15} className="faint" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск по всем файлам" style={{ background: 'none', border: 'none', outline: 'none', flex: 1 }} />
+          <Search size={15} className="faint" /><input value={q} onChange={e => setQ(e.target.value)} placeholder={L("Поиск по всем файлам")} style={{ background: 'none', border: 'none', outline: 'none', flex: 1 }} />
           {q && <X size={14} className="clickable faint" onClick={() => setQ('')} />}
         </div>
-        <Segmented value={sort} onChange={setSort} options={[{ value: 'name', label: 'Имя' }, { value: 'date', label: 'Дата' }, { value: 'size', label: 'Размер' }]} />
+        <Segmented value={sort} onChange={setSort} options={[{ value: 'name', label: L('Имя') }, { value: 'date', label: L('Дата') }, { value: 'size', label: L('Размер') }]} />
         <Segmented value={view} onChange={setView} options={[{ value: 'grid', label: <LayoutGrid size={14} /> }, { value: 'list', label: <List size={14} /> }]} />
       </div>
 
       <div className={drag ? 'drop-zone' : ''} style={{ borderRadius: 20, minHeight: 300, padding: drag ? 10 : 0, transition: 'padding .2s' }}>
-        {!sorted.length && !loading && <Empty emoji={q ? '🔍' : '📂'} title={q ? 'Ничего не нашлось' : 'Папка пустая'} text={q ? undefined : 'Перетащи сюда файлы из Проводника или нажми «Добавить файлы». Лекции, методички, фото доски — по папкам предметов.'} />}
+        {!sorted.length && !loading && <Empty emoji={q ? '🔍' : '📂'} title={q ? L('Ничего не нашлось') : L('Папка пустая')} text={q ? undefined : L('Перетащи сюда файлы из Проводника или нажми «Добавить файлы». Лекции, методички, фото доски — по папкам предметов.')} />}
         {view === 'grid' ? (
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14 }}>
             <AnimatePresence>
@@ -235,7 +236,7 @@ export default function Files({ path: startPath }: { path?: string }) {
                   onDoubleClick={() => f.dir ? setPath(f.rel) : openFile(f)} onClick={() => f.dir ? setPath(f.rel) : openFile(f)} onContextMenu={e => menu(e, f)}>
                   <Thumb f={f} size={120} />
                   <div className="small bold ellipsis" style={{ marginTop: 8, padding: '0 4px' }} title={f.name}>{f.name}</div>
-                  <div className="tiny faint" style={{ padding: '0 4px 2px' }}>{f.dir ? 'Папка' : `${fmtSize(f.size)} · ${dayMon(f.mtime)}`}</div>
+                  <div className="tiny faint" style={{ padding: '0 4px 2px' }}>{f.dir ? L('Папка') : `${fmtSize(f.size)} · ${dayMon(f.mtime)}`}</div>
                   {found && <div className="tiny muted ellipsis" style={{ padding: '0 4px' }}>{f.rel.split('/').slice(0, -1).join(' › ')}</div>}
                 </motion.div>
               ))}
@@ -258,7 +259,7 @@ export default function Files({ path: startPath }: { path?: string }) {
         )}
       </div>
       <AnimatePresence>
-        {drag && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="toast" style={{ position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)', zIndex: 300 }}><Upload size={18} /> Отпусти, чтобы добавить в «{crumbs[crumbs.length - 1] || 'Файлы'}»</motion.div>}
+        {drag && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="toast" style={{ position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)', zIndex: 300 }}><Upload size={18} /> {L("Отпусти, чтобы добавить в «")}{crumbs[crumbs.length - 1] || L('Файлы')}»</motion.div>}
       </AnimatePresence>
     </div>
   )

@@ -2,6 +2,7 @@
 import { safu } from './bridge'
 import { create } from 'zustand'
 
+import { L } from './i18n'
 export type Credential = { host: string; user: string; pass: string; saved: number }
 
 export const useCreds = create<{ list: Credential[] }>(() => ({ list: [] }))
@@ -40,11 +41,11 @@ export const creds = {
   mailAccount(): (Credential & { source: string }) | null {
     const usable = (c: Credential) => c.user.trim() && c.pass
     const m = creds.get('edu.narfu.ru')
-    if (m && usable(m)) return { ...m, source: 'почты' }
+    if (m && usable(m)) return { ...m, source: L('почты') }
     const rank = (h: string) => h.includes('sakai') ? 0 : h.startsWith('lk.') ? 1 : 2
     const others = useCreds.getState().list.filter(c => isUniHost(c.host) && usable(c)).sort((a, b) => rank(a.host) - rank(b.host))
     const c = others[0]
     if (!c) return null
-    return { ...c, source: c.host.includes('sakai') ? 'Sakai' : c.host.startsWith('lk.') ? 'личного кабинета' : c.host }
+    return { ...c, source: c.host.includes('sakai') ? 'Sakai' : c.host.startsWith('lk.') ? L('личного кабинета') : c.host }
   }
 }

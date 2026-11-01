@@ -10,6 +10,7 @@ import { hw, homeworkStore } from '../lib/homework'
 import { safu } from '../lib/bridge'
 import { mapsURL } from '../lib/maps'
 
+import { L } from '../lib/i18n'
 export function SlotRow({ s, now, compact, showDay, alts = [] }: { s: Slot; now: number; compact?: boolean; showDay?: string; alts?: Slot[] }) {
   homeworkStore.use()
   const st = kindStyle(s.kind)
@@ -23,10 +24,10 @@ export function SlotRow({ s, now, compact, showDay, alts = [] }: { s: Slot; now:
       layout="position"
       onClick={() => useModals.getState().set({ lesson: alts.length ? { ...s, alts } : s })}
       onContextMenu={e => openMenu(e, [
-        { label: 'Подробнее', run: () => useModals.getState().set({ lesson: s }) },
-        { label: 'Предмет: файлы и заметки', run: () => openSubject(s.subject) },
-        { label: 'Записать ДЗ с этой пары', icon: <BookMarked size={15} />, run: () => openHomeworkEditor({ subject: s.subject, slotStart: s.start }) },
-        ...(s.address && !s.remote ? [{ label: 'Маршрут в Яндекс Картах', icon: <MapPin size={15} />, run: () => safu.shell.open(mapsURL(s.address)) }] : [])
+        { label: L('Подробнее'), run: () => useModals.getState().set({ lesson: s }) },
+        { label: L('Предмет: файлы и заметки'), run: () => openSubject(s.subject) },
+        { label: L('Записать ДЗ с этой пары'), icon: <BookMarked size={15} />, run: () => openHomeworkEditor({ subject: s.subject, slotStart: s.start }) },
+        ...(s.address && !s.remote ? [{ label: L('Маршрут в Яндекс Картах'), icon: <MapPin size={15} />, run: () => safu.shell.open(mapsURL(s.address)) }] : [])
       ])}
       style={{
         position: 'relative', flexShrink: 0, padding: compact ? '10px 12px' : '13px 14px', borderRadius: 16, cursor: 'pointer', gap: 14,
@@ -47,14 +48,14 @@ export function SlotRow({ s, now, compact, showDay, alts = [] }: { s: Slot; now:
       <div className="grow">
         <div className="row gap6" style={{ marginBottom: 4 }}>
           <KindBadge kind={s.kind} />
-          {live && <span className="badge" style={{ background: '#22c55e', color: '#fff' }}><span className="live-dot" style={{ width: 6, height: 6, background: '#fff' }} />идёт</span>}
-          {s.remote && <span className="pill"><Wifi size={11} /> дистант</span>}
-          {alts.length > 0 && <span className="pill" title="Несколько пар в одно время — выбери свою подгруппу">+{alts.length} {alts.length === 1 ? 'подгруппа' : alts.length < 5 ? 'подгруппы' : 'подгрупп'}</span>}
-          {due.length > 0 && <span className="pill" style={{ background: 'rgba(245,158,11,.18)', color: '#f59e0b' }}><BookMarked size={11} /> ДЗ: {due.length}</span>}
+          {live && <span className="badge" style={{ background: '#22c55e', color: '#fff' }}><span className="live-dot" style={{ width: 6, height: 6, background: '#fff' }} />{L("идёт")}</span>}
+          {s.remote && <span className="pill"><Wifi size={11} /> {L("дистант")}</span>}
+          {alts.length > 0 && <span className="pill" title={L("Несколько пар в одно время — выбери свою подгруппу")}>+{alts.length} {alts.length === 1 ? L('подгруппа') : alts.length < 5 ? L('подгруппы') : L('подгрупп')}</span>}
+          {due.length > 0 && <span className="pill" style={{ background: 'rgba(245,158,11,.18)', color: '#f59e0b' }}><BookMarked size={11} /> {L("ДЗ:")} {due.length}</span>}
         </div>
         <div className="bold" style={{ fontSize: compact ? '.95rem' : '1.02rem', lineHeight: 1.25 }}>{s.subject}</div>
         <div className="row wrap-row sub" style={{ gap: '4px 14px', marginTop: 4 }}>
-          {alts.length > 0 ? <span className="row gap4"><MapPin size={12} />{[s, ...alts].map(x => x.room).filter(Boolean).slice(0, 4).join(', ')}{alts.length > 3 ? '…' : ''}</span> : (s.room || s.address) && <span className="row gap4"><MapPin size={12} />{s.room ? `ауд. ${s.room}` : ''}{s.room && s.address ? ' · ' : ''}{!compact && AddressFormat.full(s.address)}</span>}
+          {alts.length > 0 ? <span className="row gap4"><MapPin size={12} />{[s, ...alts].map(x => x.room).filter(Boolean).slice(0, 4).join(', ')}{alts.length > 3 ? '…' : ''}</span> : (s.room || s.address) && <span className="row gap4"><MapPin size={12} />{s.room ? L`ауд. ${s.room}` : ''}{s.room && s.address ? ' · ' : ''}{!compact && AddressFormat.full(s.address)}</span>}
           {s.teacher && !alts.length && <span className="row gap4"><User size={12} />{s.teacher}</span>}
         </div>
       </div>

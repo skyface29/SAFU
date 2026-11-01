@@ -22,6 +22,7 @@ import { hw, homeworkStore, hwTitle, chip } from '../lib/homework'
 import { openURL } from '../sites/sites'
 import { subjectFolder } from '../lib/effects'
 
+import { L } from '../lib/i18n'
 export default function Schedule({ day: dayParam, changes: changesParam }: { day?: number; changes?: number }) {
   const data = useSchedule(s => s.data)
   const syncing = useSchedule(s => s.syncing)
@@ -49,7 +50,7 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
   if (!scheduleStore.isConfigured()) {
     return (
       <>
-        <PageHeader title="Пары" />
+        <PageHeader title={L("Пары")} />
         <Card><SetupCard onManual={() => { scheduleStore.useManual(); setEditing(newLesson()) }} /></Card>
       </>
     )
@@ -60,33 +61,33 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
   return (
     <>
       <PageHeader
-        title="Пары"
-        subtitle={<>{week ? `${week}-я неделя · ${week % 2 ? 'нечётная' : 'чётная'} · ` : ''}{dayMon(weekStart)} — {dayMon(addDays(weekStart, 6))} · {total} {plural(total, 'пара', 'пары', 'пар')}</>}
+        title={L("Пары")}
+        subtitle={<>{week ? L`${week}-я неделя · ${week % 2 ? L('нечётная') : L('чётная')} · ` : ''}{dayMon(weekStart)} — {dayMon(addDays(weekStart, 6))} · {total} {plural(total, L('пара'), L('пары'), L('пар'))}</>}
         right={<>
-          <Segmented value={view} onChange={setView} options={[{ value: 'week', label: <span className="row gap6"><LayoutGrid size={14} />Неделя</span> }, { value: 'list', label: <span className="row gap6"><List size={14} />Список</span> }]} />
-          {usesRuz(data) && <button className="btn icon" title="Обновить из РУЗ" onClick={() => scheduleStore.sync(true)}><RefreshCw size={16} className={syncing ? 'spin' : ''} /></button>}
-          <button className="btn icon" title="Журнал изменений" onClick={() => setShowChanges(true)} style={{ position: 'relative' }}>
+          <Segmented value={view} onChange={setView} options={[{ value: 'week', label: <span className="row gap6"><LayoutGrid size={14} />{L("Неделя")}</span> }, { value: 'list', label: <span className="row gap6"><List size={14} />{L("Список")}</span> }]} />
+          {usesRuz(data) && <button className="btn icon" title={L("Обновить из РУЗ")} onClick={() => scheduleStore.sync(true)}><RefreshCw size={16} className={syncing ? 'spin' : ''} /></button>}
+          <button className="btn icon" title={L("Журнал изменений")} onClick={() => setShowChanges(true)} style={{ position: 'relative' }}>
             <Bell size={16} />{unseen > 0 && <span className="side-badge" style={{ position: 'absolute', top: -6, right: -6, margin: 0 }}>{unseen}</span>}
           </button>
-          <button className="btn icon" title="Ещё" onClick={e => openMenu(e, [
-            ...(!usesRuz(data) ? [{ label: 'Добавить пару', icon: <Plus size={15} />, run: () => setEditing(newLesson()) }] : []),
-            { label: 'Отправить расписание дня', icon: <Copy size={15} />, run: () => copyDay(startOfDay(Date.now()), data) },
-            { label: 'Экспорт в календарь (.ics)', icon: <Download size={15} />, run: () => setShowExport(true) },
-            { label: 'Корпуса и адреса', icon: <Building2 size={15} />, run: () => setShowBuildings(true) },
-            { label: 'Преподаватели', icon: <Users size={15} />, run: () => go('teachers') },
-            ...(usesRuz(data) && data.ruzGroupID ? [{ label: 'Открыть мою группу в РУЗ', icon: <ExternalLink size={15} />, run: () => openURL(timetableURL(data.ruzGroupID), 'РУЗ') }] : []),
+          <button className="btn icon" title={L("Ещё")} onClick={e => openMenu(e, [
+            ...(!usesRuz(data) ? [{ label: L('Добавить пару'), icon: <Plus size={15} />, run: () => setEditing(newLesson()) }] : []),
+            { label: L('Отправить расписание дня'), icon: <Copy size={15} />, run: () => copyDay(startOfDay(Date.now()), data) },
+            { label: L('Экспорт в календарь (.ics)'), icon: <Download size={15} />, run: () => setShowExport(true) },
+            { label: L('Корпуса и адреса'), icon: <Building2 size={15} />, run: () => setShowBuildings(true) },
+            { label: L('Преподаватели'), icon: <Users size={15} />, run: () => go('teachers') },
+            ...(usesRuz(data) && data.ruzGroupID ? [{ label: L('Открыть мою группу в РУЗ'), icon: <ExternalLink size={15} />, run: () => openURL(timetableURL(data.ruzGroupID), L('РУЗ')) }] : []),
             { sep: true, label: '' },
-            { label: 'Настройки расписания', icon: <Settings2 size={15} />, run: () => setShowSettings(true) }
+            { label: L('Настройки расписания'), icon: <Settings2 size={15} />, run: () => setShowSettings(true) }
           ])}><Settings2 size={16} /></button>
         </>}
       />
 
       <div className="row mb16">
-        <button className="btn sm" onClick={() => shift(-1)}><ChevronLeft size={15} /> Раньше</button>
-        <AnimatePresence>{!isCurrent && <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="btn sm primary" onClick={() => setWeekStart(monday(Date.now()))}>К текущей</motion.button>}</AnimatePresence>
-        <button className="btn sm" onClick={() => shift(1)}>Дальше <ChevronRight size={15} /></button>
+        <button className="btn sm" onClick={() => shift(-1)}><ChevronLeft size={15} /> {L("Раньше")}</button>
+        <AnimatePresence>{!isCurrent && <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="btn sm primary" onClick={() => setWeekStart(monday(Date.now()))}>{L("К текущей")}</motion.button>}</AnimatePresence>
+        <button className="btn sm" onClick={() => shift(1)}>{L("Дальше")} <ChevronRight size={15} /></button>
         <span className="spacer" />
-        {archived && <span className="pill"><History size={12} /> {loadingWeek ? 'Загружаю неделю из РУЗ…' : 'Архив: так было на этой неделе'}</span>}
+        {archived && <span className="pill"><History size={12} /> {loadingWeek ? L('Загружаю неделю из РУЗ…') : L('Архив: так было на этой неделе')}</span>}
         {usesRuz(data) && <span className="tiny faint">{scheduleStore.lastSyncText()}</span>}
       </div>
 
@@ -105,7 +106,7 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
                       <div className="heavy">{DAY_NAMES[weekday(d) - 1]}</div>
                       <div className="tiny" style={{ opacity: 0.8 }}>{dayMon(d)}</div>
                     </div>
-                    {!list.length && <div className="tc tiny faint" style={{ padding: 20 }}>нет пар</div>}
+                    {!list.length && <div className="tc tiny faint" style={{ padding: 20 }}>{L("нет пар")}</div>}
                     {groupParallel(list).map(g => <WeekCell key={g.slot.key} s={g.slot} alts={g.alts} now={now} />)}
                   </div>
                 )
@@ -119,11 +120,11 @@ export default function Schedule({ day: dayParam, changes: changesParam }: { day
                 return (
                   <div key={d}>
                     <div className="row" style={{ margin: '0 4px 8px' }}>
-                      <div className="h-card cap" style={{ color: isToday(d) ? 'var(--brand)' : undefined }}>{isToday(d) ? 'Сегодня, ' : ''}{fullDay(d)}</div>
+                      <div className="h-card cap" style={{ color: isToday(d) ? 'var(--brand)' : undefined }}>{isToday(d) ? L('Сегодня, ') : ''}{fullDay(d)}</div>
                       <span className="spacer" />
-                      {list.length > 0 && <button className="btn sm ghost" onClick={() => copyDay(d, data)}><Copy size={13} /> Отправить</button>}
+                      {list.length > 0 && <button className="btn sm ghost" onClick={() => copyDay(d, data)}><Copy size={13} /> {L("Отправить")}</button>}
                     </div>
-                    {!list.length ? <div className="sub" style={{ margin: '0 4px' }}>Пар нет</div> : <div className="col gap8">{groupParallel(list).map(g => <SlotRow key={g.slot.key} s={g.slot} alts={g.alts} now={now} />)}</div>}
+                    {!list.length ? <div className="sub" style={{ margin: '0 4px' }}>{L("Пар нет")}</div> : <div className="col gap8">{groupParallel(list).map(g => <SlotRow key={g.slot.key} s={g.slot} alts={g.alts} now={now} />)}</div>}
                   </div>
                 )
               })}
@@ -152,8 +153,8 @@ function WeekCell({ s, now, alts = [] }: { s: Slot; now: number; alts?: Slot[] }
     <div className="hov-pop"
       onClick={() => useModals.getState().set({ lesson: alts.length ? { ...s, alts } : s })}
       onContextMenu={e => openMenu(e, [
-        { label: 'Предмет: файлы и заметки', run: () => openSubject(s.subject) },
-        { label: 'Записать ДЗ', run: () => openHomeworkEditor({ subject: s.subject, slotStart: s.start }) }
+        { label: L('Предмет: файлы и заметки'), run: () => openSubject(s.subject) },
+        { label: L('Записать ДЗ'), run: () => openHomeworkEditor({ subject: s.subject, slotStart: s.start }) }
       ])}
       style={{
         padding: '10px 11px', borderRadius: 14, cursor: 'pointer', position: 'relative', overflow: 'hidden',
@@ -162,11 +163,11 @@ function WeekCell({ s, now, alts = [] }: { s: Slot; now: number; alts?: Slot[] }
       }}>
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <span className="tiny heavy mono">{hm(s.start)}</span>
-        {live ? <span className="live-dot" style={{ width: 7, height: 7 }} /> : due > 0 ? <span className="tiny bold" style={{ color: '#f59e0b' }}>ДЗ {due}</span> : <span className="tiny faint">{s.pair}</span>}
+        {live ? <span className="live-dot" style={{ width: 7, height: 7 }} /> : due > 0 ? <span className="tiny bold" style={{ color: '#f59e0b' }}>{L("ДЗ")} {due}</span> : <span className="tiny faint">{s.pair}</span>}
       </div>
       <div className="bold clamp3" style={{ fontSize: '.84rem', lineHeight: 1.22, margin: '5px 0' }}>{s.subject}</div>
       <div className="tiny" style={{ color: st.color, fontWeight: 800 }}>{st.label}</div>
-      {alts.length > 0 ? <div className="tiny muted ellipsis">{alts.length + 1} подгрупп · выбери свою</div> : s.room && <div className="tiny muted ellipsis">ауд. {s.room}</div>}
+      {alts.length > 0 ? <div className="tiny muted ellipsis">{alts.length + 1} {L("подгрупп · выбери свою")}</div> : s.room && <div className="tiny muted ellipsis">{L("ауд.")} {s.room}</div>}
     </div>
   )
 }
@@ -174,11 +175,11 @@ function WeekCell({ s, now, alts = [] }: { s: Slot; now: number; alts?: Slot[] }
 function Bells() {
   return (
     <Card className="mt24" delay={0.1}>
-      <div className="row mb12"><Clock size={16} color="var(--brand)" /><div className="h-card">Звонки</div><span className="sub">после 3-й пары обед 55 минут</span></div>
+      <div className="row mb12"><Clock size={16} color="var(--brand)" /><div className="h-card">{L("Звонки")}</div><span className="sub">{L("после 3-й пары обед 55 минут")}</span></div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 8 }}>
         {BELLS.map((_, i) => (
           <div key={i} className="tc" style={{ padding: 10, borderRadius: 12, background: 'var(--fill)' }}>
-            <div className="tiny faint">{i + 1} пара</div>
+            <div className="tiny faint">{i + 1} {L("пара")}</div>
             <div className="small bold mono">{bellLabel(i + 1)}</div>
           </div>
         ))}
@@ -189,10 +190,10 @@ function Bells() {
 
 function copyDay(day: number, data: any) {
   const list = slotsOn(day, data)
-  if (!list.length) { toast('В этот день пар нет', 'info'); return }
+  if (!list.length) { toast(L('В этот день пар нет'), 'info'); return }
   const text = `📅 ${fullDay(day)[0].toUpperCase() + fullDay(day).slice(1)}\n` + list.map(slotShareLine).join('\n')
   safu.clipboard.write(text)
-  toast('Расписание дня скопировано — вставь в чат группы')
+  toast(L('Расписание дня скопировано — вставь в чат группы'))
 }
 
 // ---------- первое подключение ----------
@@ -201,11 +202,11 @@ function SetupCard({ onManual }: { onManual: () => void }) {
   return (
     <div className="col" style={{ alignItems: 'center', textAlign: 'center', padding: 30, gap: 12 }}>
       <div className="wobble" style={{ fontSize: '3.5rem' }}>📅</div>
-      <div className="h-card" style={{ fontSize: '1.4rem' }}>Расписание из РУЗ</div>
-      <div className="sub" style={{ maxWidth: 440 }}>Подтягивается с ruz.narfu.ru, обновляется само и хранится офлайн. Пройди короткую регистрацию: школа → группа → готово.</div>
+      <div className="h-card" style={{ fontSize: '1.4rem' }}>{L("Расписание из РУЗ")}</div>
+      <div className="sub" style={{ maxWidth: 440 }}>{L("Подтягивается с ruz.narfu.ru, обновляется само и хранится офлайн. Пройди короткую регистрацию: школа → группа → готово.")}</div>
       <div className="row mt8">
-        <button className="btn primary lg" onClick={() => kv.set('onboarding.again', true)}>Подключить</button>
-        <button className="btn lg" onClick={onManual}>Внести пары вручную</button>
+        <button className="btn primary lg" onClick={() => kv.set('onboarding.again', true)}>{L("Подключить")}</button>
+        <button className="btn lg" onClick={onManual}>{L("Внести пары вручную")}</button>
       </div>
     </div>
   )
@@ -216,12 +217,12 @@ function SetupCard({ onManual }: { onManual: () => void }) {
 function ChangesSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const changes = useSchedule(s => s.changes)
   return (
-    <Sheet open={open} onClose={onClose} title="Журнал изменений"
-      footer={changes.length ? <button className="btn danger" onClick={() => scheduleStore.clearChanges()}><Trash2 size={15} /> Очистить</button> : undefined}>
-      {!changes.length && <Empty emoji="🔔" title="Изменений пока не было" text="Когда РУЗ отменит, добавит пару или сменит аудиторию, это появится здесь и придёт уведомление." />}
+    <Sheet open={open} onClose={onClose} title={L("Журнал изменений")}
+      footer={changes.length ? <button className="btn danger" onClick={() => scheduleStore.clearChanges()}><Trash2 size={15} /> {L("Очистить")}</button> : undefined}>
+      {!changes.length && <Empty emoji="🔔" title={L("Изменений пока не было")} text={L("Когда РУЗ отменит, добавит пару или сменит аудиторию, это появится здесь и придёт уведомление.")} />}
       <div className="col gap8">
         {changes.map((c, i) => {
-          const color = c.text.startsWith('Отменена') ? '#ef4444' : c.text.startsWith('Добавлена') ? '#22c55e' : '#f59e0b'
+          const color = (c.text.startsWith('Отменена') || c.text.startsWith('Cancelled')) ? '#ef4444' : (c.text.startsWith('Добавлена') || c.text.startsWith('Added')) ? '#22c55e' : '#f59e0b'
           return (
             <div key={c.id} className="row top slide-in" style={{ padding: 12, borderRadius: 12, background: 'var(--fill)', borderLeft: `3px solid ${color}`, animationDelay: `${i * 0.03}s` }}>
               <div className="grow small">{c.text}</div>
@@ -244,43 +245,43 @@ function ScheduleSettings({ open, onClose, onAdd }: { open: boolean; onClose: ()
   const [morning, setMorning] = usePref('notify.morning', false)
   const subj = subjects(data)
   return (
-    <Sheet open={open} onClose={onClose} title="Настройки расписания" size="wide">
-      <div className="h-sec" style={{ marginTop: 4 }}>Откуда брать пары</div>
+    <Sheet open={open} onClose={onClose} title={L("Настройки расписания")} size="wide">
+      <div className="h-sec" style={{ marginTop: 4 }}>{L("Откуда брать пары")}</div>
       <Card className="list" style={{ padding: 0 }}>
-        <Row title="Расписание из РУЗ" sub={usesRuz(data) ? (teacherMode.isOn() ? `Преподаватель: ${teacherMode.query()}` : `Группа ${data.ruzGroupNumber} · ${institutions.find(i => i[0] === data.ruzInstitution)?.[1] || ''}`) : 'Не подключено'}
-          right={<button className="btn sm" onClick={() => { onClose(); kv.set('onboarding.again', true) }}>{usesRuz(data) ? 'Сменить' : 'Подключить'}</button>} />
-        <Row title="Вручную" sub={`${data.lessons.length} пар в расписании`} right={<div className="row gap6">
-          {usesRuz(data) && <button className="btn sm" onClick={() => scheduleStore.useManual()}>Перейти</button>}
-          <button className="btn sm" onClick={onAdd}><Plus size={14} /> Пара</button>
+        <Row title={L("Расписание из РУЗ")} sub={usesRuz(data) ? (teacherMode.isOn() ? L`Преподаватель: ${teacherMode.query()}` : L`Группа ${data.ruzGroupNumber} · ${institutions.find(i => i[0] === data.ruzInstitution)?.[1] || ''}`) : L('Не подключено')}
+          right={<button className="btn sm" onClick={() => { onClose(); kv.set('onboarding.again', true) }}>{usesRuz(data) ? L('Сменить') : L('Подключить')}</button>} />
+        <Row title={L("Вручную")} sub={L`${data.lessons.length} пар в расписании`} right={<div className="row gap6">
+          {usesRuz(data) && <button className="btn sm" onClick={() => scheduleStore.useManual()}>{L("Перейти")}</button>}
+          <button className="btn sm" onClick={onAdd}><Plus size={14} /> {L("Пара")}</button>
         </div>} />
-        {usesRuz(data) && <Row title="Память расписания" sub={`${scheduleStore.lastSyncText()}. ${data.syncInfo} В памяти: ${data.ruzEvents.length} пар, ${scheduleStore.rememberedWeeks} нед.`}
-          right={<button className="btn sm danger" onClick={async () => { if (await confirmDialog('Очистить память РУЗ?', 'Прошлые недели придётся загружать заново.', 'Очистить', true)) scheduleStore.clearRuzCache() }}>Очистить</button>} />}
-        {!usesRuz(data) && <Row title="Начало семестра" sub="Для чётных и нечётных недель" right={
+        {usesRuz(data) && <Row title={L("Память расписания")} sub={L`${scheduleStore.lastSyncText()}. ${data.syncInfo} В памяти: ${data.ruzEvents.length} пар, ${scheduleStore.rememberedWeeks} нед.`}
+          right={<button className="btn sm danger" onClick={async () => { if (await confirmDialog(L('Очистить память РУЗ?'), L('Прошлые недели придётся загружать заново.'), L('Очистить'), true)) scheduleStore.clearRuzCache() }}>{L("Очистить")}</button>} />}
+        {!usesRuz(data) && <Row title={L("Начало семестра")} sub={L("Для чётных и нечётных недель")} right={
           <input type="date" className="input" style={{ width: 170 }} value={ymd(data.semesterStart)} onChange={e => scheduleStore.setData({ ...data, semesterStart: new Date(e.target.value + 'T00:00').getTime() || defaultSemesterStart() })} />} />}
       </Card>
 
-      <div className="h-sec">Уведомления</div>
+      <div className="h-sec">{L("Уведомления")}</div>
       <Card className="list" style={{ padding: 0 }}>
-        <ToggleRow icon={<Bell size={16} />} color="#3b82f6" title="Напоминать перед парой" sub="Уведомление Windows" on={notifyPairs} onChange={setNotifyPairs} />
-        {notifyPairs && <Row title="За сколько минут" right={<Segmented value={mins} onChange={setMins} options={[5, 10, 15, 30].map(v => ({ value: v, label: `${v}` }))} />} />}
-        <ToggleRow icon={<RefreshCw size={16} />} color="#f59e0b" title="Замены и отмены" sub="Когда РУЗ изменит расписание" on={notifyChanges} onChange={setNotifyChanges} />
-        <ToggleRow icon={<CalendarDays size={16} />} color="#8b5cf6" title="Итоги недели" sub="В воскресенье в 19:00" on={digest} onChange={setDigest} />
-        <ToggleRow icon={<Clock size={16} />} color="#22c55e" title="Утренняя сводка" sub="Сколько пар и когда первая — в 7:00" on={morning} onChange={setMorning} />
+        <ToggleRow icon={<Bell size={16} />} color="#3b82f6" title={L("Напоминать перед парой")} sub={L("Уведомление Windows")} on={notifyPairs} onChange={setNotifyPairs} />
+        {notifyPairs && <Row title={L("За сколько минут")} right={<Segmented value={mins} onChange={setMins} options={[5, 10, 15, 30].map(v => ({ value: v, label: `${v}` }))} />} />}
+        <ToggleRow icon={<RefreshCw size={16} />} color="#f59e0b" title={L("Замены и отмены")} sub={L("Когда РУЗ изменит расписание")} on={notifyChanges} onChange={setNotifyChanges} />
+        <ToggleRow icon={<CalendarDays size={16} />} color="#8b5cf6" title={L("Итоги недели")} sub={L("В воскресенье в 19:00")} on={digest} onChange={setDigest} />
+        <ToggleRow icon={<Clock size={16} />} color="#22c55e" title={L("Утренняя сводка")} sub={L("Сколько пар и когда первая — в 7:00")} on={morning} onChange={setMorning} />
       </Card>
 
       {usesRuz(data) && subj.length > 0 && (
         <>
-          <div className="h-sec">Подгруппы: мой преподаватель</div>
-          <div className="sub mb12">Если в одно время по предмету несколько пар разных подгрупп, покажу только пару твоего преподавателя.</div>
+          <div className="h-sec">{L("Подгруппы: мой преподаватель")}</div>
+          <div className="sub mb12">{L("Если в одно время по предмету несколько пар разных подгрупп, покажу только пару твоего преподавателя.")}</div>
           <Card className="list" style={{ padding: 0 }}>
             {subj.filter(s => teachersOf(data, s).length > 1).map(s => (
               <Row key={s} title={s} right={
                 <select className="select" style={{ width: 220 }} value={data.teacherPrefs[s] || ''} onChange={e => scheduleStore.setTeacherPref(s, e.target.value)}>
-                  <option value="">Все подгруппы</option>
+                  <option value="">{L("Все подгруппы")}</option>
                   {teachersOf(data, s).map(t => <option key={t} value={t.split(' ')[0]}>{t}</option>)}
                 </select>} />
             ))}
-            {!subj.some(s => teachersOf(data, s).length > 1) && <Row title="Подгрупп не нашлось" sub="У каждого предмета один преподаватель" />}
+            {!subj.some(s => teachersOf(data, s).length > 1) && <Row title={L("Подгрупп не нашлось")} sub={L("У каждого предмета один преподаватель")} />}
           </Card>
         </>
       )}
@@ -301,33 +302,33 @@ function LessonEditor({ lesson, onClose }: { lesson: Lesson | null; onClose: () 
   const exists = data.lessons.some(x => x.id === l.id)
   const set = (p: Partial<Lesson>) => setL({ ...l, ...p })
   const save = (next: boolean) => {
-    if (!l.subject.trim()) { toast('Укажи предмет', 'warn'); return }
+    if (!l.subject.trim()) { toast(L('Укажи предмет'), 'warn'); return }
     scheduleStore.upsertLesson({ ...l, subject: l.subject.trim() })
-    if (next) { setCount(c => c + 1); setL({ ...newLesson(), weekday: l.weekday, pair: Math.min(7, l.pair + 1), kind: l.kind }); toast('Пара добавлена') }
+    if (next) { setCount(c => c + 1); setL({ ...newLesson(), weekday: l.weekday, pair: Math.min(7, l.pair + 1), kind: l.kind }); toast(L('Пара добавлена')) }
     else onClose()
   }
   return (
-    <Sheet open={!!lesson} onClose={onClose} title={exists ? 'Изменить пару' : 'Добавить пару'}
+    <Sheet open={!!lesson} onClose={onClose} title={exists ? L('Изменить пару') : L('Добавить пару')}
       footer={<>
-        {exists && <button className="btn danger" onClick={() => { scheduleStore.deleteLesson(l.id); onClose() }}><Trash2 size={15} /> Удалить пару</button>}
+        {exists && <button className="btn danger" onClick={() => { scheduleStore.deleteLesson(l.id); onClose() }}><Trash2 size={15} /> {L("Удалить пару")}</button>}
         <span className="spacer" />
-        {!exists && <button className="btn" onClick={() => save(true)}>Сохранить и добавить следующую</button>}
-        <button className="btn primary" onClick={() => save(false)}>Готово</button>
+        {!exists && <button className="btn" onClick={() => save(true)}>{L("Сохранить и добавить следующую")}</button>}
+        <button className="btn primary" onClick={() => save(false)}>{L("Готово")}</button>
       </>}>
-      {count > 0 && <div className="pill mb12">Добавлено пар: {count}</div>}
-      <Field label="Предмет"><input className="input" autoFocus list="subj-list" value={l.subject} onChange={e => set({ subject: e.target.value })} placeholder="Математический анализ" /></Field>
+      {count > 0 && <div className="pill mb12">{L("Добавлено пар:")} {count}</div>}
+      <Field label={L("Предмет")}><input className="input" autoFocus list="subj-list" value={l.subject} onChange={e => set({ subject: e.target.value })} placeholder={L("Математический анализ")} /></Field>
       <datalist id="subj-list">{subjects(data).map(s => <option key={s} value={s} />)}</datalist>
-      <Field label="Вид"><div className="row wrap-row gap6">{LESSON_KINDS.map(k => <button key={k} className={`chip ${l.kind === k ? 'on' : ''}`} onClick={() => set({ kind: k })}>{k}</button>)}</div></Field>
+      <Field label={L("Вид")}><div className="row wrap-row gap6">{LESSON_KINDS.map(k => <button key={k} className={`chip ${l.kind === k ? 'on' : ''}`} onClick={() => set({ kind: k })}>{L(k)}</button>)}</div></Field>
       <div className="grid g2">
-        <Field label="День недели"><select className="select" value={l.weekday} onChange={e => set({ weekday: +e.target.value })}>{WEEKDAYS.slice(1).map((w, i) => <option key={i} value={i + 1}>{w}</option>)}</select></Field>
-        <Field label="Пара"><select className="select" value={l.pair} onChange={e => set({ pair: +e.target.value })}>{BELLS.map((_, i) => <option key={i} value={i + 1}>{i + 1} пара · {bellLabel(i + 1)}</option>)}</select></Field>
+        <Field label={L("День недели")}><select className="select" value={l.weekday} onChange={e => set({ weekday: +e.target.value })}>{WEEKDAYS.slice(1).map((w, i) => <option key={i} value={i + 1}>{w}</option>)}</select></Field>
+        <Field label={L("Пара")}><select className="select" value={l.pair} onChange={e => set({ pair: +e.target.value })}>{BELLS.map((_, i) => <option key={i} value={i + 1}>{i + 1} {L("пара ·")} {bellLabel(i + 1)}</option>)}</select></Field>
       </div>
-      <Field label="Неделя"><Segmented value={l.parity} onChange={v => set({ parity: v })} options={[{ value: 0, label: 'Каждую' }, { value: 1, label: 'Нечётная' }, { value: 2, label: 'Чётная' }]} /></Field>
+      <Field label={L("Неделя")}><Segmented value={l.parity} onChange={v => set({ parity: v })} options={[{ value: 0, label: L('Каждую') }, { value: 1, label: L('Нечётная') }, { value: 2, label: L('Чётная') }]} /></Field>
       <div className="grid g2">
-        <Field label="Аудитория"><input className="input" value={l.room} onChange={e => set({ room: e.target.value })} placeholder="1405" /></Field>
-        <Field label="Корпус"><select className="select" value={l.building} onChange={e => set({ building: e.target.value })}><option value="">Не указан</option>{data.buildings.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}</select></Field>
+        <Field label={L("Аудитория")}><input className="input" value={l.room} onChange={e => set({ room: e.target.value })} placeholder="1405" /></Field>
+        <Field label={L("Корпус")}><select className="select" value={l.building} onChange={e => set({ building: e.target.value })}><option value="">{L("Не указан")}</option>{data.buildings.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}</select></Field>
       </div>
-      <Field label="Преподаватель"><input className="input" value={l.teacher} onChange={e => set({ teacher: e.target.value })} placeholder="Иванов И.И." /></Field>
+      <Field label={L("Преподаватель")}><input className="input" value={l.teacher} onChange={e => set({ teacher: e.target.value })} placeholder={L("Иванов И.И.")} /></Field>
     </Sheet>
   )
 }
@@ -338,14 +339,14 @@ function BuildingsSheet({ open, onClose }: { open: boolean; onClose: () => void 
   const data = useSchedule(s => s.data)
   const update = (id: string, p: any) => scheduleStore.setData({ ...data, buildings: data.buildings.map(b => b.id === id ? { ...b, ...p } : b) })
   return (
-    <Sheet open={open} onClose={onClose} title="Корпуса и адреса" size="wide"
-      footer={<button className="btn primary" onClick={() => scheduleStore.setData({ ...data, buildings: [...data.buildings, { id: uid(), name: '', address: '' }] })}><Plus size={15} /> Добавить корпус</button>}>
-      <div className="sub mb12">Для расписания из РУЗ: в названии укажи код корпуса, как он пишется в РУЗ (например, А-НСД17), а в адресе — как его показывать. Аудитория из кода подставится сама.</div>
+    <Sheet open={open} onClose={onClose} title={L("Корпуса и адреса")} size="wide"
+      footer={<button className="btn primary" onClick={() => scheduleStore.setData({ ...data, buildings: [...data.buildings, { id: uid(), name: '', address: '' }] })}><Plus size={15} /> {L("Добавить корпус")}</button>}>
+      <div className="sub mb12">{L("Для расписания из РУЗ: в названии укажи код корпуса, как он пишется в РУЗ (например, А-НСД17), а в адресе — как его показывать. Аудитория из кода подставится сама.")}</div>
       <div className="col gap8">
         {data.buildings.map(b => (
           <div key={b.id} className="row">
-            <input className="input" style={{ width: 160 }} value={b.name} placeholder="А-НСД17" onChange={e => update(b.id, { name: e.target.value })} />
-            <input className="input grow" value={b.address} placeholder="наб. Северной Двины, д. 17" onChange={e => update(b.id, { address: e.target.value })} />
+            <input className="input" style={{ width: 160 }} value={b.name} placeholder={L("А-НСД17")} onChange={e => update(b.id, { name: e.target.value })} />
+            <input className="input grow" value={b.address} placeholder={L("наб. Северной Двины, д. 17")} onChange={e => update(b.id, { address: e.target.value })} />
             <button className="btn icon" onClick={() => safu.shell.open(mapsURL(b.address))}><MapPin size={15} /></button>
             <button className="btn icon danger" onClick={() => scheduleStore.setData({ ...data, buildings: data.buildings.filter(x => x.id !== b.id) })}><Trash2 size={15} /></button>
           </div>
@@ -364,12 +365,12 @@ function icsDate(t: number) {
 const icsEsc = (s: string) => s.replace(/\\/g, '\\\\').replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n')
 
 export function buildICS(slots: Slot[]) {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SAFU//Windows//RU', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:САФУ — пары', 'X-WR-TIMEZONE:Europe/Moscow']
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SAFU//Windows//RU', 'CALSCALE:GREGORIAN', L('X-WR-CALNAME:САФУ — пары'), 'X-WR-TIMEZONE:Europe/Moscow']
   for (const s of slots) {
     lines.push('BEGIN:VEVENT', `UID:${Math.floor(s.start / 1000)}-${encodeURIComponent(s.subject).slice(0, 40)}@safu`, `DTSTAMP:${icsDate(Date.now())}`,
       `DTSTART:${icsDate(s.start)}`, `DTEND:${icsDate(s.end)}`, `SUMMARY:${icsEsc(`${s.subject} (${kindStyle(s.kind).label})`)}`,
-      `LOCATION:${icsEsc([s.room ? `ауд. ${s.room}` : '', s.address].filter(Boolean).join(', '))}`,
-      `DESCRIPTION:${icsEsc([s.teacher, s.note].filter(Boolean).join('\n'))}`, 'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', 'DESCRIPTION:Пара', 'END:VALARM', 'END:VEVENT')
+      `LOCATION:${icsEsc([s.room ? L`ауд. ${s.room}` : '', s.address].filter(Boolean).join(', '))}`,
+      `DESCRIPTION:${icsEsc([s.teacher, s.note].filter(Boolean).join('\n'))}`, 'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', L('DESCRIPTION:Пара'), 'END:VALARM', 'END:VEVENT')
   }
   lines.push('END:VCALENDAR')
   return lines.join('\r\n')
@@ -380,14 +381,14 @@ function ExportSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
   const [weeks, setWeeks] = useState(4)
   const slots = useMemo(() => Array.from({ length: weeks * 7 }, (_, i) => slotsOn(addDays(startOfDay(Date.now()), i), data)).flat(), [weeks, data, open])
   return (
-    <Sheet open={open} onClose={onClose} title="Экспорт в календарь"
+    <Sheet open={open} onClose={onClose} title={L("Экспорт в календарь")}
       footer={<button className="btn primary" disabled={!slots.length} onClick={async () => {
-        const p = await safu.dialog.save({ name: 'САФУ-пары.ics', text: buildICS(slots), filters: [{ name: 'Календарь', extensions: ['ics'] }] })
-        if (p) { toast('Файл сохранён — открой его, чтобы добавить в Outlook или Календарь Windows'); onClose() }
-      }}><Download size={15} /> Сохранить .ics</button>}>
-      <div className="sub mb12">Файл .ics открывается в Outlook, Календаре Windows и Google Календаре. Повторный экспорт обновит пары без дублей. За 15 минут до пары будет напоминание.</div>
-      <Field label="На сколько недель вперёд"><Segmented value={weeks} onChange={setWeeks} options={[1, 2, 4, 8, 16].map(v => ({ value: v, label: `${v}` }))} /></Field>
-      <div className="pill">Пар в файле: {slots.length}</div>
+        const p = await safu.dialog.save({ name: L('САФУ-пары.ics'), text: buildICS(slots), filters: [{ name: L('Календарь'), extensions: ['ics'] }] })
+        if (p) { toast(L('Файл сохранён — открой его, чтобы добавить в Outlook или Календарь Windows')); onClose() }
+      }}><Download size={15} /> {L("Сохранить .ics")}</button>}>
+      <div className="sub mb12">{L("Файл .ics открывается в Outlook, Календаре Windows и Google Календаре. Повторный экспорт обновит пары без дублей. За 15 минут до пары будет напоминание.")}</div>
+      <Field label={L("На сколько недель вперёд")}><Segmented value={weeks} onChange={setWeeks} options={[1, 2, 4, 8, 16].map(v => ({ value: v, label: `${v}` }))} /></Field>
+      <div className="pill">{L("Пар в файле:")} {slots.length}</div>
     </Sheet>
   )
 }
@@ -405,41 +406,41 @@ export function LessonSheet({ slot, onClose }: { slot: (Slot & { alts?: Slot[] }
   const given = hw.givenAt(s)
   const roomKey = `${s.room}|${s.address}`.toLowerCase()
   return (
-    <Sheet open={!!slot} onClose={onClose} title={<span className="row gap8"><KindBadge kind={s.kind} size="md" />{s.pair ? <span className="pill">{s.pair} пара</span> : null}</span>}>
+    <Sheet open={!!slot} onClose={onClose} title={<span className="row gap8"><KindBadge kind={s.kind} size="md" />{s.pair ? <span className="pill">{s.pair} {L("пара")}</span> : null}</span>}>
       <div style={{ fontSize: '1.6rem', fontWeight: 850, lineHeight: 1.15, marginBottom: 14 }}>{s.subject}</div>
       <div className="col gap8 mb16">
         <div className="row"><Clock size={16} color={st.color} /><span className="cap">{fullDay(s.start)}</span> · {hm(s.start)}–{hm(s.end)}</div>
-        {(s.room || s.address) && <div className="row top"><MapPin size={16} color={st.color} style={{ marginTop: 2 }} /><div>{s.room && <b>ауд. {s.room}</b>}{s.room && s.address ? ' · ' : ''}{AddressFormat.full(s.address)}</div></div>}
+        {(s.room || s.address) && <div className="row top"><MapPin size={16} color={st.color} style={{ marginTop: 2 }} /><div>{s.room && <b>{L("ауд.")} {s.room}</b>}{s.room && s.address ? ' · ' : ''}{AddressFormat.full(s.address)}</div></div>}
         {s.teacher && <div className="row"><User size={16} color={st.color} />{s.teacher}</div>}
         {s.note && <div className="sub wrap" style={{ padding: 10, borderRadius: 10, background: 'var(--fill)' }}>{s.note}</div>}
       </div>
       {!!slot.alts?.length && (
         <div className="mb16">
-          <div className="h-sec" style={{ marginTop: 0 }}>В это время {slot.alts.length + 1} подгрупп — какая твоя?</div>
+          <div className="h-sec" style={{ marginTop: 0 }}>{L("В это время")} {slot.alts.length + 1} {L("подгрупп — какая твоя?")}</div>
           <div className="col gap6">
             {[s, ...slot.alts].map(x => (
               <div key={x.key} className="row" style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--fill)' }}>
-                <div className="grow"><div className="bold small">{x.teacher || 'Преподаватель не указан'}</div><div className="tiny muted">{x.room ? `ауд. ${x.room}` : ''}{x.address ? ` · ${AddressFormat.full(x.address)}` : ''}{x.note ? ` · ${x.note}` : ''}</div></div>
-                {x.teacher && <button className="btn sm primary" onClick={() => { scheduleStore.setTeacherPref(s.subject, x.teacher.split(/[\s,]/)[0]); toast('Запомнил — буду показывать только твою подгруппу'); onClose() }}>Моя</button>}
+                <div className="grow"><div className="bold small">{x.teacher || L('Преподаватель не указан')}</div><div className="tiny muted">{x.room ? L`ауд. ${x.room}` : ''}{x.address ? ` · ${AddressFormat.full(x.address)}` : ''}{x.note ? ` · ${x.note}` : ''}</div></div>
+                {x.teacher && <button className="btn sm primary" onClick={() => { scheduleStore.setTeacherPref(s.subject, x.teacher.split(/[\s,]/)[0]); toast(L('Запомнил — буду показывать только твою подгруппу')); onClose() }}>{L("Моя")}</button>}
               </div>
             ))}
           </div>
-          <div className="tiny faint mt8">Поменять потом: «Пары» → настройки → «Подгруппы».</div>
+          <div className="tiny faint mt8">{L("Поменять потом: «Пары» → настройки → «Подгруппы».")}</div>
         </div>
       )}
-      <Field label="Как найти аудиторию (своя подсказка)">
-        <input className="input" value={roomNotes[roomKey] || ''} placeholder="3 этаж, налево от лестницы" onChange={e => setRoomNotes({ ...roomNotes, [roomKey]: e.target.value })} />
+      <Field label={L("Как найти аудиторию (своя подсказка)")}>
+        <input className="input" value={roomNotes[roomKey] || ''} placeholder={L("3 этаж, налево от лестницы")} onChange={e => setRoomNotes({ ...roomNotes, [roomKey]: e.target.value })} />
       </Field>
       <div className="row wrap-row gap8">
-        {s.address && !s.remote && <button className="btn" onClick={() => safu.shell.open(routeURL(s.address))}><MapPin size={15} /> Маршрут в Яндекс Картах</button>}
-        <button className="btn" onClick={() => { onClose(); openSubject(s.subject) }}><FolderOpen size={15} /> Файлы и заметки</button>
-        <button className="btn" onClick={() => safu.fs.openRoot(subjectFolder(s.subject))}><FolderOpen size={15} /> Папка в Проводнике</button>
-        <button className="btn primary" onClick={() => { onClose(); openHomeworkEditor({ subject: s.subject, slotStart: s.start }) }}><BookMarked size={15} /> Записать ДЗ</button>
-        {head && <button className="btn" onClick={() => { onClose(); go('attendance', { slot: s.start, subject: s.subject }) }}><Users size={15} /> Посещаемость</button>}
+        {s.address && !s.remote && <button className="btn" onClick={() => safu.shell.open(routeURL(s.address))}><MapPin size={15} /> {L("Маршрут в Яндекс Картах")}</button>}
+        <button className="btn" onClick={() => { onClose(); openSubject(s.subject) }}><FolderOpen size={15} /> {L("Файлы и заметки")}</button>
+        <button className="btn" onClick={() => safu.fs.openRoot(subjectFolder(s.subject))}><FolderOpen size={15} /> {L("Папка в Проводнике")}</button>
+        <button className="btn primary" onClick={() => { onClose(); openHomeworkEditor({ subject: s.subject, slotStart: s.start }) }}><BookMarked size={15} /> {L("Записать ДЗ")}</button>
+        {head && <button className="btn" onClick={() => { onClose(); go('attendance', { slot: s.start, subject: s.subject }) }}><Users size={15} /> {L("Посещаемость")}</button>}
       </div>
-      {(due.length > 0 || given.length > 0) && <div className="h-sec">Домашка</div>}
-      {due.map(h => <HWLine key={h.id} id={h.id} label="сдать" />)}
-      {given.map(h => <HWLine key={h.id} id={h.id} label="задали" />)}
+      {(due.length > 0 || given.length > 0) && <div className="h-sec">{L("Домашка")}</div>}
+      {due.map(h => <HWLine key={h.id} id={h.id} label={L("сдать")} />)}
+      {given.map(h => <HWLine key={h.id} id={h.id} label={L("задали")} />)}
     </Sheet>
   )
 }

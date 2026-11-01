@@ -1,14 +1,15 @@
 // БРС: баллы, прогноз оценки, сколько не хватает до зачёта / 4 / 5 / автомата. Ключ grades.v1 как в iOS.
 import { createCollection, uid } from './kv'
 
+import { L } from './i18n'
 export type GradeEntry = { id: string; title: string; points: number; outOf: number; date: number; source: string }
 export type Control = 0 | 1 | 2   // зачёт, экзамен, дифзачёт
-export const CONTROL_TITLES = ['Зачёт', 'Экзамен', 'Дифзачёт']
+export const CONTROL_TITLES = [L('Зачёт'), L('Экзамен'), L('Дифзачёт')]
 export type SubjectGrades = { id: string; subject: string; entries: GradeEntry[]; pass: number; good: number; excellent: number; auto: number; max: number; control: Control; result: string }
 
 export const gradesStore = createCollection<SubjectGrades[]>('grades.v1', [])
 export const newSubjectGrades = (subject: string): SubjectGrades => ({ id: uid(), subject, entries: [], pass: 61, good: 76, excellent: 91, auto: 85, max: 100, control: 1, result: '' })
-export const newEntry = (title = 'Работа', points = 0): GradeEntry => ({ id: uid(), title, points, outOf: 0, date: Date.now(), source: '' })
+export const newEntry = (title = L('Работа'), points = 0): GradeEntry => ({ id: uid(), title, points, outOf: 0, date: Date.now(), source: '' })
 
 const isTotal = (e: GradeEntry) => e.source === 'ЛК' && e.title === 'Итог'
 export function total(g: SubjectGrades) {
@@ -20,7 +21,7 @@ export const num = (v: number) => Number.isInteger(v) ? String(v) : v.toFixed(1)
 
 export function forecast(g: SubjectGrades) {
   const t = total(g)
-  if (g.control === 0) return t >= g.pass ? 'зачёт' : 'пока не зачёт'
+  if (g.control === 0) return t >= g.pass ? L('зачёт') : L('пока не зачёт')
   if (t >= g.excellent) return '5'
   if (t >= g.good) return '4'
   if (t >= g.pass) return '3'
@@ -37,17 +38,17 @@ export function statusColor(g: SubjectGrades) {
 
 export function nextStep(g: SubjectGrades) {
   const t = total(g)
-  if (g.result) return `Итог: ${g.result}`
-  if (t >= g.max) return 'Максимум набран 🔥'
+  if (g.result) return L`Итог: ${g.result}`
+  if (t >= g.max) return L('Максимум набран 🔥')
   if (g.control === 0) {
-    if (t >= g.auto) return 'Автомат есть 🎉'
-    if (t >= g.pass) return `Зачёт есть · до автомата ${num(g.auto - t)}`
-    return `До зачёта ${num(g.pass - t)}`
+    if (t >= g.auto) return L('Автомат есть 🎉')
+    if (t >= g.pass) return L`Зачёт есть · до автомата ${num(g.auto - t)}`
+    return L`До зачёта ${num(g.pass - t)}`
   }
-  if (t >= g.excellent) return 'Идёшь на «5» 🎉'
-  if (t >= g.good) return `Сейчас «4» · до «5» ${num(g.excellent - t)}`
-  if (t >= g.pass) return `Сейчас «3» · до «4» ${num(g.good - t)}`
-  return `До «3» не хватает ${num(g.pass - t)}`
+  if (t >= g.excellent) return L('Идёшь на «5» 🎉')
+  if (t >= g.good) return L`Сейчас «4» · до «5» ${num(g.excellent - t)}`
+  if (t >= g.pass) return L`Сейчас «3» · до «4» ${num(g.good - t)}`
+  return L`До «3» не хватает ${num(g.pass - t)}`
 }
 
 export const grades = {

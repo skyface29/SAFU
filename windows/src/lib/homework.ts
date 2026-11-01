@@ -6,16 +6,17 @@ import { startOfDay, addDays, isToday, isTomorrow, isYesterday, hm, dayMon, WEEK
 import { notify, type Note } from './notify'
 import { line as prettyLine, clean as prettyClean } from './hwpretty'
 
+import { L } from './i18n'
 export type HWKind = 'exercises' | 'reading' | 'notes' | 'lab' | 'prep' | 'project' | 'other'
 
 export const HW_KINDS: { id: HWKind; title: string; color: string; emoji: string }[] = [
-  { id: 'exercises', title: 'Задачи', color: '#4085ff', emoji: '🔢' },
-  { id: 'reading', title: 'Прочитать', color: '#29b873', emoji: '📖' },
-  { id: 'notes', title: 'Конспект', color: '#1ab3c7', emoji: '📝' },
-  { id: 'lab', title: 'Лаба / отчёт', color: '#ff8c1a', emoji: '🧪' },
-  { id: 'prep', title: 'Подготовиться', color: '#9e66f2', emoji: '🧠' },
-  { id: 'project', title: 'Проект', color: '#ed4d9e', emoji: '📽️' },
-  { id: 'other', title: 'Другое', color: '#8c94a6', emoji: '✏️' }
+  { id: 'exercises', title: L('Задачи'), color: '#4085ff', emoji: '🔢' },
+  { id: 'reading', title: L('Прочитать'), color: '#29b873', emoji: '📖' },
+  { id: 'notes', title: L('Конспект'), color: '#1ab3c7', emoji: '📝' },
+  { id: 'lab', title: L('Лаба / отчёт'), color: '#ff8c1a', emoji: '🧪' },
+  { id: 'prep', title: L('Подготовиться'), color: '#9e66f2', emoji: '🧠' },
+  { id: 'project', title: L('Проект'), color: '#ed4d9e', emoji: '📽️' },
+  { id: 'other', title: L('Другое'), color: '#8c94a6', emoji: '✏️' }
 ]
 export const hwKind = (k: HWKind) => HW_KINDS.find(x => x.id === k) || HW_KINDS[6]
 
@@ -104,7 +105,7 @@ export function newHomework(subject: string, text: string, due: number): Homewor
 }
 
 /** Заголовок для списков: текст (аккуратно оформленный, в одну строку), а если его нет — первый подпункт */
-export const hwTitle = (h: Homework) => (h.text.trim() ? prettyLine(h.text) : h.steps[0] ? prettyClean(h.steps[0].text) : 'Без описания')
+export const hwTitle = (h: Homework) => (h.text.trim() ? prettyLine(h.text) : h.steps[0] ? prettyClean(h.steps[0].text) : L('Без описания'))
 export const key = (s: string) => s.toLowerCase().trim()
 export const sameSubject = (a: string, b: string) => key(a) === key(b)
 const sameKind = (a: string, b: string) => kindStyle(a).label === kindStyle(b).label
@@ -209,10 +210,10 @@ export function findSlot(subject: string, start: number, d: ScheduleData): Slot 
 export const isEndOfDay = (t: number) => { const d = new Date(t); return d.getHours() === 23 && d.getMinutes() === 59 }
 
 export function dayTime(t: number): string {
-  const time = isEndOfDay(t) ? 'до конца дня' : hm(t)
-  if (isToday(t)) return `сегодня, ${time}`
-  if (isTomorrow(t)) return `завтра, ${time}`
-  if (isYesterday(t)) return `вчера, ${time}`
+  const time = isEndOfDay(t) ? L('до конца дня') : hm(t)
+  if (isToday(t)) return L`сегодня, ${time}`
+  if (isTomorrow(t)) return L`завтра, ${time}`
+  if (isYesterday(t)) return L`вчера, ${time}`
   const sameYear = new Date(t).getFullYear() === new Date().getFullYear()
   return `${WEEKDAYS_SHORT[new Date(t).getDay()]} ${dayMon(t)}${sameYear ? '' : ' ' + new Date(t).getFullYear()}, ${time}`
 }
@@ -221,12 +222,12 @@ export function chip(t: number, done = false): string {
   const now = Date.now()
   if (!done && t < now) {
     const days = daysBetween(t, now)
-    return days <= 0 ? 'просрочено' : `просрочено ${days} дн`
+    return days <= 0 ? L('просрочено') : L`просрочено ${days} дн`
   }
   const mins = Math.floor((t - now) / 60_000)
-  if (mins < 60 && mins >= 0) return `через ${Math.max(mins, 1)} мин`
-  if (isToday(t)) return isEndOfDay(t) ? 'сегодня' : `сегодня ${hm(t)}`
-  if (isTomorrow(t)) return isEndOfDay(t) ? 'завтра' : `завтра ${hm(t)}`
+  if (mins < 60 && mins >= 0) return L`через ${Math.max(mins, 1)} мин`
+  if (isToday(t)) return isEndOfDay(t) ? L('сегодня') : L`сегодня ${hm(t)}`
+  if (isTomorrow(t)) return isEndOfDay(t) ? L('завтра') : L`завтра ${hm(t)}`
   const days = daysBetween(now, t)
   if (days < 7) { const wd = WEEKDAYS_SHORT[new Date(t).getDay()]; return isEndOfDay(t) ? wd : `${wd}, ${hm(t)}` }
   return dayMon(t)
@@ -341,8 +342,8 @@ export const hw = {
       if (Math.abs(t.start - h.due) > 60_000) {
         if (h.due < now && t.start < now) return h
         if (!h.dueEstimated && h.due > now) {
-          n.shiftNote = `Пару перенесли: было ${dayTime(h.due)}`
-          if (HWPrefs.notifyShift()) notify.show({ title: 'Срок ДЗ сдвинулся', body: `${h.subject}: пару перенесли, теперь сдавать ${dayTime(t.start)}`, route: `hw:${h.id}` })
+          n.shiftNote = L`Пару перенесли: было ${dayTime(h.due)}`
+          if (HWPrefs.notifyShift()) notify.show({ title: L('Срок ДЗ сдвинулся'), body: L`${h.subject}: пару перенесли, теперь сдавать ${dayTime(t.start)}`, route: `hw:${h.id}` })
         }
         n.due = t.start
         changed = true
@@ -380,18 +381,18 @@ function scheduleReminders(h: Homework) {
   const prev = new Date(addDays(h.due, -1))
   if (h.reminders.evening) {
     prev.setHours(HWPrefs.eveningHour(), HWPrefs.eveningMinute(), 0, 0)
-    plan.push({ id: prefix + 'e', at: prev.getTime(), title: 'Завтра сдавать ДЗ' })
+    plan.push({ id: prefix + 'e', at: prev.getTime(), title: L('Завтра сдавать ДЗ') })
   }
   if (h.reminders.morning) {
     const m = new Date(h.due); m.setHours(HWPrefs.morningHour(), HWPrefs.morningMinute(), 0, 0)
-    if (m.getTime() < h.due) plan.push({ id: prefix + 'm', at: m.getTime(), title: 'Сегодня сдавать ДЗ' })
+    if (m.getTime() < h.due) plan.push({ id: prefix + 'm', at: m.getTime(), title: L('Сегодня сдавать ДЗ') })
   }
-  if (h.reminders.hourBefore && !isEndOfDay(h.due)) plan.push({ id: prefix + 'h', at: h.due - 3600_000, title: 'Через час сдавать ДЗ' })
-  if (h.reminders.custom) plan.push({ id: prefix + 'c', at: h.reminders.custom, title: 'Напоминание о ДЗ' })
+  if (h.reminders.hourBefore && !isEndOfDay(h.due)) plan.push({ id: prefix + 'h', at: h.due - 3600_000, title: L('Через час сдавать ДЗ') })
+  if (h.reminders.custom) plan.push({ id: prefix + 'c', at: h.reminders.custom, title: L('Напоминание о ДЗ') })
   let body = h.subject ? `${h.subject}: ${hwTitle(h)}` : hwTitle(h)
   if (h.steps.length) body += ` (${h.steps.filter(s => s.done).length}/${h.steps.length})`
   notify.schedule(prefix, plan.filter(p => (p.at ?? 0) > Date.now()).map(p => ({
-    ...p, body, route: `hw:${h.id}`, actions: [{ id: `hwdone:${h.id}`, text: 'Сделано' }]
+    ...p, body, route: `hw:${h.id}`, actions: [{ id: `hwdone:${h.id}`, text: L('Сделано') }]
   })))
 }
 
@@ -405,7 +406,7 @@ export function scheduleAsk(d: ScheduleData) {
       if (s.end <= Date.now() || !HWPrefs.asks(s.kind)) continue
       list.push({
         id: `hw-ask-${Math.floor(s.start / 1000)}`, at: s.end + delay,
-        title: `Что задали по «${s.subject}»?`, body: 'Нажми, чтобы записать ДЗ. Срок поставлю к следующей паре.',
+        title: L`Что задали по «${s.subject}»?`, body: L('Нажми, чтобы записать ДЗ. Срок поставлю к следующей паре.'),
         route: `hwnew:${s.start}:${s.subject}`
       })
     }

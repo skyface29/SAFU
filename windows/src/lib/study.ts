@@ -3,6 +3,7 @@ import { kv, createCollection, uid } from './kv'
 import { notify, type Note as Notice } from './notify'
 import { addDays } from './date'
 
+import { L } from './i18n'
 // ---------- задачи ----------
 
 export type StudyTask = { id: string; title: string; subject: string; due: number; note: string; done: boolean; remind: boolean }
@@ -18,8 +19,8 @@ function taskReminders(t: StudyTask) {
   if (t.done || !t.remind) { notify.cancel(prefix); return }
   const list: Notice[] = []
   const dayBefore = new Date(addDays(t.due, -1)); dayBefore.setHours(19, 0, 0, 0)
-  list.push({ id: prefix + 'd', at: dayBefore.getTime(), title: 'Завтра дедлайн', body: `${t.subject ? t.subject + ': ' : ''}${t.title}`, route: 'tasks' })
-  list.push({ id: prefix + 'h', at: t.due - 3 * 3600_000, title: 'Через 3 часа дедлайн', body: `${t.subject ? t.subject + ': ' : ''}${t.title}`, route: 'tasks' })
+  list.push({ id: prefix + 'd', at: dayBefore.getTime(), title: L('Завтра дедлайн'), body: `${t.subject ? t.subject + ': ' : ''}${t.title}`, route: 'tasks' })
+  list.push({ id: prefix + 'h', at: t.due - 3 * 3600_000, title: L('Через 3 часа дедлайн'), body: `${t.subject ? t.subject + ': ' : ''}${t.title}`, route: 'tasks' })
   notify.schedule(prefix, list.filter(n => (n.at ?? 0) > Date.now()))
 }
 
@@ -40,11 +41,11 @@ export type Note = { id: string; title: string; text: string; items: NoteItem[];
 export const NOTE_COLORS = ['transparent', '#facc40', '#66c773', '#599ef9', '#ed6b8c', '#a673f2']
 export const notesStore = createCollection<Note[]>('notes.v2', [])
 
-export const noteTitle = (n: Note) => n.title.trim() || n.text.split('\n')[0]?.trim() || n.items[0]?.text || 'Без названия'
+export const noteTitle = (n: Note) => n.title.trim() || n.text.split('\n')[0]?.trim() || n.items[0]?.text || L('Без названия')
 export const notePreview = (n: Note) => {
   const body = (n.title ? n.text : n.text.split('\n').slice(1).join(' ')).replace(/\n/g, ' ').trim()
   if (body) return body
-  if (n.items.length) return `${n.items.filter(i => i.done).length} из ${n.items.length} готово`
+  if (n.items.length) return L`${n.items.filter(i => i.done).length} из ${n.items.length} готово`
   return ''
 }
 export const blankNote = (subject = ''): Note => ({ id: uid(), title: '', text: '', items: [], subject, color: 0, pinned: false, created: Date.now(), updated: Date.now() })

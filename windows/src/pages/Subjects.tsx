@@ -16,6 +16,7 @@ import { openURL } from '../sites/sites'
 import { gradesStore, total as gradeTotal } from '../lib/grades'
 import { usePref } from '../lib/kv'
 
+import { L } from '../lib/i18n'
 export default function Subjects() {
   const data = useSchedule(s => s.data)
   homeworkStore.use()
@@ -28,13 +29,13 @@ export default function Subjects() {
     .sort((a, b) => sort === 'name' ? a.localeCompare(b, 'ru') : (nextOf(a)?.start ?? Infinity) - (nextOf(b)?.start ?? Infinity))
   return (
     <>
-      <PageHeader title="Предметы" subtitle={`${list.length} ${plural(list.length, 'предмет', 'предмета', 'предметов')} в расписании`} right={<>
-        <Segmented value={sort} onChange={setSort} options={[{ value: 'next', label: 'По ближайшей паре' }, { value: 'name', label: 'По алфавиту' }]} />
+      <PageHeader title={L("Предметы")} subtitle={L`${list.length} ${plural(list.length, L('предмет'), L('предмета'), L('предметов'))} в расписании`} right={<>
+        <Segmented value={sort} onChange={setSort} options={[{ value: 'next', label: L('По ближайшей паре') }, { value: 'name', label: L('По алфавиту') }]} />
         <div className="row" style={{ padding: '0 12px', borderRadius: 12, background: 'var(--fill)', border: '1px solid var(--line)', height: 38, width: 240 }}>
-          <Search size={15} className="faint" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск" style={{ background: 'none', border: 'none', outline: 'none', flex: 1 }} />
+          <Search size={15} className="faint" /><input value={q} onChange={e => setQ(e.target.value)} placeholder={L("Поиск")} style={{ background: 'none', border: 'none', outline: 'none', flex: 1 }} />
         </div>
       </>} />
-      {!list.length && <Empty emoji="📚" title="Предметов пока нет" text="Они появятся вместе с расписанием." />}
+      {!list.length && <Empty emoji="📚" title={L("Предметов пока нет")} text={L("Они появятся вместе с расписанием.")} />}
       <div className="grid gauto" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
         {shown.map((s, i) => {
           const n = nextOf(s)
@@ -47,13 +48,13 @@ export default function Subjects() {
                 <div className="icon-tile hov-turn" style={{ width: 46, height: 46, borderRadius: 14, background: `linear-gradient(135deg, ${color}, ${color}aa)` }}><SubjectGlyph subject={s} size={22} /></div>
                 <div className="grow">
                   <div className="bold clamp2" style={{ lineHeight: 1.25 }}>{s}</div>
-                  <div className="tiny muted ellipsis mt4">{teachersOf(data, s).slice(0, 2).join(', ') || 'Преподаватель не указан'}</div>
+                  <div className="tiny muted ellipsis mt4">{teachersOf(data, s).slice(0, 2).join(', ') || L('Преподаватель не указан')}</div>
                 </div>
               </div>
               <div className="row wrap-row gap6 mt12">
-                {n ? <span className="pill"><Clock size={11} /> {relDay(n.start)}, {hm(n.start)}</span> : <span className="pill">пар не видно</span>}
+                {n ? <span className="pill"><Clock size={11} /> {relDay(n.start)}, {hm(n.start)}</span> : <span className="pill">{L("пар не видно")}</span>}
                 {n && <KindBadge kind={n.kind} filled={false} />}
-                {open > 0 && <span className="pill" style={{ color: '#f59e0b' }}><BookMarked size={11} /> ДЗ {open}</span>}
+                {open > 0 && <span className="pill" style={{ color: '#f59e0b' }}><BookMarked size={11} /> {L("ДЗ")} {open}</span>}
               </div>
             </Card>
           )
@@ -87,35 +88,35 @@ export function SubjectSheet({ name, onClose }: { name: string | null; onClose: 
   const g = grades.find(x => x.subject.toLowerCase() === s.toLowerCase())
   const total = g ? gradeTotal(g) : null
 
-  const addFiles = async () => { const r = await safu.fs.import(folder); if (r.length) { toast(`Добавлено: ${r.length}`); setFiles(await safu.fs.walk(folder)) } }
+  const addFiles = async () => { const r = await safu.fs.import(folder); if (r.length) { toast(L`Добавлено: ${r.length}`); setFiles(await safu.fs.walk(folder)) } }
   return (
     <Sheet open={!!name} onClose={() => { subjectNotes.set(s, note); onClose() }} size="wide"
       title={<span className="row"><span className="icon-tile" style={{ width: 36, height: 36, borderRadius: 11, background: color }}><SubjectGlyph subject={s} size={18} /></span><span className="ellipsis">{s}</span></span>}
       headRight={<>
-        <button className="btn sm" onClick={() => safu.fs.openRoot(folder)}><FolderOpen size={14} /> Папка</button>
-        <button className="btn sm primary" onClick={() => { onClose(); openHomeworkEditor({ subject: s }) }}><Plus size={14} /> ДЗ</button>
+        <button className="btn sm" onClick={() => safu.fs.openRoot(folder)}><FolderOpen size={14} /> {L("Папка")}</button>
+        <button className="btn sm primary" onClick={() => { onClose(); openHomeworkEditor({ subject: s }) }}><Plus size={14} /> {L("ДЗ")}</button>
       </>}>
       <div className="grid g2" style={{ gap: 20, alignItems: 'start' }}>
         <div>
-          <div className="h-sec" style={{ marginTop: 4 }}><Clock size={13} /> Ближайшие пары</div>
-          {!upcoming.length && <div className="sub">В расписании пока нет</div>}
+          <div className="h-sec" style={{ marginTop: 4 }}><Clock size={13} /> {L("Ближайшие пары")}</div>
+          {!upcoming.length && <div className="sub">{L("В расписании пока нет")}</div>}
           <div className="col gap6">
             {upcoming.map(x => (
               <div key={x.key} className="row clickable" style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--fill)' }} onClick={() => useModals.getState().set({ lesson: x })}>
                 <KindBadge kind={x.kind} />
                 <span className="grow small bold"><span className="cap">{shortDayTime(x.start)}</span></span>
-                {x.room && <span className="tiny muted">ауд. {x.room}</span>}
+                {x.room && <span className="tiny muted">{L("ауд.")} {x.room}</span>}
               </div>
             ))}
           </div>
           {teachers.length > 0 && <>
-            <div className="h-sec"><User size={13} /> Преподаватели</div>
+            <div className="h-sec"><User size={13} /> {L("Преподаватели")}</div>
             <div className="row wrap-row gap6">
               {teachers.map(t => <button key={t} className="chip" onClick={() => { onClose(); go('teachers', { name: t }) }}><User size={13} />{t}</button>)}
             </div>
           </>}
-          <div className="h-sec"><BookMarked size={13} /> Домашка {open.length > 0 && <span className="pill">{open.length}</span>}</div>
-          {!open.length && <div className="sub">Открытых заданий нет</div>}
+          <div className="h-sec"><BookMarked size={13} /> {L("Домашка")} {open.length > 0 && <span className="pill">{open.length}</span>}</div>
+          {!open.length && <div className="sub">{L("Открытых заданий нет")}</div>}
           <div className="col gap6">
             {open.map(h => (
               <div key={h.id} className="row clickable" style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--fill)' }} onClick={() => { onClose(); openHomework(h.id) }}>
@@ -125,46 +126,46 @@ export function SubjectSheet({ name, onClose }: { name: string | null; onClose: 
             ))}
           </div>
           {g && <>
-            <div className="h-sec"><Star size={13} /> БРС</div>
+            <div className="h-sec"><Star size={13} /> {L("БРС")}</div>
             <div className="row clickable" style={{ padding: 12, borderRadius: 12, background: 'var(--fill)' }} onClick={() => { onClose(); go('grades') }}>
-              <span className="heavy" style={{ fontSize: '1.4rem' }}>{total}</span><span className="sub">баллов · {g.entries.length} оценок</span>
+              <span className="heavy" style={{ fontSize: '1.4rem' }}>{total}</span><span className="sub">{L("баллов ·")} {g.entries.length} {L("оценок")}</span>
             </div>
           </>}
         </div>
         <div>
-          <div className="h-sec" style={{ marginTop: 4 }}><StickyNote size={13} /> Заметка по предмету</div>
-          <textarea className="textarea" value={note} onChange={e => setNote(e.target.value)} onBlur={() => subjectNotes.set(s, note)} placeholder="Требования преподавателя, допуск, что спросить…" style={{ minHeight: 110 }} />
-          <div className="h-sec"><Pin size={13} /> Закрепы <span className="spacer" />
+          <div className="h-sec" style={{ marginTop: 4 }}><StickyNote size={13} /> {L("Заметка по предмету")}</div>
+          <textarea className="textarea" value={note} onChange={e => setNote(e.target.value)} onBlur={() => subjectNotes.set(s, note)} placeholder={L("Требования преподавателя, допуск, что спросить…")} style={{ minHeight: 110 }} />
+          <div className="h-sec"><Pin size={13} /> {L("Закрепы")} <span className="spacer" />
             <button className="btn sm ghost" onClick={async () => {
-              const url = await promptDialog('Ссылка', 'https://', 'https://sakai.narfu.ru/…')
+              const url = await promptDialog(L('Ссылка'), 'https://', 'https://sakai.narfu.ru/…')
               if (!url || !/^https?:\/\//.test(url)) return
-              const title = await promptDialog('Название', new URL(url).host)
+              const title = await promptDialog(L('Название'), new URL(url).host)
               pins.add(s, { title: title || url, value: url, isFile: false })
-            }}><Link2 size={13} /> Ссылка</button>
+            }}><Link2 size={13} /> {L("Ссылка")}</button>
           </div>
-          {!subjPins.length && <div className="sub">Курс в Sakai, методичка, чат группы — всё под рукой</div>}
+          {!subjPins.length && <div className="sub">{L("Курс в Sakai, методичка, чат группы — всё под рукой")}</div>}
           <div className="row wrap-row gap6">
             {subjPins.map(p => (
               <div key={p.id} className="chip hov-up" onClick={() => p.isFile ? safu.fs.open(p.value) : openURL(p.value, p.title)}
-                onContextMenu={e => openMenu(e, [{ label: 'Открыть в браузере', icon: <ExternalLink size={15} />, run: () => safu.shell.open(p.value) }, { label: 'Убрать', danger: true, run: () => pins.remove(s, p.id) }])}>
+                onContextMenu={e => openMenu(e, [{ label: L('Открыть в браузере'), icon: <ExternalLink size={15} />, run: () => safu.shell.open(p.value) }, { label: L('Убрать'), danger: true, run: () => pins.remove(s, p.id) }])}>
                 <Link2 size={13} />{p.title}<X size={12} onClick={e => { e.stopPropagation(); pins.remove(s, p.id) }} />
               </div>
             ))}
           </div>
-          <div className="h-sec">Файлы <span className="pill">{files.length}</span><span className="spacer" />
-            <button className="btn sm ghost" onClick={addFiles}><Upload size={13} /> Добавить</button>
+          <div className="h-sec">{L("Файлы")} <span className="pill">{files.length}</span><span className="spacer" />
+            <button className="btn sm ghost" onClick={addFiles}><Upload size={13} /> {L("Добавить")}</button>
           </div>
-          {!files.length && <div className="sub clickable" onClick={addFiles}>Папка пустая — добавь методички и лекции</div>}
+          {!files.length && <div className="sub clickable" onClick={addFiles}>{L("Папка пустая — добавь методички и лекции")}</div>}
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
             {files.slice(0, 12).map(f => (
               <div key={f.rel} className="clickable hov-up" onClick={() => openFile(f)} title={`${f.name} · ${fmtSize(f.size)}`}
-                onContextMenu={e => openMenu(e, [{ label: 'Открыть в программе', run: () => safu.fs.open(f.rel) }, { label: 'Показать в Проводнике', run: () => safu.fs.reveal(f.rel) }, { label: 'Закрепить', run: () => pins.add(s, { title: f.name, value: f.rel, isFile: true }) }])}>
+                onContextMenu={e => openMenu(e, [{ label: L('Открыть в программе'), run: () => safu.fs.open(f.rel) }, { label: L('Показать в Проводнике'), run: () => safu.fs.reveal(f.rel) }, { label: L('Закрепить'), run: () => pins.add(s, { title: f.name, value: f.rel, isFile: true }) }])}>
                 <Thumb f={f} size={76} />
                 <div className="tiny ellipsis mt4">{f.name}</div>
               </div>
             ))}
           </div>
-          {files.length > 12 && <button className="btn sm ghost mt8" onClick={() => { onClose(); go('files', { path: folder }) }}>Все файлы ({files.length})</button>}
+          {files.length > 12 && <button className="btn sm ghost mt8" onClick={() => { onClose(); go('files', { path: folder }) }}>{L("Все файлы (")}{files.length})</button>}
         </div>
       </div>
     </Sheet>

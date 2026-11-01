@@ -14,6 +14,7 @@ import {
 import { startOfDay, weekKey, monday, isToday, isTomorrow, relativeAgo } from './date'
 import { notify } from './notify'
 
+import { L } from './i18n'
 const KEY = 'schedule.v1'
 
 function loadData(): ScheduleData {
@@ -86,7 +87,7 @@ export function forStore(d: ScheduleData, archived: Set<number> | null): Schedul
 export const teacherMode = {
   isOn: () => kv.get('user.kind', 'student') === 'teacher',
   query: () => kv.get('teacher.query', ''),
-  betaNote: 'Режим преподавателя в разработке: пары собираются из РУЗ по расписаниям групп и могут быть неполными. Сверяйтесь с официальным расписанием.',
+  betaNote: L('Режим преподавателя в разработке: пары собираются из РУЗ по расписаниям групп и могут быть неполными. Сверяйтесь с официальным расписанием.'),
 
   parse(q: string): { surname: string; initials: string[] } {
     const parts = q.toLowerCase().split(/[^a-zа-яё]+/i).filter(Boolean)
@@ -175,7 +176,7 @@ export const school = {
         } catch { /* школа не ответила */ }
         if (i === 0) homeCount = plan.length
       }
-      if (!plan.length) { useSchool.setState({ error: 'Нет связи с РУЗ — не удалось получить список групп' }); return }
+      if (!plan.length) { useSchool.setState({ error: L('Нет связи с РУЗ — не удалось получить список групп') }); return }
       report?.(0, plan.length)
       const found: SchoolEvent[] = []
       let failed = 0, start = 0, shownHome = false
@@ -202,7 +203,7 @@ export const school = {
           useSchool.setState({ events: [...found], institution: inst })
         }
       }
-      if (!found.length) { useSchool.setState({ error: 'РУЗ не ответил — попробуй позже' }); return }
+      if (!found.length) { useSchool.setState({ error: L('РУЗ не ответил — попробуй позже') }); return }
       const at = Date.now()
       useSchool.setState({ events: found, institution: inst, scannedAt: at, failed })
       await safu.cache.set(`school-${inst}`, { institution: inst, at, events: found, failed })
@@ -298,9 +299,9 @@ function setChanges(changes: ScheduleChange[], unseen: number) {
 function notifyChanges(found: ScheduleChange[]) {
   if (!found.length || !kv.get('notify.changes', true)) return
   const soon = found.some(c => isToday(c.date) || isTomorrow(c.date))
-  const when = found.some(c => isToday(c.date)) ? 'сегодня' : 'завтра'
+  const when = found.some(c => isToday(c.date)) ? L('сегодня') : L('завтра')
   notify.show({
-    title: soon ? `Замена в расписании на ${when}` : `Расписание изменилось (${found.length})`,
+    title: soon ? L`Замена в расписании на ${when}` : L`Расписание изменилось (${found.length})`,
     body: found.slice(0, 3).map(c => c.text).join('\n'),
     route: 'changes'
   })
@@ -327,7 +328,7 @@ export const scheduleStore = {
 
   lastSyncText() {
     const l = useSchedule.getState().data.lastSync
-    return l ? 'обновлено ' + relativeAgo(l) : 'ещё не обновлялось'
+    return l ? L('обновлено ') + relativeAgo(l) : L('ещё не обновлялось')
   },
 
   async loadArchiveWeek(t: number) {
@@ -411,11 +412,11 @@ export const scheduleStore = {
         let d = useSchedule.getState().data
         if (merged.length) d = mergeRuz(d, merged)
         const groups = teacherMode.myGroups({ ...d, ruzEvents: merged })
-        d = { ...d, lastSync: Date.now(), syncInfo: merged.length ? `Пар: ${merged.length} · групп: ${groups.length}` : `В РУЗ не нашлось пар преподавателя «${teacherMode.query()}»` }
+        d = { ...d, lastSync: Date.now(), syncInfo: merged.length ? L`Пар: ${merged.length} · групп: ${groups.length}` : L`В РУЗ не нашлось пар преподавателя «${teacherMode.query()}»` }
         setData(d)
         useSchedule.setState({ syncMessage: d.syncInfo })
       } catch (e) {
-        useSchedule.setState({ syncMessage: `${(e as Error).message || 'Нет связи с РУЗ'}, показываю сохранённое расписание` })
+        useSchedule.setState({ syncMessage: L`${(e as Error).message || L('Нет связи с РУЗ')}, показываю сохранённое расписание` })
       } finally {
         useSchedule.setState({ syncing: false, teacherProgress: null })
       }
@@ -428,7 +429,7 @@ export const scheduleStore = {
       if (!id) {
         const found = data.ruzGroupNumber ? await findGroupID(data.ruzGroupNumber, data.ruzInstitution) : null
         if (!found) {
-          const msg = `Группа ${data.ruzGroupNumber} не найдена в РУЗ. Открой РУЗ, найди свою группу и проверь номер.`
+          const msg = L`Группа ${data.ruzGroupNumber} не найдена в РУЗ. Открой РУЗ, найди свою группу и проверь номер.`
           useSchedule.setState({ syncMessage: msg })
           setData({ ...useSchedule.getState().data, syncInfo: msg })
           return
@@ -450,11 +451,11 @@ export const scheduleStore = {
           notifyChanges(found)
         }
       }
-      d = { ...d, lastSync: Date.now(), syncInfo: r.events.length ? `Загружено пар: ${r.events.length} · ${r.method}` : (r.notice || 'РУЗ не вернул пар на ближайшие недели') }
+      d = { ...d, lastSync: Date.now(), syncInfo: r.events.length ? L`Загружено пар: ${r.events.length} · ${r.method}` : (r.notice || L('РУЗ не вернул пар на ближайшие недели')) }
       setData(d)
       useSchedule.setState({ syncMessage: d.syncInfo })
     } catch {
-      useSchedule.setState({ syncMessage: 'Нет связи с РУЗ, показываю сохранённое расписание' })
+      useSchedule.setState({ syncMessage: L('Нет связи с РУЗ, показываю сохранённое расписание') })
     } finally {
       useSchedule.setState({ syncing: false })
     }

@@ -1,6 +1,7 @@
 // Профиль: имя, группа, роль
 import { kv, usePref } from './kv'
 
+import { L } from './i18n'
 export const profile = {
   first: () => kv.get('user.first', ''),
   last: () => kv.get('user.last', ''),
@@ -20,7 +21,7 @@ export function useProfile() {
   const [role] = usePref('user.role', 0)
   const [kind] = usePref('user.kind', 'student')
   const [avatar] = usePref<string>('user.avatar', '')
-  return { first, last, group, role, teacher: kind === 'teacher', head: role === 1 || role === 2 || kind === 'teacher', avatar, initials: ((first[0] || '') + (last[0] || '')).toUpperCase() || 'С' }
+  return { first, last, group, role, teacher: kind === 'teacher', head: role === 1 || role === 2 || kind === 'teacher', avatar, initials: ((first[0] || '') + (last[0] || '')).toUpperCase() || L('С') }
 }
 
-export const ROLE_TITLES = ['Студент', 'Староста', 'Зам. старосты', 'Преподаватель']
+export const ROLE_TITLES = [L('Студент'), L('Староста'), L('Зам. старосты'), L('Преподаватель')]
