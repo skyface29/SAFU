@@ -1,0 +1,81 @@
+# Пост в Telegram от бота Арктики: картинка, подпись и кнопки-ссылки под ней.
+# Картинка — .github/telegram-navigation.jpg. Подпись и кнопки — ниже, в шаге «Отправить».
+# Один раз: токен бота из @BotFather — в Settings → Secrets and variables → Actions под именем TG_BOT_TOKEN;
+# для канала бот должен быть админом с правом «Публикация сообщений».
+# Запуск: Actions → «Пост в Telegram» → Run workflow.
+name: Пост в Telegram
+on:
+  workflow_dispatch:
+    inputs:
+      chat:
+        description: 'Куда: @username канала или свой числовой id (для проверки, сначала напиши боту /start)'
+        required: true
+      pin:
+        description: 'Закрепить пост'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github
+      - name: Отправить
+        env:
+          TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          CHAT: ${{ inputs.chat }}
+          PIN: ${{ inputs.pin }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::Нет секрета TG_BOT_TOKEN: Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+
+          cat > caption.html <<'EOF'
+          <b>Навигация по сайтам Арктики</b> ❄️
+
+          <b>Расписание</b> — 650 групп, работает, даже когда РУЗ лежит
+          <b>Отметки</b> — посещаемость группы за 15 секунд
+          <b>Статус</b> — что сейчас лежит: РУЗ, Sakai, ЛК, почта
+          <b>Справочник</b> — 91 ответ из документов САФУ
+          <b>Приложение</b> — iPhone, Mac, Android, Windows, Linux
+
+          Жми на кнопку — откроется нужный сайт 👇
+          EOF
+
+          cat > buttons.json <<'EOF'
+          {"inline_keyboard": [
+            [{"text": "Расписание", "url": "https://arktika-app.ru/raspisanie/"},
+             {"text": "Отметки", "url": "https://arktika-app.ru/otmetki/"}],
+            [{"text": "Статус", "url": "https://arktika-app.ru/status/"},
+             {"text": "Справочник", "url": "https://arktika-app.ru/spravka/"}],
+            [{"text": "Приложение «Арктика»", "url": "https://arktika-app.ru/"}]
+          ]}
+          EOF
+
+          api="https://api.telegram.org/bot$TOKEN"
+          # --form-string: «@канал» иначе curl принял бы за имя файла
+          r=$(curl -sS "$api/sendPhoto" \
+            --form-string "chat_id=$CHAT" \
+            -F "photo=@.github/telegram-navigation.jpg" \
+            -F "caption=<caption.html" \
+            --form-string "parse_mode=HTML" \
+            -F "reply_markup=<buttons.json")
+          if [ "$(jq -r .ok <<<"$r")" != true ]; then
+            echo "::error::Telegram не принял пост: $(jq -r .description <<<"$r")"
+            exit 1
+          fi
+          id=$(jq -r .result.message_id <<<"$r")
+          echo "Опубликовано, message_id=$id" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$PIN" = true ]; then
+            p=$(curl -sS "$api/pinChatMessage" --data-urlencode "chat_id=$CHAT" -d "message_id=$id" -d "disable_notification=true")
+            if [ "$(jq -r .ok <<<"$p")" = true ]; then
+              echo "Закреплено" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::Не удалось закрепить: $(jq -r .description <<<"$p") — дай боту право «Закрепление сообщений»"
+            fi
+          fi
