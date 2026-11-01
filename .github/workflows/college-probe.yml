@@ -1,0 +1,15 @@
+# Временно: разведка расписаний колледжей САФУ (удалить перед слиянием)
+name: Разведка колледжей
+on:
+  push:
+    branches: [claude/project-thread-en4z0q]
+    paths: [ruz/probe/**, .github/workflows/college-probe.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node ruz/probe/colleges.mjs
