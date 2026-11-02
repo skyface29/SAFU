@@ -40,9 +40,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Разборщик PDF колледжей
+        run: npm ci --prefix ruz --no-audit --no-fund
+      - name: PDF колледжей
+        # ветку college-inbox пишет загрузчик из России (ruz/colleges/fetcher): narfu.ru с серверов GitHub не открывается
+        run: |
+          if git ls-remote --exit-code --heads origin college-inbox >/dev/null; then
+            git fetch -q --depth 1 origin college-inbox
+            git worktree add -q college-inbox FETCH_HEAD
+          else
+            mkdir -p college-inbox
+          fi
       - name: Обойти РУЗ
         id: collect
-        run: node ruz/collect.mjs --data ruz-data ${{ inputs.force && '--force' || '' }}
+        run: node ruz/collect.mjs --data ruz-data --inbox college-inbox ${{ inputs.force && '--force' || '' }}
       - name: Сохранить копию
         if: steps.collect.outputs.changed == 'true'
         run: |

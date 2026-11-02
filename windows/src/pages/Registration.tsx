@@ -4,10 +4,12 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, X, Snowflake, GraduationCap, Presentation, Cpu, Cog, Leaf, Globe2, LineChart, Zap, Dumbbell, Fish,
-  Search, Keyboard, RefreshCw, Check, Loader2, AlertCircle, Circle, User, Star, StarHalf, Footprints, Bus, Plus, ClipboardPaste, ArchiveRestore, QrCode
+  Search, Keyboard, RefreshCw, Check, Loader2, AlertCircle, Circle, User, Star, StarHalf, Footprints, Bus, Plus, ClipboardPaste, ArchiveRestore, QrCode,
+  TreePine, Ship, Anchor, BookOpen, Wrench, School as SchoolIcon, MapPin
 } from 'lucide-react'
 import { kv } from '../lib/kv'
 import { loadGroups, type RuzGroup } from '../lib/ruz'
+import { mirrorSchools, mirrorGroups, mirrorOnly, FALLBACK_SCHOOLS, type MirrorSchool, type City, type SchoolKind } from '../lib/mirror'
 import { scheduleStore, useSchedule, teacherMode } from '../lib/scheduleStore'
 import { subjects, slotsRange } from '../lib/schedule'
 import { fullDay, hm } from '../lib/date'
@@ -21,16 +23,13 @@ import { toast, alertDialog, Sheet } from '../ui/kit'
 import { TransferPanel } from './Transfer'
 import { transfer } from '../lib/transfer'
 
-export const SCHOOLS = [
-  { id: 3, short: 'ВШИТАС', full: 'Высшая школа информационных технологий и автоматизированных систем', about: 'ИТ, программирование, автоматизация, связь', Icon: Cpu },
-  { id: 15, short: 'ВИШ', full: 'Высшая инженерная школа', about: 'Строительство, транспорт, машиностроение', Icon: Cog },
-  { id: 1, short: 'ВШЕНиТ', full: 'Высшая школа естественных наук и технологий', about: 'Биология, химия, география, экология', Icon: Leaf },
-  { id: 4, short: 'ВШСГНиМК', full: 'Высшая школа социально-гуманитарных наук и международной коммуникации', about: 'Филология, история, языки, журналистика', Icon: Globe2 },
-  { id: 28, short: 'ВШЭУиП', full: 'Высшая школа экономики, управления и права', about: 'Экономика, менеджмент, юриспруденция', Icon: LineChart },
-  { id: 12, short: 'ВШЭНиГ', full: 'Высшая школа энергетики, нефти и газа', about: 'Энергетика, нефтегазовое дело', Icon: Zap },
-  { id: 13, short: 'ВШППиФК', full: 'Высшая школа психологии, педагогики и физической культуры', about: 'Психология, педагогика, спорт', Icon: Dumbbell },
-  { id: 36, short: 'ВШ рыболовства', full: 'Высшая школа рыболовства', about: 'Рыболовство, водные биоресурсы', Icon: Fish }
-]
+// Значки школ и колледжей; список — из зеркала расписания (lib/mirror): там же города и колледжи
+const ICONS: Record<number, typeof Cpu> = { 3: Cpu, 15: Cog, 1: Leaf, 4: Globe2, 28: LineChart, 12: Zap, 13: Dumbbell, 36: Fish, 1001: TreePine, 1036: Ship, 26: Anchor, 6: BookOpen, 23: Wrench, 33: GraduationCap, 35: GraduationCap }
+type School = MirrorSchool & { Icon: typeof Cpu }
+const withIcon = (s: MirrorSchool): School => ({ ...s, Icon: ICONS[s.id] || (s.kind === 'spo' ? SchoolIcon : GraduationCap) })
+export const SCHOOLS: School[] = FALLBACK_SCHOOLS.map(withIcon)
+const CITY_NAME: Record<City, string> = { arh: 'Архангельск', sev: 'Северодвинск' }
+const KIND_NAME: Record<SchoolKind, string> = { vuz: 'Высшие школы и институты', spo: 'Колледжи', asp: 'Аспирантура' }
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5   // welcome, name, school, group, extras, setup
 type Task = { id: number; title: string; detail: string; state: 'waiting' | 'running' | 'done' | 'warn' }
@@ -43,7 +42,10 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
   const [last, setLast] = useState(kv.get('user.last', ''))
   const [middle, setMiddle] = useState(kv.get('user.middle', ''))
   const [showMore, setShowMore] = useState(!!kv.get('user.last', ''))
-  const [school, setSchool] = useState<typeof SCHOOLS[0] | null>(SCHOOLS.find(s => s.id === useSchedule.getState().data.ruzInstitution && kv.get('onboarded', false)) || null)
+  const [schools, setSchools] = useState<School[]>(SCHOOLS)
+  const [school, setSchool] = useState<School | null>(SCHOOLS.find(s => s.id === useSchedule.getState().data.ruzInstitution && kv.get('onboarded', false)) || null)
+  const [city, setCity] = useState<City>(((kv.get('user.city', '') as string) || (school ? school.city : 'arh')) as City)
+  useEffect(() => { mirrorSchools().then(l => { if (l.length) setSchools(l.map(withIcon)) }).catch(() => null) }, [])
   const [groups, setGroups] = useState<RuzGroup[]>([])
   const [loading, setLoading] = useState(false)
   const [groupsError, setGroupsError] = useState<string | null>(null)
@@ -87,11 +89,14 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
     if (!school) return
     setLoading(true); setGroupsError(null)
     try {
-      const list = await loadGroups(school.id, force)
+      // сначала зеркало (там и колледжи), не вышло — РУЗ напрямую
+      let list: RuzGroup[] = []
+      try { list = await mirrorGroups(school.id, force) } catch { list = [] }
+      if (!list.length && !mirrorOnly(school.id)) list = await loadGroups(school.id, force)
       setGroups(list)
-      if (!list.length) setGroupsError('РУЗ не вернул список групп. Введи номер группы вручную.')
+      if (!list.length) setGroupsError(mirrorOnly(school.id) ? 'Список групп колледжа пока пуст. Введи номер группы вручную.' : 'РУЗ не вернул список групп. Введи номер группы вручную.')
     } catch {
-      setGroupsError('Нет связи с РУЗ. Проверь интернет или введи номер группы вручную.')
+      setGroupsError('Нет связи с расписанием. Проверь интернет или введи номер группы вручную.')
     } finally { setLoading(false) }
   }
 
@@ -113,6 +118,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
     const fio = [l, f, m].filter(Boolean).join(' ')
     if (fio && !teacher) kv.set('report.student', fio)
     if (school) kv.set('report.school', school.full)
+    kv.set('user.city', school ? school.city : city)
     if (teacher) resources.addTeacherSites()
   }
 
@@ -120,7 +126,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
     setFinished(false)
     setTasks([
       { id: 0, title: 'Профиль', detail: '', state: 'waiting' },
-      { id: 1, title: teacher ? 'Ваши пары по всем группам САФУ' : `Расписание группы ${groupNumber} из РУЗ`, detail: '', state: 'waiting' },
+      { id: 1, title: teacher ? 'Ваши пары по всем группам САФУ' : `Расписание группы ${groupNumber}`, detail: '', state: 'waiting' },
       { id: 2, title: 'Папки предметов', detail: '', state: 'waiting' },
       { id: 3, title: 'Уведомления о парах и заменах', detail: '', state: 'waiting' },
       { id: 4, title: 'Трей и мини-окно пары', detail: '', state: 'waiting' }
@@ -244,22 +250,36 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
 
               {step === 2 && (
                 <>
-                  <Header title={teacher ? 'Где вы преподаёте' : 'Твоя высшая школа'} text="Выбери школу — оттуда подтянется список групп." />
-                  <div className="grid g2">
-                    {SCHOOLS.map((s, i) => {
-                      const on = school?.id === s.id
-                      return (
-                        <Appear key={s.id} delay={0.04 * i}>
-                          <motion.div onClick={() => setSchool(s)} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} className="row top"
-                            style={{ padding: 14, borderRadius: 18, cursor: 'pointer', background: on ? 'rgba(var(--brand-rgb), .16)' : 'var(--fill)', border: `1.5px solid ${on ? 'var(--brand)' : 'var(--line)'}`, gap: 12 }}>
-                            <div className="icon-tile" style={{ width: 42, height: 42, borderRadius: 13, background: on ? 'var(--grad)' : 'var(--fill2)', color: on ? '#fff' : 'var(--text)' }}><s.Icon size={20} /></div>
-                            <div className="grow"><div className="bold">{s.short}</div><div className="tiny muted">{s.about}</div></div>
-                            {on && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><Check size={18} color="var(--brand)" /></motion.div>}
-                          </motion.div>
-                        </Appear>
-                      )
-                    })}
+                  <Header title={teacher ? 'Где вы преподаёте' : 'Где ты учишься'} text="Выбери город и свою высшую школу или колледж — оттуда подтянется список групп." />
+                  <div className="row gap6 mb12">
+                    {(['arh', 'sev'] as City[]).map(c => (
+                      <button key={c} className={`chip ${city === c ? 'on' : ''}`} onClick={() => { setCity(c); if (school && school.city !== c) setSchool(null) }}><MapPin size={14} /> {CITY_NAME[c]}</button>
+                    ))}
                   </div>
+                  {(['vuz', 'spo', 'asp'] as SchoolKind[]).map(kind => {
+                    const list = schools.filter(s => s.city === city && s.kind === kind)
+                    if (!list.length) return null
+                    return (
+                      <div key={kind} className="mb12">
+                        <div className="tiny muted mb8 bold">{KIND_NAME[kind]}</div>
+                        <div className="grid g2">
+                          {list.map((s, i) => {
+                            const on = school?.id === s.id
+                            return (
+                              <Appear key={s.id} delay={0.04 * i}>
+                                <motion.div onClick={() => setSchool(s)} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} className="row top"
+                                  style={{ padding: 14, borderRadius: 18, cursor: 'pointer', background: on ? 'rgba(var(--brand-rgb), .16)' : 'var(--fill)', border: `1.5px solid ${on ? 'var(--brand)' : 'var(--line)'}`, gap: 12 }}>
+                                  <div className="icon-tile" style={{ width: 42, height: 42, borderRadius: 13, background: on ? 'var(--grad)' : 'var(--fill2)', color: on ? '#fff' : 'var(--text)' }}><s.Icon size={20} /></div>
+                                  <div className="grow"><div className="bold">{s.short}</div><div className="tiny muted">{s.about}</div></div>
+                                  {on && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><Check size={18} color="var(--brand)" /></motion.div>}
+                                </motion.div>
+                              </Appear>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </>
               )}
 
@@ -281,13 +301,13 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                           {courses.map(c => <button key={c} className={`chip ${course === c ? 'on' : ''}`} onClick={() => setCourse(c)}>{c} курс</button>)}
                         </div>
                       )}
-                      {loading && <div className="col gap8">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 54 }} />)}<div className="sub tc">Загружаю группы из РУЗ…</div></div>}
+                      {loading && <div className="col gap8">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 54 }} />)}<div className="sub tc">Загружаю список групп…</div></div>}
                       {groupsError && <div className="row" style={{ padding: 14, borderRadius: 14, background: 'rgba(245,158,11,.12)', color: '#f59e0b' }}><AlertCircle size={18} />{groupsError}</div>}
                       <div className="col gap6">
                         {filtered.slice(0, 120).map((g, i) => {
-                          const on = picked?.id === g.id
+                          const on = picked?.number === g.number
                           return (
-                            <motion.div key={g.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 15) * 0.02 }}
+                            <motion.div key={g.number} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 15) * 0.02 }}
                               onClick={() => setPicked(g)} className="row" whileHover={{ x: 3 }}
                               style={{ padding: '11px 14px', borderRadius: 14, cursor: 'pointer', background: on ? 'rgba(var(--brand-rgb), .16)' : 'var(--fill)', border: `1.5px solid ${on ? 'var(--brand)' : 'transparent'}` }}>
                               <div className="heavy mono" style={{ width: 80, fontSize: '1.05rem' }}>{g.number}</div>
@@ -302,7 +322,7 @@ export function Registration({ canClose, onDone }: { canClose: boolean; onDone: 
                     </>
                   ) : (
                     <>
-                      <Input label="Номер группы" value={manual} onChange={setManual} autoFocus placeholder="Номер группы из РУЗ" />
+                      <Input label="Номер группы" value={manual} onChange={setManual} autoFocus placeholder="Например, 151621" />
                       <div className="tiny faint">Номер группы — на студенческом или в РУЗ. Приложение найдёт её само, даже если она в другой высшей школе.</div>
                       <button className="btn ghost mt12" onClick={() => setManualMode(false)}>Выбрать из списка</button>
                     </>

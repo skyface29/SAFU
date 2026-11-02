@@ -113,6 +113,8 @@ h1{font:800 clamp(26px,5vw,40px)/1.08 var(--ff-d);letter-spacing:-.025em;margin:
 button.card{text-align:left;width:100%}
 button.card:hover{border-color:var(--rim2);background:var(--ice2);transform:translateY(-2px)}
 .schools{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.city{margin:0 0 14px}
+.kind{font:700 13px var(--ff-d);color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px}
 .sch{display:flex;flex-direction:column;gap:6px;min-height:150px}
 .sch .t{display:flex;align-items:center;gap:10px;font:700 15px var(--ff-d)}
 .mark{flex:none;width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font:800 12px var(--ff-d);color:#fff}
@@ -456,11 +458,20 @@ function banners(){
 function groupsOf(id){return AG.filter(function(g){return g[1].indexOf(id)>=0;});}
 function showSchools(){
   view='schools';var cnt={};AG.forEach(function(g){g[1].forEach(function(s){cnt[s]=(cnt[s]||0)+1;});});
-  var h='<h1>Выбери высшую школу</h1><p class="sub">Потом свою группу — и всё. В следующий раз расписание откроется сразу, а правки из РУЗ будут подсвечены.</p>'+
-   '<div class="search">'+searchSvg+'<input id="gq" placeholder="Или сразу номер группы, например 151621" inputmode="search" autocomplete="off" aria-label="Поиск группы"></div><div id="gres"></div><div class="grid schools" id="slist">';
-  SCHOOLS.forEach(function(s){if(!cnt[s[0]])return;
-    h+='<button class="card sch" data-s="'+s[0]+'"><div class="t"><span class="mark" style="background:'+colorFor(s[1])+'">'+esc(s[1].slice(0,2).toUpperCase())+'</span>'+esc(s[1])+'</div><div class="f">'+esc(s[2])+'</div><div class="a">'+esc(s[3])+'</div><div class="n">'+cnt[s[0]]+' '+plural(cnt[s[0]],'группа','группы','групп')+'</div></button>';});
+  // город (s[4]: arh/sev) и вид (s[5]: vuz/spo/asp); у старых файлов их нет — всё в Архангельске
+  var city=mem.city==='sev'?'sev':'arh',cityOf=function(s){return s[4]||'arh';},kindOf=function(s){return s[5]||'vuz';};
+  var hasSev=SCHOOLS.some(function(s){return cnt[s[0]]&&cityOf(s)==='sev';});if(!hasSev)city='arh';
+  var h='<h1>Где ты учишься</h1><p class="sub">Выбери город, высшую школу или колледж, потом свою группу — и всё. В следующий раз расписание откроется сразу, а правки будут подсвечены.</p>'+
+   (hasSev?'<div class="seg city" role="tablist"><button data-city="arh"'+(city==='arh'?' class="on"':'')+'>Архангельск</button><button data-city="sev"'+(city==='sev'?' class="on"':'')+'>Северодвинск</button></div>':'')+
+   '<div class="search">'+searchSvg+'<input id="gq" placeholder="Или сразу номер группы, например 151621" inputmode="search" autocomplete="off" aria-label="Поиск группы"></div><div id="gres"></div><div id="slist">';
+  [['vuz','Высшие школы и институты'],['spo','Колледжи'],['asp','Аспирантура']].forEach(function(k){
+    var list=SCHOOLS.filter(function(s){return cnt[s[0]]&&cityOf(s)===city&&kindOf(s)===k[0];});if(!list.length)return;
+    h+='<div class="kind">'+k[1]+'</div><div class="grid schools">';
+    list.forEach(function(s){
+      h+='<button class="card sch" data-s="'+s[0]+'"><div class="t"><span class="mark" style="background:'+colorFor(s[1])+'">'+esc(s[1].slice(0,2).toUpperCase())+'</span>'+esc(s[1])+'</div><div class="f">'+esc(s[2])+'</div><div class="a">'+esc(s[3])+'</div><div class="n">'+cnt[s[0]]+' '+plural(cnt[s[0]],'группа','группы','групп')+'</div></button>';});
+    h+='</div>';});
   app.innerHTML=h+'</div>';
+  app.querySelectorAll('[data-city]').forEach(function(b){b.onclick=function(){mem.city=b.dataset.city;save();showSchools();};});
   app.querySelectorAll('[data-s]').forEach(function(b){b.onclick=function(){mem.school=+b.dataset.s;save();showGroups();};});
   var inp=document.getElementById('gq');
   inp.oninput=function(){var v=inp.value.trim(),res=document.getElementById('gres'),sl=document.getElementById('slist');

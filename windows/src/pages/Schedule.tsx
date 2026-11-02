@@ -11,7 +11,8 @@ import {
   subjects, teachersOf, AddressFormat, defaultSemesterStart, groupParallel
 } from '../lib/schedule'
 import { monday, addDays, startOfDay, isToday, dayMon, DAY_NAMES, WEEKDAYS, fullDay, hm, ymd, plural, relativeAgo, weekday } from '../lib/date'
-import { RUZ_BASE, timetableURL, institutions } from '../lib/ruz'
+import { RUZ_BASE, timetableURL } from '../lib/ruz'
+import { FALLBACK_SCHOOLS } from '../lib/mirror'
 import { Card, PageHeader, Segmented, Sheet, Empty, KindBadge, Toggle, Row, ToggleRow, Field, toast, confirmDialog, useNow, openMenu, type MenuItem } from '../ui/kit'
 import { type ShareSpan, drawScheduleCard, shareScheduleText, shareFileName } from '../lib/scheduleShare'
 import { SlotRow } from '../ui/lesson'
@@ -279,7 +280,7 @@ function ScheduleSettings({ open, onClose, onAdd }: { open: boolean; onClose: ()
     <Sheet open={open} onClose={onClose} title="Настройки расписания" size="wide">
       <div className="h-sec" style={{ marginTop: 4 }}>Откуда брать пары</div>
       <Card className="list" style={{ padding: 0 }}>
-        <Row title="Расписание из РУЗ" sub={usesRuz(data) ? (teacherMode.isOn() ? `Преподаватель: ${teacherMode.query()}` : `Группа ${data.ruzGroupNumber} · ${institutions.find(i => i[0] === data.ruzInstitution)?.[1] || ''}`) : 'Не подключено'}
+        <Row title="Расписание САФУ" sub={usesRuz(data) ? (teacherMode.isOn() ? `Преподаватель: ${teacherMode.query()}` : `Группа ${data.ruzGroupNumber} · ${FALLBACK_SCHOOLS.find(s => s.id === data.ruzInstitution)?.short || ''}`) : 'Не подключено'}
           right={<button className="btn sm" onClick={() => { onClose(); kv.set('onboarding.again', true) }}>{usesRuz(data) ? 'Сменить' : 'Подключить'}</button>} />
         <Row title="Вручную" sub={`${data.lessons.length} пар в расписании`} right={<div className="row gap6">
           {usesRuz(data) && <button className="btn sm" onClick={() => scheduleStore.useManual()}>Перейти</button>}

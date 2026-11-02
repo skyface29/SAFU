@@ -12,7 +12,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
-import { RUZ, SCHOOLS, DAY, TZ, dayKey, parseTimetable, parseGroups, parseInstitutions } from './parse.mjs';
+import { RUZ, SCHOOLS, DAY, TZ, dayKey, parseTimetable, parseGroups, parseInstitutions, isSpoGroup } from './parse.mjs';
+import { collectColleges } from './colleges/index.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, x, i, all) => (x.startsWith('--') && a.push([x.slice(2), all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : true]), a), []));
 const DIR = args.data || 'ruz-data';
@@ -136,7 +137,7 @@ async function pool(items, n, fn) {
 }
 
 async function scan() {
-  let insts = SCHOOLS.map(s => s[0]);
+  let insts = SCHOOLS.map(s => s[0]).filter(id => id < 1000);   // ≥ 1000 — колледжи не из РУЗа
   try { const found = parseInstitutions(await get(RUZ)); if (found.length) insts = [...new Set([...insts, ...found])]; } catch (e) { log('главная РУЗ не открылась:', e.message); }
   const groups = {};
   let listsOk = 0;
@@ -194,7 +195,24 @@ async function scan() {
   if (empty.length) log(`пустые страницы, группы оставлены как были: ${empty.join(', ')}`);
   writeJSON('ids.json', idsNext);
   log(`страниц групп: ${ok} ок, ${failed} с ошибкой, пар: ${events}`);
+  for (const g of Object.values(groups)) if (g.insts.includes(36) && isSpoGroup(g.number)) g.insts = [...new Set(g.insts.map(i => i === 36 ? 1036 : i))];
+  addColleges(groups, byGroup, fetched, await collectColleges({ log, get, inbox: args.inbox, now: NOW, ruzGroups: groups }));
   return { groups, byGroup, fetched, ok, failed, total: all.length, events };
+}
+
+// Колледжи: в РУЗе у групп СПО страницы пустые, их пары собирают ruz/colleges (ttt.narfu.ru, PDF с narfu.ru).
+// Если у группы пары есть и в РУЗе — верим РУЗу. Группы СПО Высшей школы рыболовства показываем в «Колледже ВШРиМТ» (1036).
+function addColleges(groups, byGroup, fetched, col) {
+  let added = 0;
+  for (const [n, list] of Object.entries(col.byGroup)) {
+    if (!list.length || (byGroup[n] && byGroup[n].length)) continue;
+    const meta = col.groups[n] || {}, old = groups[n];
+    groups[n] = old ? { ...old, title: old.title || meta.title || '', course: old.course || meta.course || 0, insts: [...new Set([...old.insts, ...(meta.insts || [])])] }
+      : { number: n, ids: [], id: '', title: meta.title || '', course: meta.course || 0, insts: meta.insts || [] };
+    byGroup[n] = dedupe(list.map(norm)); fetched.add(n); added++;
+  }
+  for (const line of col.report || []) log('колледжи: ' + line);
+  log(`колледжи: групп с парами ${added}`);
 }
 
 // ---------- слияние: новое заменяет только те дни, что РУЗ сейчас показывает ----------
@@ -292,7 +310,9 @@ function diff(prev, next, window) {
 //   web/m.json              — крошечный «манифест»: статус РУЗа, время копии, имена файлов (меняется каждую проверку)
 //   web/i.<хэш>.json        — списки школ, групп и преподавателей (для выбора и поиска)
 //   web/s<школа>.<хэш>.json — расписание одной школы: 3 недели назад и всё вперёд + правки за 30 дней
+//   web/g/<номер>.json      — расписание одной группы целиком (для приложений)
 // Хэш в имени = содержимое: пока расписание школы не менялось, имя то же и браузер берёт файл из своего кэша.
+const groupFile = n => String(n).replace(/\s+/g, '_') + '.json';
 function buildWeb(d, st) {
   const dir = P('web'); fs.mkdirSync(dir, { recursive: true });
   const GO = d.v >= 2 ? 9 : 8, cut = Math.floor((NOW - 21 * DAY) / 6e4) - d.base;
@@ -330,9 +350,25 @@ function buildWeb(d, st) {
   const tch = JSON.stringify({ T: [...T.entries()].sort((a, b) => a[0].localeCompare(b[0], 'ru')).map(([n, t]) => [n, [...t.i].sort((a, b) => a - b), [...t.s].join(', ')]) });
   const ifile = put('i', idx), tfile = put('t', tch);
   total += zlib.gzipSync(idx).length + zlib.gzipSync(tch).length;
+  // расписание одной группы — для приложений: всё, что есть в копии (с начала семестра), и правки группы за 30 дней.
+  // Имя постоянное (web/g/<номер>.json, пробел → «_»): приложение спрашивает его с If-None-Match и качает, только если поменялось
+  const gdir = path.join(dir, 'g'); fs.mkdirSync(gdir, { recursive: true });
+  const per = d.G.map(() => []);
+  for (const r of d.L) for (const x of r.slice(GO)) per[x].push(r);
+  const gkeep = new Set();
+  d.G.forEach((g, i) => {
+    const S = [], SI = new Map(), s = x => { x = x || ''; if (!SI.has(x)) { SI.set(x, S.length); S.push(x); } return SI.get(x); };
+    const rows = per[i], base = rows.length ? d.base + rows[0][0] : d.base;
+    const L = rows.map(r => { const f = r.slice(2, GO).map(k => s(d.S[k])); while (f.length < 7) f.push(s('')); return [d.base + r[0] - base, r[1], ...f]; });
+    const f = groupFile(g[0]); gkeep.add(f);
+    const body = JSON.stringify({ v: 2, at: d.at, n: g[0], insts: g[1], course: g[2], title: g[3], base, S, L, C: changes.filter(x => x.g === g[0]).slice(0, 300) });
+    const fp = path.join(gdir, f);
+    if (!fs.existsSync(fp) || fs.readFileSync(fp, 'utf8') !== body) fs.writeFileSync(fp, body);
+  });
+  for (const f of fs.readdirSync(gdir)) if (!gkeep.has(f)) fs.unlinkSync(path.join(gdir, f));
   const snaps = readJSON('snapshots/index.json', []).length;
-  fs.writeFileSync(path.join(dir, 'm.json'), JSON.stringify({ v: 3, at: d.at, checked: st.checkedAt, status: st, snaps, i: ifile, t: tfile, s: files }));
-  for (const f of fs.readdirSync(dir)) if (!keep.has(f)) fs.unlinkSync(path.join(dir, f));
+  fs.writeFileSync(path.join(dir, 'm.json'), JSON.stringify({ v: 3, at: d.at, checked: st.checkedAt, status: st, snaps, i: ifile, t: tfile, s: files, g: 'g/' }));
+  for (const f of fs.readdirSync(dir)) if (!keep.has(f) && f !== 'g') fs.unlinkSync(path.join(dir, f));
   return { files: insts.length, kb: Math.round(total / 1024), avg: Math.round(total / 1024 / (insts.length + 1)) };
 }
 
