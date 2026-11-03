@@ -100,18 +100,16 @@ jobs:
           name: mac-screenshots
           path: shots/
           if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.DMG_NAME }}
-          path: ${{ env.DMG_NAME }}
+      # DMG — только в черновик релиза. Артефакт сборки в открытом репозитории может скачать
+      # любой, кто вошёл в GitHub, а черновик виден только владельцу
       - uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main'
         with:
           # черновик: виден только владельцу репозитория, публикуется вручную
           draft: true
           prerelease: true
           tag_name: mac-build-${{ github.run_number }}
-          name: Арктика для Mac ${{ env.APP_VERSION }} (черновик, сборка ${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
+          name: Арктика для Mac ${{ env.APP_VERSION }} (черновик, сборка ${{ github.run_number }}${{ github.ref_name != 'main' && format(', {0}', github.ref_name) || '' }})
           files: |
             ${{ env.DMG_NAME }}
             Arktika.dmg
