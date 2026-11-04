@@ -49,9 +49,20 @@ jobs:
           rm -rf dmg && mkdir dmg
           ditto --norsrc --noextattr --noacl "$APP" "dmg/Арктика.app"
           xattr -cr dmg
-          # локальная подпись: без неё Mac на Apple Silicon не запустит приложение
-          codesign --force --deep --sign - --entitlements Mac.entitlements "dmg/Арктика.app"
-          codesign --verify --deep --strict "dmg/Арктика.app"
+          # локальная подпись: без неё Mac на Apple Silicon не запустит приложение.
+          # Подписываем изнутри наружу и без --deep: у виджета свои права (песочница), а --deep с
+          # --entitlements раздал бы ему права приложения — и macOS не показала бы виджет в галерее
+          APPDIR="dmg/Арктика.app"
+          WIDGET="$APPDIR/Contents/PlugIns/ArktikaWidget.appex"
+          test -d "$WIDGET" || { echo "::error::В приложении нет виджета (Contents/PlugIns/ArktikaWidget.appex)"; ls -R "$APPDIR/Contents" | head -60; exit 1; }
+          while IFS= read -r -d '' F; do
+            codesign --force --sign - "$F"
+          done < <(find "$APPDIR/Contents/Frameworks" "$WIDGET" \( -name '*.dylib' -o -name '*.framework' \) -prune -print0 2>/dev/null)
+          codesign --force --sign - --entitlements MacWidget.entitlements "$WIDGET"
+          codesign --force --sign - --entitlements Mac.entitlements "$APPDIR"
+          codesign --verify --deep --strict "$APPDIR"
+          echo "--- права виджета ---"; codesign -d --entitlements - "$WIDGET" 2>&1 | tail -20
+          lipo -info "$WIDGET/ArktikaWidget"
           lipo -info "dmg/Арктика.app/Contents/MacOS/Arktika"
           ln -s /Applications dmg/Applications
           V=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "dmg/Арктика.app/Contents/Info.plist")
@@ -87,6 +98,10 @@ jobs:
             screencapture -x "shots/$(printf %02d $i).png" || true
           done
           kill $PID || true
+          echo "--- виджет ---"
+          # macOS находит виджет, когда приложение один раз запустили: он должен быть в списке расширений
+          pluginkit -mAvvv -p com.apple.widgetkit-extension 2>/dev/null | grep -i -B1 -A8 "ru.student.safuhub" \
+            || echo "::warning::macOS не зарегистрировала виджет Арктики (pluginkit его не видит)"
           echo "--- журнал приложения ---"; tail -80 smoke.log || true
           ls -la shots
           # уменьшенные копии — текстом в журнал, чтобы их можно было посмотреть без скачивания артефактов
