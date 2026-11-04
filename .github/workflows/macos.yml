@@ -62,7 +62,7 @@ jobs:
           codesign --force --sign - --entitlements Mac.entitlements "$APPDIR"
           codesign --verify --deep --strict "$APPDIR"
           echo "--- права виджета ---"; codesign -d --entitlements - "$WIDGET" 2>&1 | tail -20
-          lipo -info "$WIDGET/ArktikaWidget"
+          lipo -info "$WIDGET/Contents/MacOS/ArktikaWidget"
           lipo -info "dmg/Арктика.app/Contents/MacOS/Arktika"
           ln -s /Applications dmg/Applications
           V=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "dmg/Арктика.app/Contents/Info.plist")
