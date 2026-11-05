@@ -97,6 +97,13 @@ jobs:
             fi
             screencapture -x "shots/$(printf %02d $i).png" || true
           done
+          echo "--- синхронизация с iPhone ---"
+          # Mac — компьютер: скрипт ведёт себя как iPhone (связка без QR-кода, шифрованный обмен заметкой и задачей)
+          SPORT=$(grep -o "sync listening on [0-9]*" smoke.log | tail -1 | awk '{print $4}')
+          test -n "$SPORT" || { echo "::error::Сервер синхронизации на Mac не запустился"; tail -40 smoke.log; exit 1; }
+          python3 -m venv "$RUNNER_TEMP/syncvenv" && "$RUNNER_TEMP/syncvenv/bin/pip" -q install cryptography
+          "$RUNNER_TEMP/syncvenv/bin/python" .github/mac-sync-test.py "http://127.0.0.1:$SPORT" \
+            || { echo "::error::Синхронизация Mac ↔ iPhone не прошла проверку"; tail -40 smoke.log; exit 1; }
           kill $PID || true
           echo "--- виджет ---"
           # macOS находит виджет, когда приложение один раз запустили: он должен быть в списке расширений
