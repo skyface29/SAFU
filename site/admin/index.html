@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#05070e">
+<title>Пульс · Арктика</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2305070e'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%235ef2d0'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#05070e;--bg2:#0a0e19;--ink:#eef2fb;--ink2:#aab3c7;--muted:#6f7a91;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);
+  --glass:rgba(255,255,255,.03);--a1:#5ef2d0;--a2:#5aa0ff;--a3:#8b7bff;--warn:#ff7a8a;--display:"Unbounded",system-ui,sans-serif;--ease:cubic-bezier(.16,1,.3,1);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(90% 60% at 50% -10%,#0d1b33 0%,var(--bg) 60%);color:var(--ink);font:15px/1.55 "Onest",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 22px 60px}
+header{display:flex;align-items:center;gap:14px;margin-bottom:34px}
+.logo{display:flex;align-items:center;gap:10px;font:500 16px/1 var(--display);letter-spacing:-.01em}
+.live{width:9px;height:9px;border-radius:50%;background:var(--a1);box-shadow:0 0 0 0 rgba(94,242,208,.6);animation:live 2s infinite}
+.live.off{background:var(--warn);animation:none}
+@keyframes live{70%{box-shadow:0 0 0 10px rgba(94,242,208,0)}100%{box-shadow:0 0 0 0 rgba(94,242,208,0)}}
+.upd{margin-left:auto;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{border:1px solid var(--line2);background:var(--glass);border-radius:999px;padding:8px 15px;font-size:13.5px;transition:border-color .2s}
+.btn:hover{border-color:var(--a2)}
+.card{border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));border-radius:24px;padding:24px;box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 30px 60px -40px rgba(0,0,0,.9)}
+.label{font-size:11.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;margin-bottom:20px}
+.big{font:400 clamp(64px,11vw,132px)/1 var(--display);letter-spacing:-.06em;margin:16px 0 8px;font-variant-numeric:tabular-nums;
+  background:linear-gradient(100deg,var(--a1),var(--a2) 55%,var(--a3));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--ink2)}
+.totals{display:grid;grid-template-rows:1fr 1fr;gap:20px}
+.totals .card b{display:block;font:400 44px/1 var(--display);letter-spacing:-.04em;margin-top:12px;font-variant-numeric:tabular-nums}
+.secs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:20px}
+.sec{position:relative;overflow:hidden}
+.sec .n{font:400 40px/1 var(--display);letter-spacing:-.04em;margin:14px 0 6px;font-variant-numeric:tabular-nums}
+.sec .d{color:var(--muted);font-size:13.5px}
+.sec i{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c)}
+.bar{height:4px;border-radius:2px;background:var(--line);margin-top:14px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--c);border-radius:2px;transition:width .9s var(--ease)}
+.chart svg{width:100%;height:260px;display:block;margin-top:14px;overflow:visible}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:13px;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:10px;height:10px;border-radius:3px;background:var(--c)}
+.login{max-width:420px;margin:12vh auto 0;text-align:center}
+.login input{width:100%;margin:18px 0 12px;border:1px solid var(--line2);background:rgba(0,0,0,.3);border-radius:14px;padding:13px 15px;font:inherit;color:var(--ink);outline:0}
+.login input:focus{border-color:var(--a2)}
+.primary{width:100%;border:0;border-radius:999px;padding:14px;background:#f3f7ff;color:#05070e;font-weight:600}
+.err{color:var(--warn);font-size:14px;min-height:1.4em;margin-top:10px}
+.note{color:var(--muted);font-size:13px;margin-top:26px;max-width:720px}
+.hide{display:none!important}
+@media (max-width:760px){.hero{grid-template-columns:1fr}.totals{grid-template-rows:none;grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><span class="live off" id="live"></span>Пульс Арктики</div>
+    <span class="upd" id="upd"></span>
+    <button class="btn hide" id="logout">Выйти</button>
+  </header>
+
+  <section class="login card" id="login">
+    <span class="label">Только для администратора</span>
+    <h1 style="font:500 24px/1.2 var(--display);letter-spacing:-.02em;margin:12px 0 0">Вход в статистику</h1>
+    <input type="password" id="pass" placeholder="Пароль администратора" autocomplete="current-password">
+    <button class="primary" id="enter">Войти</button>
+    <div class="err" id="err"></div>
+  </section>
+
+  <main id="dash" class="hide">
+    <div class="hero">
+      <div class="card">
+        <span class="label">Сейчас на сайте</span>
+        <div class="big" id="online">0</div>
+        <div class="sub">человек открыли сайт за последние 2,5 минуты</div>
+      </div>
+      <div class="totals">
+        <div class="card"><span class="label">Сегодня</span><b id="today">0</b></div>
+        <div class="card"><span class="label">За 7 дней</span><b id="week">0</b></div>
+      </div>
+    </div>
+    <div class="secs" id="secs"></div>
+    <div class="card chart">
+      <span class="label">Люди по часам · двое суток</span>
+      <svg id="chart" viewBox="0 0 1000 260" preserveAspectRatio="none"></svg>
+      <div class="legend" id="legend"></div>
+    </div>
+    <p class="note">Считаются браузеры, а не люди: один человек с телефона и компьютера — это двое. Приложение «Арктика» здесь не учитывается — только сайт.
+      Счётчик не хранит ни имён, ни IP-адресов: только случайный номер браузера, раздел и время.</p>
+  </main>
+</div>
+<script>
+/* Адрес функции статистики (stats-api/pulse.js). У себя: python3 antiplagiat/site_dev.py, пароль — local. */
+const PULSE_DEFAULT = '';
+const PULSE = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '/pulse' : PULSE_DEFAULT;
+const NAMES = {raspisanie: 'Расписание', otmetki: 'Отметки', antiplagiat: 'Антиплагиат', spravka: 'Справочник', status: 'Статус', main: 'Главная'};
+const COLORS = {raspisanie: '#5aa0ff', otmetki: '#5ef2d0', antiplagiat: '#8b7bff', spravka: '#f6c25b', status: '#ff7a8a', main: '#cfd8e8'};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let token = ''; try { token = localStorage.getItem('arktika.admin') || ''; } catch (e) {}
+let timer = 0, shown = {};
+
+function tween(el, to){
+  const from = shown[el.id] || 0; shown[el.id] = to;
+  if(from === to){ el.textContent = to.toLocaleString('ru-RU'); return; }
+  const t0 = performance.now();
+  (function step(t){ const k = Math.min(1, (t - t0) / 900), e = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(from + (to - from) * e).toLocaleString('ru-RU'); if(k < 1) requestAnimationFrame(step); })(t0);
+}
+async function load(){
+  clearTimeout(timer);
+  if(!PULSE){ $('err').textContent = 'Статистика ещё не подключена: впишите адрес функции в PULSE_DEFAULT.'; return; }
+  try{
+    const r = await fetch(PULSE, {headers: {'X-Admin-Token': token}, cache: 'no-store'});
+    if(r.status === 403){ logout('Неверный пароль.'); return; }
+    if(!r.ok) throw new Error('Сервер ответил ' + r.status);
+    render(await r.json());
+    $('live').classList.remove('off');
+    $('upd').textContent = 'обновлено ' + new Date().toLocaleTimeString('ru-RU');
+  }catch(e){ $('live').classList.add('off'); $('upd').textContent = 'нет связи · ' + e.message; }
+  timer = setTimeout(load, 15000);
+}
+function render(d){
+  $('login').classList.add('hide'); $('dash').classList.remove('hide'); $('logout').classList.remove('hide');
+  tween($('online'), d.onlineTotal || 0); tween($('today'), d.todayTotal || 0); tween($('week'), d.weekTotal || 0);
+  const secs = [...new Set([...Object.keys(NAMES), ...Object.keys(d.today || {})])].filter(p => (d.today || {})[p] || (d.online || {})[p] || ['raspisanie', 'otmetki'].includes(p));
+  const maxOn = Math.max(1, ...secs.map(p => (d.online || {})[p] || 0));
+  $('secs').innerHTML = secs.map(p => '<div class="card sec" style="--c:' + (COLORS[p] || '#9aa') + '"><i></i><span class="label">' + esc(NAMES[p] || p) + '</span>' +
+    '<div class="n">' + ((d.online || {})[p] || 0).toLocaleString('ru-RU') + '</div><div class="d">сейчас · за сегодня ' + ((d.today || {})[p] || 0).toLocaleString('ru-RU') + '</div>' +
+    '<div class="bar"><span style="width:' + (100 * ((d.online || {})[p] || 0) / maxOn) + '%"></span></div></div>').join('');
+  drawChart(d);
+}
+function drawChart(d){
+  const hNow = Math.floor(d.now / 3600e3), hours = Array.from({length: 48}, (_, k) => hNow - 47 + k);
+  const series = {};
+  for(const r of d.hourly || []){ (series[r.p] = series[r.p] || {})[r.h] = r.n; }
+  const ps = Object.keys(series), max = Math.max(1, ...(d.hourly || []).map(r => r.n));
+  const W = 1000, H = 230, x = k => k / 47 * W, y = v => H - v / max * (H - 16);
+  let s = '';
+  for(let g = 0; g <= 4; g++){ const yy = H - g / 4 * (H - 16); s += '<line x1="0" x2="' + W + '" y1="' + yy + '" y2="' + yy + '" stroke="rgba(255,255,255,.06)"/><text x="4" y="' + (yy - 5) + '" fill="#6f7a91" font-size="12">' + Math.round(g / 4 * max) + '</text>'; }
+  hours.forEach((h, k) => { const local = new Date(h * 3600e3); if(local.getHours() % 6 === 0) s += '<text x="' + x(k) + '" y="' + (H + 22) + '" fill="#6f7a91" font-size="12" text-anchor="middle">' + local.getHours() + ':00</text>'; });
+  for(const p of ps){
+    const c = COLORS[p] || '#9aa', pts = hours.map((h, k) => x(k).toFixed(1) + ',' + y(series[p][h] || 0).toFixed(1));
+    s += '<polygon points="0,' + H + ' ' + pts.join(' ') + ' ' + W + ',' + H + '" fill="' + c + '" opacity=".08"/>';
+    s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + c + '" stroke-width="2.2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>';
+  }
+  $('chart').innerHTML = s;
+  $('legend').innerHTML = ps.map(p => '<span style="--c:' + (COLORS[p] || '#9aa') + '"><i></i>' + esc(NAMES[p] || p) + '</span>').join('');
+}
+function logout(msg){
+  token = ''; try { localStorage.removeItem('arktika.admin'); } catch (e) {}
+  clearTimeout(timer); $('dash').classList.add('hide'); $('logout').classList.add('hide'); $('login').classList.remove('hide');
+  $('live').classList.add('off'); $('upd').textContent = ''; $('err').textContent = msg || '';
+}
+$('enter').onclick = () => { token = $('pass').value.trim(); if(!token) return; try { localStorage.setItem('arktika.admin', token); } catch (e) {} $('err').textContent = ''; load(); };
+$('pass').addEventListener('keydown', e => { if(e.key === 'Enter') $('enter').click(); });
+$('logout').onclick = () => logout();
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && token) load(); });
+if(token) load();
+</script>
+</body>
+</html>

@@ -6,6 +6,7 @@
 Отдаёт папку site/ репозитория и по адресу /proxy делает то же, что помощник из antiplagiat-api/
 (функция Yandex Cloud или Cloudflare Worker): скачивает страницу по ?url=… и возвращает её как есть.
 Страница на localhost сама выбирает /proxy.
+По адресу /pulse — счётчик «сейчас на сайте» в памяти (пароль админки — local).
 По адресу /ring — «Кольцо САФУ» в памяти (то же, что antiplagiat-api/ring.js, но без YDB; после перезапуска пусто).
 """
 import hashlib
@@ -103,6 +104,31 @@ def ring_handle(body):
     return 400, {"error": "Неизвестное действие."}
 
 
+PULSE = {}   # (час, раздел, браузер) → время
+
+
+def pulse_stats():
+    now = time.time() * 1000
+    h = int(now // 3600e3)
+    day = int((now + 3 * 3600e3) // (24 * 3600e3)) * 24 - 3
+    def by(cond):
+        out = {}
+        for (hh, p, sid), t in PULSE.items():
+            if cond(hh, t):
+                out.setdefault(p, set()).add(sid)
+        return {p: len(v) for p, v in out.items()}
+    def total(cond):
+        return len({sid for (hh, p, sid), t in PULSE.items() if cond(hh, t)})
+    on = lambda hh, t: hh >= h - 1 and t > now - 150e3
+    hourly = {}
+    for (hh, p, sid), t in PULSE.items():
+        if hh >= h - 47:
+            hourly.setdefault((hh, p), set()).add(sid)
+    return {"now": now, "online": by(on), "onlineTotal": total(on), "today": by(lambda hh, t: hh >= day),
+            "todayTotal": total(lambda hh, t: hh >= day), "weekTotal": total(lambda hh, t: hh >= h - 167),
+            "hourly": [{"h": hh, "p": p, "n": len(v)} for (hh, p), v in sorted(hourly.items())]}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
@@ -146,6 +172,10 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if path == "/proxy":
             return self.proxy("GET")
+        if path == "/pulse":
+            if self.headers.get("X-Admin-Token") != "local":
+                return self.reply(403, "application/json", '{"error":"Нужен пароль администратора."}'.encode())
+            return self.reply(200, "application/json", json.dumps(pulse_stats(), ensure_ascii=False).encode())
         name = path.lstrip("/")
         if not name or name.endswith("/"):
             name += "index.html"
@@ -160,6 +190,18 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if urlsplit(self.path).path == "/proxy":
             return self.proxy("POST")
+        if urlsplit(self.path).path == "/pulse":
+            length = min(int(self.headers.get("Content-Length") or 0), 2000)
+            try:
+                d = json.loads(self.rfile.read(length).decode("utf-8"))
+                import re as _re
+                if _re.fullmatch(r"[\w-]{8,40}", str(d.get("s"))) and _re.fullmatch(r"[a-z]{2,20}", str(d.get("p"))):
+                    now = time.time() * 1000
+                    PULSE[(int(now // 3600e3), d["p"], d["s"])] = now
+                    return self.reply(204, "text/plain", b"")
+            except ValueError:
+                pass
+            return self.reply(400, "text/plain", b"bad")
         if urlsplit(self.path).path == "/ring":
             length = min(int(self.headers.get("Content-Length") or 0), 3_000_000)
             try:
