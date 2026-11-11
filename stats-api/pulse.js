@@ -16,8 +16,9 @@ const crypto = require('crypto');
 
 const ORIGINS = ['https://arktika-app.ru', 'https://www.arktika-app.ru', 'http://localhost:8790'];
 const ONLINE_MS = 390e3;                       // «сейчас» — был на сайте за последние 6,5 минуты
-// Потолок записей в сутки на экземпляр: держит счётчик в бесплатном объёме Yandex Cloud (1 млн вызовов в месяц на всё облако).
-const DAILY_CAP = +process.env.DAILY_CAP || 12000;
+// Потолок записей в сутки на экземпляр: держит счётчик в бесплатном объёме Yandex Cloud (1 млн вызовов функций и 1 млн RU
+// базы YDB в месяц на всё облако; одна запись — около 2 RU, 6000 записей в сутки — около 360 тысяч RU в месяц).
+const DAILY_CAP = +process.env.DAILY_CAP || 6000;
 let capDay = '', capCount = 0;
 const HOUR = 3600e3, MSK = 3 * HOUR, KEEP_HOURS = 24 * 35;
 
@@ -138,7 +139,7 @@ async function handle(method, body, headers, db, now = Date.now(), context = nul
       const wf = String(body.workflow || '');
       if (!WORKFLOWS[wf]) return [400, { error: 'Неизвестное действие.' }];
       if (!process.env.GH_TOKEN) return [400, { error: 'Кнопки управления не подключены: задайте GH_TOKEN у функции.' }];
-      const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${wf}/dispatches`, { method: 'POST', signal: AbortSignal.timeout(8000),
+      const r = await fetch('https://api.github.com/repos/' + REPO + '/actions/workflows/' + wf + '/dispatches', { method: 'POST', signal: AbortSignal.timeout(8000),
         headers: { Authorization: 'Bearer ' + process.env.GH_TOKEN, Accept: 'application/vnd.github+json', 'User-Agent': 'arktika-pulse', 'Content-Type': 'application/json' },
         body: JSON.stringify({ ref: 'main' }) });
       if (r.status !== 204) return [502, { error: 'GitHub ответил ' + r.status }];
@@ -190,7 +191,8 @@ function memoryDb() {
 }
 
 /* ---------- YDB ---------- */
-let ydb = null;
+let ydb = null, slow = null;
+const SLOW_MS = 10 * 60e3;
 function ydbDb(context) {
   const { Driver, TokenAuthService, getCredentialsFromEnv, TypedValues, TypedData, Types, TableDescription, Column } = require('ydb-sdk');
   const tok = context && context.token && context.token.access_token;
@@ -232,18 +234,25 @@ function ydbDb(context) {
         { $h: H(r.h), $p: U(r.p), $s: U(r.s), $t: T(r.t) });
     },
     async stats(c) {
-      const [onBy, onAll, dayBy, dayAll, weekAll, hourly] = await q(`
-        DECLARE $h AS Uint32; DECLARE $cut AS Uint64; DECLARE $day AS Uint32; DECLARE $week AS Uint32; DECLARE $from AS Uint32;
-        SELECT p, COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $h - 1 AND t > $cut GROUP BY p;
-        SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $h - 1 AND t > $cut;
-        SELECT p, COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $day GROUP BY p;
-        SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $day;
-        SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $week;
-        SELECT h, p, COUNT(*) AS n FROM pulse WHERE h >= $from GROUP BY h, p ORDER BY h LIMIT 1000;`,
-        { $h: H(c.h), $cut: T(c.cut), $day: H(c.dayStart), $week: H(c.weekStart), $from: H(c.from48) });
       const one = rows => Number(((rows || [])[0] || {}).n || 0);
-      return { online: toObj(onBy), onlineTotal: one(onAll), today: toObj(dayBy), todayTotal: one(dayAll), weekTotal: one(weekAll),
-        hourly: (hourly || []).map(r => ({ h: Number(r.h), p: r.p, n: Number(r.n) })) };
+      // «Сейчас» и «сегодня» — каждый раз; неделя и график за двое суток читают много строк, поэтому не чаще раза в 10 минут.
+      const [onBy, onAll, dayBy, dayAll] = await q([
+          'DECLARE $h AS Uint32; DECLARE $cut AS Uint64; DECLARE $day AS Uint32;',
+          'SELECT p, COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $h - 1 AND t > $cut GROUP BY p;',
+          'SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $h - 1 AND t > $cut;',
+          'SELECT p, COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $day GROUP BY p;',
+          'SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $day;'].join('\n'),
+        { $h: H(c.h), $cut: T(c.cut), $day: H(c.dayStart) });
+      if (!slow || Date.now() - slow.at > SLOW_MS) {
+        const [weekAll, hourly] = await q([
+          'DECLARE $week AS Uint32; DECLARE $from AS Uint32;',
+          'SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $week;',
+          'SELECT h, p, COUNT(*) AS n FROM pulse WHERE h >= $from GROUP BY h, p ORDER BY h LIMIT 1000;'].join('\n'),
+          { $week: H(c.weekStart), $from: H(c.from48) });
+        slow = { at: Date.now(), weekTotal: one(weekAll), hourly: (hourly || []).map(r => ({ h: Number(r.h), p: r.p, n: Number(r.n) })) };
+      }
+      const todayTotal = one(dayAll);
+      return { online: toObj(onBy), onlineTotal: one(onAll), today: toObj(dayBy), todayTotal, weekTotal: Math.max(slow.weekTotal, todayTotal), hourly: slow.hourly };
     },
     async purge(h) { await q('DECLARE $h AS Uint32; DELETE FROM pulse WHERE h < $h;', { $h: H(h) }); },
     async getKv(k) { const [rows] = await q('DECLARE $k AS Utf8; SELECT v FROM admin_kv WHERE k = $k;', { $k: U(k) }); return rows && rows[0] ? rows[0].v : null; },

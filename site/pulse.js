@@ -5,7 +5,7 @@
    Подключение: <script src="../pulse.js" data-section="raspisanie" defer></script> */
 (function () {
   'use strict';
-  var PULSE = '';   // адрес функции Yandex Cloud; пусто — счётчик выключен
+  var PULSE = 'https://functions.yandexcloud.net/d4e43red8p3b1m9jftnf';   // функция arktika-pulse в Yandex Cloud; пусто — счётчик выключен
   var me = document.currentScript;
   var section = (me && me.getAttribute('data-section')) || location.pathname.split('/')[1] || 'main';
   if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) PULSE = '/pulse';   // проверка у себя (site_dev.py)
