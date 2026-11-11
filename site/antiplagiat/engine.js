@@ -574,6 +574,27 @@ async function searchCyberleninka(query) {
     title: stripTags(a.name), snippet: stripTags(a.annotation || ''), kind: 'science' }));
 }
 
+const openalex = new Throttle(1100, 4000);
+/** OpenAlex — открытый каталог научных работ (журналы, репозитории вузов, Zenodo). Отвечает браузеру напрямую,
+    бесплатно около 100 поисков в день с одного адреса — у каждого посетителя свой лимит. */
+async function searchOpenAlex(query, lang, cancel) {
+  if ((await openalex.wait(cancel)) === null) throw new Blocked('openalex');
+  const url = 'https://api.openalex.org/works?' + new URLSearchParams({ search: query, 'per-page': 6,
+    select: 'id,display_name,language,best_oa_location,primary_location,open_access' });
+  const r = await timed(signal => fetch(url, { signal }), 15000);
+  if (r.status === 429 || r.status === 403) { openalex.blocked(); throw new Blocked('openalex'); }
+  if (!r.ok) throw new Error('OpenAlex ответил ' + r.status);
+  openalex.ok();
+  const data = await r.json(), out = [];
+  for (const w of data.results || []) {
+    if (w.language && w.language !== lang) continue;
+    const loc = w.best_oa_location || {}, prim = w.primary_location || {};
+    const url2 = loc.pdf_url || loc.landing_page_url || (w.open_access && w.open_access.oa_url) || prim.landing_page_url;
+    if (url2) out.push({ url: url2, title: w.display_name || '', snippet: '', kind: 'science' });
+  }
+  return out;
+}
+
 const SKIP_HOSTS = ['youtube.com', 'youtu.be', 'rutube.ru', 'vk.com', 'vkvideo.ru', 't.me', 'instagram.com', 'facebook.com',
   'twitter.com', 'x.com', 'tiktok.com', 'pinterest.', 'ok.ru', 'ozon.ru', 'wildberries.ru', 'market.yandex.',
   'play.google.com', 'apps.apple.com', 'duckduckgo.com', 'translate.google.', 'maps.google.', 'yandex.ru/maps'];
@@ -600,8 +621,13 @@ async function fetchPage(cand) {
     if (html) { const [, text] = htmlToText(html); return [cand.title || title.replace(/_/g, ' ') + ' — Википедия', text]; }
   }
   if (!API) return null;
-  const r = await viaProxy(cand.url, null, 20000);
-  if (r.status >= 400) return null;
+  let r;
+  try { r = await viaProxy(cand.url, null, 20000); } catch (e) { r = null; }
+  if (!r || [404, 410, 451, 500, 502, 503, 504].includes(r.status)) {
+    // страница пропала или не отвечает — берём последний снимок из веб-архива (только то, что было открыто)
+    try { r = await viaProxy('https://web.archive.org/web/2id_/' + cand.url, null, 25000); } catch (e) { return null; }
+    if (r.status >= 400) return null;
+  } else if (r.status >= 400) return null;
   if (r.ctype.includes('pdf') || (r.bytes[0] === 0x25 && r.bytes[1] === 0x50 && r.bytes[2] === 0x44 && r.bytes[3] === 0x46)) {
     try { return [cand.title || cand.url, await pdfToText(r.bytes)]; } catch (e) { return null; }
   }
@@ -616,9 +642,9 @@ async function fetchPage(cand) {
    Проверка
    ===================================================================== */
 const DEPTH = {
-  fast: { web: 6, wiki: 6, sci: 12, pages: 40, rounds: 1, seconds: 80 },
-  std: { web: 22, wiki: 16, sci: 36, pages: 130, rounds: 2, seconds: 240 },
-  deep: { web: 60, wiki: 40, sci: 90, pages: 320, rounds: 3, seconds: 600 },
+  fast: { web: 6, wiki: 6, sci: 12, oa: 6, pages: 45, rounds: 1, seconds: 80 },
+  std: { web: 22, wiki: 16, sci: 36, oa: 18, pages: 150, rounds: 2, seconds: 240 },
+  deep: { web: 60, wiki: 40, sci: 90, oa: 45, pages: 360, rounds: 3, seconds: 600 },
 };
 const MAX_SOURCE_CHARS = 700000, MIN_SOURCE_WORDS = 8, MAX_SOURCES = 80;
 
@@ -693,7 +719,7 @@ async function runCheck(rawText, opts, ui) {
   const covered = new Uint8Array(nWords);
   let found = [];
   const seen = new Map();
-  const stats = { web: 0, wiki: 0, sci: 0, pages: 0, candidates: 0, web_blocked: false };
+  const stats = { web: 0, wiki: 0, sci: 0, oa: 0, pages: 0, candidates: 0, web_blocked: false };
   const engines = {};
 
   function consider(title, srcText, url, kind) {
@@ -735,10 +761,11 @@ async function runCheck(rawText, opts, ui) {
     ui.say('Помощник для скачивания страниц недоступен — проверка идёт только по Википедии и вашей коллекции.');
   }
   const useWeb = opts.web !== false && proxyOk, useWiki = opts.wiki !== false, useSci = opts.science !== false && proxyOk;
-  const left = { web: useWeb ? depth.web : 0, wiki: useWiki ? depth.wiki : 0, sci: useSci ? depth.sci : 0, pages: depth.pages };
+  const left = { web: useWeb ? depth.web : 0, wiki: useWiki ? depth.wiki : 0, sci: useSci ? depth.sci : 0,
+    oa: opts.science !== false ? depth.oa : 0, pages: depth.pages };
 
   const coverage = ([ws, we]) => { let s = 0; for (let w = ws; w < we; w++) s += covered[w]; return s / (we - ws); };
-  const used = { web: new Set(), wiki: new Set(), sci: new Set() };
+  const used = { web: new Set(), wiki: new Set(), sci: new Set(), oa: new Set() };
   function pick(kind, n, avoid) {
     let cands = [];
     sents.forEach((s, i) => { if (!used[kind].has(i) && coverage(s) < 0.4) cands.push(i); });
@@ -779,7 +806,7 @@ async function runCheck(rawText, opts, ui) {
     launch('page', () => stop() ? null : fetchSem.run(() => fetchPage(cand)), cand);
   }
   function register(results, kind) {
-    const keepTop = { web: 4, wiki: 2, sci: 3 }[kind], fresh = [];
+    const keepTop = { web: 4, wiki: 2, sci: 3, oa: 2 }[kind], fresh = [];
     results.forEach((r, rank) => {
       if (!usableUrl(r.url || '')) return;
       const k = urlKey(r.url);
@@ -809,7 +836,8 @@ async function runCheck(rawText, opts, ui) {
     const forWeb = pick('web', Math.ceil(left.web / roundsLeft));
     const forWiki = pick('wiki', Math.ceil(left.wiki / roundsLeft), forWeb);
     const forSci = pick('sci', Math.ceil(left.sci / roundsLeft));
-    if (!(forWeb.length || forWiki.length || forSci.length || pending.size)) {
+    const forOa = pick('oa', Math.ceil(left.oa / roundsLeft), forSci);
+    if (!(forWeb.length || forWiki.length || forSci.length || forOa.length || pending.size)) {
       if (rnd) ui.say('Все фрагменты либо найдены, либо уже проверены по всем источникам.');
       break;
     }
@@ -837,6 +865,12 @@ async function runCheck(rawText, opts, ui) {
       const q = sciQuery(i);
       launch('sci', () => stop() ? null : sciSem.run(() => searchCyberleninka(q)));
     }
+    for (const i of forOa) {
+      left.oa--;
+      if (ui.query) ui.query(i, 'sci');
+      const q = webQuery(i);
+      launch('oa', () => stop() ? null : searchOpenAlex(q, lang, stop));
+    }
 
     while (pending.size && !ui.cancelled()) {
       const r = await Promise.race(pending);
@@ -854,7 +888,7 @@ async function runCheck(rawText, opts, ui) {
         stats[r.kind]++;
         register(r.v, r.kind);
       }
-      ui.counters({ queries: stats.web + stats.wiki + stats.sci, pages: stats.pages, sources: found.length });
+      ui.counters({ queries: stats.web + stats.wiki + stats.sci + stats.oa, pages: stats.pages, sources: found.length });
       ui.set('Ищу источники и сравниваю тексты', 0.05 + 0.93 * finished / Math.max(planned, 1));
     }
   }

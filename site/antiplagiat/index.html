@@ -813,7 +813,7 @@ function alertsHTML(){
   else if(R.stats.web_blocked) out.push('<div class="note">Основной поисковик ограничивал частоту запросов, часть поиска прошла через запасной. Для полноты повторите проверку позже.</div>');
   return out.join('');
 }
-function metaText(){ const R = S.result, st = R.stats; return R.created + ' · ' + R.area_end.toLocaleString('ru-RU') + ' ' + plural(R.area_end, 'слово', 'слова', 'слов') + ' · запросов: ' + (st.web + st.wiki + st.sci) + ' · страниц: ' + st.pages + ' · ' + Math.round(st.seconds) + ' с'; }
+function metaText(){ const R = S.result, st = R.stats; return R.created + ' · ' + R.area_end.toLocaleString('ru-RU') + ' ' + plural(R.area_end, 'слово', 'слова', 'слов') + ' · запросов: ' + (st.web + st.wiki + st.sci + (st.oa || 0)) + ' · страниц: ' + st.pages + ' · ' + Math.round(st.seconds) + ' с'; }
 function countUp(el, to){
   if(calm){ el.textContent = fmt(to); return; }
   const t0 = performance.now(), dur = 1300;
