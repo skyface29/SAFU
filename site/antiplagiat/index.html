@@ -436,6 +436,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
           <label class="sw"><span><b>Интернет</b><small>сайты, учебные порталы, рефераты</small></span><input type="checkbox" id="oWeb" checked><i></i></label>
           <label class="sw"><span><b>Википедия</b><small>статьи целиком</small></span><input type="checkbox" id="oWiki" checked><i></i></label>
           <label class="sw"><span><b>Научные статьи</b><small>КиберЛенинка</small></span><input type="checkbox" id="oSci" checked><i></i></label>
+          <label class="sw" id="ringSw"><span><b>Кольцо САФУ</b><small>работы, которые студенты добавили сами</small></span><input type="checkbox" id="oRing" checked><i></i></label>
           <label class="sw"><span><b>Моя коллекция</b><small>ваши документы в этом браузере</small></span><input type="checkbox" id="oLib" checked><i></i></label>
         </div>
       </div>
@@ -488,6 +489,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       <button class="btn" id="btnDownload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg>Скачать отчёт</button>
       <button class="btn" id="btnPrint">Печать / PDF</button>
       <button class="btn" id="btnAddLib">Добавить в коллекцию</button>
+      <button class="btn" id="btnRing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>В Кольцо САФУ</button>
       <button class="btn" id="btnNew">Новая проверка</button>
     </div>
   </div>
@@ -550,6 +552,11 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
     <div id="libList" style="margin:6px 0 16px"></div>
     <button class="btn" id="btnLibAdd">Добавить документы</button>
     <input type="file" id="libFile" accept=".docx,.pdf,.txt,.md" multiple class="hide">
+    <div id="ringBox">
+      <h2 style="margin:28px 0 6px">Мои работы в Кольце САФУ</h2>
+      <p class="muted" style="margin:0 0 4px">Работы, которые вы добавили в общую базу с этого браузера. Удалённая работа сразу пропадает из базы.</p>
+      <div id="ringList"></div>
+    </div>
   </div>
 </div>
 
@@ -561,16 +568,21 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 const API_DEFAULT = 'https://functions.yandexcloud.net/d4er34jsfe1f9gqu4vg8'; // функция Yandex Cloud antiplagiat (antiplagiat-api/yandex.js)
 const API_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '/proxy' : '';
 Iceberg.setApi((() => { try { return localStorage.getItem('antiplagiat.api') || ''; } catch (e) { return ''; } })() || API_LOCAL || API_DEFAULT);
+/* «Кольцо САФУ» (antiplagiat-api/ring.js). Пусто — кольцо скрыто. У себя: python3 antiplagiat/site_dev.py даёт /ring в памяти. */
+const RING_DEFAULT = '';
+const RING_URL = (API_LOCAL ? '/ring' : '') || RING_DEFAULT;
+Iceberg.setRing(RING_URL);
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = x => (Math.round(x * 10) / 10).toLocaleString('ru-RU', {minimumFractionDigits: 1, maximumFractionDigits: 1});
-const KIND = {web:'интернет', wiki:'Википедия', science:'наука', sci:'наука', library:'коллекция'};
+const KIND = {web:'интернет', wiki:'Википедия', science:'наука', sci:'наука', library:'коллекция', ring:'Кольцо САФУ'};
 const S = {result:null, enabled:new Set(), focus:null, spans:[], flags:{}, run:null, useQuotes:true, name:''};
 const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function plural(n, a, b, c){ const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c); }
 function hueOf(s){ let h = 0; for(const ch of s || '?') h = (h * 31 + ch.charCodeAt(0)) % 360; return h; }
-const avatar = (domain, kind) => '<span class="av" style="--h:' + (kind === 'library' ? 150 : hueOf(domain)) + '">' + esc(((domain || 'К').replace(/^(www|ru|en|m)\./, '')[0] || '?').toUpperCase()) + '</span>';
+const avatar = (domain, kind) => '<span class="av" style="--h:' + (kind === 'library' ? 150 : kind === 'ring' ? 190 : hueOf(domain)) + '">' + esc(((domain || 'К').replace(/^(www|ru|en|m)\./, '')[0] || '?').toUpperCase()) + '</span>';
+const noUrlText = kind => kind === 'ring' ? 'работа студента из Кольца САФУ' : 'документ из вашей коллекции';
 
 /* ---------- тема: круг от кнопки ---------- */
 $('btnTheme').onclick = e => {
@@ -718,7 +730,7 @@ $('btnCheck').onclick = async () => {
   const options = {
     depth: document.querySelector('input[name=depth]:checked').value,
     web: $('oWeb').checked, wiki: $('oWiki').checked, science: $('oSci').checked,
-    library: $('oLib').checked ? libLoad() : [],
+    library: $('oLib').checked ? libLoad() : [], ring: !!RING_URL && $('oRing').checked,
     skip_bibliography: $('oBib').checked, quotes: S.useQuotes, flags: S.flags,
     urls: $('urls').value.split(/\s+/).filter(u => /^https?:\/\//.test(u)).slice(0, 10),
   };
@@ -842,7 +854,7 @@ function renderAll(first){
     avatar(s.domain, s.kind) +
     '<div class="t">' + (s.id + 1) + '. ' + esc(s.title) + '</div>' +
     '<div class="p">' + fmt(s.percent) + '%</div>' +
-    '<div class="d"><span class="badge">' + (KIND[s.kind] || 'интернет') + '</span>' + (s.url ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + esc(s.domain) + '</a>' : 'документ из вашей коллекции') + '</div>' +
+    '<div class="d"><span class="badge">' + (KIND[s.kind] || 'интернет') + '</span>' + (s.url ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + esc(s.domain) + '</a>' : noUrlText(s.kind)) + '</div>' +
     '<div class="meter"><i style="width:' + Math.max(3, 100 * s.percent / top) + '%"></i></div></div>').join('')
     : '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>Совпадений с открытыми источниками не найдено.</div>';
 }
@@ -861,7 +873,7 @@ $('doc').addEventListener('click', e => {
   const kind = m.classList.contains('m3') ? 'Цитата' : (sp.type === 'exact' ? 'Дословное совпадение' : 'Перефразирование');
   $('detail').innerHTML = '<b>' + kind + '</b> · источник ' + (src.id + 1) + '<div style="margin-top:4px">' + esc(src.title) + '</div>' +
     '<div class="muted" style="margin-top:8px">Фрагмент в источнике:</div><q>' + esc(sp.excerpt) + '</q>' +
-    (src.url ? '<a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">Открыть источник →</a>' : 'Документ из вашей коллекции');
+    (src.url ? '<a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">Открыть источник →</a>' : noUrlText(src.kind)[0].toUpperCase() + noUrlText(src.kind).slice(1));
   const d = $('detail'); d.classList.add('hide'); void d.offsetWidth; d.classList.remove('hide');
   if(window.innerWidth <= 820) d.scrollIntoView({behavior:'smooth', block:'center'}); else document.querySelector('.side').scrollTo({top: 0, behavior: 'smooth'});
 });
@@ -869,7 +881,7 @@ $('btnPrint').onclick = () => window.print();
 $('btnDownload').onclick = () => {
   const R = S.result, css = document.querySelector('style').textContent;
   const rows = R.sources.filter(s => S.enabled.has(s.id)).map(s => '<tr><td>' + (s.id + 1) + '</td><td>' + esc(s.title) + '<br>' +
-    (s.url ? '<a href="' + esc(s.url) + '">' + esc(s.url) + '</a>' : 'документ из коллекции') + '</td><td>' + (KIND[s.kind] || 'интернет') + '</td><td style="text-align:right">' + fmt(s.percent) + '%</td></tr>').join('');
+    (s.url ? '<a href="' + esc(s.url) + '">' + esc(s.url) + '</a>' : noUrlText(s.kind)) + '</td><td>' + (KIND[s.kind] || 'интернет') + '</td><td style="text-align:right">' + fmt(s.percent) + '%</td></tr>').join('');
   const html = '<!doctype html><html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Отчёт о проверке на заимствования</title>' +
     '<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@500&display=swap" rel="stylesheet"><style>' + css +
     'main{margin:0 auto;padding-top:40px}.grain{display:none}table{border-collapse:collapse;width:100%;font-size:14px}td,th{border-top:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{border-top:0;color:var(--muted);font-weight:600}mark{cursor:default}</style></head><body><main>' +
@@ -917,6 +929,50 @@ function updateFab(){
 }
 if('IntersectionObserver' in window) new IntersectionObserver(es => { mainBtnVisible = es[0].isIntersecting; updateFab(); }).observe($('btnCheck'));
 $('fab').onclick = () => $('btnCheck').click();
+
+/* ---------- «Кольцо САФУ» ---------- */
+const RING_KEY = 'antiplagiat.ring';
+function ringMine(){ try{ return JSON.parse(localStorage.getItem(RING_KEY) || '[]'); }catch(e){ return []; } }
+function ringSaveMine(list){ try{ localStorage.setItem(RING_KEY, JSON.stringify(list)); }catch(e){} }
+function ringUi(){
+  const on = !!RING_URL;
+  $('ringSw').classList.toggle('hide', !on); $('btnRing').classList.toggle('hide', !on); $('ringBox').classList.toggle('hide', !on);
+}
+function refreshRing(){
+  const mine = ringMine();
+  $('ringList').innerHTML = mine.length ? mine.map((r, k) => '<div class="lib"><span>' + esc(r.title || 'Без названия') + ' <span class="muted">· ' + esc(r.date) + ' · код ' + esc(r.id) + '</span></span><button class="link" data-rdel="' + k + '">удалить из базы</button></div>').join('')
+    : '<div class="muted" style="padding:10px 0">Пока нет.</div>';
+}
+$('ringList').addEventListener('click', async e => {
+  const k = e.target.dataset.rdel; if(k === undefined) return;
+  const mine = ringMine(), r = mine[+k];
+  if(!r || !confirm('Удалить «' + (r.title || 'работу') + '» из Кольца САФУ? Это нельзя отменить.')) return;
+  try{ await Iceberg.ringDelete(r.id, r.key); }
+  catch(err){ if(!/не найдена/.test(err.message)){ alert(err.message); return; } }
+  mine.splice(+k, 1); ringSaveMine(mine); refreshRing();
+});
+$('btnRing').onclick = async () => {
+  if(!S.result) return;
+  const ok = confirm('Добавить эту работу в Кольцо САФУ?\n\n' +
+    '• Она будет храниться в общей базе и помогать находить списывание в работах других студентов.\n' +
+    '• Другие увидят только совпавшие куски, а не работу целиком.\n' +
+    '• Перед добавлением уберите титульный лист с ФИО — список литературы отрежется сам.\n' +
+    '• Удалить работу можно в любой момент: «Коллекция» → «Мои работы в Кольце САФУ».');
+  if(!ok) return;
+  const title = prompt('Тема или предмет (видно другим в отчёте, без ФИО):', '');
+  if(title === null) return;
+  const b = $('btnRing'); b.disabled = true; const was = b.innerHTML; b.textContent = 'Добавляю…';
+  try{
+    const r = await Iceberg.ringAdd(title, S.result.text);
+    const mine = ringMine(); mine.push({id: r.id, key: r.key, title: title.trim(), date: new Date().toLocaleDateString('ru-RU')}); ringSaveMine(mine);
+    b.textContent = 'Добавлено в Кольцо';
+  }catch(err){ alert(err.message); b.innerHTML = was; b.disabled = false; }
+};
+const openModalPlain = $('btnSettings').onclick;
+$('btnSettings').onclick = () => { openModalPlain(); refreshRing(); };
+const openReportRing = openReport;
+openReport = function(R){ openReportRing(R); const b = $('btnRing'); b.disabled = false; b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>В Кольцо САФУ'; };
+ringUi();
 updateCounter();
 </script>
 </body>

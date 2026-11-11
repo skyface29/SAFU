@@ -470,11 +470,32 @@ async function viaProxy(url, body, ms = 16000) {
       url: r.headers.get('x-final-url') || url, bytes: new Uint8Array(await r.arrayBuffer()) };
   }, ms);
 }
+let YANDEX = false;   // помощник умеет искать через Yandex Search API (включается в облаке)
 async function pingProxy() {
   if (!API) return false;
   try {
-    return await timed(async signal => { const r = await fetch(API, { signal }); return r.ok && (await r.json()).ok === true; }, 8000);
+    return await timed(async signal => {
+      const r = await fetch(API, { signal }); if (!r.ok) return false;
+      const d = await r.json(); YANDEX = d.yandex === true; return d.ok === true;
+    }, 8000);
   } catch (e) { return false; }
+}
+/** Поиск Яндекса через помощника (отложенный режим: результат может быть готов не сразу). */
+async function searchYandex(query, cancel) {
+  const ask = async qs => timed(async signal => {
+    const r = await fetch(API + (API.includes('?') ? '&' : '?') + qs, { signal });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 429 || r.status === 503) { YANDEX = false; throw new Blocked('yandex'); }
+    if (!r.ok) throw new Error(d.error || 'поиск Яндекса ответил ' + r.status);
+    return d;
+  }, 20000);
+  let d = await ask('ysearch=' + encodeURIComponent(query));
+  for (let i = 0; i < 30 && !d.done; i++) {
+    if (cancel && cancel()) return [];
+    await sleep(2000);
+    d = await ask('yop=' + encodeURIComponent(d.op));
+  }
+  return d.done ? d.results || [] : [];
 }
 
 // разбор в отдельном «немом» документе: скрипты и картинки из чужой разметки там не запускаются и не грузятся
@@ -533,6 +554,9 @@ async function searchSeznam(query, cancel) {
 /** Точная фраза (в кавычках) — DuckDuckGo находит по ней даже малоизвестные страницы с рефератами,
     которые по обычному запросу тонут среди похожих по теме. Если DuckDuckGo отказывает — Seznam. */
 async function searchPhrase(phrase, cancel) {
+  if (YANDEX) {
+    try { return [await searchYandex(phrase, cancel), 'yandex']; } catch (e) { /* дальше бесплатные */ }
+  }
   if (ddg.available()) {
     try { return [await searchDdg(phrase, cancel), 'ddg']; } catch (e) { if (!(e instanceof Blocked)) throw e; }
   }
@@ -637,6 +661,55 @@ async function fetchPage(cand) {
   const [title, text] = htmlToText(page);
   return [title || cand.title || cand.url, text];
 }
+
+
+/* =====================================================================
+   «Кольцо САФУ» — общая база работ, которые студенты добавили сами.
+   Сравнение по «отпечаткам»: хеши троек основ слов, из которых оставлен каждый
+   минимальный в окне из 4 (winnowing). Любое совпадение от 6 значимых слов
+   подряд обязательно даёт общий отпечаток, а сервер получает не текст, а числа.
+   ===================================================================== */
+let RING = '';
+function setRing(url) { RING = (url || '').replace(/\/$/, ''); }
+function fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
+}
+/** Отпечатки текста: [[хеш, позиция начала в тексте], ...]. */
+function fingerprints(text, tokens) {
+  const t = tokens || new Tokens(text), S = t.stems, hs = [];
+  for (let i = 0; i + 2 < S.length; i++) hs.push(fnv1a(S[i] + SEP + S[i + 1] + SEP + S[i + 2]));
+  const W = 4, out = [];
+  let last = -1;
+  for (let i = 0; i + W <= hs.length; i++) {
+    let m = i;
+    for (let j = i + 1; j < i + W; j++) if (hs[j] <= hs[m]) m = j;
+    if (m !== last) { out.push([hs[m], t.starts[t.cidx[m]]]); last = m; }
+  }
+  if (hs.length && hs.length < W) out.push([hs[0], t.starts[t.cidx[0]]]);
+  return out;
+}
+async function ringCall(body, ms = 20000) {
+  if (!RING) throw new Error('Кольцо САФУ пока не подключено.');
+  return timed(async signal => {
+    const r = await fetch(RING, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || data.error) throw new Error(data.error || 'Кольцо САФУ не ответило (' + r.status + ')');
+    return data;
+  }, ms);
+}
+/** Добавить работу в кольцо. Возвращает {id, key} — ключ нужен, чтобы потом удалить работу. */
+async function ringAdd(title, rawText) {
+  const [text] = cleanText(rawText);
+  const bib = bibliographyStart(text);
+  const body = (bib !== null ? text.slice(0, bib) : text).slice(0, 600000);
+  const fps = fingerprints(body);
+  if (fps.length < 30) throw new Error('Текст слишком короткий для Кольца.');
+  return ringCall({ action: 'add', title: String(title || '').slice(0, 160), text: body, fps }, 30000);
+}
+async function ringDelete(id, key) { return ringCall({ action: 'delete', id, key }); }
+async function ringPing() { return !!RING && ringCall({ action: 'ping' }, 8000).then(d => d.ok === true).catch(() => false); }
 
 /* =====================================================================
    Проверка
@@ -753,6 +826,22 @@ async function runCheck(rawText, opts, ui) {
     let hits = 0;
     for (const item of library) { if (consider(item.name, item.text, '', 'library')) hits++; await sleep(0); }
     ui.say(`Коллекция: проверено документов — ${library.length}, с совпадениями — ${hits}.`);
+  }
+
+  // 1б. «Кольцо САФУ»: сервер возвращает только куски чужих работ вокруг общих отпечатков
+  stats.ring = 0;
+  if (opts.ring !== false && RING) {
+    ui.set('Сверка с Кольцом САФУ', 0.03);
+    try {
+      const fps = fingerprints(text, doc).map(f => f[0]);
+      const res = await ringCall({ action: 'query', fps: [...new Set(fps)].slice(0, 20000) }, 25000);
+      for (const d of res.docs || []) {
+        const title = 'Кольцо САФУ: ' + (d.title || 'работа студента') + (d.year ? ', ' + d.year : '');
+        if (consider(title, d.excerpt || '', '', 'ring')) stats.ring++;
+        await sleep(0);
+      }
+      ui.say(stats.ring ? `Кольцо САФУ: совпадения с ${stats.ring} ${stats.ring === 1 ? 'работой' : 'работами'} студентов.` : 'Кольцо САФУ: совпадений с работами студентов нет.');
+    } catch (e) { ui.say('Кольцо САФУ сейчас не ответило — проверка идёт без него.'); }
   }
 
   // 2. Помощник для скачивания страниц: без него остаётся только Википедия
@@ -927,5 +1016,5 @@ async function runCheck(rawText, opts, ui) {
   };
 }
 
-global.Iceberg = { runCheck, readFile, setApi, pingProxy, cleanText, Tokens, align, htmlToText, docxToText, normalizeWord, stem };
+global.Iceberg = { runCheck, readFile, setApi, pingProxy, setRing, ringAdd, ringDelete, ringPing, fingerprints, bibliographyStart, cleanText, Tokens, align, htmlToText, docxToText, normalizeWord, stem };
 })(window);

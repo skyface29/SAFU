@@ -6,10 +6,14 @@
 Отдаёт папку site/ репозитория и по адресу /proxy делает то же, что помощник из antiplagiat-api/
 (функция Yandex Cloud или Cloudflare Worker): скачивает страницу по ?url=… и возвращает её как есть.
 Страница на localhost сама выбирает /proxy.
+По адресу /ring — «Кольцо САФУ» в памяти (то же, что antiplagiat-api/ring.js, но без YDB; после перезапуска пусто).
 """
+import hashlib
 import json
 import os
+import secrets
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 import urllib.error
@@ -24,6 +28,79 @@ POST_OK = ("https://cyberleninka.ru/api/search",)
 MAX = 2_500_000
 TYPES = {"html": "text/html; charset=utf-8", "js": "text/javascript; charset=utf-8", "css": "text/css; charset=utf-8",
          "png": "image/png", "mjs": "text/javascript; charset=utf-8", "json": "application/json", "svg": "image/svg+xml", "webmanifest": "application/manifest+json"}
+
+
+RING_DOCS, RING_IDX = {}, {}
+
+
+def ring_excerpt(text, positions, win=350, limit=40000):
+    wins = []
+    for p in sorted(set(x for x in positions if 0 <= x < len(text))):
+        a, b = max(0, p - win), min(len(text), p + win)
+        if wins and a <= wins[-1][1]:
+            wins[-1][1] = max(wins[-1][1], b)
+        else:
+            wins.append([a, b])
+    out, used = [], 0
+    for a, b in wins:
+        if used + b - a > limit:
+            break
+        out.append(text[a:b])
+        used += b - a
+    return "\n…\n".join(out)
+
+
+def ring_handle(body):
+    """Повторяет handle() из antiplagiat-api/ring.js."""
+    action = body.get("action")
+    if action == "ping":
+        return 200, {"ok": True}
+    if action == "add":
+        text, title = str(body.get("text") or ""), str(body.get("title") or "").strip()[:160]
+        fps = body.get("fps")
+        if not (1000 <= len(text) <= 600000):
+            return 400, {"error": "Текст должен быть от 1 тысячи до 600 тысяч знаков."}
+        if not isinstance(fps, list) or not (30 <= len(fps) <= 40000):
+            return 400, {"error": "Не удалось разобрать текст."}
+        seen = {}
+        for f in fps:
+            if not (isinstance(f, list) and len(f) == 2 and all(isinstance(x, int) and 0 <= x <= 0xFFFFFFFF for x in f) and f[1] < len(text)):
+                return 400, {"error": "Не удалось разобрать текст."}
+            seen.setdefault(f[0], f[1])
+        doc_id, key = secrets.token_urlsafe(9), secrets.token_urlsafe(15)
+        RING_DOCS[doc_id] = {"title": title, "text": text, "created": time.time(), "owner": hashlib.sha256(key.encode()).hexdigest(), "fps": list(seen)}
+        for fp, pos in seen.items():
+            RING_IDX.setdefault(fp, {})[doc_id] = pos
+        return 200, {"id": doc_id, "key": key}
+    if action == "query":
+        fps = body.get("fps")
+        if not isinstance(fps, list) or len(fps) > 40000:
+            return 400, {"error": "Слишком большой запрос."}
+        lst = set(x for x in fps if isinstance(x, int))
+        counts = {}
+        for fp in lst:
+            for d in RING_IDX.get(fp, {}):
+                counts[d] = counts.get(d, 0) + 1
+        docs = []
+        for d, n in sorted(counts.items(), key=lambda kv: -kv[1])[:8]:
+            if n < 6 or d not in RING_DOCS:
+                continue
+            doc = RING_DOCS[d]
+            pos = [RING_IDX[fp][d] for fp in lst if d in RING_IDX.get(fp, {})]
+            docs.append({"id": d, "title": doc["title"], "year": time.localtime(doc["created"]).tm_year, "hits": n,
+                         "excerpt": ring_excerpt(doc["text"], pos)})
+        return 200, {"docs": docs}
+    if action == "delete":
+        doc = RING_DOCS.get(str(body.get("id")))
+        if not doc:
+            return 404, {"error": "Работа не найдена — возможно, уже удалена."}
+        if hashlib.sha256(str(body.get("key") or "").encode()).hexdigest() != doc["owner"]:
+            return 403, {"error": "Неверный ключ удаления."}
+        for fp in doc["fps"]:
+            RING_IDX.get(fp, {}).pop(str(body.get("id")), None)
+        del RING_DOCS[str(body.get("id"))]
+        return 200, {"ok": True}
+    return 400, {"error": "Неизвестное действие."}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -83,6 +160,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if urlsplit(self.path).path == "/proxy":
             return self.proxy("POST")
+        if urlsplit(self.path).path == "/ring":
+            length = min(int(self.headers.get("Content-Length") or 0), 3_000_000)
+            try:
+                status, obj = ring_handle(json.loads(self.rfile.read(length).decode("utf-8")))
+            except ValueError:
+                status, obj = 400, {"error": "Запрос не разобран."}
+            return self.reply(status, "application/json; charset=utf-8", json.dumps(obj, ensure_ascii=False).encode())
         self.reply(404, "text/plain", b"")
 
 
