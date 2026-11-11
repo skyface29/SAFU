@@ -5,6 +5,10 @@
 // Админка (site/admin/) спрашивает GET с заголовком X-Admin-Token и получает: сколько сейчас на сайте,
 // сколько было за сегодня и за неделю, и график по часам за двое суток.
 //
+// Ещё админка может: повесить объявление на все страницы (оно приходит в ответ на тот же запрос счётчика,
+// лишних запросов нет) и запустить обновление расписания или пересборку сайта на GitHub (переменная GH_TOKEN —
+// токен GitHub с правом Actions: write только на репозиторий SAFU).
+//
 // Переменные: ADMIN_TOKEN — пароль админки (длинная случайная строка), YDB_DATABASE — путь к базе
 // (можно ту же, что у «Отметок»; таблица pulse создаётся сама). Нужен сервисный аккаунт с ролью ydb.editor.
 'use strict';
@@ -98,32 +102,76 @@ async function billingUsage(context, now) {
 }
 
 /** Логика поверх хранилища db: beat(row), stats(clock) → ответ, purge(hour). */
+const REPO = 'skyface29/SAFU', WORKFLOWS = { 'ruz.yml': 'Обновить расписание', 'site.yml': 'Пересобрать сайт' };
+let cfgCache = null;
+async function getConfig(db, now) {
+  if (cfgCache && now - cfgCache.at < 60e3) return cfgCache.v;      // раз в минуту на экземпляр — почти бесплатно
+  let v = {};
+  try { v = JSON.parse((await db.getKv('config')) || '{}'); } catch (e) { v = {}; }
+  cfgCache = { at: now, v };
+  return v;
+}
+function liveBanner(cfg, now) {
+  const b = cfg && cfg.banner;
+  return b && b.text && (!b.until || b.until > now) ? b : null;
+}
+const isAdmin = headers => {
+  const token = process.env.ADMIN_TOKEN || '';
+  return !!token && sameSecret(headers['X-Admin-Token'] || headers['x-admin-token'] || '', token);
+};
+
 async function handle(method, body, headers, db, now = Date.now(), context = null) {
+  if (method === 'POST' && body && body.action) {                    // команды админки
+    if (!isAdmin(headers)) return [403, { error: 'Нужен пароль администратора.' }];
+    if (body.action === 'banner') {
+      const text = String(body.text || '').trim().slice(0, 300);
+      const kind = ['info', 'warn', 'ok'].includes(body.kind) ? body.kind : 'info';
+      const sections = (Array.isArray(body.sections) ? body.sections : []).filter(x => /^[a-z]{2,20}$/.test(x)).slice(0, 10);
+      const hours = Math.min(Math.max(+body.hours || 0, 0), 24 * 30);
+      const cfg = await getConfig(db, now);
+      cfg.banner = text ? { id: now.toString(36), text, kind, sections, until: hours ? now + hours * HOUR : 0, at: now } : null;
+      await db.setKv('config', JSON.stringify(cfg));
+      cfgCache = { at: now, v: cfg };
+      return [200, { ok: true, banner: cfg.banner }];
+    }
+    if (body.action === 'dispatch') {
+      const wf = String(body.workflow || '');
+      if (!WORKFLOWS[wf]) return [400, { error: 'Неизвестное действие.' }];
+      if (!process.env.GH_TOKEN) return [400, { error: 'Кнопки управления не подключены: задайте GH_TOKEN у функции.' }];
+      const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${wf}/dispatches`, { method: 'POST', signal: AbortSignal.timeout(8000),
+        headers: { Authorization: 'Bearer ' + process.env.GH_TOKEN, Accept: 'application/vnd.github+json', 'User-Agent': 'arktika-pulse', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: 'main' }) });
+      if (r.status !== 204) return [502, { error: 'GitHub ответил ' + r.status }];
+      return [200, { ok: true, started: WORKFLOWS[wf] }];
+    }
+    return [400, { error: 'Неизвестная команда.' }];
+  }
   if (method === 'POST') {
     const s = body && String(body.s || ''), p = body && String(body.p || '');
     if (!/^[\w-]{8,40}$/.test(s) || !/^[a-z]{2,20}$/.test(p)) return [400, { error: 'bad' }];
     const day = new Date(now).toISOString().slice(0, 10);
     if (day !== capDay) { capDay = day; capCount = 0; }
-    if (++capCount > DAILY_CAP) return [204, null];   // лимит на сегодня — молча не пишем
-    await db.beat({ h: Math.floor(now / HOUR), p, s, t: now });
-    return [204, null];
+    if (++capCount <= DAILY_CAP) await db.beat({ h: Math.floor(now / HOUR), p, s, t: now });   // сверх лимита молча не пишем
+    const b = liveBanner(await getConfig(db, now), now);
+    return [200, b && (!b.sections.length || b.sections.includes(p)) ? { b: { id: b.id, text: b.text, kind: b.kind } } : {}];
   }
   if (method === 'GET') {
-    const token = process.env.ADMIN_TOKEN || '';
-    if (!token || !sameSecret(headers['X-Admin-Token'] || headers['x-admin-token'] || '', token)) return [403, { error: 'Нужен пароль администратора.' }];
+    if (!isAdmin(headers)) return [403, { error: 'Нужен пароль администратора.' }];
     const c = clock(now);
     const res = await db.stats(c);
     if (Math.random() < 0.05) db.purge(c.h - KEEP_HOURS).catch(() => {});   // изредка чистим старое
     let usage = null, usageError = null;
     try { usage = await billingUsage(context, now); } catch (e) { usageError = e.message; }
-    return [200, { now, ...res, usage, usageError }];
+    const cfg = await getConfig(db, now);
+    return [200, { now, ...res, usage, usageError, banner: liveBanner(cfg, now),
+      can: { dispatch: !!process.env.GH_TOKEN, billing: !!process.env.BILLING_BUCKET } }];
   }
   return [405, { error: 'Метод не поддерживается.' }];
 }
 
 /* ---------- в памяти (только для проверки у себя) ---------- */
 function memoryDb() {
-  const rows = new Map();   // "h|p|s" → {h,p,s,t}
+  const rows = new Map(), kv = new Map();   // "h|p|s" → {h,p,s,t}
   const distinct = (filter, key) => { const m = new Map(); for (const r of rows.values()) if (filter(r)) { const k = key(r); if (!m.has(k.g)) m.set(k.g, new Set()); m.get(k.g).add(k.v); } return m; };
   return {
     async beat(r) { rows.set(r.h + '|' + r.p + '|' + r.s, r); },
@@ -136,6 +184,8 @@ function memoryDb() {
       return { online: by(on), onlineTotal: all(on), today: by(day), todayTotal: all(day), weekTotal: all(week), hourly };
     },
     async purge(h) { for (const [k, r] of rows) if (r.h < h) rows.delete(k); },
+    async getKv(k) { return kv.get(k) || null; },
+    async setKv(k, v) { kv.set(k, v); },
   };
 }
 
@@ -151,6 +201,10 @@ function ydbDb(context) {
     const ready = Promise.race([(async () => {
       if (!(await driver.ready(5000))) throw new Error('YDB не отвечает');
       await driver.tableClient.withSession(async s => {
+        try { await s.describeTable('admin_kv'); } catch (e) {
+          await s.createTable('admin_kv', new TableDescription()
+            .withColumns(new Column('k', Types.optional(Types.UTF8)), new Column('v', Types.optional(Types.UTF8))).withPrimaryKeys('k'));
+        }
         try { await s.describeTable('pulse'); } catch (e) {
           await s.createTable('pulse', new TableDescription()
             .withColumns(new Column('h', Types.optional(Types.UINT32)), new Column('p', Types.optional(Types.UTF8)),
@@ -192,6 +246,8 @@ function ydbDb(context) {
         hourly: (hourly || []).map(r => ({ h: Number(r.h), p: r.p, n: Number(r.n) })) };
     },
     async purge(h) { await q('DECLARE $h AS Uint32; DELETE FROM pulse WHERE h < $h;', { $h: H(h) }); },
+    async getKv(k) { const [rows] = await q('DECLARE $k AS Utf8; SELECT v FROM admin_kv WHERE k = $k;', { $k: U(k) }); return rows && rows[0] ? rows[0].v : null; },
+    async setKv(k, v) { await q('DECLARE $k AS Utf8; DECLARE $v AS Utf8; UPSERT INTO admin_kv (k, v) VALUES ($k, $v);', { $k: U(k), $v: U(v) }); },
   };
 }
 
@@ -209,7 +265,7 @@ module.exports.handler = async (event, context) => {
   try {
     const db = process.env.YDB_DATABASE ? ydbDb(context) : (mem = mem || memoryDb());
     const [status, obj] = await handle(method, body, h, db, Date.now(), context);
-    return status === 204 ? { statusCode: 204, headers: head, body: '' } : reply(status, obj, head);
+    return reply(status, obj || {}, head);
   } catch (e) {
     console.error('pulse', e && e.message);
     return reply(500, { error: 'Статистика сейчас недоступна.' }, head);

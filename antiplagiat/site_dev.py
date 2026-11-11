@@ -105,6 +105,7 @@ def ring_handle(body):
 
 
 PULSE = {}   # (час, раздел, браузер) → время
+PULSE_CFG = {"banner": None}
 
 
 def pulse_stats():
@@ -127,6 +128,8 @@ def pulse_stats():
     return {"now": now, "online": by(on), "onlineTotal": total(on), "today": by(lambda hh, t: hh >= day),
             "todayTotal": total(lambda hh, t: hh >= day), "weekTotal": total(lambda hh, t: hh >= h - 167),
             "hourly": [{"h": hh, "p": p, "n": len(v)} for (hh, p), v in sorted(hourly.items())],
+            "banner": PULSE_CFG["banner"] if PULSE_CFG["banner"] and (not PULSE_CFG["banner"]["until"] or PULSE_CFG["banner"]["until"] > now) else None,
+            "can": {"dispatch": False, "billing": True},
             # пример того, что вернёт выгрузка биллинга (у себя — выдуманные цифры)
             "usage": {"month": time.strftime("%Y-%m"), "cost": 0.0, "updated": time.strftime("%Y-%m-%d"), "files": 11,
                       "free": [{"key": "calls", "label": "Вызовы функций", "unit": "вызовов", "limit": 1e6, "used": 431250},
@@ -203,10 +206,26 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 d = json.loads(self.rfile.read(length).decode("utf-8"))
                 import re as _re
+                now = time.time() * 1000
+                js = lambda code, obj: self.reply(code, "application/json; charset=utf-8", json.dumps(obj, ensure_ascii=False).encode())
+                if d.get("action"):
+                    if self.headers.get("X-Admin-Token") != "local":
+                        return js(403, {"error": "Нужен пароль администратора."})
+                    if d["action"] == "banner":
+                        text = str(d.get("text") or "").strip()[:300]
+                        hours = min(max(float(d.get("hours") or 0), 0), 720)
+                        PULSE_CFG["banner"] = {"id": format(int(now), "x"), "text": text, "kind": d.get("kind") if d.get("kind") in ("info", "warn", "ok") else "info",
+                                               "sections": [x for x in (d.get("sections") or []) if _re.fullmatch(r"[a-z]{2,20}", str(x))],
+                                               "until": now + hours * 3600e3 if hours else 0, "at": now} if text else None
+                        return js(200, {"ok": True, "banner": PULSE_CFG["banner"]})
+                    if d["action"] == "dispatch":
+                        return js(400, {"error": "Кнопки управления не подключены: задайте GH_TOKEN у функции."})
+                    return js(400, {"error": "Неизвестная команда."})
                 if _re.fullmatch(r"[\w-]{8,40}", str(d.get("s"))) and _re.fullmatch(r"[a-z]{2,20}", str(d.get("p"))):
-                    now = time.time() * 1000
                     PULSE[(int(now // 3600e3), d["p"], d["s"])] = now
-                    return self.reply(204, "text/plain", b"")
+                    b = PULSE_CFG["banner"]
+                    live = b and (not b["until"] or b["until"] > now) and (not b["sections"] or d["p"] in b["sections"])
+                    return js(200, {"b": {"id": b["id"], "text": b["text"], "kind": b["kind"]}} if live else {})
             except ValueError:
                 pass
             return self.reply(400, "text/plain", b"bad")
