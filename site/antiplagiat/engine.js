@@ -687,6 +687,7 @@ async function runCheck(rawText, opts, ui) {
     if (lowerBound(doc.cidx, we) - lowerBound(doc.cidx, ws) >= 5) sents.push([ws, we]);
   }
 
+  if (ui.start) ui.start({ text, starts: doc.starts, ends: doc.ends, areaEnd, sents });
   const covered = new Uint8Array(nWords);
   let found = [];
   const seen = new Map();
@@ -711,7 +712,9 @@ async function runCheck(rawText, opts, ui) {
     }
     title = (title || '').split(/\s+[–—-]\s+тема научной статьи/)[0].trim();
     if (title && title === title.toUpperCase() && title !== title.toLowerCase()) title = title[0] + title.slice(1).toLowerCase();
-    found.push({ url, title: (title || url).slice(0, 200), domain: url ? domainOf(url) : '', kind, spans, words });
+    const entry = { url, title: (title || url).slice(0, 200), domain: url ? domainOf(url) : '', kind, spans, words };
+    found.push(entry);
+    if (ui.found) ui.found(entry);
     return words;
   }
 
@@ -801,6 +804,7 @@ async function runCheck(rawText, opts, ui) {
     // веб-поиск и Википедия ограничены по частоте, поэтому им достаются разные предложения
     for (const i of forWeb) {
       left.web--;
+      if (ui.query) ui.query(i, 'web');
       const q = webQuery(i);
       launch('web', async () => { if (stop()) return null; const [res, engine] = await searchWeb(q, stop); engines[engine] = (engines[engine] || 0) + 1; return res; });
     }
@@ -808,10 +812,12 @@ async function runCheck(rawText, opts, ui) {
       const q = wikiQuery(i);
       if (!q) continue;
       left.wiki--;
+      if (ui.query) ui.query(i, 'wiki');
       launch('wiki', () => stop() ? null : searchWikipedia(q, lang, stop));
     }
     for (const i of forSci) {
       left.sci--;
+      if (ui.query) ui.query(i, 'sci');
       const q = sciQuery(i);
       launch('sci', () => stop() ? null : sciSem.run(() => searchCyberleninka(q)));
     }
