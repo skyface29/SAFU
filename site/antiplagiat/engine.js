@@ -530,19 +530,21 @@ async function searchSeznam(query, cancel) {
   return out;
 }
 
-/** Веб-поиск с запасным поисковиком. Возвращает [результаты, имя поисковика]. */
-async function searchWeb(query, cancel) {
-  const words = query.split(' '), phrase = '"' + words.slice(0, 7).join(' ') + '"';
+/** Точная фраза (в кавычках) — DuckDuckGo находит по ней даже малоизвестные страницы с рефератами,
+    которые по обычному запросу тонут среди похожих по теме. Если DuckDuckGo отказывает — Seznam. */
+async function searchPhrase(phrase, cancel) {
   if (ddg.available()) {
-    // пока основной поисковик «отдыхает», пробуем найти дословную фразу во втором
-    if (ddg.nextAt - Date.now() > 2500 && seznam.available() && words.length >= 5) {
-      try { const found = await searchSeznam(phrase, cancel); if (found.length) return [found, 'seznam']; } catch (e) { /* дальше */ }
-    }
-    try { return [await searchDdg(query, cancel), 'ddg']; } catch (e) { if (!(e instanceof Blocked)) throw e; }
+    try { return [await searchDdg(phrase, cancel), 'ddg']; } catch (e) { if (!(e instanceof Blocked)) throw e; }
   }
-  let found = words.length >= 5 ? await searchSeznam(phrase, cancel) : [];
-  if (!found.length) found = await searchSeznam(query, cancel);
-  return [found, 'seznam'];
+  return [await searchSeznam(phrase, cancel), 'seznam'];
+}
+/** Обычный запрос по началу предложения — параллельно, во втором поисковике: он хорошо находит
+    энциклопедии и крупные сайты. Очередь DuckDuckGo он не трогает — тот быстро ограничивает частые запросы. */
+async function searchFree(query, cancel) {
+  if (seznam.available()) {
+    try { const found = await searchSeznam(query, cancel); if (found.length) return [found, 'seznam']; } catch (e) { if (!(e instanceof Blocked)) throw e; }
+  }
+  return [[], 'none'];   // первый поисковик не трогаем: его очередь — для точных фраз
 }
 
 async function wikiGet(url, cancel) {
@@ -614,9 +616,9 @@ async function fetchPage(cand) {
    Проверка
    ===================================================================== */
 const DEPTH = {
-  fast: { web: 5, wiki: 6, sci: 12, pages: 30, rounds: 1, seconds: 80 },
-  std: { web: 14, wiki: 16, sci: 36, pages: 90, rounds: 2, seconds: 240 },
-  deep: { web: 36, wiki: 40, sci: 90, pages: 220, rounds: 3, seconds: 600 },
+  fast: { web: 6, wiki: 6, sci: 12, pages: 40, rounds: 1, seconds: 80 },
+  std: { web: 22, wiki: 16, sci: 36, pages: 130, rounds: 2, seconds: 240 },
+  deep: { web: 60, wiki: 40, sci: 90, pages: 320, rounds: 3, seconds: 600 },
 };
 const MAX_SOURCE_CHARS = 700000, MIN_SOURCE_WORDS = 8, MAX_SOURCES = 80;
 
@@ -748,6 +750,17 @@ async function runCheck(rawText, opts, ui) {
   }
   const wordsOf = (ws, we) => { const out = []; for (let k = ws; k < we; k++) out.push(text.slice(doc.starts[k], doc.ends[k])); return out; };
   const webQuery = i => wordsOf(sents[i][0], Math.min(sents[i][1], sents[i][0] + 12)).join(' ');
+  /** Самые «редкие» 7 слов подряд из предложения — по ним точная фраза находит источник. */
+  const phraseQuery = i => {
+    const [ws, we] = sents[i], words = wordsOf(ws, we), W = Math.min(7, words.length);
+    let best = 0, bestScore = -1;
+    for (let k = 0; k + W <= words.length; k++) {
+      let sc = 0;
+      for (let t = k; t < k + W; t++) { const [w] = normalizeWord(words[t]); if (isContent(w)) sc += Math.min(w.length, 10); }
+      if (sc > bestScore) { bestScore = sc; best = k; }
+    }
+    return '"' + words.slice(best, best + W).join(' ') + '"';
+  };
   const sciQuery = i => wordsOf(sents[i][0], Math.min(sents[i][1], sents[i][0] + 9)).join(' ');
   const wikiQuery = i => wordsOf(sents[i][0], sents[i][1]).filter(w => !DIGITS.test(w)).slice(0, 10).join(' ');
 
@@ -806,7 +819,10 @@ async function runCheck(rawText, opts, ui) {
       left.web--;
       if (ui.query) ui.query(i, 'web');
       const q = webQuery(i);
-      launch('web', async () => { if (stop()) return null; const [res, engine] = await searchWeb(q, stop); engines[engine] = (engines[engine] || 0) + 1; return res; });
+      const phrase = phraseQuery(i);
+      const note = ([res, engine]) => { engines[engine] = (engines[engine] || 0) + 1; return res; };
+      launch('web', async () => stop() ? null : note(await searchPhrase(phrase, stop)));
+      launch('web', async () => stop() ? null : note(await searchFree(q, stop)));
     }
     for (const i of forWiki) {
       const q = wikiQuery(i);
