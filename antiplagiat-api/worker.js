@@ -10,7 +10,9 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 function cors(origin) {
   const h = { 'Vary': 'Origin', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Expose-Headers': 'X-Status, X-Final-Url', 'Access-Control-Max-Age': '86400' };
-  if (ORIGINS.includes(origin)) h['Access-Control-Allow-Origin'] = origin;
+  // чужим сайтам — адрес своего сайта: браузер увидит несовпадение и не отдаст им ответ
+  // (без этого заголовка Yandex сам подставляет «*», то есть «можно всем»)
+  h['Access-Control-Allow-Origin'] = ORIGINS.includes(origin) ? origin : ORIGINS[0];
   return h;
 }
 const json = (status, obj, head) => new Response(JSON.stringify(obj), { status, headers: { ...head, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
