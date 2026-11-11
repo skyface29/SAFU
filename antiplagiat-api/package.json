@@ -1,0 +1,10 @@
+{
+  "name": "antiplagiat-ring",
+  "version": "1.0.0",
+  "private": true,
+  "description": "«Кольцо САФУ» для arktika-app.ru/antiplagiat/ (Yandex Cloud Functions + YDB). Помощнику yandex.js пакеты не нужны.",
+  "main": "ring.js",
+  "dependencies": {
+    "ydb-sdk": "5.11.1"
+  }
+}

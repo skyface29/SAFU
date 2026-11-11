@@ -470,11 +470,32 @@ async function viaProxy(url, body, ms = 16000) {
       url: r.headers.get('x-final-url') || url, bytes: new Uint8Array(await r.arrayBuffer()) };
   }, ms);
 }
+let YANDEX = false;   // помощник умеет искать через Yandex Search API (включается в облаке)
 async function pingProxy() {
   if (!API) return false;
   try {
-    return await timed(async signal => { const r = await fetch(API, { signal }); return r.ok && (await r.json()).ok === true; }, 8000);
+    return await timed(async signal => {
+      const r = await fetch(API, { signal }); if (!r.ok) return false;
+      const d = await r.json(); YANDEX = d.yandex === true; return d.ok === true;
+    }, 8000);
   } catch (e) { return false; }
+}
+/** Поиск Яндекса через помощника (отложенный режим: результат может быть готов не сразу). */
+async function searchYandex(query, cancel) {
+  const ask = async qs => timed(async signal => {
+    const r = await fetch(API + (API.includes('?') ? '&' : '?') + qs, { signal });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 429 || r.status === 503) { YANDEX = false; throw new Blocked('yandex'); }
+    if (!r.ok) throw new Error(d.error || 'поиск Яндекса ответил ' + r.status);
+    return d;
+  }, 20000);
+  let d = await ask('ysearch=' + encodeURIComponent(query));
+  for (let i = 0; i < 30 && !d.done; i++) {
+    if (cancel && cancel()) return [];
+    await sleep(2000);
+    d = await ask('yop=' + encodeURIComponent(d.op));
+  }
+  return d.done ? d.results || [] : [];
 }
 
 // разбор в отдельном «немом» документе: скрипты и картинки из чужой разметки там не запускаются и не грузятся
@@ -530,19 +551,24 @@ async function searchSeznam(query, cancel) {
   return out;
 }
 
-/** Веб-поиск с запасным поисковиком. Возвращает [результаты, имя поисковика]. */
-async function searchWeb(query, cancel) {
-  const words = query.split(' '), phrase = '"' + words.slice(0, 7).join(' ') + '"';
-  if (ddg.available()) {
-    // пока основной поисковик «отдыхает», пробуем найти дословную фразу во втором
-    if (ddg.nextAt - Date.now() > 2500 && seznam.available() && words.length >= 5) {
-      try { const found = await searchSeznam(phrase, cancel); if (found.length) return [found, 'seznam']; } catch (e) { /* дальше */ }
-    }
-    try { return [await searchDdg(query, cancel), 'ddg']; } catch (e) { if (!(e instanceof Blocked)) throw e; }
+/** Точная фраза (в кавычках) — DuckDuckGo находит по ней даже малоизвестные страницы с рефератами,
+    которые по обычному запросу тонут среди похожих по теме. Если DuckDuckGo отказывает — Seznam. */
+async function searchPhrase(phrase, cancel) {
+  if (YANDEX) {
+    try { return [await searchYandex(phrase, cancel), 'yandex']; } catch (e) { /* дальше бесплатные */ }
   }
-  let found = words.length >= 5 ? await searchSeznam(phrase, cancel) : [];
-  if (!found.length) found = await searchSeznam(query, cancel);
-  return [found, 'seznam'];
+  if (ddg.available()) {
+    try { return [await searchDdg(phrase, cancel), 'ddg']; } catch (e) { if (!(e instanceof Blocked)) throw e; }
+  }
+  return [await searchSeznam(phrase, cancel), 'seznam'];
+}
+/** Обычный запрос по началу предложения — параллельно, во втором поисковике: он хорошо находит
+    энциклопедии и крупные сайты. Очередь DuckDuckGo он не трогает — тот быстро ограничивает частые запросы. */
+async function searchFree(query, cancel) {
+  if (seznam.available()) {
+    try { const found = await searchSeznam(query, cancel); if (found.length) return [found, 'seznam']; } catch (e) { if (!(e instanceof Blocked)) throw e; }
+  }
+  return [[], 'none'];   // первый поисковик не трогаем: его очередь — для точных фраз
 }
 
 async function wikiGet(url, cancel) {
@@ -572,6 +598,27 @@ async function searchCyberleninka(query) {
     title: stripTags(a.name), snippet: stripTags(a.annotation || ''), kind: 'science' }));
 }
 
+const openalex = new Throttle(1100, 4000);
+/** OpenAlex — открытый каталог научных работ (журналы, репозитории вузов, Zenodo). Отвечает браузеру напрямую,
+    бесплатно около 100 поисков в день с одного адреса — у каждого посетителя свой лимит. */
+async function searchOpenAlex(query, lang, cancel) {
+  if ((await openalex.wait(cancel)) === null) throw new Blocked('openalex');
+  const url = 'https://api.openalex.org/works?' + new URLSearchParams({ search: query, 'per-page': 6,
+    select: 'id,display_name,language,best_oa_location,primary_location,open_access' });
+  const r = await timed(signal => fetch(url, { signal }), 15000);
+  if (r.status === 429 || r.status === 403) { openalex.blocked(); throw new Blocked('openalex'); }
+  if (!r.ok) throw new Error('OpenAlex ответил ' + r.status);
+  openalex.ok();
+  const data = await r.json(), out = [];
+  for (const w of data.results || []) {
+    if (w.language && w.language !== lang) continue;
+    const loc = w.best_oa_location || {}, prim = w.primary_location || {};
+    const url2 = loc.pdf_url || loc.landing_page_url || (w.open_access && w.open_access.oa_url) || prim.landing_page_url;
+    if (url2) out.push({ url: url2, title: w.display_name || '', snippet: '', kind: 'science' });
+  }
+  return out;
+}
+
 const SKIP_HOSTS = ['youtube.com', 'youtu.be', 'rutube.ru', 'vk.com', 'vkvideo.ru', 't.me', 'instagram.com', 'facebook.com',
   'twitter.com', 'x.com', 'tiktok.com', 'pinterest.', 'ok.ru', 'ozon.ru', 'wildberries.ru', 'market.yandex.',
   'play.google.com', 'apps.apple.com', 'duckduckgo.com', 'translate.google.', 'maps.google.', 'yandex.ru/maps'];
@@ -598,8 +645,13 @@ async function fetchPage(cand) {
     if (html) { const [, text] = htmlToText(html); return [cand.title || title.replace(/_/g, ' ') + ' — Википедия', text]; }
   }
   if (!API) return null;
-  const r = await viaProxy(cand.url, null, 20000);
-  if (r.status >= 400) return null;
+  let r;
+  try { r = await viaProxy(cand.url, null, 20000); } catch (e) { r = null; }
+  if (!r || [404, 410, 451, 500, 502, 503, 504].includes(r.status)) {
+    // страница пропала или не отвечает — берём последний снимок из веб-архива (только то, что было открыто)
+    try { r = await viaProxy('https://web.archive.org/web/2id_/' + cand.url, null, 25000); } catch (e) { return null; }
+    if (r.status >= 400) return null;
+  } else if (r.status >= 400) return null;
   if (r.ctype.includes('pdf') || (r.bytes[0] === 0x25 && r.bytes[1] === 0x50 && r.bytes[2] === 0x44 && r.bytes[3] === 0x46)) {
     try { return [cand.title || cand.url, await pdfToText(r.bytes)]; } catch (e) { return null; }
   }
@@ -610,13 +662,62 @@ async function fetchPage(cand) {
   return [title || cand.title || cand.url, text];
 }
 
+
+/* =====================================================================
+   «Кольцо САФУ» — общая база работ, которые студенты добавили сами.
+   Сравнение по «отпечаткам»: хеши троек основ слов, из которых оставлен каждый
+   минимальный в окне из 4 (winnowing). Любое совпадение от 6 значимых слов
+   подряд обязательно даёт общий отпечаток, а сервер получает не текст, а числа.
+   ===================================================================== */
+let RING = '';
+function setRing(url) { RING = (url || '').replace(/\/$/, ''); }
+function fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
+}
+/** Отпечатки текста: [[хеш, позиция начала в тексте], ...]. */
+function fingerprints(text, tokens) {
+  const t = tokens || new Tokens(text), S = t.stems, hs = [];
+  for (let i = 0; i + 2 < S.length; i++) hs.push(fnv1a(S[i] + SEP + S[i + 1] + SEP + S[i + 2]));
+  const W = 4, out = [];
+  let last = -1;
+  for (let i = 0; i + W <= hs.length; i++) {
+    let m = i;
+    for (let j = i + 1; j < i + W; j++) if (hs[j] <= hs[m]) m = j;
+    if (m !== last) { out.push([hs[m], t.starts[t.cidx[m]]]); last = m; }
+  }
+  if (hs.length && hs.length < W) out.push([hs[0], t.starts[t.cidx[0]]]);
+  return out;
+}
+async function ringCall(body, ms = 20000) {
+  if (!RING) throw new Error('Кольцо САФУ пока не подключено.');
+  return timed(async signal => {
+    const r = await fetch(RING, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || data.error) throw new Error(data.error || 'Кольцо САФУ не ответило (' + r.status + ')');
+    return data;
+  }, ms);
+}
+/** Добавить работу в кольцо. Возвращает {id, key} — ключ нужен, чтобы потом удалить работу. */
+async function ringAdd(title, rawText) {
+  const [text] = cleanText(rawText);
+  const bib = bibliographyStart(text);
+  const body = (bib !== null ? text.slice(0, bib) : text).slice(0, 600000);
+  const fps = fingerprints(body);
+  if (fps.length < 30) throw new Error('Текст слишком короткий для Кольца.');
+  return ringCall({ action: 'add', title: String(title || '').slice(0, 160), text: body, fps }, 30000);
+}
+async function ringDelete(id, key) { return ringCall({ action: 'delete', id, key }); }
+async function ringPing() { return !!RING && ringCall({ action: 'ping' }, 8000).then(d => d.ok === true).catch(() => false); }
+
 /* =====================================================================
    Проверка
    ===================================================================== */
 const DEPTH = {
-  fast: { web: 5, wiki: 6, sci: 12, pages: 30, rounds: 1, seconds: 80 },
-  std: { web: 14, wiki: 16, sci: 36, pages: 90, rounds: 2, seconds: 240 },
-  deep: { web: 36, wiki: 40, sci: 90, pages: 220, rounds: 3, seconds: 600 },
+  fast: { web: 6, wiki: 6, sci: 12, oa: 6, pages: 45, rounds: 1, seconds: 80 },
+  std: { web: 22, wiki: 16, sci: 36, oa: 18, pages: 150, rounds: 2, seconds: 240 },
+  deep: { web: 60, wiki: 40, sci: 90, oa: 45, pages: 360, rounds: 3, seconds: 600 },
 };
 const MAX_SOURCE_CHARS = 700000, MIN_SOURCE_WORDS = 8, MAX_SOURCES = 80;
 
@@ -687,10 +788,11 @@ async function runCheck(rawText, opts, ui) {
     if (lowerBound(doc.cidx, we) - lowerBound(doc.cidx, ws) >= 5) sents.push([ws, we]);
   }
 
+  if (ui.start) ui.start({ text, starts: doc.starts, ends: doc.ends, areaEnd, sents });
   const covered = new Uint8Array(nWords);
   let found = [];
   const seen = new Map();
-  const stats = { web: 0, wiki: 0, sci: 0, pages: 0, candidates: 0, web_blocked: false };
+  const stats = { web: 0, wiki: 0, sci: 0, oa: 0, pages: 0, candidates: 0, web_blocked: false };
   const engines = {};
 
   function consider(title, srcText, url, kind) {
@@ -711,7 +813,9 @@ async function runCheck(rawText, opts, ui) {
     }
     title = (title || '').split(/\s+[–—-]\s+тема научной статьи/)[0].trim();
     if (title && title === title.toUpperCase() && title !== title.toLowerCase()) title = title[0] + title.slice(1).toLowerCase();
-    found.push({ url, title: (title || url).slice(0, 200), domain: url ? domainOf(url) : '', kind, spans, words });
+    const entry = { url, title: (title || url).slice(0, 200), domain: url ? domainOf(url) : '', kind, spans, words };
+    found.push(entry);
+    if (ui.found) ui.found(entry);
     return words;
   }
 
@@ -724,16 +828,33 @@ async function runCheck(rawText, opts, ui) {
     ui.say(`Коллекция: проверено документов — ${library.length}, с совпадениями — ${hits}.`);
   }
 
+  // 1б. «Кольцо САФУ»: сервер возвращает только куски чужих работ вокруг общих отпечатков
+  stats.ring = 0;
+  if (opts.ring !== false && RING) {
+    ui.set('Сверка с Кольцом САФУ', 0.03);
+    try {
+      const fps = fingerprints(text, doc).map(f => f[0]);
+      const res = await ringCall({ action: 'query', fps: [...new Set(fps)].slice(0, 20000) }, 25000);
+      for (const d of res.docs || []) {
+        const title = 'Кольцо САФУ: ' + (d.title || 'работа студента') + (d.year ? ', ' + d.year : '');
+        if (consider(title, d.excerpt || '', '', 'ring')) stats.ring++;
+        await sleep(0);
+      }
+      ui.say(stats.ring ? `Кольцо САФУ: совпадения с ${stats.ring} ${stats.ring === 1 ? 'работой' : 'работами'} студентов.` : 'Кольцо САФУ: совпадений с работами студентов нет.');
+    } catch (e) { ui.say('Кольцо САФУ сейчас не ответило — проверка идёт без него.'); }
+  }
+
   // 2. Помощник для скачивания страниц: без него остаётся только Википедия
   const proxyOk = await pingProxy();
   if (!proxyOk && (opts.web !== false || opts.science !== false)) {
     ui.say('Помощник для скачивания страниц недоступен — проверка идёт только по Википедии и вашей коллекции.');
   }
   const useWeb = opts.web !== false && proxyOk, useWiki = opts.wiki !== false, useSci = opts.science !== false && proxyOk;
-  const left = { web: useWeb ? depth.web : 0, wiki: useWiki ? depth.wiki : 0, sci: useSci ? depth.sci : 0, pages: depth.pages };
+  const left = { web: useWeb ? depth.web : 0, wiki: useWiki ? depth.wiki : 0, sci: useSci ? depth.sci : 0,
+    oa: opts.science !== false ? depth.oa : 0, pages: depth.pages };
 
   const coverage = ([ws, we]) => { let s = 0; for (let w = ws; w < we; w++) s += covered[w]; return s / (we - ws); };
-  const used = { web: new Set(), wiki: new Set(), sci: new Set() };
+  const used = { web: new Set(), wiki: new Set(), sci: new Set(), oa: new Set() };
   function pick(kind, n, avoid) {
     let cands = [];
     sents.forEach((s, i) => { if (!used[kind].has(i) && coverage(s) < 0.4) cands.push(i); });
@@ -745,6 +866,17 @@ async function runCheck(rawText, opts, ui) {
   }
   const wordsOf = (ws, we) => { const out = []; for (let k = ws; k < we; k++) out.push(text.slice(doc.starts[k], doc.ends[k])); return out; };
   const webQuery = i => wordsOf(sents[i][0], Math.min(sents[i][1], sents[i][0] + 12)).join(' ');
+  /** Самые «редкие» 7 слов подряд из предложения — по ним точная фраза находит источник. */
+  const phraseQuery = i => {
+    const [ws, we] = sents[i], words = wordsOf(ws, we), W = Math.min(7, words.length);
+    let best = 0, bestScore = -1;
+    for (let k = 0; k + W <= words.length; k++) {
+      let sc = 0;
+      for (let t = k; t < k + W; t++) { const [w] = normalizeWord(words[t]); if (isContent(w)) sc += Math.min(w.length, 10); }
+      if (sc > bestScore) { bestScore = sc; best = k; }
+    }
+    return '"' + words.slice(best, best + W).join(' ') + '"';
+  };
   const sciQuery = i => wordsOf(sents[i][0], Math.min(sents[i][1], sents[i][0] + 9)).join(' ');
   const wikiQuery = i => wordsOf(sents[i][0], sents[i][1]).filter(w => !DIGITS.test(w)).slice(0, 10).join(' ');
 
@@ -763,7 +895,7 @@ async function runCheck(rawText, opts, ui) {
     launch('page', () => stop() ? null : fetchSem.run(() => fetchPage(cand)), cand);
   }
   function register(results, kind) {
-    const keepTop = { web: 4, wiki: 2, sci: 3 }[kind], fresh = [];
+    const keepTop = { web: 4, wiki: 2, sci: 3, oa: 2 }[kind], fresh = [];
     results.forEach((r, rank) => {
       if (!usableUrl(r.url || '')) return;
       const k = urlKey(r.url);
@@ -793,7 +925,8 @@ async function runCheck(rawText, opts, ui) {
     const forWeb = pick('web', Math.ceil(left.web / roundsLeft));
     const forWiki = pick('wiki', Math.ceil(left.wiki / roundsLeft), forWeb);
     const forSci = pick('sci', Math.ceil(left.sci / roundsLeft));
-    if (!(forWeb.length || forWiki.length || forSci.length || pending.size)) {
+    const forOa = pick('oa', Math.ceil(left.oa / roundsLeft), forSci);
+    if (!(forWeb.length || forWiki.length || forSci.length || forOa.length || pending.size)) {
       if (rnd) ui.say('Все фрагменты либо найдены, либо уже проверены по всем источникам.');
       break;
     }
@@ -801,19 +934,31 @@ async function runCheck(rawText, opts, ui) {
     // веб-поиск и Википедия ограничены по частоте, поэтому им достаются разные предложения
     for (const i of forWeb) {
       left.web--;
+      if (ui.query) ui.query(i, 'web');
       const q = webQuery(i);
-      launch('web', async () => { if (stop()) return null; const [res, engine] = await searchWeb(q, stop); engines[engine] = (engines[engine] || 0) + 1; return res; });
+      const phrase = phraseQuery(i);
+      const note = ([res, engine]) => { engines[engine] = (engines[engine] || 0) + 1; return res; };
+      launch('web', async () => stop() ? null : note(await searchPhrase(phrase, stop)));
+      launch('web', async () => stop() ? null : note(await searchFree(q, stop)));
     }
     for (const i of forWiki) {
       const q = wikiQuery(i);
       if (!q) continue;
       left.wiki--;
+      if (ui.query) ui.query(i, 'wiki');
       launch('wiki', () => stop() ? null : searchWikipedia(q, lang, stop));
     }
     for (const i of forSci) {
       left.sci--;
+      if (ui.query) ui.query(i, 'sci');
       const q = sciQuery(i);
       launch('sci', () => stop() ? null : sciSem.run(() => searchCyberleninka(q)));
+    }
+    for (const i of forOa) {
+      left.oa--;
+      if (ui.query) ui.query(i, 'sci');
+      const q = webQuery(i);
+      launch('oa', () => stop() ? null : searchOpenAlex(q, lang, stop));
     }
 
     while (pending.size && !ui.cancelled()) {
@@ -832,7 +977,7 @@ async function runCheck(rawText, opts, ui) {
         stats[r.kind]++;
         register(r.v, r.kind);
       }
-      ui.counters({ queries: stats.web + stats.wiki + stats.sci, pages: stats.pages, sources: found.length });
+      ui.counters({ queries: stats.web + stats.wiki + stats.sci + stats.oa, pages: stats.pages, sources: found.length });
       ui.set('Ищу источники и сравниваю тексты', 0.05 + 0.93 * finished / Math.max(planned, 1));
     }
   }
@@ -871,5 +1016,5 @@ async function runCheck(rawText, opts, ui) {
   };
 }
 
-global.Iceberg = { runCheck, readFile, setApi, pingProxy, cleanText, Tokens, align, htmlToText, docxToText, normalizeWord, stem };
+global.Iceberg = { runCheck, readFile, setApi, pingProxy, setRing, ringAdd, ringDelete, ringPing, fingerprints, bibliographyStart, cleanText, Tokens, align, htmlToText, docxToText, normalizeWord, stem };
 })(window);

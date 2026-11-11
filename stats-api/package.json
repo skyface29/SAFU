@@ -1,0 +1,10 @@
+{
+  "name": "arktika-pulse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Счётчик «сейчас на сайте» для arktika-app.ru (Yandex Cloud Functions + YDB)",
+  "main": "pulse.js",
+  "dependencies": {
+    "ydb-sdk": "5.11.1"
+  }
+}
