@@ -19,6 +19,12 @@
 и нестандартные порты запрещены (в `yandex.js` проверяется и то, куда ведёт имя, на каждой переадресации). Ответы
 с разрешением CORS получают только `arktika-app.ru` и `localhost:8790`.
 
+## Как работает сейчас
+
+Функция Yandex Cloud `antiplagiat` (каталог `default`, рядом с `otmetki`): Node.js 22, `index.handler`, 128 МБ,
+таймаут 15 с. Адрес `https://functions.yandexcloud.net/d4er34jsfe1f9gqu4vg8` вписан в `API_DEFAULT`
+в `site/antiplagiat/index.html`. Функция должна быть **публичной** — иначе страница проверяет только по Википедии.
+
 ## Проверить у себя
 
 ```

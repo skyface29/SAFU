@@ -574,7 +574,7 @@ html.calm .js .reveal,html.calm .reveal{opacity:1;transform:none}
 <script>
 /* Адрес помощника, который скачивает страницы сайтов и выдачу поисковиков (antiplagiat-api/ в репозитории).
    Пусто — работает только Википедия и своя коллекция. Для проверки у себя: python3 antiplagiat/site_dev.py */
-const API_DEFAULT = '';
+const API_DEFAULT = 'https://functions.yandexcloud.net/d4er34jsfe1f9gqu4vg8'; // функция Yandex Cloud antiplagiat (antiplagiat-api/yandex.js)
 const API_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '/proxy' : '';
 Iceberg.setApi((() => { try { return localStorage.getItem('antiplagiat.api') || ''; } catch (e) { return ''; } })() || API_LOCAL || API_DEFAULT);
 
