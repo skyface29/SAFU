@@ -119,7 +119,7 @@ def pulse_stats():
         return {p: len(v) for p, v in out.items()}
     def total(cond):
         return len({sid for (hh, p, sid), t in PULSE.items() if cond(hh, t)})
-    on = lambda hh, t: hh >= h - 1 and t > now - 150e3
+    on = lambda hh, t: hh >= h - 1 and t > now - 390e3
     hourly = {}
     for (hh, p, sid), t in PULSE.items():
         if hh >= h - 47:

@@ -1,5 +1,5 @@
 /* Анонимный счётчик «сейчас на сайте» для arktika-app.ru (сервер — stats-api/pulse.js).
-   Пока вкладка открыта и видна, раз в минуту отправляет случайный номер этого браузера и название раздела.
+   Отправляет при открытии и потом раз в 5 минут, пока вкладка открыта и видна: случайный номер этого браузера и название раздела.
    Ни имени, ни IP, ни того, что открыто на странице, не отправляет. Подключение:
    <script src="../pulse.js" data-section="raspisanie" defer></script> */
 (function () {
@@ -17,7 +17,7 @@
   }
   var last = 0;
   function beat() {
-    if (document.visibilityState !== 'visible' || Date.now() - last < 20000) return;
+    if (document.visibilityState !== 'visible' || Date.now() - last < 240000) return;
     last = Date.now();
     try {
       fetch(PULSE, { method: 'POST', mode: 'no-cors', keepalive: true, headers: { 'Content-Type': 'text/plain' },
@@ -25,6 +25,6 @@
     } catch (e) { /* старый браузер — не считаем */ }
   }
   beat();
-  setInterval(beat, 60000);
+  setInterval(beat, 300000);
   document.addEventListener('visibilitychange', beat);
 })();

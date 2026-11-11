@@ -75,7 +75,7 @@ button{font:inherit;color:inherit;cursor:pointer}
       <div class="card">
         <span class="label">Сейчас на сайте</span>
         <div class="big" id="online">0</div>
-        <div class="sub">человек открыли сайт за последние 2,5 минуты</div>
+        <div class="sub">человек на сайте за последние 6 минут</div>
       </div>
       <div class="totals">
         <div class="card"><span class="label">Сегодня</span><b id="today">0</b></div>
@@ -120,7 +120,7 @@ async function load(){
     $('live').classList.remove('off');
     $('upd').textContent = 'обновлено ' + new Date().toLocaleTimeString('ru-RU');
   }catch(e){ $('live').classList.add('off'); $('upd').textContent = 'нет связи · ' + e.message; }
-  timer = setTimeout(load, 15000);
+  if(document.visibilityState === 'visible') timer = setTimeout(load, 60000);   // раз в минуту и только пока админка на экране — бережём бесплатный объём
 }
 function render(d){
   $('login').classList.add('hide'); $('dash').classList.remove('hide'); $('logout').classList.remove('hide');

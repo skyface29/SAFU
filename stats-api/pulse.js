@@ -1,6 +1,6 @@
 // Счётчик «сейчас на сайте» для arktika-app.ru (функция Yandex Cloud, Node.js 22, точка входа pulse.handler).
 //
-// Страницы раз в минуту присылают POST {s, p}: s — случайный номер браузера (без имени, IP не сохраняется),
+// Страницы при открытии и раз в 5 минут присылают POST {s, p}: s — случайный номер браузера (без имени, IP не сохраняется),
 // p — раздел (raspisanie, otmetki, …). Хранится одна строка на браузер, раздел и час: pulse(h, p, s, t).
 // Админка (site/admin/) спрашивает GET с заголовком X-Admin-Token и получает: сколько сейчас на сайте,
 // сколько было за сегодня и за неделю, и график по часам за двое суток.
@@ -11,7 +11,10 @@
 const crypto = require('crypto');
 
 const ORIGINS = ['https://arktika-app.ru', 'https://www.arktika-app.ru', 'http://localhost:8790'];
-const ONLINE_MS = 150e3;                       // «сейчас» — был виден за последние 2,5 минуты
+const ONLINE_MS = 390e3;                       // «сейчас» — был на сайте за последние 6,5 минуты
+// Потолок записей в сутки на экземпляр: держит счётчик в бесплатном объёме Yandex Cloud (1 млн вызовов в месяц на всё облако).
+const DAILY_CAP = +process.env.DAILY_CAP || 12000;
+let capDay = '', capCount = 0;
 const HOUR = 3600e3, MSK = 3 * HOUR, KEEP_HOURS = 24 * 35;
 
 function cors(origin) {
@@ -33,6 +36,9 @@ async function handle(method, body, headers, db, now = Date.now()) {
   if (method === 'POST') {
     const s = body && String(body.s || ''), p = body && String(body.p || '');
     if (!/^[\w-]{8,40}$/.test(s) || !/^[a-z]{2,20}$/.test(p)) return [400, { error: 'bad' }];
+    const day = new Date(now).toISOString().slice(0, 10);
+    if (day !== capDay) { capDay = day; capCount = 0; }
+    if (++capCount > DAILY_CAP) return [204, null];   // лимит на сегодня — молча не пишем
     await db.beat({ h: Math.floor(now / HOUR), p, s, t: now });
     return [204, null];
   }
