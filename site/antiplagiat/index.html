@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>document.documentElement.classList.add("js");if(matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("calm")</script>
 <meta name="description" content="Бесплатная проверка текста на заимствования: интернет, Википедия, научные статьи. Полный отчёт с источниками, без регистрации.">
 <meta name="theme-color" content="#070b18">
 <title>Айсберг — бесплатная проверка на заимствования · Арктика</title>
@@ -155,6 +156,7 @@ details summary{cursor:pointer;color:var(--accent);font-size:14.5px}
 .tiles div{border:1px solid var(--line);background:var(--soft);border-radius:16px;padding:14px 16px}
 .tiles b{display:block;font:700 28px/1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
 .tiles span{font-size:13.5px;color:var(--muted)}
+.tiles span i{font-style:normal}
 .voyage{position:relative;height:58px;margin:30px 8px 4px}
 .ice{position:absolute;left:0;right:0;bottom:0;height:16px;border-radius:9px;overflow:hidden;border:1px solid var(--line);background:
   repeating-linear-gradient(118deg,transparent 0 26px,rgba(160,225,255,.3) 26px 27px),repeating-linear-gradient(64deg,transparent 0 40px,rgba(160,225,255,.2) 40px 41px),
@@ -192,9 +194,9 @@ details summary{cursor:pointer;color:var(--accent);font-size:14.5px}
 #doc{white-space:pre-wrap;overflow-wrap:break-word;line-height:1.85;font-size:16.5px}
 mark{color:inherit;border-radius:4px;padding:2px 0;cursor:pointer;-webkit-box-decoration-break:clone;box-decoration-break:clone;transition:filter .15s}
 mark:hover{filter:brightness(1.25) saturate(1.2)}
-mark.m1{background:var(--exact-bg);box-shadow:inset 0 -2px var(--exact)}
-mark.m2{background:var(--para-bg);box-shadow:inset 0 -2px var(--para)}
-mark.m3{background:var(--cite-bg);box-shadow:inset 0 -2px var(--cite)}
+mark.m1{background:linear-gradient(var(--exact-bg),var(--exact-bg)) no-repeat 0 0/100% 100%;box-shadow:inset 0 -2px var(--exact)}
+mark.m2{background:linear-gradient(var(--para-bg),var(--para-bg)) no-repeat 0 0/100% 100%;box-shadow:inset 0 -2px var(--para)}
+mark.m3{background:linear-gradient(var(--cite-bg),var(--cite-bg)) no-repeat 0 0/100% 100%;box-shadow:inset 0 -2px var(--cite)}
 mark.dim{background:none;box-shadow:inset 0 -1px var(--line)}
 mark.sel{outline:2px solid var(--accent);outline-offset:1px}
 sup.ref{font-size:10px;color:var(--muted);margin:0 2px 0 1px;user-select:none}
@@ -231,7 +233,7 @@ footer{color:var(--muted);font-size:13px;margin-top:24px;line-height:1.65;displa
 
 @media (max-width:1100px){.berg{width:380px;top:calc(var(--water) - 154px)}.lead h1{max-width:54%}.lead p{max-width:50%}}
 @media (max-width:860px){
-  .cols{grid-template-columns:1fr}.side{position:static;max-height:none}
+  .cols{grid-template-columns:minmax(0,1fr)}.side{position:static;max-height:none}
   .sum{grid-template-columns:1fr;justify-items:center;text-align:center}.legend{grid-template-columns:repeat(2,minmax(0,1fr));text-align:left;width:100%}
   .depth{grid-template-columns:1fr}.card{padding:20px;border-radius:20px}.brand small{display:none}
   .berg{opacity:.32;right:-110px}.lead h1,.lead p{max-width:none}
@@ -244,8 +246,150 @@ footer{color:var(--muted);font-size:13px;margin-top:24px;line-height:1.65;displa
     --ok:#0fa87c;--exact:#e2474f;--para:#d99400;--cite:#2f8fe0;--exact-bg:#ffdcdc;--para-bg:#ffeab5;--cite-bg:#d3eaff;--warn-bg:#fff4d8;--warn-ink:#6a4b00;--warn-edge:#f1d389;--shadow:none}
   .hero,.actions,.src input,#detail,footer,#inputCard,#progressCard,.feats{display:none!important}
   .wrap{margin:0!important;padding:0}.card{border:0;padding:0 0 18px;backdrop-filter:none}
-  .side{position:static;max-height:none}.cols{grid-template-columns:1fr}
+  .side{position:static;max-height:none}.cols{grid-template-columns:minmax(0,1fr)}
 }
+
+/* ================= движение ================= */
+/* открытие: небо разгорается, море поднимается, айсберг всплывает, заголовок проявляется по словам */
+@keyframes fadeIn{from{opacity:0}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}}
+@keyframes skyIn{from{opacity:0;transform:scale(1.12)}}
+@keyframes seaIn{from{opacity:0;transform:translateY(60px)}}
+@keyframes bergUp{from{opacity:0;transform:translateY(150px) scale(.92)}}
+@keyframes dropIn{from{opacity:0;transform:translateY(-16px)}}
+@keyframes wordUp{from{transform:translateY(108%) rotate(4deg);opacity:0}}
+@keyframes cardIn{from{opacity:0;transform:translateY(48px) scale(.98);filter:blur(8px)}}
+@keyframes lineIn{from{transform:scaleX(0)}}
+.js #sky{animation:skyIn 2.6s cubic-bezier(.2,.8,.2,1) both}
+.js .stars{animation:fadeIn 2.2s .3s ease-out both,twinkle 5s 2.5s ease-in-out infinite alternate}
+.js .stars.s2{animation:fadeIn 2.2s .6s ease-out both,twinkle 7s 2.8s ease-in-out infinite alternate}
+.js .sea{animation:seaIn 1.7s .15s cubic-bezier(.16,1,.3,1) both}
+.js .sea::before{transform-origin:50% 50%;animation:lineIn 1.6s .5s cubic-bezier(.16,1,.3,1) both}
+.js .berg{animation:bergUp 2s .4s cubic-bezier(.16,1,.3,1) both,float 7s 2.4s ease-in-out infinite}
+.js .nav{animation:dropIn .9s .15s cubic-bezier(.2,.8,.2,1) both}
+.js .lead h1{visibility:hidden}.js .lead h1.split{visibility:visible}
+.lead h1 .w{display:inline-block;overflow:hidden;vertical-align:top;padding:0 .02em .1em;margin:0 -.02em -.1em}
+.lead h1 .w>span{display:inline-block;transform-origin:0 100%}
+.js .lead h1 .w>span{animation:wordUp 1.1s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(.55s + var(--i)*.08s)}
+.js .lead p{animation:fadeUp 1s 1.05s cubic-bezier(.2,.8,.2,1) both}
+.js .pills span{animation:fadeUp .8s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(1.2s + var(--i)*.08s)}
+.js #inputCard.rise{animation:cardIn 1.2s 1.1s cubic-bezier(.16,1,.3,1) both}
+.js .sections a{animation:fadeUp .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(1.5s + var(--i)*.06s)}
+
+/* параллакс: сцена слегка следует за курсором */
+.hero{--mx:0;--my:0}
+.bergwrap{position:absolute;inset:0;pointer-events:none;transform:translate3d(calc(var(--mx)*16px),calc(var(--my)*7px),0);transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+#sky{translate:calc(var(--mx)*-12px) calc(var(--my)*-6px);transition:translate 1.2s cubic-bezier(.2,.8,.2,1),height .5s}
+.stars{translate:calc(var(--mx)*-5px) calc(var(--my)*-3px);transition:translate 1.4s cubic-bezier(.2,.8,.2,1)}
+#snow{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.nav,.lead{z-index:2}
+
+/* появление при прокрутке */
+.js .reveal{opacity:0;transform:translateY(34px) scale(.98);transition:opacity 1s cubic-bezier(.2,.8,.2,1),transform 1s cubic-bezier(.16,1,.3,1);transition-delay:calc(var(--i,0)*.1s)}
+.js .reveal.in{opacity:1;transform:none}
+
+/* свет под курсором и подъём карточек */
+.feat::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .35s;
+  background:radial-gradient(280px circle at var(--px,50%) var(--py,50%),color-mix(in srgb,var(--accent) 22%,transparent),transparent 62%)}
+.feat:hover::after{opacity:1}
+.js .feat.reveal.in{transition:opacity 1s cubic-bezier(.2,.8,.2,1),transform .45s cubic-bezier(.16,1,.3,1),border-color .3s}
+.feat:hover{transform:translateY(-5px)!important;border-color:color-mix(in srgb,var(--accent) 45%,var(--edge))}
+.card{transition:border-color .35s,box-shadow .35s}
+#inputCard:focus-within{border-color:color-mix(in srgb,var(--accent) 40%,var(--edge));box-shadow:var(--shadow),0 0 0 1px color-mix(in srgb,var(--accent) 25%,transparent),0 30px 80px -40px color-mix(in srgb,var(--accent) 55%,transparent)}
+
+/* кнопки: блик, волна от нажатия, отклик */
+.btn,.ghost{position:relative;overflow:hidden}
+.btn{transition:border-color .15s,color .15s,background .15s,transform .15s}
+.btn:active,.ghost:active{transform:scale(.97)}
+.primary{overflow:hidden;isolation:isolate}
+.primary::after{content:"";position:absolute;top:0;bottom:0;left:-75%;width:55%;z-index:-1;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.6),transparent);transform:skewX(-20deg);animation:shine 5s 2.8s ease-in-out infinite}
+@keyframes shine{0%,72%{left:-75%}100%{left:135%}}
+.primary:active{transform:scale(.97)}
+.ripple{position:absolute;border-radius:50%;background:currentColor;opacity:.22;transform:scale(0);animation:ripple .7s cubic-bezier(.2,.8,.2,1) forwards;pointer-events:none}
+@keyframes ripple{to{transform:scale(2.6);opacity:0}}
+.depth label,.chips label{transition:box-shadow .2s,background .2s,translate .2s,border-color .2s,color .2s}
+.chips label:active,.depth label:active{scale:.97}
+.chips label:has(input:checked) i{animation:pop .35s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{50%{transform:scale(1.25)}}
+
+/* смена экранов */
+.enter{animation:cardIn .85s cubic-bezier(.16,1,.3,1) both}
+#report.enter{animation:none}
+#report.enter>*{animation:cardIn .9s cubic-bezier(.16,1,.3,1) both}
+#report.enter .cols>*:nth-child(1){animation:cardIn .9s .12s cubic-bezier(.16,1,.3,1) both}
+#report.enter .cols>*:nth-child(2){animation:cardIn .9s .22s cubic-bezier(.16,1,.3,1) both}
+#report .cols>.card{animation:none}
+
+/* ход проверки: счётчики подпрыгивают, плитки мерцают льдом */
+.tiles div{position:relative;overflow:hidden}
+.tiles div::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,color-mix(in srgb,var(--accent) 14%,transparent) 50%,transparent 70%);
+  transform:translateX(-100%);animation:sweep 2.6s ease-in-out infinite;animation-delay:calc(var(--i,0)*.35s)}
+@keyframes sweep{60%,100%{transform:translateX(100%)}}
+.tiles b{display:inline-block;transform-origin:0 70%}
+.tiles b.bump{animation:bump .5s cubic-bezier(.3,1.5,.5,1)}
+@keyframes bump{40%{transform:scale(1.18);color:var(--accent)}}
+#stage{transition:opacity .25s}
+#stage.fade{opacity:.35}
+.ship::before{content:""}
+
+/* отчёт: кольцо светится, плитки и источники выезжают по очереди, маркер прорисовывает совпадения */
+.gauge::before{content:"";position:absolute;inset:18px;border-radius:50%;background:conic-gradient(from 0deg,#5ef2d0,#5aa0ff,#8b7bff,#ff5d78,#5ef2d0);
+  filter:blur(30px);opacity:.3;animation:spin 14s linear infinite}
+@keyframes spin{to{transform:rotate(1turn)}}
+.gauge>span,.gauge>div{position:relative;z-index:1}
+.gauge>div{position:absolute}
+.stagger .legend div,.stagger .src,.stagger .alert,.stagger .note{animation:fadeUp .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.45s + var(--i,0)*.06s)}
+.stagger mark{animation:markIn 1s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.6s + var(--i,0)*.045s)}
+@keyframes markIn{from{background-size:0% 100%;box-shadow:inset 0 0 transparent}}
+.src{transition:background .25s,opacity .25s}
+.src .meter i{transform-origin:0 50%}
+.stagger .src .meter i{animation:lineIn 1.1s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(.7s + var(--i,0)*.06s)}
+#detail{animation:fadeUp .45s cubic-bezier(.2,.8,.2,1)}
+mark.sel{animation:selPulse 1.2s ease-out}
+@keyframes selPulse{0%{outline-offset:6px;outline-color:transparent}}
+
+/* окно коллекции */
+.modal{display:flex;opacity:0;visibility:hidden;transition:opacity .35s,visibility 0s .35s}
+.modal.on{opacity:1;visibility:visible;transition:opacity .35s}
+.modal .card{transform:translateY(30px) scale(.96);transition:transform .55s cubic-bezier(.16,1,.3,1)}
+.modal.on .card{transform:none}
+
+/* смена темы — круг от кнопки (там, где браузер умеет) */
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+
+/* кнопка у нижнего края на телефоне */
+.fab{display:none;position:fixed;z-index:9;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translate(-50%,160%);
+  transition:transform .5s cubic-bezier(.16,1,.3,1);padding:15px 28px;box-shadow:0 18px 40px -12px rgba(0,0,0,.6),0 10px 30px -10px rgba(90,160,255,.8)}
+.fab.show,.fab.show:hover{transform:translate(-50%,0)}
+@media (max-width:860px){
+  .fab{display:inline-flex}
+  .hero{min-height:600px;--water:330px}
+  .lead{margin-top:10px}
+  .lead p{font-size:16.5px}
+  .pills{margin-top:18px}
+  .wrap{margin-top:-120px}
+  .berg{width:330px;right:-70px;top:calc(var(--water) - 134px);opacity:.42}
+  #text{min-height:200px;font-size:16px}
+  .feat:hover{transform:none!important}
+  .depth b{font-size:14px}
+  .gauge{width:184px;height:184px}
+  .tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .tiles div{padding:11px 10px;border-radius:14px}
+  .tiles b{font-size:22px}
+  .tiles span{font-size:12.5px;line-height:1.25;display:block;margin-top:4px}
+  .tiles span i.l{display:none}
+  .gauge div>span{font-size:10.5px;letter-spacing:.08em}
+  #progressCard .row{align-items:flex-start}
+  footer{padding-bottom:70px}
+}
+@media (max-width:420px){
+  .hero{min-height:620px}
+  .lead h1{font-size:30px}
+  .legend b{font-size:18px}
+}
+html.calm *,html.calm *::before,html.calm *::after{animation:none!important;transition:none!important}
+html.calm .js .reveal,html.calm .reveal{opacity:1;transform:none}
 </style>
 </head>
 <body>
@@ -253,6 +397,7 @@ footer{color:var(--muted);font-size:13px;margin-top:24px;line-height:1.65;displa
   <canvas id="sky" aria-hidden="true"></canvas>
   <div class="stars"></div><div class="stars s2"></div>
   <div class="sea"></div>
+  <div class="bergwrap">
   <svg class="berg" viewBox="0 0 520 560" aria-hidden="true">
     <defs>
       <linearGradient id="deep" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset=".55" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity=".08"/></linearGradient>
@@ -278,6 +423,8 @@ footer{color:var(--muted);font-size:13px;margin-top:24px;line-height:1.65;displa
     <path d="M190 130l40 20 35-90" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1"/>
     <ellipse cx="290" cy="211" rx="170" ry="5" fill="#bff3ff" fill-opacity=".5"/>
   </svg>
+  </div>
+  <canvas id="snow" aria-hidden="true"></canvas>
   <div class="nav">
     <div class="brand">
       <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M18 3l7 11-3.5 2.2L26 20H10l3.6-6L11 11.6z" fill="#fff"/><path d="M18 3l7 11-3.5 2.2L18 12z" fill="#bfe6ff"/><path d="M8 23h20l-3.4 6.2L18 32l-6.6-2.8z" fill="#46d9ff" opacity=".8"/><path d="M3 21.5h30" stroke="#9fe8ff" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -341,9 +488,9 @@ footer{color:var(--muted);font-size:13px;margin-top:24px;line-height:1.65;displa
 </section>
 
 <div class="feats" id="feats">
-  <div class="feat rise" style="animation-delay:.08s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M4 12h16M4 17h8"/><path d="M17 15l3 3-3 3"/></svg><b>Видит перефразирование</b><span>Сравнивает основы слов и переживает замену, вставку и перестановку слов — не только копипаст.</span></div>
-  <div class="feat rise" style="animation-delay:.16s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><b>Не поддаётся уловкам</b><span>Замена букв латиницей, невидимые символы и скрытый белый текст распознаются и обезвреживаются.</span></div>
-  <div class="feat rise" style="animation-delay:.24s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><b>Полный отчёт бесплатно</b><span>Каждый фрагмент с источником и ссылкой, исключение источников, выгрузка отчёта в файл.</span></div>
+  <div class="feat reveal" style="--i:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M4 12h16M4 17h8"/><path d="M17 15l3 3-3 3"/></svg><b>Видит перефразирование</b><span>Сравнивает основы слов и переживает замену, вставку и перестановку слов — не только копипаст.</span></div>
+  <div class="feat reveal" style="--i:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><b>Не поддаётся уловкам</b><span>Замена букв латиницей, невидимые символы и скрытый белый текст распознаются и обезвреживаются.</span></div>
+  <div class="feat reveal" style="--i:2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><b>Полный отчёт бесплатно</b><span>Каждый фрагмент с источником и ссылкой, исключение источников, выгрузка отчёта в файл.</span></div>
 </div>
 
 <section class="card hide" id="progressCard">
@@ -352,9 +499,9 @@ footer{color:var(--muted);font-size:13px;margin-top:24px;line-height:1.65;displa
     <button class="btn" id="btnCancel">Отменить</button>
   </div>
   <div class="tiles">
-    <div><b id="cQ">0</b><span>поисковых запросов</span></div>
-    <div><b id="cP">0</b><span>страниц просмотрено</span></div>
-    <div><b id="cS">0</b><span>источников с совпадениями</span></div>
+    <div><b id="cQ">0</b><span><i class="l">поисковых </i>запросов</span></div>
+    <div><b id="cP">0</b><span>страниц<i class="l"> просмотрено</i></span></div>
+    <div><b id="cS">0</b><span>источников<i class="l"> с совпадениями</i></span></div>
   </div>
   <div class="voyage">
     <div class="ice"><div class="water" id="water"></div></div>
@@ -409,6 +556,8 @@ footer{color:var(--muted);font-size:13px;margin-top:24px;line-height:1.65;displa
   <div class="dev"><i>S</i>Разработчик: <a href="https://t.me/skf29" target="_blank" rel="noopener">@skf29</a> · Неофициальный сервис, не связан с САФУ</div>
 </footer>
 </div>
+
+<button class="primary fab" id="fab" type="button" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>Проверить текст</button>
 
 <div class="modal" id="modal">
   <div class="card">
@@ -737,6 +886,123 @@ $('btnClose').onclick = () => $('modal').classList.remove('on');
 $('modal').addEventListener('click', e => { if(e.target === $('modal')) $('modal').classList.remove('on'); });
 document.addEventListener('keydown', e => { if(e.key === 'Escape') $('modal').classList.remove('on'); });
 updateCounter();
+
+/* ================= движение ================= */
+(function(){
+  /* заголовок по словам */
+  const h1 = document.querySelector('.lead h1');
+  if(h1 && !h1.classList.contains('split')){
+    let i = 0;
+    const wrap = node => { const w = document.createElement('span'); w.className = 'w'; const inner = document.createElement('span'); inner.style.setProperty('--i', i++); inner.appendChild(node); w.appendChild(inner); return w; };
+    [...h1.childNodes].forEach(n => {
+      if(n.nodeType === 3){
+        const frag = document.createDocumentFragment();
+        n.textContent.split(/(\s+)/).forEach(part => { if(!part) return; frag.appendChild(/\s/.test(part) ? document.createTextNode(part) : wrap(document.createTextNode(part))); });
+        h1.replaceChild(frag, n);
+      } else h1.replaceChild(wrap(n.cloneNode(true)), n);
+    });
+    h1.classList.add('split');
+  }
+  document.querySelectorAll('.pills span, .sections a').forEach((el, k, all) => el.style.setProperty('--i', k));
+
+  /* появление при прокрутке */
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }), {threshold: .15}) : null;
+  document.querySelectorAll('.reveal').forEach(el => io ? io.observe(el) : el.classList.add('in'));
+
+  if(calm) return;
+  /* параллакс за курсором */
+  const hero = $('hero');
+  if(matchMedia('(hover: hover)').matches){
+    let raf = 0, mx = 0, my = 0;
+    hero.addEventListener('pointermove', e => {
+      const r = hero.getBoundingClientRect(); mx = (e.clientX - r.left) / r.width * 2 - 1; my = (e.clientY - r.top) / r.height * 2 - 1;
+      if(!raf) raf = requestAnimationFrame(() => { raf = 0; hero.style.setProperty('--mx', mx.toFixed(3)); hero.style.setProperty('--my', my.toFixed(3)); window.__wind = mx; });
+    });
+    hero.addEventListener('pointerleave', () => { hero.style.setProperty('--mx', 0); hero.style.setProperty('--my', 0); window.__wind = 0; });
+  }
+  /* снег */
+  const cv = $('snow'), ctx = cv.getContext('2d');
+  const N = matchMedia('(max-width: 860px)').matches ? 45 : 110;
+  let W = 0, H = 0, dpr = Math.min(2, devicePixelRatio || 1), flakes = [], last = 0;
+  const size = () => { W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#fff'; };
+  const flake = top => ({x: Math.random() * W, y: top ? -6 : Math.random() * H, r: Math.random() * 1.7 + .35, v: Math.random() * .45 + .2, d: Math.random() * 6.28, o: Math.random() * .55 + .25});
+  size(); flakes = Array.from({length: N}, () => flake(false));
+  (function tick(t){
+    requestAnimationFrame(tick);
+    if(document.hidden || !W) return;
+    const dt = Math.min(48, t - last || 16); last = t;
+    ctx.clearRect(0, 0, W, H);
+    const wind = (window.__wind || 0) * .5;
+    for(const f of flakes){
+      f.y += f.v * dt * .06 * (1 + f.r * .3); f.d += dt * .0011; f.x += Math.sin(f.d) * .3 + wind * f.r * .4;
+      if(f.y > H + 6 || f.x < -8 || f.x > W + 8) Object.assign(f, flake(true));
+      ctx.globalAlpha = f.o; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.2832); ctx.fill();
+    }
+  })(0);
+  addEventListener('resize', size);
+  /* свет под курсором на карточках */
+  document.querySelectorAll('.feat').forEach(el => el.addEventListener('pointermove', e => {
+    const r = el.getBoundingClientRect(); el.style.setProperty('--px', (e.clientX - r.left) + 'px'); el.style.setProperty('--py', (e.clientY - r.top) + 'px');
+  }));
+  /* волна от нажатия */
+  document.addEventListener('pointerdown', e => {
+    const b = e.target.closest('.primary,.btn,.ghost'); if(!b) return;
+    const r = b.getBoundingClientRect(), s = Math.max(r.width, r.height) * 1.2, sp = document.createElement('span');
+    sp.className = 'ripple'; sp.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX - r.left - s / 2}px;top:${e.clientY - r.top - s / 2}px`;
+    b.appendChild(sp); setTimeout(() => sp.remove(), 750);
+  });
+})();
+
+/* смена темы кругом от кнопки */
+$('btnTheme').onclick = e => {
+  const apply = () => {
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    if(next === 'light') document.documentElement.dataset.theme = 'light'; else delete document.documentElement.dataset.theme;
+    try{ localStorage.setItem('theme', next); }catch(err){}
+  };
+  if(calm || !document.startViewTransition) return apply();
+  const x = e.clientX || innerWidth - 40, y = e.clientY || 40, r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  document.startViewTransition(apply).ready.then(() => document.documentElement.animate(
+    {clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`]},
+    {duration: 700, easing: 'cubic-bezier(.2,.8,.2,1)', pseudoElement: '::view-transition-new(root)'})).catch(() => {});
+};
+
+/* смена экранов с анимацией */
+const showPlain = show;
+show = function(which){
+  showPlain(which);
+  const el = $(which); el.classList.remove('rise', 'enter'); void el.offsetWidth; el.classList.add('enter');
+  updateFab();
+};
+/* счётчики подпрыгивают, когда растут */
+const setCountersPlain = setCounters;
+setCounters = function(c){
+  const before = ['cQ', 'cP', 'cS'].map(id => $(id).textContent);
+  setCountersPlain(c);
+  ['cQ', 'cP', 'cS'].forEach((id, k) => { if($(id).textContent !== before[k] && !calm){ const b = $(id); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } });
+};
+document.querySelectorAll('.tiles div').forEach((d, k) => d.style.setProperty('--i', k));
+/* отчёт: всё выезжает по очереди, маркер прорисовывает совпадения */
+const openReportPlain = openReport;
+openReport = function(R){
+  openReportPlain(R);
+  const rep = $('report');
+  rep.querySelectorAll('.legend div, .alert, .note').forEach((el, k) => el.style.setProperty('--i', k));
+  rep.querySelectorAll('.src').forEach((el, k) => el.style.setProperty('--i', Math.min(k, 14)));
+  rep.querySelectorAll('#doc mark').forEach((el, k) => el.style.setProperty('--i', Math.min(k, 40)));
+  rep.classList.remove('stagger'); void rep.offsetWidth; rep.classList.add('stagger');
+  clearTimeout(window.__stg); window.__stg = setTimeout(() => rep.classList.remove('stagger'), 4500);
+};
+
+/* кнопка «Проверить» у нижнего края на телефоне, когда основная уехала за экран */
+let mainBtnVisible = true;
+function updateFab(){
+  const fab = $('fab'), words = ($('text').value.match(/[\p{L}\p{N}]+/gu) || []).length;
+  fab.classList.toggle('show', !$('inputCard').classList.contains('hide') && !mainBtnVisible && words >= 20);
+}
+if('IntersectionObserver' in window) new IntersectionObserver(es => { mainBtnVisible = es[0].isIntersecting; updateFab(); }).observe($('btnCheck'));
+$('text').addEventListener('input', updateFab);
+$('fab').onclick = () => $('btnCheck').click();
 </script>
 </body>
 </html>
