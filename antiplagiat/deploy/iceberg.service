@@ -1,0 +1,18 @@
+# Служба для своего сервера (VPS). Положить в /etc/systemd/system/iceberg.service,
+# заменить ПОЛЬЗОВАТЕЛЬ и путь, затем: systemctl daemon-reload && systemctl enable --now iceberg
+[Unit]
+Description=Iceberg plagiarism checker
+After=network-online.target
+
+[Service]
+User=ПОЛЬЗОВАТЕЛЬ
+WorkingDirectory=/opt/iceberg
+Environment=ICEBERG_PUBLIC=1 PORT=8765 HOST=127.0.0.1
+ExecStart=/usr/bin/python3 /opt/iceberg/app.py --public
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
