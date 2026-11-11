@@ -31,8 +31,74 @@ function clock(now) {
   return { h, dayStart, weekStart: h - 24 * 7 + 1, from48: h - 47, cut: now - ONLINE_MS };
 }
 
+/* ---------- расходы и бесплатные лимиты Yandex Cloud ----------
+   Берутся из регулярной выгрузки детализации биллинга в бакет Object Storage (CSV раз в сутки).
+   Переменные: BILLING_BUCKET — бакет, BILLING_PREFIX — папка выгрузки. Сервисному аккаунту нужна роль storage.viewer.
+   Ответ кэшируется на 15 минут, чтобы не тратить запросы к хранилищу. */
+const FREE = [   // бесплатный объём в месяц (yandex.cloud/ru/docs/billing/concepts/serverless-free-tier)
+  { key: 'calls', label: 'Вызовы функций', service: /function/i, sku: /вызов|invocation|call/i, limit: 1e6, unit: 'вызовов' },
+  { key: 'compute', label: 'Время работы функций', service: /function/i, sku: /время|execution|comput|гб.*ч|gb.*h/i, limit: 10, unit: 'ГБ×ч' },
+  { key: 'ydbru', label: 'Запросы к базе YDB', service: /ydb|database/i, sku: /request|запрос/i, limit: 1e6, unit: 'RU' },
+  { key: 'ydbgb', label: 'Данные в YDB', service: /ydb|database/i, sku: /хранен|storage|данн/i, limit: 1, unit: 'ГБ' },
+];
+function parseCsv(text) {
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; continue; }
+    if (c === '"') q = true; else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  const head = (rows.shift() || []).map(h => h.trim());
+  return rows.filter(r => r.length === head.length).map(r => Object.fromEntries(head.map((h, i) => [h, r[i]])));
+}
+let usageCache = null;
+async function billingUsage(context, now) {
+  const bucket = process.env.BILLING_BUCKET, prefix = (process.env.BILLING_PREFIX || '').replace(/^\//, '');
+  const tok = context && context.token && context.token.access_token;
+  if (!bucket || !tok) return null;
+  if (usageCache && now - usageCache.at < 15 * 60e3) return usageCache.data;
+  const H = { 'X-YaCloud-SubjectToken': tok }, base = 'https://storage.yandexcloud.net/' + bucket;
+  const month = new Date(now + MSK).toISOString().slice(0, 7);          // «2026-11» по Москве
+  const keys = []; let token = '';
+  for (let page = 0; page < 10; page++) {
+    const r = await fetch(base + '?list-type=2&prefix=' + encodeURIComponent(prefix) + (token ? '&continuation-token=' + encodeURIComponent(token) : ''), { headers: H, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error('бакет выгрузки ответил ' + r.status);
+    const xml = await r.text();
+    for (const m of xml.matchAll(/<Key>([^<]+)<\/Key>/g)) if (/\.csv$/i.test(m[1])) keys.push(m[1]);
+    token = (/<NextContinuationToken>([^<]+)</.exec(xml) || [])[1];
+    if (!token) break;
+  }
+  const mm = month.replace('-', '');
+  const files = keys.filter(k => k.includes(month) || k.includes(mm)).slice(-40);
+  const skus = new Map(); let cost = 0, last = '';
+  for (const k of files) {
+    const r = await fetch(base + '/' + k.split('/').map(encodeURIComponent).join('/'), { headers: H, signal: AbortSignal.timeout(10000) });
+    if (!r.ok) continue;
+    for (const row of parseCsv(await r.text())) {
+      const date = row.date || row.Date || '';
+      if (date && !date.startsWith(month)) continue;
+      if (date > last) last = date;
+      const name = (row.service_name || '') + ' · ' + (row.sku_name || row.sku_id || '');
+      const e = skus.get(name) || { service: row.service_name || '', sku: row.sku_name || row.sku_id || '', unit: row.pricing_unit || '', quantity: 0, cost: 0 };
+      e.quantity += parseFloat(row.pricing_quantity) || 0; e.cost += parseFloat(row.cost) || 0;
+      skus.set(name, e); cost += parseFloat(row.cost) || 0;
+    }
+  }
+  const list = [...skus.values()].sort((a, b) => b.cost - a.cost || b.quantity - a.quantity);
+  const free = FREE.map(f => {
+    const used = list.filter(e => f.service.test(e.service) && f.sku.test(e.sku)).reduce((s, e) => s + e.quantity, 0);
+    return { key: f.key, label: f.label, unit: f.unit, limit: f.limit, used };
+  });
+  const data = { month, cost: Math.round(cost * 100) / 100, updated: last, files: files.length, free, skus: list.slice(0, 20) };
+  usageCache = { at: now, data };
+  return data;
+}
+
 /** Логика поверх хранилища db: beat(row), stats(clock) → ответ, purge(hour). */
-async function handle(method, body, headers, db, now = Date.now()) {
+async function handle(method, body, headers, db, now = Date.now(), context = null) {
   if (method === 'POST') {
     const s = body && String(body.s || ''), p = body && String(body.p || '');
     if (!/^[\w-]{8,40}$/.test(s) || !/^[a-z]{2,20}$/.test(p)) return [400, { error: 'bad' }];
@@ -48,7 +114,9 @@ async function handle(method, body, headers, db, now = Date.now()) {
     const c = clock(now);
     const res = await db.stats(c);
     if (Math.random() < 0.05) db.purge(c.h - KEEP_HOURS).catch(() => {});   // изредка чистим старое
-    return [200, { now, ...res }];
+    let usage = null, usageError = null;
+    try { usage = await billingUsage(context, now); } catch (e) { usageError = e.message; }
+    return [200, { now, ...res, usage, usageError }];
   }
   return [405, { error: 'Метод не поддерживается.' }];
 }
@@ -140,11 +208,11 @@ module.exports.handler = async (event, context) => {
   try { body = body ? JSON.parse(body) : {}; } catch (e) { return reply(400, { error: 'bad' }, head); }
   try {
     const db = process.env.YDB_DATABASE ? ydbDb(context) : (mem = mem || memoryDb());
-    const [status, obj] = await handle(method, body, h, db);
+    const [status, obj] = await handle(method, body, h, db, Date.now(), context);
     return status === 204 ? { statusCode: 204, headers: head, body: '' } : reply(status, obj, head);
   } catch (e) {
     console.error('pulse', e && e.message);
     return reply(500, { error: 'Статистика сейчас недоступна.' }, head);
   }
 };
-module.exports._test = { handle, memoryDb, clock };
+module.exports._test = { handle, memoryDb, clock, parseCsv, billingUsage };

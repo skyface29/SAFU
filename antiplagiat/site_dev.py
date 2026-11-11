@@ -126,7 +126,15 @@ def pulse_stats():
             hourly.setdefault((hh, p), set()).add(sid)
     return {"now": now, "online": by(on), "onlineTotal": total(on), "today": by(lambda hh, t: hh >= day),
             "todayTotal": total(lambda hh, t: hh >= day), "weekTotal": total(lambda hh, t: hh >= h - 167),
-            "hourly": [{"h": hh, "p": p, "n": len(v)} for (hh, p), v in sorted(hourly.items())]}
+            "hourly": [{"h": hh, "p": p, "n": len(v)} for (hh, p), v in sorted(hourly.items())],
+            # пример того, что вернёт выгрузка биллинга (у себя — выдуманные цифры)
+            "usage": {"month": time.strftime("%Y-%m"), "cost": 0.0, "updated": time.strftime("%Y-%m-%d"), "files": 11,
+                      "free": [{"key": "calls", "label": "Вызовы функций", "unit": "вызовов", "limit": 1e6, "used": 431250},
+                               {"key": "compute", "label": "Время работы функций", "unit": "ГБ×ч", "limit": 10, "used": 2.37},
+                               {"key": "ydbru", "label": "Запросы к базе YDB", "unit": "RU", "limit": 1e6, "used": 742000},
+                               {"key": "ydbgb", "label": "Данные в YDB", "unit": "ГБ", "limit": 1, "used": 0.04}],
+                      "skus": [{"service": "Cloud Functions", "sku": "Вызовы функций", "unit": "вызов", "quantity": 431250, "cost": 0},
+                               {"service": "Managed Service for YDB", "sku": "Запросы (Request Units)", "unit": "RU", "quantity": 742000, "cost": 0}]}}
 
 
 class Handler(BaseHTTPRequestHandler):

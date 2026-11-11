@@ -50,6 +50,22 @@ button{font:inherit;color:inherit;cursor:pointer}
 .err{color:var(--warn);font-size:14px;min-height:1.4em;margin-top:10px}
 .note{color:var(--muted);font-size:13px;margin-top:26px;max-width:720px}
 .hide{display:none!important}
+.limits{margin-bottom:20px}
+.lim-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.spent{font:400 40px/1 var(--display);letter-spacing:-.04em;margin-top:12px;font-variant-numeric:tabular-nums}
+.spent.ok{color:var(--a1)}.spent.bad{color:var(--warn)}
+.gauges{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:22px}
+.g{border:1px solid var(--line);border-radius:16px;padding:14px 16px;background:rgba(0,0,0,.18)}
+.g b{display:block;font-size:14px;font-weight:500}
+.g .v{display:flex;justify-content:space-between;color:var(--muted);font-size:12.5px;margin-top:8px;font-variant-numeric:tabular-nums}
+.g .track{height:6px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}
+.g .track span{display:block;height:100%;border-radius:3px;transition:width .9s var(--ease)}
+details{margin-top:16px;color:var(--ink2);font-size:13.5px}
+details summary{cursor:pointer;color:var(--muted)}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+td,th{text-align:left;padding:7px 6px;border-top:1px solid var(--line);font-weight:400}
+th{color:var(--muted);border-top:0}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 @media (max-width:760px){.hero{grid-template-columns:1fr}.totals{grid-template-rows:none;grid-template-columns:1fr 1fr}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -81,6 +97,14 @@ button{font:inherit;color:inherit;cursor:pointer}
         <div class="card"><span class="label">Сегодня</span><b id="today">0</b></div>
         <div class="card"><span class="label">За 7 дней</span><b id="week">0</b></div>
       </div>
+    </div>
+    <div class="card limits" id="limits">
+      <div class="lim-head">
+        <div><span class="label">Yandex Cloud · этот месяц</span><div class="spent" id="spent">—</div></div>
+        <div class="muted" id="limNote" style="color:var(--muted);font-size:13px;max-width:420px;text-align:right"></div>
+      </div>
+      <div class="gauges" id="gauges"></div>
+      <details id="limDetails" class="hide"><summary>Все строки детализации</summary><table id="skus"></table></details>
     </div>
     <div class="secs" id="secs"></div>
     <div class="card chart">
@@ -131,6 +155,27 @@ function render(d){
     '<div class="n">' + ((d.online || {})[p] || 0).toLocaleString('ru-RU') + '</div><div class="d">сейчас · за сегодня ' + ((d.today || {})[p] || 0).toLocaleString('ru-RU') + '</div>' +
     '<div class="bar"><span style="width:' + (100 * ((d.online || {})[p] || 0) / maxOn) + '%"></span></div></div>').join('');
   drawChart(d);
+  drawLimits(d);
+}
+function drawLimits(d){
+  const u = d.usage;
+  if(!u){
+    $('spent').textContent = '—'; $('spent').className = 'spent'; $('gauges').innerHTML = ''; $('limDetails').classList.add('hide');
+    $('limNote').textContent = d.usageError ? 'Не удалось прочитать детализацию: ' + d.usageError : 'Лимиты не подключены: включите выгрузку детализации биллинга в бакет (stats-api/README.md).';
+    return;
+  }
+  $('spent').textContent = 'потрачено ' + u.cost.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₽';
+  $('spent').className = 'spent ' + (u.cost > 0 ? 'bad' : 'ok');
+  $('limNote').textContent = (u.cost > 0 ? 'Есть платное потребление — смотрите строки ниже. ' : 'Всё в бесплатном объёме. ') + (u.updated ? 'Данные Яндекса на ' + u.updated + ', обновляются раз в сутки.' : '');
+  $('gauges').innerHTML = u.free.map(f => {
+    const pct = Math.min(100, 100 * f.used / f.limit), col = pct >= 90 ? 'var(--warn)' : pct >= 70 ? '#f6c25b' : 'var(--a1)';
+    const fmtN = v => v >= 1000 ? Math.round(v).toLocaleString('ru-RU') : (Math.round(v * 100) / 100).toLocaleString('ru-RU');
+    return '<div class="g"><b>' + esc(f.label) + '</b><div class="track"><span style="width:' + pct + '%;background:' + col + '"></span></div>' +
+      '<div class="v"><span>' + fmtN(f.used) + ' из ' + fmtN(f.limit) + ' ' + esc(f.unit) + '</span><span>' + Math.round(pct) + '%</span></div></div>';
+  }).join('');
+  $('skus').innerHTML = '<tr><th>Сервис и услуга</th><th class="r">Объём</th><th class="r">₽</th></tr>' + u.skus.map(e =>
+    '<tr><td>' + esc(e.service) + ' · ' + esc(e.sku) + '</td><td class="r">' + (Math.round(e.quantity * 1000) / 1000).toLocaleString('ru-RU') + ' ' + esc(e.unit) + '</td><td class="r">' + e.cost.toFixed(2) + '</td></tr>').join('');
+  $('limDetails').classList.toggle('hide', !u.skus.length);
 }
 function drawChart(d){
   const hNow = Math.floor(d.now / 3600e3), hours = Array.from({length: 48}, (_, k) => hNow - 47 + k);
