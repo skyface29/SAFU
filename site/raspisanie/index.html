@@ -243,6 +243,31 @@ footer a{color:var(--aur1);text-decoration:none;font-weight:800}
 .dev{display:inline-flex;align-items:center;gap:9px;color:var(--tx2)}
 .dev .d{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--aur1),var(--aur2));display:grid;place-items:center;color:#fff;font:800 11px var(--ff-d)}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
+/* счётчик пар за неделю: по предметам и видам занятий */
+.wk{padding:0;margin-bottom:14px;overflow:hidden}
+.wk>summary{list-style:none;cursor:pointer;padding:14px 17px;display:grid;gap:9px;-webkit-tap-highlight-color:transparent}
+.wk>summary::-webkit-details-marker{display:none}
+.wkh{display:flex;align-items:baseline;gap:10px}
+.wkh b{font:700 14px var(--ff-d)}
+.wkh span{color:var(--tx3);font-weight:700;font-size:12.5px;flex:1}
+.wkh i{font-style:normal;color:var(--tx3);font-size:12px;font-weight:800;transition:transform .2s}
+.wk[open] .wkh i{transform:rotate(180deg)}
+.wkbar{display:flex;gap:3px;height:8px}
+.wkbar u{display:block;border-radius:4px;background:var(--k)}
+.wkleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;font-weight:700;color:var(--tx2)}
+.wkleg span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:3px;background:var(--k);margin-right:6px;vertical-align:0}
+.wkl{border-top:1px solid var(--rim);padding:4px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:4px}
+@media (max-width:760px){.wkl{grid-template-columns:1fr}}
+.wkr{display:grid;grid-template-columns:minmax(0,1fr) auto 30px;align-items:center;gap:4px 12px;width:100%;border:0;background:none;color:inherit;font:inherit;text-align:left;padding:8px 17px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.wkr:hover{background:var(--ice2)}
+.wkr.on{background:color-mix(in srgb,var(--aur1) 11%,transparent)}
+.wkr .n{font-weight:700;font-size:14px;line-height:1.3;overflow:hidden;text-overflow:ellipsis}
+.wkr .n small{display:block;font-size:12px;font-weight:600;color:var(--tx3)}
+.wkr .d{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;max-width:132px}
+.wkr .d u{width:11px;height:11px;border-radius:4px;background:var(--k)}
+.wkr>b{font:800 18px var(--ff-d);text-align:right;font-variant-numeric:tabular-nums}
+.wkhint{padding:4px 17px 10px;font-size:12px;color:var(--tx3);font-weight:600}
+.les.dim{opacity:.28}
 @media (max-width:900px){.days{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){
   .strip{display:flex}
@@ -604,6 +629,8 @@ function showSched(keep){
   h+='<div class="weekbar"><button class="btn icon" id="pw" '+(week<=w0?'disabled':'')+' aria-label="Прошлая неделя">‹</button>'+
     '<div class="lbl">'+dm(week,1)+' — '+dm(week+5,1)+'<small>'+(total?total+' '+plural(total,'занятие','занятия','занятий'):'занятий нет')+'</small></div>'+
     '<button class="btn" id="tw">Сегодня</button><button class="btn icon" id="nw" '+(week>=w1?'disabled':'')+' aria-label="Следующая неделя">›</button></div>';
+  var wg=[];for(d=0;d<7;d++)if(days[week+d])bundle(days[week+d]).forEach(function(all){wg.push(isT?all:applyPick(all));});
+  h+=weekCounter(wg,isT);
   h+='<div class="strip" role="tablist">';
   for(d=0;d<7;d++){k=week+d;if(d===6&&!days[k])continue;
     h+='<button data-d="'+k+'" class="'+(k===selDay?'on ':'')+(days[k]?'has ':'')+(k===today?'today':'')+'"><small>'+WDs[d]+'</small><b>'+new Date(k*DAY).getUTCDate()+'</b><i></i></button>';}
@@ -612,7 +639,7 @@ function showSched(keep){
     h+='<section class="card day'+(k===today?' today':'')+(k===selDay?' sel':'')+'"><div class="h"><b>'+WD[d]+'</b><span>'+dm(k)+'</span></div>';
     if(!list)h+='<div class="free">Пар нет — отдыхаем</div>';
     else bundle(list).forEach(function(all){var grp=isT?all:applyPick(all),picked=grp.length<all.length,l=L[grp[0]],st=BASE+l[0]*6e4,en=st+l[1]*6e4,kind=S[l[3]],tm=hm(st);
-      var cls=en<now?' past':(st<=now&&now<en?' now':''),mark=chs[st+'|'+S[l[2]]];
+      var cls=(en<now?' past':(st<=now&&now<en?' now':''))+(hlSubj&&S[l[2]]!==hlSubj?' dim':''),mark=chs[st+'|'+S[l[2]]];
       function who(l){if(isT)return l.slice(GO).map(function(x){var s=subText(subRaw(l,G[x][0]),true);return '<a data-og="'+esc(G[x][0])+'">'+esc(G[x][0])+'</a>'+(s?' <span class="subg">'+esc(s)+'</span>':'');}).join(', ');
         return S[l[4]]?S[l[4]].split(',').map(function(t){t=t.trim();return '<a data-ot="'+esc(t)+'">'+esc(t)+'</a>';}).join(', '):'';}
       function place(l){return [S[l[5]]?'ауд. '+S[l[5]]:'',S[l[6]]].filter(Boolean).join(', ');}
@@ -628,6 +655,8 @@ function showSched(keep){
     h+='</section>';}
   app.innerHTML=h+'</div>';
   document.getElementById('chg').onclick=function(){isT?showTeachers():showGroups();};
+  var wk=document.getElementById('wk');if(wk)wk.addEventListener('toggle',function(){mem.wk=wk.open;save();});
+  app.querySelectorAll('[data-hl]').forEach(function(b){b.onclick=function(){hlSubj=hlSubj===b.dataset.hl?null:b.dataset.hl;showSched();};});
   document.getElementById('pw').onclick=function(){week-=7;selDay=null;showSched();};
   document.getElementById('nw').onclick=function(){week+=7;selDay=null;showSched();};
   document.getElementById('tw').onclick=function(){week=null;selDay=null;showSched();};
@@ -640,6 +669,30 @@ function showSched(keep){
   app.querySelectorAll('[data-sub]').forEach(function(b){b.onclick=function(){mem.sub=mem.sub||{};if(b.dataset.sub)mem.sub[mem.group]=b.dataset.sub;else delete mem.sub[mem.group];save();showSched();};});
   app.querySelectorAll('[data-pick]').forEach(function(b){b.onclick=function(e){e.preventDefault();mem.pick=mem.pick||{};(mem.pick[mem.group]=mem.pick[mem.group]||{})[b.dataset.pick]=b.dataset.key;save();showSched();toast('Запомнил: дальше «'+b.dataset.pick+'» — только твой вариант');};});
   app.querySelectorAll('[data-unpick]').forEach(function(b){b.onclick=function(){if(mem.pick&&mem.pick[mem.group])delete mem.pick[mem.group][b.dataset.unpick];save();showSched();};});
+}
+/* счётчик пар за неделю: пара = одно время + предмет + вид (подгруппы в одно время — одна пара) */
+var KF={'лекция':['лекция','лекции','лекций'],'практика':['практика','практики','практик'],'лабораторная':['лабораторная','лабораторные','лабораторных'],
+  'зачет':['зачёт','зачёта','зачётов'],'экзамен':['экзамен','экзамена','экзаменов'],'консультация':['консультация','консультации','консультаций'],'занятие':['занятие','занятия','занятий']};
+function kindWord(k,n){var f=KF[(k||'').toLowerCase()];return n+' '+(f?plural(n,f[0],f[1],f[2]):(k||'другое').toLowerCase());}
+function kindRank(k){k=(k||'').toLowerCase();return k.indexOf('лекц')>=0?0:k.indexOf('практ')>=0?1:k.indexOf('лаб')>=0?2:/экзам|зач/.test(k)?4:3;}
+var hlSubj=null;
+function weekCounter(groups,isT){
+  var subj={},order=[],kinds={},total=0,mins=0;
+  groups.forEach(function(g){var l=L[g[0]],sj=S[l[2]],kd=S[l[3]]||'Занятие';total++;mins+=l[1];kinds[kd]=(kinds[kd]||0)+1;
+    var e=subj[sj];if(!e){e=subj[sj]={n:sj,c:0,k:{}};order.push(e);}e.c++;e.k[kd]=(e.k[kd]||0)+1;});
+  if(!total)return '';
+  var ks=Object.keys(kinds).sort(function(a,b){return kindRank(a)-kindRank(b)||kinds[b]-kinds[a];});
+  order.sort(function(a,b){return b.c-a.c||a.n.localeCompare(b.n,'ru');});
+  if(hlSubj&&!subj[hlSubj])hlSubj=null;
+  var h=Math.round(mins/6)/10,open=mem.wk==null?!matchMedia('(max-width:640px)').matches:mem.wk;
+  var out='<details class="card wk" id="wk"'+(open?' open':'')+'><summary><div class="wkh"><b>Пары за неделю</b><span>'+total+' '+plural(total,'пара','пары','пар')+' · '+
+    String(h).replace('.',',')+' ч · '+order.length+' '+plural(order.length,'предмет','предмета','предметов')+'</span><i>▾</i></div>'+
+    '<div class="wkbar">'+ks.map(function(k){return '<u style="--k:'+kc(k)+';flex:'+kinds[k]+'"></u>';}).join('')+'</div>'+
+    '<div class="wkleg">'+ks.map(function(k){return '<span style="--k:'+kc(k)+'">'+esc(kindWord(k,kinds[k]))+'</span>';}).join('')+'</div></summary><div class="wkl">';
+  order.forEach(function(e){var ek=Object.keys(e.k).sort(function(a,b){return kindRank(a)-kindRank(b);});
+    out+='<button class="wkr'+(hlSubj===e.n?' on':'')+'" data-hl="'+esc(e.n)+'"><span class="n">'+esc(e.n)+'<small>'+esc(ek.map(function(k){return kindWord(k,e.k[k]);}).join(' · '))+'</small></span>'+
+      '<span class="d">'+ek.map(function(k){var d='';for(var i=0;i<e.k[k];i++)d+='<u style="--k:'+kc(k)+'"></u>';return d;}).join('')+'</span><b>'+e.c+'</b></button>';});
+  return out+'</div><div class="wkhint">'+(hlSubj?'Подсвечены пары «'+esc(hlSubj)+'» — нажми ещё раз, чтобы снять':'Нажми на предмет — его пары подсветятся в расписании')+'</div></details>';
 }
 function bundle(list){var out=[];list.forEach(function(i){var l=L[i],p=out[out.length-1];
   if(p){var q=L[p[0]];if(q[0]===l[0]&&q[2]===l[2]&&q[3]===l[3]){p.push(i);return;}}out.push([i]);});return out;}
