@@ -426,6 +426,33 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
   .fab{display:inline-flex}
   footer{padding-bottom:90px}
 }
+
+/* ===================== motion 2: заголовки секций, 3D-карточки, прогресс, параллакс ===================== */
+/* всё ниже двигает только transform/opacity — это делает видеокарта, без пересчёта страницы */
+.progress{position:fixed;left:0;top:0;right:0;height:2px;z-index:70;pointer-events:none;background:var(--aurora);transform-origin:0 50%;transform:scaleX(0)}
+.js .sec-h h3 .w{display:inline-block;overflow:hidden;vertical-align:top;padding:0 .04em .12em;margin:0 -.04em -.12em}
+.js .sec-h h3 .w>span{display:inline-block;transform:translateY(110%) rotate(4deg);transition:transform 1.1s var(--ease);transition-delay:calc(.1s + var(--i)*.06s)}
+.js .sec-h.in h3 .w>span{transform:none}
+.js .sec-h .label{display:inline-flex;align-items:center;gap:10px}
+.js .sec-h .label::before{content:"";width:28px;height:1px;background:var(--aurora);transform:scaleX(0);transform-origin:0 50%;transition:transform 1s .15s var(--ease)}
+.js .sec-h.in .label::before{transform:none}
+.js .step.reveal,.js .feat.reveal,.js #price .plan.reveal{transform:perspective(900px) translateY(60px) rotateX(-16deg) scale(.96);transform-origin:50% 100%;
+  transition:opacity 1.1s var(--ease),transform 1.3s var(--ease);transition-delay:calc(var(--i,0)*.09s)}
+.js .step.reveal.in,.js .feat.reveal.in,.js #price .plan.reveal.in{transform:none}
+.tilt{transition:transform .5s var(--ease)!important;transition-delay:0s!important;will-change:transform}
+.tilt.tilting{transition:transform .12s linear!important;z-index:2}
+.step::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .4s;border-radius:inherit;
+  background:radial-gradient(260px circle at var(--px,50%) var(--py,50%),rgba(94,242,208,.13),transparent 60%)}
+.step.tilting::before{opacity:1}
+.primary::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:30%;z-index:-1;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent);transform:translateX(0) skewX(-18deg);animation:shine 5s 2.4s var(--ease) infinite}
+@keyframes shine{0%,62%{transform:translateX(0) skewX(-18deg)}100%{transform:translateX(560%) skewX(-18deg)}}
+.hero-in{will-change:transform,opacity}
+/* шапка двигается при прокрутке — размытие под её кнопками пересчитывалось бы каждый кадр, поэтому фон просто плотнее */
+.hero-in .eyebrow,.hero-in .ghost{backdrop-filter:none;-webkit-backdrop-filter:none;background-color:rgba(10,18,36,.6)}
+.lite .primary::after,.lite .progress{display:none}
+.lite .js .step.reveal,.lite.js .step.reveal,.lite.js .feat.reveal,.lite.js #price .plan.reveal{transform:translateY(16px)}
+@media (prefers-reduced-motion:reduce){.js .sec-h h3 .w>span,.js .sec-h .label::before{transform:none!important}.primary::after,.progress{display:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.js .reveal{opacity:1;transform:none}}
 @media print{
   .hero,.grain,#check,#progressCard,.sec,.sections,.actions,.src input,#detail,footer,.fab{display:none!important}
@@ -440,6 +467,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
   <linearGradient id="gAur" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5ef2d0"/><stop offset=".5" stop-color="#5aa0ff"/><stop offset="1" stop-color="#8b7bff"/></linearGradient>
 </defs></svg>
 
+<div class="progress" id="progress" aria-hidden="true"></div>
 <header class="hero" id="hero">
   <canvas id="scene" aria-hidden="true"></canvas>
   <nav class="nav">
@@ -1168,12 +1196,45 @@ $('btnCert').onclick = async () => {
     (function step(t){ const k = Math.min(1, (t - t0) / dur), v = Math.round(to * (1 - Math.pow(1 - k, 4))); el.textContent = v.toLocaleString('ru-RU'); if(k < 1) requestAnimationFrame(step); })(t0);
   }), {threshold: .6}) : null;
   if(io) document.querySelectorAll('[data-count]').forEach(el => { if(!calm && +el.dataset.count) el.textContent = '0'; io.observe(el); });
+
+  /* заголовки секций — по словам, как главный */
+  document.querySelectorAll('.sec-h h3').forEach(h => {
+    let k = 0; const words = h.textContent.split(/\s+/).filter(Boolean); h.textContent = '';
+    words.forEach((t, j) => { const w = document.createElement('span'); w.className = 'w'; const s = document.createElement('span'); s.style.setProperty('--i', k++); s.textContent = t; w.appendChild(s); h.appendChild(w); if(j < words.length - 1) h.appendChild(document.createTextNode(' ')); });
+  });
+  document.querySelectorAll('#price .plan').forEach((p, k) => { p.classList.add('reveal'); p.style.setProperty('--i', k); });
+  /* полоска прогресса сверху и уход шапки — один пересчёт за кадр, только transform/opacity */
+  const bar = document.getElementById('progress'), heroIn = document.querySelector('.hero-in'), heroEl = document.getElementById('hero');
+  let tick = false, heroH = heroEl.offsetHeight;
+  addEventListener('resize', () => { heroH = heroEl.offsetHeight; }, {passive: true});
+  const onScroll = () => {
+    tick = false;
+    const y = scrollY, max = document.documentElement.scrollHeight - innerHeight;
+    if(bar) bar.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, y / max) : 0).toFixed(4) + ')';
+    if(!calm && !lite && y < heroH){ const k = y / heroH; heroIn.style.transform = 'translate3d(0,' + (y * .35).toFixed(1) + 'px,0)'; heroIn.style.opacity = (1 - k * 1.1).toFixed(3); }
+    else if(!calm && !lite && heroIn.style.opacity !== '0') heroIn.style.opacity = '0';
+  };
+  addEventListener('scroll', () => { if(!tick){ tick = true; requestAnimationFrame(onScroll); } }, {passive: true});
+  onScroll();
   /* бегущие строки стоят, когда их не видно */
   if('IntersectionObserver' in window){
     const mo = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('off-screen', !e.isIntersecting)));
     document.querySelectorAll('.marquee').forEach(m => mo.observe(m));
   }
   if(calm || lite || !matchMedia('(hover: hover)').matches) return;
+
+  /* 3D-наклон карточек за курсором и свет под пальцем */
+  document.querySelectorAll('.step, .feat, #price .plan').forEach(c => {
+    let raf = 0, ev = null;
+    c.addEventListener('pointerenter', () => { if(c.classList.contains('in') || !c.classList.contains('reveal')) c.classList.add('tilt'); });
+    c.addEventListener('pointermove', e => { ev = e; if(raf || !c.classList.contains('tilt')) return; raf = requestAnimationFrame(() => {
+      raf = 0; const r = c.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width - .5, y = (ev.clientY - r.top) / r.height - .5;
+      c.classList.add('tilting');
+      c.style.transform = `perspective(800px) rotateX(${(-y * 9).toFixed(2)}deg) rotateY(${(x * 11).toFixed(2)}deg) translateZ(0) scale(1.02)`;
+      c.style.setProperty('--px', (ev.clientX - r.left) + 'px'); c.style.setProperty('--py', (ev.clientY - r.top) + 'px');
+    }); });
+    c.addEventListener('pointerleave', () => { cancelAnimationFrame(raf); raf = 0; c.classList.remove('tilting'); c.style.transform = ''; });
+  });
   /* «магнитные» главные кнопки */
   document.querySelectorAll('.cta .primary, #btnCheck').forEach(b => {
     b.classList.add('mag');
