@@ -23,17 +23,16 @@ float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
   return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<OCT;i++){v+=a*noise(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return v;}
 
-/* профиль айсберга: ломаная по точкам, x в [-1,1], высота 0..1 */
+/* силуэт айсберга: несколько мягких вершин + рваная кромка из шума. x в [-1,1], высота 0..1 */
+float g2(float x,float c,float w){ float d=(x-c)/w; return exp(-d*d); }
 float prof(float x){
-  float xs[11]; float hs[11];
-  xs[0]=-1.;hs[0]=0.; xs[1]=-.80;hs[1]=.16; xs[2]=-.60;hs[2]=.30; xs[3]=-.44;hs[3]=.58; xs[4]=-.26;hs[4]=.66;
-  xs[5]=-.08;hs[5]=1.; xs[6]=.10;hs[6]=.72; xs[7]=.28;hs[7]=.82; xs[8]=.50;hs[8]=.42; xs[9]=.74;hs[9]=.22; xs[10]=1.;hs[10]=0.;
-  float h=0.;
-  for(int i=0;i<10;i++){ if(x>=xs[i]&&x<=xs[i+1]){ h=mix(hs[i],hs[i+1],(x-xs[i])/(xs[i+1]-xs[i])); } }
-  return h;
+  float h = .95*g2(x,-.12,.20) + .62*g2(x,.24,.16) + .40*g2(x,-.46,.20) + .25*g2(x,.55,.18);
+  h = pow(clamp(h,0.,1.2), .6);                                   // крутые обрывы у воды, высокие макушки                                              // макушки чуть площе — как у настоящих
+  h += .045*(noise(vec2(x*4.,3.1))-.5) + .03*(noise(vec2(x*9.,5.))-.5) + .03*(noise(vec2(x*30.,7.))-.5); // три октавы вместо fbm — дешевле // рваная кромка
+  return max(0., h*smoothstep(1.,.70,abs(x)) - .02);
 }
-float slope(float x){ return prof(x+.004)-prof(x-.004); }
-
+/* рельеф поверхности льда — из него берётся объём (нормаль) */
+float ice(vec2 p){ float r = 1.-abs(2.*noise(p*vec2(9.,3.))-1.); return .5*fbm(p*vec2(2.2,1.4)) + .18*r*r; }
 vec3 sky(vec2 q, float t, vec2 m){
   /* q.x — по горизонтали (в долях высоты), q.y — высота над горизонтом 0..1 */
   vec3 col = mix(vec3(.035,.06,.12), vec3(.008,.012,.03), smoothstep(0.,.9,q.y));
@@ -75,25 +74,33 @@ void main(){
 
   /* айсберг */
   float bx = (uv.x*aspect - uBergX*aspect - m.x*.035) / uBergS;   // нормированный x
-  float bh = uBergS*.62;                                            // высота надводной части в долях высоты экрана
+  float bh = uBergS*.64;                                            // высота надводной части в долях высоты экрана
   if(uv.y >= hz){
     col = sky(q, t, m);
     if(abs(bx)<1.){
       float h = prof(bx) * bh;
       float yy = uv.y - hz;
-      if(yy < h){
-        float s = slope(bx);
-        float lit = s>0. ? 1. : .5;                                 // свет слева-сверху
-        float bandI = floor(bx*4.5 + yy*7.);                        // грани
-        float tone = lit*(.80 + .20*hash(vec2(bandI, 3.)));
-        tone *= .66 + .34*smoothstep(0., h, yy);                    // к вершине светлее
-        vec3 ice = mix(vec3(.24,.42,.70), vec3(.95,.98,1.), tone);
-        ice *= .94 + .06*noise(vec2(bx*40., yy*90.));               // едва заметная фактура
-        ice = mix(ice, vec3(.45,.86,.96), smoothstep(.03,0.,yy)*.55); // бирюза у воды
-        ice += vec3(.10,.36,.30)*.12*lit;                           // отсвет сияния
-        ice += vec3(.6,.8,1.)*smoothstep(h-.004,h,yy)*.25;          // светлая кромка
-        float aa = smoothstep(h, h-.0025, yy);
-        col = mix(col, ice*(.82+.18*sin(t*.3)), aa);
+      if(yy < h + .003){
+        vec2 pp = vec2(bx, yy/bh);
+        float e = .015, k = .6;
+        float fx = ice(pp+vec2(e,0.)) - ice(pp-vec2(e,0.));
+        float fy = ice(pp+vec2(0.,e)) - ice(pp-vec2(0.,e));
+        float sl = (prof(bx+.02)-prof(bx-.02))*6.;                  // общий наклон склона: левый к свету, правый в тени
+        vec3 n = normalize(vec3(-fx/(2.*e)*k*.35 - sl*.55, -fy/(2.*e)*k*.35 + .25, 1.));
+        vec3 L = normalize(vec3(-.6,.5,.65));
+        float dif = clamp(dot(n,L), 0., 1.);
+        vec3 c = mix(vec3(.07,.19,.36), vec3(.42,.64,.86), smoothstep(.05,.55,dif));
+        c = mix(c, vec3(.93,.97,1.), smoothstep(.55,.95,dif));
+        float cav = smoothstep(.62,.30, ice(pp*1.3+3.));            // впадины светятся голубым изнутри
+        c = mix(c, vec3(.18,.58,.88), cav*.14);
+        c *= .94 + .06*fbm(vec2(bx*26., yy*3.));                     // вертикальные борозды на обрывах
+        c = mix(c, vec3(.97,.99,1.), smoothstep(h-.012,h,yy)*smoothstep(-.2,.6,n.y)*.55); // снег на макушках
+        c += vec3(.25,.95,.75)*.05*(1.-dif);                        // отсвет сияния в тени
+        c += vec3(.75,.9,1.)*exp(-(h-yy)*260.)*.35;                  // светлая кромка
+        c = mix(c, vec3(.35,.85,.92), smoothstep(.035,0.,yy)*.45);   // бирюза у воды
+        c += vec3(.8,.97,1.)*exp(-yy*500.)*.35;                      // пена по ватерлинии
+        float aa = smoothstep(h+.0015, h-.0015, yy);
+        col = mix(col, c, aa);
       }
     }
   } else {
@@ -110,14 +117,17 @@ void main(){
     }
     col = mix(vec3(.012,.035,.07), vec3(.0,.008,.02), depth) + refl;
     /* подводная часть — главная метафора: огромная, светится сквозь толщу */
-    float ux = bx / 1.55;
+    float ux = bx / 1.6;
     if(abs(ux)<1.){
-      float under = prof(ux)*bh*2.2;
       float yy = hz-uv.y;
-      float body = smoothstep(under, under-.05, yy) * smoothstep(0.,.03,yy) * smoothstep(1.,.8,abs(ux));
-      float vein = fbm(vec2(ux*5. + t*.02, yy*9.));
-      float rim = smoothstep(under-.05, under-.012, yy) * smoothstep(under, under-.012, yy);
-      col += vec3(.10,.46,.68) * body * (.42 + .30*vein) * (1.-depth*.5) + vec3(.3,.8,.95)*rim*.25*(1.-depth*.6);
+      float under = (prof(ux*.85)*.75 + .28*smoothstep(1.,.15,abs(ux)) + .05*(noise(vec2(ux*4.,9.))-.5)) * bh * 2.4;
+      float inside = smoothstep(under, under-.03, yy) * smoothstep(0.,.02,yy) * smoothstep(1.,.82,abs(ux));
+      float fade = exp(-yy/max(under,.01)*1.6);                       // уходит в темноту с глубиной
+      vec2 cp = vec2(ux*5., yy*8.) + vec2(t*.03, -t*.02);
+      float caus = pow(1.-abs(2.*fbm(cp)-1.), 5.);                     // каустика — свет сквозь воду
+      float rim = exp(-abs(under-yy)*90.) * smoothstep(0.,.02,yy) * smoothstep(1.,.8,abs(ux));
+      col += inside * (.35 + .65*fade) * (vec3(.07,.34,.56) + vec3(.30,.80,1.)*caus*.45);
+      col += vec3(.35,.85,1.)*rim*.4*(1.-depth*.5);
     }
     /* световые столбы сквозь воду */
     float shafts = smoothstep(.55,.9, fbm(vec2(uv.x*aspect*3. + depth*1.5, t*.05)));
