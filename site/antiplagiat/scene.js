@@ -5,6 +5,138 @@
   'use strict';
   const canvas = document.getElementById('scene');
   if (!canvas) return;
+  /* Айсберг: 3D-рельеф (трассировка лучей по карте высот), рисуется ОДИН раз — дальше это просто картинка. */
+  function renderBerg(cv, W, H) {
+    const gl = cv.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false, preserveDrawingBuffer: true });
+    if (!gl) return false;
+    cv.width = W; cv.height = H;
+    const FS = `
+  #ifdef GL_FRAGMENT_PRECISION_HIGH
+  precision highp float;
+  #else
+  precision mediump float;
+  #endif
+  uniform vec2 R;
+  float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+  float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);
+    return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}
+  float ridged(vec2 p){ float s=0., a=.5, w=1.; mat2 m=mat2(1.6,1.2,-1.2,1.6);
+    for(int i=0;i<7;i++){ float n=1.-abs(noise(p)*2.-1.); n*=n; s+=n*a*w; w=clamp(n*1.6,0.,1.); p=m*p; a*=.5; } return s; }
+  float fbm(vec2 p){ float s=0., a=.5; mat2 m=mat2(1.6,1.2,-1.2,1.6); for(int i=0;i<5;i++){ s+=a*noise(p); p=m*p; a*=.5; } return s; }
+  /* форма горы: главный пик + плечи; высота над водой */
+  float mass(vec2 q){
+    vec2 c = q - vec2(.12,.05);
+    float r = length(c*vec2(1.,1.15));
+    float b = 2.3*pow(max(0., 1. - r/1.05), 1.55);                 // главный острый пик
+    b += .38*exp(-dot(q-vec2(-.75,.0),q-vec2(-.75,.0))*2.6);         // пологое плечо слева
+    b += .30*exp(-dot(q-vec2(.85,.1),q-vec2(.85,.1))*3.2);           // плечо справа
+    return b;
+  }
+  float H(vec2 q){
+    vec2 w = q + .25*vec2(fbm(q*1.3+3.), fbm(q*1.3+7.));   // изгиб гребней
+    float b = mass(q);
+    return b*(.72 + .38*ridged(w*1.6)) - .3;
+  }
+  vec3 nrm(vec2 q){ float e=.0025; return normalize(vec3(H(q-vec2(e,0.))-H(q+vec2(e,0.)), 2.*e, H(q-vec2(0.,e))-H(q+vec2(0.,e)))); }
+  /* подводная часть — больше и шире, уходит вниз */
+  float U(vec2 q){ float b = 2.2*exp(-dot(q*vec2(.78,1.),q*vec2(.78,1.))*1.5); return b*(.7+.45*fbm(q*1.8)) - .7; }
+  vec3 unrm(vec2 q){ float e=.01; return normalize(vec3(U(q+vec2(e,0.))-U(q-vec2(e,0.)), 2.*e, U(q+vec2(0.,e))-U(q-vec2(0.,e)))); }
+  void main(){
+    vec2 uv = (gl_FragCoord.xy - .5*R)/R.y; uv.x = -uv.x;   // вершина справа — подальше от заголовка
+    vec3 ro = vec3(0., .07, -7.4);
+    vec3 rd = normalize(vec3(uv.x, uv.y + .17, 3.1));
+    vec3 L = normalize(vec3(.65,.55,-.45));
+    vec4 o = vec4(0.);
+    float t = 3.; bool hit=false; vec3 p;
+    for(int i=0;i<420;i++){
+      p = ro + rd*t;
+      if(p.y < 0.) break;
+      float h = H(p.xz);
+      float d = p.y - h;
+      if(d < .0015*t){ hit=true; break; }
+      t += max(.003, d*.25);
+      if(t > 11.5) break;
+    }
+    if(hit){
+      vec3 n = nrm(p.xz);
+      float dif = clamp(dot(n,L),0.,1.);
+      float sky = .5+.5*n.y;
+      float sl = n.y;                                  // 1 — горизонтально, 0 — отвесно
+      float hgt = clamp(p.y/2.2,0.,1.);
+      float sh = 1.;                                   // мягкая тень от соседних гребней
+      float st = .02;
+      for(int j=0;j<40;j++){ vec3 q=p+L*st; float dd=q.y-H(q.xz); sh=min(sh, 10.*dd/st); st+=max(.01,dd*.5); if(sh<0.||st>2.5) break; }
+      sh = clamp(sh,0.,1.);
+      float ao = clamp(.45 + 1.2*(p.y - (H(p.xz+vec2(.06,0.))+H(p.xz-vec2(.06,0.))+H(p.xz+vec2(0.,.06))+H(p.xz-vec2(0.,.06)))*.25) + .4*hgt, 0., 1.);
+      vec3 ice  = vec3(.55,.75,.92);
+      vec3 deep = vec3(.10,.35,.62);
+      vec3 snow = vec3(.96,.98,1.);
+      float sn = smoothstep(.35,.75,sl + .15*fbm(p.xz*18.) + .25*hgt);
+      vec3 alb = mix(mix(deep, ice, .35+.65*sl), snow, sn);
+      vec3 c = alb*(1.35*dif*sh*vec3(1.,.98,.95) + .42*sky*vec3(.6,.75,1.));
+      c += deep*(1.-dif*sh)*.22*(1.-sn);                 // свет сквозь лёд в тени
+      c += vec3(.2,.9,.7)*.05*(1.-dif);                  // отсвет сияния
+      c *= .6+.4*ao;
+      c = mix(c, vec3(.45,.85,.95), smoothstep(.06,0.,p.y)*.55);   // бирюза у воды
+      c += vec3(.8,.95,1.)*smoothstep(.015,0.,p.y)*.5;             // пена
+      c = mix(c, vec3(.12,.2,.35), clamp((t-5.)*.06,0.,.25));      // воздушная дымка
+      o = vec4(c,1.);
+    } else if(rd.y < 0.) {
+      float tw = -ro.y/rd.y; vec3 w = ro + rd*tw;
+      {
+        vec3 d2 = rd;                                         // классический «разрез»: вода прозрачная, видно массу подо льдом     // преломление: под водой луч уходит круче
+        float s = 0.; bool uh=false; vec3 q;
+        for(int i=0;i<300;i++){ q = w + d2*s; float dd = U(q.xz) + q.y; if(dd > 0.){ uh = true; break; } s += .02; if(s>6.) break; }
+        if(uh){
+          float sh=0.;                                      // уточнение точки
+          vec3 n = unrm(q.xz);
+          float lit = clamp(dot(n, normalize(vec3(-.4,-.8,-.3)))*-1.,0.,1.);
+          float depth = -q.y;
+          vec3 c = mix(vec3(.30,.70,.92), vec3(.03,.14,.30), clamp(depth/1.6,0.,1.));
+          c *= .75 + .45*clamp(dot(n, normalize(vec3(.5,.3,-.8))),0.,1.);
+          c *= .7 + .3*fbm(q.xz*5.);
+          float caus = pow(1.-abs(fbm(q.xz*7.+3.)*2.-1.), 6.);
+          c += vec3(.4,.9,1.)*caus*.25*(1.-clamp(depth/1.5,0.,1.));
+          float a = (1.-clamp(depth/2.4,0.,1.))*.88*exp(-s*.12);
+          o = vec4(c*a, a);
+        }
+      }
+    }
+    gl_FragColor = o;
+  }`;
+    const sh = (t, s) => { const x = gl.createShader(t); gl.shaderSource(x, s); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) { console.warn(gl.getShaderInfoLog(x)); return null; } return x; };
+    const v = sh(gl.VERTEX_SHADER, 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}'), f = sh(gl.FRAGMENT_SHADER, FS);
+    if (!v || !f) return false;
+    const pr = gl.createProgram(); gl.attachShader(pr, v); gl.attachShader(pr, f); gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return false;
+    gl.useProgram(pr);
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const l = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 0, 0);
+    gl.viewport(0, 0, W, H); gl.uniform2f(gl.getUniformLocation(pr, 'R'), W, H);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    return true;
+  }
+
+  /* Айсберг — отдельный холст поверх неба. Рисуется один раз (и заново только при смене размера),
+     ватерлиния совпадает с горизонтом сцены. */
+  const berg = document.createElement('canvas');
+  berg.className = 'berg'; berg.setAttribute('aria-hidden', 'true');
+  canvas.after(berg);
+  let bergKey = '';
+  function placeBerg() {
+    const w = canvas.clientWidth, h = canvas.clientHeight, ph = innerWidth <= 760, wide = w > 900;
+    const hz = ph ? .24 : .36, cx = wide ? .79 : ph ? .74 : .74;
+    /* в кадре: надводная часть — 69% ширины холста, ватерлиния — на 69,9% высоты, вершина почти у верха */
+    const ch = Math.min(h * (ph ? .5 : .62), w * (ph ? .9 : .55)), cw = ch / .85;
+    berg.style.width = cw + 'px'; berg.style.height = ch + 'px';
+    berg.style.left = (cx * w - .465 * cw) + 'px'; berg.style.top = (h * (1 - hz) - ch * .699) + 'px';
+    const dpr = Math.min(devicePixelRatio || 1, 2), W = Math.round(cw * dpr), H = Math.round(ch * dpr), key = W + 'x' + H;
+    if (key !== bergKey) { bergKey = key; if (!renderBerg(berg, W, H)) berg.remove(); }
+  }
+  placeBerg();
+  let bergT = 0; addEventListener('resize', () => { clearTimeout(bergT); bergT = setTimeout(placeBerg, 200); });
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gl = canvas.getContext('webgl', { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: 'low-power' });
   if (!gl) return;
@@ -22,17 +154,6 @@ float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
   return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<OCT;i++){v+=a*noise(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return v;}
-
-/* профиль айсберга: ломаная по точкам, x в [-1,1], высота 0..1 */
-float prof(float x){
-  float xs[11]; float hs[11];
-  xs[0]=-1.;hs[0]=0.; xs[1]=-.80;hs[1]=.16; xs[2]=-.60;hs[2]=.30; xs[3]=-.44;hs[3]=.58; xs[4]=-.26;hs[4]=.66;
-  xs[5]=-.08;hs[5]=1.; xs[6]=.10;hs[6]=.72; xs[7]=.28;hs[7]=.82; xs[8]=.50;hs[8]=.42; xs[9]=.74;hs[9]=.22; xs[10]=1.;hs[10]=0.;
-  float h=0.;
-  for(int i=0;i<10;i++){ if(x>=xs[i]&&x<=xs[i+1]){ h=mix(hs[i],hs[i+1],(x-xs[i])/(xs[i+1]-xs[i])); } }
-  return h;
-}
-float slope(float x){ return prof(x+.004)-prof(x-.004); }
 
 vec3 sky(vec2 q, float t, vec2 m){
   /* q.x — по горизонтали (в долях высоты), q.y — высота над горизонтом 0..1 */
@@ -73,52 +194,15 @@ void main(){
   vec2 q = vec2(uv.x*aspect, (uv.y-hz)/(1.-hz));   // над горизонтом
   vec3 col;
 
-  /* айсберг */
-  float bx = (uv.x*aspect - uBergX*aspect - m.x*.035) / uBergS;   // нормированный x
-  float bh = uBergS*.62;                                            // высота надводной части в долях высоты экрана
   if(uv.y >= hz){
     col = sky(q, t, m);
-    if(abs(bx)<1.){
-      float h = prof(bx) * bh;
-      float yy = uv.y - hz;
-      if(yy < h){
-        float s = slope(bx);
-        float lit = s>0. ? 1. : .5;                                 // свет слева-сверху
-        float bandI = floor(bx*4.5 + yy*7.);                        // грани
-        float tone = lit*(.80 + .20*hash(vec2(bandI, 3.)));
-        tone *= .66 + .34*smoothstep(0., h, yy);                    // к вершине светлее
-        vec3 ice = mix(vec3(.24,.42,.70), vec3(.95,.98,1.), tone);
-        ice *= .94 + .06*noise(vec2(bx*40., yy*90.));               // едва заметная фактура
-        ice = mix(ice, vec3(.45,.86,.96), smoothstep(.03,0.,yy)*.55); // бирюза у воды
-        ice += vec3(.10,.36,.30)*.12*lit;                           // отсвет сияния
-        ice += vec3(.6,.8,1.)*smoothstep(h-.004,h,yy)*.25;          // светлая кромка
-        float aa = smoothstep(h, h-.0025, yy);
-        col = mix(col, ice*(.82+.18*sin(t*.3)), aa);
-      }
-    }
   } else {
     /* вода: отражение неба и айсберга, рябь, подводная часть */
     float depth = (hz-uv.y)/hz;                                     // 0 у горизонта, 1 внизу
     float rip = (fbm(vec2(uv.x*aspect*6., depth*28. - t*.6)) - .5) * (.012 + .05*depth);
     vec2 rq = vec2(q.x + rip*3., (hz-uv.y + rip*.6)/(1.-hz)*1.05);
     vec3 refl = sky(rq, t, m) * (.42 - .22*depth);
-    /* отражение айсберга */
-    if(abs(bx+rip*2.)<1.){
-      float h = prof(bx+rip*2.) * bh;
-      float yy = hz-uv.y;
-      if(yy < h) refl = mix(refl, vec3(.36,.52,.7)*(.55-.3*depth), smoothstep(h, h-.01, yy)*.8);
-    }
     col = mix(vec3(.012,.035,.07), vec3(.0,.008,.02), depth) + refl;
-    /* подводная часть — главная метафора: огромная, светится сквозь толщу */
-    float ux = bx / 1.55;
-    if(abs(ux)<1.){
-      float under = prof(ux)*bh*2.2;
-      float yy = hz-uv.y;
-      float body = smoothstep(under, under-.05, yy) * smoothstep(0.,.03,yy) * smoothstep(1.,.8,abs(ux));
-      float vein = fbm(vec2(ux*5. + t*.02, yy*9.));
-      float rim = smoothstep(under-.05, under-.012, yy) * smoothstep(under, under-.012, yy);
-      col += vec3(.10,.46,.68) * body * (.42 + .30*vein) * (1.-depth*.5) + vec3(.3,.8,.95)*rim*.25*(1.-depth*.6);
-    }
     /* световые столбы сквозь воду */
     float shafts = smoothstep(.55,.9, fbm(vec2(uv.x*aspect*3. + depth*1.5, t*.05)));
     col += vec3(.08,.22,.30) * shafts * (1.-depth) * .35;
@@ -211,6 +295,7 @@ void main(){
       ticking = false;
       dive = Math.min(1, Math.max(0, scrollY / Math.max(1, canvas.clientHeight)));
       canvas.style.transform = dive ? `translate3d(0,${(dive * 18).toFixed(1)}%,0) scale(${(1 + dive * .12).toFixed(3)})` : '';
+      berg.style.transform = dive ? `translate3d(0,${(dive * canvas.clientHeight * .18).toFixed(1)}px,0)` : '';
     });
   }, { passive: true });
   if ('IntersectionObserver' in window) new IntersectionObserver(e => { visible = e[0].isIntersecting; }).observe(canvas);
