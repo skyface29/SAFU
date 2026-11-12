@@ -5,6 +5,122 @@
   'use strict';
   const canvas = document.getElementById('scene');
   if (!canvas) return;
+  /* Айсберг — чёткая 3D-модель из граней (SVG). Строится один раз; двигается только transform. */
+  function buildBerg(seed) {
+    let s = seed >>> 0;
+    const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const A = [[-470,0],[-430,-40],[-370,-70],[-320,-82],[-290,-150],[-235,-176],[-190,-232],[-140,-262],[-95,-340],[-60,-318],[-30,-268],[5,-252],[45,-300],[78,-286],[118,-222],[170,-206],[220,-150],[262,-138],[300,-96],[360,-72],[420,-30],[462,0]];
+    const B = [[-470,0],[-540,70],[-590,190],[-560,320],[-470,440],[-330,560],[-170,640],[10,680],[190,630],[350,530],[480,390],[560,240],[575,110],[520,30],[462,0]];
+    const inPoly = (P, x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+    const segD = (px, py, ax, ay, bx, by) => { const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))); return Math.hypot(px - ax - t * dx, py - ay - t * dy); };
+    const dist = (P, x, y, skipWater) => { let m = 1e9; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; if (skipWater && a[1] === 0 && b[1] === 0) continue; m = Math.min(m, segD(x, y, a[0], a[1], b[0], b[1])); } return m; };
+    function edgePts(P, step, closeWater) {
+      const out = [];
+      for (let i = 0; i < P.length; i++) {
+        const a = P[i], b = P[(i + 1) % P.length]; out.push([a[0], a[1], 1]);
+        const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.floor(L / step);
+        for (let k = 1; k < n; k++) { const t = k / n; out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, 1]); }
+      }
+      return out;
+    }
+    function delaunay(pts) {
+      const big = 1e5, P = pts.concat([[-big, -big], [big, -big], [0, big]]), n = pts.length;
+      let tris = [[n, n + 1, n + 2]];
+      const circ = t => { const [a, b, c] = t.map(i => P[i]); const d = 2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
+        const ux = ((a[0] ** 2 + a[1] ** 2) * (b[1] - c[1]) + (b[0] ** 2 + b[1] ** 2) * (c[1] - a[1]) + (c[0] ** 2 + c[1] ** 2) * (a[1] - b[1])) / d;
+        const uy = ((a[0] ** 2 + a[1] ** 2) * (c[0] - b[0]) + (b[0] ** 2 + b[1] ** 2) * (a[0] - c[0]) + (c[0] ** 2 + c[1] ** 2) * (b[0] - a[0])) / d;
+        return [ux, uy, (a[0] - ux) ** 2 + (a[1] - uy) ** 2]; };
+      let cc = tris.map(circ);
+      for (let i = 0; i < n; i++) {
+        const [x, y] = P[i], bad = [], keep = [], kc = [];
+        tris.forEach((t, k) => { const c = cc[k]; ((x - c[0]) ** 2 + (y - c[1]) ** 2 < c[2]) ? bad.push(t) : (keep.push(t), kc.push(c)); });
+        const edges = new Map();
+        bad.forEach(t => [[t[0], t[1]], [t[1], t[2]], [t[2], t[0]]].forEach(([u, v]) => { const key = u < v ? u + ',' + v : v + ',' + u; edges.set(key, edges.has(key) ? null : [u, v]); }));
+        tris = keep; cc = kc;
+        edges.forEach(e => { if (e) { const t = [e[0], e[1], i]; tris.push(t); cc.push(circ(t)); } });
+      }
+      return tris.filter(t => t.every(i => i < n));
+    }
+    function mesh(P, minD, zf, under) {
+      const pts = edgePts(P, minD * .8);
+      const xs = P.map(p => p[0]), ys = P.map(p => p[1]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      for (let k = 0; k < 12000 && pts.length < 600; k++) {
+        const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0);
+        if (!inPoly(P, x, y) || dist(P, x, y) < minD * .55) continue;
+        if (pts.some(p => (p[0] - x) ** 2 + (p[1] - y) ** 2 < minD * minD)) continue;
+        pts.push([x, y, 0]);
+      }
+      const peaks = under ? [] : P.filter((p, i) => i > 0 && i < P.length - 1 && p[1] < P[i - 1][1] && p[1] < P[i + 1][1]);
+      const Z = pts.map(([x, y, e]) => {
+        if (e) return 0;
+        const d = dist(P, x, y, !under);
+        let z = zf(d) + (rnd() - .5) * (under ? 70 : 22);
+        peaks.forEach(([px, py]) => { z += 70 * Math.exp(-Math.abs(x - px) / 38) * Math.max(0, 1 - (y - py) / 420); });
+        return z;
+      });
+      const tris = delaunay(pts.map(p => [p[0], p[1]])).filter(t => { const cx = (pts[t[0]][0] + pts[t[1]][0] + pts[t[2]][0]) / 3, cy = (pts[t[0]][1] + pts[t[1]][1] + pts[t[2]][1]) / 3; return inPoly(P, cx, cy); });
+      return { pts, Z, tris };
+    }
+    const L = (() => { const v = [-.55, -.6, .58], m = Math.hypot(...v); return v.map(c => c / m); })();
+    const mix = (a, b, t) => a.map((c, i) => c + (b[i] - c) * t);
+    const sm = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const rgb = c => 'rgb(' + c.map(v => Math.round(Math.max(0, Math.min(255, v)))).join(',') + ')';
+    function faces(M, under) {
+      let out = '';
+      M.tris.forEach(t => {
+        const [a, b, c] = t.map(i => [M.pts[i][0], M.pts[i][1], M.Z[i]]);
+        const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        let n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+        if (n[2] < 0) n = n.map(x => -x);
+        const m = Math.hypot(...n); n = n.map(x => x / m);
+        const dif = Math.max(0, n[0] * L[0] + n[1] * L[1] + n[2] * L[2]);
+        const cy = (a[1] + b[1] + c[1]) / 3, j = (rnd() - .5) * .06;
+        let col;
+        if (!under) {
+          col = mix([38, 82, 138], [132, 178, 222], sm(.15, .62, dif + j));
+          col = mix(col, [246, 251, 255], sm(.6, .93, dif + j));
+          col = mix(col, [86, 200, 225], sm(-70, 0, cy) * .45);                 // бирюза у воды
+          col = mix(col, [120, 120, 230], (1 - dif) * .12);                      // фиолетовый отсвет сияния в тени
+        } else {
+          col = mix([16, 62, 108], [56, 140, 198], sm(.25, .9, dif + j * .6));
+          col = mix(col, [120, 214, 240], sm(.86, 1, dif + j) * .45);
+        }
+        const d = [a, b, c].map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+        out += `<polygon points="${d}" fill="${rgb(col)}" stroke="${rgb(col)}" stroke-width=".8"/>`;
+      });
+      return out;
+    }
+    const top = mesh(A, 48, d => 150 * Math.sqrt(Math.min(d, 200) / 200), false);
+    const bot = mesh(B, 56, d => 200 * Math.sqrt(Math.min(d, 150) / 150), true);
+    const path = P => 'M' + P.map(p => p.join(',')).join('L');
+    const topEdge = path(A.slice(0)), botEdge = path(B);
+    return `<svg class="berg" viewBox="-640 -380 1280 1120" aria-hidden="true">
+  <defs>
+  <linearGradient id="bgUnder" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".55" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <mask id="bgMask" maskUnits="userSpaceOnUse" x="-640" y="0" width="1280" height="740"><rect x="-640" y="0" width="1280" height="740" fill="url(#bgUnder)"/></mask>
+  <radialGradient id="bgGlow" cx="0" cy="0" r="1" gradientTransform="translate(0 0) scale(560 120)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8fe6ff" stop-opacity=".55"/><stop offset="1" stop-color="#8fe6ff" stop-opacity="0"/></radialGradient>
+  <linearGradient id="bgSheen" x1="0" y1="-340" x2="0" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  </defs>
+  <g mask="url(#bgMask)" opacity=".9">${faces(bot, true)}<path d="${botEdge}Z" fill="none" stroke="#9be4ff" stroke-opacity=".45" stroke-width="1.6"/></g>
+  <ellipse cx="0" cy="0" rx="560" ry="120" fill="url(#bgGlow)"/>
+  <g>${faces(top, false)}<path d="${topEdge}Z" fill="url(#bgSheen)"/></g>
+  <path d="${path(A.slice(1, -1))}" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M-500,0H500" stroke="#bff3ff" stroke-opacity=".8" stroke-width="2"/>
+  </svg>`;
+  }
+
+  /* айсберг кладётся поверх неба: ватерлиния совпадает с горизонтом сцены */
+  canvas.insertAdjacentHTML('afterend', buildBerg(7));
+  const berg = canvas.nextElementSibling;
+  function placeBerg() {
+    const w = canvas.clientWidth, h = canvas.clientHeight, ph = innerWidth <= 760, wide = w > 900;
+    const hz = ph ? .24 : .36, bx = wide ? .79 : ph ? .78 : .74, bs = wide ? .26 : ph ? .17 : .28;
+    const k = bs * h / 500;                       // единиц рисунка в пикселе: полуширина надводной части = bs·высоты
+    berg.style.width = (1280 * k) + 'px'; berg.style.height = (1120 * k) + 'px';
+    berg.style.left = (bx * w - 640 * k) + 'px'; berg.style.top = (h * (1 - hz) - 380 * k) + 'px';
+  }
+  placeBerg(); addEventListener('resize', placeBerg);
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gl = canvas.getContext('webgl', { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: 'low-power' });
   if (!gl) return;
@@ -23,16 +139,6 @@ float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
   return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<OCT;i++){v+=a*noise(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return v;}
 
-/* силуэт айсберга: несколько мягких вершин + рваная кромка из шума. x в [-1,1], высота 0..1 */
-float g2(float x,float c,float w){ float d=(x-c)/w; return exp(-d*d); }
-float prof(float x){
-  float h = .95*g2(x,-.12,.20) + .62*g2(x,.24,.16) + .40*g2(x,-.46,.20) + .25*g2(x,.55,.18);
-  h = pow(clamp(h,0.,1.2), .6);                                   // крутые обрывы у воды, высокие макушки                                              // макушки чуть площе — как у настоящих
-  h += .045*(noise(vec2(x*4.,3.1))-.5) + .03*(noise(vec2(x*9.,5.))-.5) + .03*(noise(vec2(x*30.,7.))-.5); // три октавы вместо fbm — дешевле // рваная кромка
-  return max(0., h*smoothstep(1.,.70,abs(x)) - .02);
-}
-/* рельеф поверхности льда — из него берётся объём (нормаль) */
-float ice(vec2 p){ float r = 1.-abs(2.*noise(p*vec2(9.,3.))-1.); return .5*fbm(p*vec2(2.2,1.4)) + .18*r*r; }
 vec3 sky(vec2 q, float t, vec2 m){
   /* q.x — по горизонтали (в долях высоты), q.y — высота над горизонтом 0..1 */
   vec3 col = mix(vec3(.035,.06,.12), vec3(.008,.012,.03), smoothstep(0.,.9,q.y));
@@ -72,63 +178,15 @@ void main(){
   vec2 q = vec2(uv.x*aspect, (uv.y-hz)/(1.-hz));   // над горизонтом
   vec3 col;
 
-  /* айсберг */
-  float bx = (uv.x*aspect - uBergX*aspect - m.x*.035) / uBergS;   // нормированный x
-  float bh = uBergS*.64;                                            // высота надводной части в долях высоты экрана
   if(uv.y >= hz){
     col = sky(q, t, m);
-    if(abs(bx)<1.){
-      float h = prof(bx) * bh;
-      float yy = uv.y - hz;
-      if(yy < h + .003){
-        vec2 pp = vec2(bx, yy/bh);
-        float e = .015, k = .6;
-        float fx = ice(pp+vec2(e,0.)) - ice(pp-vec2(e,0.));
-        float fy = ice(pp+vec2(0.,e)) - ice(pp-vec2(0.,e));
-        float sl = (prof(bx+.02)-prof(bx-.02))*6.;                  // общий наклон склона: левый к свету, правый в тени
-        vec3 n = normalize(vec3(-fx/(2.*e)*k*.35 - sl*.55, -fy/(2.*e)*k*.35 + .25, 1.));
-        vec3 L = normalize(vec3(-.6,.5,.65));
-        float dif = clamp(dot(n,L), 0., 1.);
-        vec3 c = mix(vec3(.07,.19,.36), vec3(.42,.64,.86), smoothstep(.05,.55,dif));
-        c = mix(c, vec3(.93,.97,1.), smoothstep(.55,.95,dif));
-        float cav = smoothstep(.62,.30, ice(pp*1.3+3.));            // впадины светятся голубым изнутри
-        c = mix(c, vec3(.18,.58,.88), cav*.14);
-        c *= .94 + .06*fbm(vec2(bx*26., yy*3.));                     // вертикальные борозды на обрывах
-        c = mix(c, vec3(.97,.99,1.), smoothstep(h-.012,h,yy)*smoothstep(-.2,.6,n.y)*.55); // снег на макушках
-        c += vec3(.25,.95,.75)*.05*(1.-dif);                        // отсвет сияния в тени
-        c += vec3(.75,.9,1.)*exp(-(h-yy)*260.)*.35;                  // светлая кромка
-        c = mix(c, vec3(.35,.85,.92), smoothstep(.035,0.,yy)*.45);   // бирюза у воды
-        c += vec3(.8,.97,1.)*exp(-yy*500.)*.35;                      // пена по ватерлинии
-        float aa = smoothstep(h+.0015, h-.0015, yy);
-        col = mix(col, c, aa);
-      }
-    }
   } else {
     /* вода: отражение неба и айсберга, рябь, подводная часть */
     float depth = (hz-uv.y)/hz;                                     // 0 у горизонта, 1 внизу
     float rip = (fbm(vec2(uv.x*aspect*6., depth*28. - t*.6)) - .5) * (.012 + .05*depth);
     vec2 rq = vec2(q.x + rip*3., (hz-uv.y + rip*.6)/(1.-hz)*1.05);
     vec3 refl = sky(rq, t, m) * (.42 - .22*depth);
-    /* отражение айсберга */
-    if(abs(bx+rip*2.)<1.){
-      float h = prof(bx+rip*2.) * bh;
-      float yy = hz-uv.y;
-      if(yy < h) refl = mix(refl, vec3(.36,.52,.7)*(.55-.3*depth), smoothstep(h, h-.01, yy)*.8);
-    }
     col = mix(vec3(.012,.035,.07), vec3(.0,.008,.02), depth) + refl;
-    /* подводная часть — главная метафора: огромная, светится сквозь толщу */
-    float ux = bx / 1.6;
-    if(abs(ux)<1.){
-      float yy = hz-uv.y;
-      float under = (prof(ux*.85)*.75 + .28*smoothstep(1.,.15,abs(ux)) + .05*(noise(vec2(ux*4.,9.))-.5)) * bh * 2.4;
-      float inside = smoothstep(under, under-.03, yy) * smoothstep(0.,.02,yy) * smoothstep(1.,.82,abs(ux));
-      float fade = exp(-yy/max(under,.01)*1.6);                       // уходит в темноту с глубиной
-      vec2 cp = vec2(ux*5., yy*8.) + vec2(t*.03, -t*.02);
-      float caus = pow(1.-abs(2.*fbm(cp)-1.), 5.);                     // каустика — свет сквозь воду
-      float rim = exp(-abs(under-yy)*90.) * smoothstep(0.,.02,yy) * smoothstep(1.,.8,abs(ux));
-      col += inside * (.35 + .65*fade) * (vec3(.07,.34,.56) + vec3(.30,.80,1.)*caus*.45);
-      col += vec3(.35,.85,1.)*rim*.4*(1.-depth*.5);
-    }
     /* световые столбы сквозь воду */
     float shafts = smoothstep(.55,.9, fbm(vec2(uv.x*aspect*3. + depth*1.5, t*.05)));
     col += vec3(.08,.22,.30) * shafts * (1.-depth) * .35;
@@ -221,6 +279,7 @@ void main(){
       ticking = false;
       dive = Math.min(1, Math.max(0, scrollY / Math.max(1, canvas.clientHeight)));
       canvas.style.transform = dive ? `translate3d(0,${(dive * 18).toFixed(1)}%,0) scale(${(1 + dive * .12).toFixed(3)})` : '';
+      berg.style.transform = dive ? `translate3d(0,${(dive * canvas.clientHeight * .18).toFixed(1)}px,0)` : '';
     });
   }, { passive: true });
   if ('IntersectionObserver' in window) new IntersectionObserver(e => { visible = e[0].isIntersecting; }).observe(canvas);
