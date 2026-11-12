@@ -9,8 +9,8 @@
   function buildBerg(seed) {
     let s = seed >>> 0;
     const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
-    const A = [[-470,0],[-430,-40],[-370,-70],[-320,-82],[-290,-150],[-235,-176],[-190,-232],[-140,-262],[-95,-340],[-60,-318],[-30,-268],[5,-252],[45,-300],[78,-286],[118,-222],[170,-206],[220,-150],[262,-138],[300,-96],[360,-72],[420,-30],[462,0]];
-    const B = [[-470,0],[-540,70],[-590,190],[-560,320],[-470,440],[-330,560],[-170,640],[10,680],[190,630],[350,530],[480,390],[560,240],[575,110],[520,30],[462,0]];
+    const A = [[-340,0],[-300,-38],[-262,-92],[-225,-118],[-178,-182],[-128,-226],[-82,-300],[-38,-372],[6,-300],[30,-262],[62,-238],[98,-252],[128,-214],[170,-176],[226,-118],[276,-72],[330,-28],[362,0]];
+    const B = [[-340,0],[-420,80],[-468,210],[-430,350],[-320,470],[-170,570],[-10,650],[150,590],[300,480],[420,330],[476,180],[470,70],[420,14],[362,0]];
     const inPoly = (P, x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
     const segD = (px, py, ax, ay, bx, by) => { const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))); return Math.hypot(px - ax - t * dx, py - ay - t * dy); };
     const dist = (P, x, y, skipWater) => { let m = 1e9; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; if (skipWater && a[1] === 0 && b[1] === 0) continue; m = Math.min(m, segD(x, y, a[0], a[1], b[0], b[1])); } return m; };
@@ -55,8 +55,8 @@
       const Z = pts.map(([x, y, e]) => {
         if (e) return 0;
         const d = dist(P, x, y, !under);
-        let z = zf(d) + (rnd() - .5) * (under ? 70 : 22);
-        peaks.forEach(([px, py]) => { z += 70 * Math.exp(-Math.abs(x - px) / 38) * Math.max(0, 1 - (y - py) / 420); });
+        let z = zf(d) + (rnd() - .5) * (under ? 14 : 8);
+        
         return z;
       });
       const tris = delaunay(pts.map(p => [p[0], p[1]])).filter(t => { const cx = (pts[t[0]][0] + pts[t[1]][0] + pts[t[2]][0]) / 3, cy = (pts[t[0]][1] + pts[t[1]][1] + pts[t[2]][1]) / 3; return inPoly(P, cx, cy); });
@@ -80,10 +80,10 @@
         if (!under) {
           col = mix([38, 82, 138], [132, 178, 222], sm(.15, .62, dif + j));
           col = mix(col, [246, 251, 255], sm(.6, .93, dif + j));
-          col = mix(col, [86, 200, 225], sm(-70, 0, cy) * .45);                 // бирюза у воды
+          col = mix(col, [96, 196, 228], sm(-90, 0, cy) * .55);                 // бирюза у воды
           col = mix(col, [120, 120, 230], (1 - dif) * .12);                      // фиолетовый отсвет сияния в тени
         } else {
-          col = mix([16, 62, 108], [56, 140, 198], sm(.25, .9, dif + j * .6));
+          col = mix([22, 78, 130], [70, 160, 214], sm(.2, .9, dif + j * .6));
           col = mix(col, [120, 214, 240], sm(.86, 1, dif + j) * .45);
         }
         const d = [a, b, c].map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
@@ -91,13 +91,13 @@
       });
       return out;
     }
-    const top = mesh(A, 48, d => 150 * Math.sqrt(Math.min(d, 200) / 200), false);
-    const bot = mesh(B, 56, d => 200 * Math.sqrt(Math.min(d, 150) / 150), true);
+    const top = mesh(A, 62, d => 1.25 * d, false);
+    const bot = mesh(B, 80, d => .9 * d, true);
     const path = P => 'M' + P.map(p => p.join(',')).join('L');
     const topEdge = path(A.slice(0)), botEdge = path(B);
     return `<svg class="berg" viewBox="-640 -380 1280 1120" aria-hidden="true">
   <defs>
-  <linearGradient id="bgUnder" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".55" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="bgUnder" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".6" stop-color="#fff" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity=".08"/></linearGradient>
   <mask id="bgMask" maskUnits="userSpaceOnUse" x="-640" y="0" width="1280" height="740"><rect x="-640" y="0" width="1280" height="740" fill="url(#bgUnder)"/></mask>
   <radialGradient id="bgGlow" cx="0" cy="0" r="1" gradientTransform="translate(0 0) scale(560 120)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8fe6ff" stop-opacity=".55"/><stop offset="1" stop-color="#8fe6ff" stop-opacity="0"/></radialGradient>
   <linearGradient id="bgSheen" x1="0" y1="-340" x2="0" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
