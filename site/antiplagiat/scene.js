@@ -157,11 +157,11 @@ void main(){
   const phone = matchMedia('(max-width: 760px)').matches;
   let scale = lite ? (phone ? .36 : .42) : (phone ? .5 : .55);
   const step = lite || phone ? 42 : 30;     // мс между кадрами: 24 или 33 кадра в секунду
-  let dive = 0;
+  let dive = 0, scrolling = false;
   let W = 0, H = 0, visible = true, mouse = [0, 0], target = [0, 0], start = performance.now(), last = 0;
   function layout() {
     const r = canvas.getBoundingClientRect();
-    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const dpr = Math.min(devicePixelRatio || 1, 1.25);   // сцена мягкая: retina-разрешение ей не нужно
     W = Math.max(2, Math.round(r.width * dpr * scale)); H = Math.max(2, Math.round(r.height * dpr * scale));
     if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; gl.viewport(0, 0, W, H); }
   }
@@ -171,7 +171,7 @@ void main(){
     gl.uniform2f(uRes, W, H);
     gl.uniform1f(uTime, (now - start) / 1000 + 20);
     gl.uniform2f(uMouse, mouse[0], mouse[1]);
-    gl.uniform1f(uHorizon, (phone ? .24 : .36) + dive * (phone ? .22 : .3));   // при прокрутке «камера» уходит под воду
+    gl.uniform1f(uHorizon, phone ? .24 : .36);
     gl.uniform1f(uBergX, wide ? .79 : phone ? .78 : .74);
     gl.uniform1f(uBergS, wide ? .26 : phone ? .17 : .28);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -192,7 +192,7 @@ void main(){
   }
   function loop(now) {
     requestAnimationFrame(loop);
-    if (!visible || document.hidden || frozen) return;
+    if (!visible || document.hidden || frozen || scrolling) return;   // во время прокрутки небо не перерисовывается
     if (now - last < step) return;
     if (last) adapt(now - last);
     last = now;
@@ -201,9 +201,17 @@ void main(){
   layout(); draw(performance.now());
   document.documentElement.classList.add('gl');
   addEventListener('resize', () => { layout(); draw(performance.now()); });
+  /* При прокрутке сцена не перерисовывается, а плавно уезжает и слегка увеличивается — это делает
+     видеокарта без пересчёта шейдера («погружение» под воду). Перерисовка — через 150 мс после остановки. */
+  let idle = 0, ticking = false;
   if (!calm) addEventListener('scroll', () => {
-    dive = Math.min(1, Math.max(0, scrollY / Math.max(1, canvas.clientHeight)));
-    if (frozen) requestAnimationFrame(() => draw(performance.now()));
+    scrolling = true; clearTimeout(idle); idle = setTimeout(() => { scrolling = false; last = 0; gaps.length = 0; }, 150);
+    if (ticking) return; ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      dive = Math.min(1, Math.max(0, scrollY / Math.max(1, canvas.clientHeight)));
+      canvas.style.transform = dive ? `translate3d(0,${(dive * 18).toFixed(1)}%,0) scale(${(1 + dive * .12).toFixed(3)})` : '';
+    });
   }, { passive: true });
   if ('IntersectionObserver' in window) new IntersectionObserver(e => { visible = e[0].isIntersecting; }).observe(canvas);
   if (!calm) {
