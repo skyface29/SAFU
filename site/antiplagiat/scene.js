@@ -25,15 +25,17 @@
   float fbm(vec2 p){ float s=0., a=.5; mat2 m=mat2(1.6,1.2,-1.2,1.6); for(int i=0;i<5;i++){ s+=a*noise(p); p=m*p; a*=.5; } return s; }
   /* форма горы: главный пик + плечи; высота над водой */
   float mass(vec2 q){
-    float b = 1.0*exp(-dot(q*vec2(.9,1.3),q*vec2(.9,1.3))*1.4);
-    vec2 s1=q-vec2(.75,.15); b += .55*exp(-dot(s1,s1)*3.5);
-    vec2 s2=q-vec2(-.8,-.1); b += .42*exp(-dot(s2,s2)*3.);
+    vec2 c = q - vec2(.12,.05);
+    float r = length(c*vec2(1.,1.15));
+    float b = 2.3*pow(max(0., 1. - r/1.05), 1.55);                 // главный острый пик
+    b += .38*exp(-dot(q-vec2(-.75,.0),q-vec2(-.75,.0))*2.6);         // пологое плечо слева
+    b += .30*exp(-dot(q-vec2(.85,.1),q-vec2(.85,.1))*3.2);           // плечо справа
     return b;
   }
   float H(vec2 q){
     vec2 w = q + .25*vec2(fbm(q*1.3+3.), fbm(q*1.3+7.));   // изгиб гребней
     float b = mass(q);
-    return b*(.6 + .55*ridged(w*1.5)) - .38;
+    return b*(.72 + .38*ridged(w*1.6)) - .3;
   }
   vec3 nrm(vec2 q){ float e=.0025; return normalize(vec3(H(q-vec2(e,0.))-H(q+vec2(e,0.)), 2.*e, H(q-vec2(0.,e))-H(q+vec2(0.,e)))); }
   /* подводная часть — больше и шире, уходит вниз */
@@ -41,8 +43,8 @@
   vec3 unrm(vec2 q){ float e=.01; return normalize(vec3(U(q+vec2(e,0.))-U(q-vec2(e,0.)), 2.*e, U(q+vec2(0.,e))-U(q-vec2(0.,e)))); }
   void main(){
     vec2 uv = (gl_FragCoord.xy - .5*R)/R.y; uv.x = -uv.x;   // вершина справа — подальше от заголовка
-    vec3 ro = vec3(0., .07, -6.2);
-    vec3 rd = normalize(vec3(uv.x, uv.y + .02, 3.1));
+    vec3 ro = vec3(0., .07, -7.4);
+    vec3 rd = normalize(vec3(uv.x, uv.y + .17, 3.1));
     vec3 L = normalize(vec3(.65,.55,-.45));
     vec4 o = vec4(0.);
     float t = 3.; bool hit=false; vec3 p;
@@ -53,14 +55,14 @@
       float d = p.y - h;
       if(d < .0015*t){ hit=true; break; }
       t += max(.003, d*.25);
-      if(t > 10.) break;
+      if(t > 11.5) break;
     }
     if(hit){
       vec3 n = nrm(p.xz);
       float dif = clamp(dot(n,L),0.,1.);
       float sky = .5+.5*n.y;
       float sl = n.y;                                  // 1 — горизонтально, 0 — отвесно
-      float hgt = clamp(p.y/1.4,0.,1.);
+      float hgt = clamp(p.y/2.2,0.,1.);
       float sh = 1.;                                   // мягкая тень от соседних гребней
       float st = .02;
       for(int j=0;j<40;j++){ vec3 q=p+L*st; float dd=q.y-H(q.xz); sh=min(sh, 10.*dd/st); st+=max(.01,dd*.5); if(sh<0.||st>2.5) break; }
@@ -118,18 +120,18 @@
   }
 
   /* Айсберг — отдельный холст поверх неба. Рисуется один раз (и заново только при смене размера),
-     ватерлиния (55,4% высоты холста) совпадает с горизонтом сцены. */
+     ватерлиния совпадает с горизонтом сцены. */
   const berg = document.createElement('canvas');
   berg.className = 'berg'; berg.setAttribute('aria-hidden', 'true');
   canvas.after(berg);
   let bergKey = '';
   function placeBerg() {
     const w = canvas.clientWidth, h = canvas.clientHeight, ph = innerWidth <= 760, wide = w > 900;
-    const hz = ph ? .24 : .36, cx = wide ? .785 : ph ? .74 : .72;
-    const above = Math.min(w * (ph ? .62 : .42), h * (ph ? .5 : .6));   // ширина надводной части, px
-    const cw = above / .825, ch = cw * .7;
+    const hz = ph ? .24 : .36, cx = wide ? .79 : ph ? .74 : .74;
+    /* в кадре: надводная часть — 69% ширины холста, ватерлиния — на 69,9% высоты, вершина почти у верха */
+    const ch = Math.min(h * (ph ? .5 : .62), w * (ph ? .9 : .55)), cw = ch / .85;
     berg.style.width = cw + 'px'; berg.style.height = ch + 'px';
-    berg.style.left = (cx * w - cw / 2) + 'px'; berg.style.top = (h * (1 - hz) - ch * .554) + 'px';
+    berg.style.left = (cx * w - .465 * cw) + 'px'; berg.style.top = (h * (1 - hz) - ch * .699) + 'px';
     const dpr = Math.min(devicePixelRatio || 1, 2), W = Math.round(cw * dpr), H = Math.round(ch * dpr), key = W + 'x' + H;
     if (key !== bergKey) { bergKey = key; if (!renderBerg(berg, W, H)) berg.remove(); }
   }
