@@ -10,13 +10,18 @@
   if (!gl) return;
 
   const VERT = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
-  const FRAG = `
+  const lite = document.documentElement.classList.contains('lite');
+  const FRAG = (lite ? '#define OCT 3\n' : '#define OCT 5\n') + `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
+#else
+precision mediump float;
+#endif
 uniform vec2 uRes; uniform float uTime; uniform vec2 uMouse; uniform float uHorizon; uniform float uBergX; uniform float uBergS;
 float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
   return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
-float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*noise(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return v;}
+float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<OCT;i++){v+=a*noise(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return v;}
 
 /* профиль айсберга: ломаная по точкам, x в [-1,1], высота 0..1 */
 float prof(float x){
@@ -150,7 +155,9 @@ void main(){
   const uRes = U('uRes'), uTime = U('uTime'), uMouse = U('uMouse'), uHorizon = U('uHorizon'), uBergX = U('uBergX'), uBergS = U('uBergS');
 
   const phone = matchMedia('(max-width: 760px)').matches;
-  const scale = phone ? .5 : .55;
+  let scale = lite ? (phone ? .36 : .42) : (phone ? .5 : .55);
+  const step = lite || phone ? 42 : 30;     // мс между кадрами: 24 или 33 кадра в секунду
+  let dive = 0;
   let W = 0, H = 0, visible = true, mouse = [0, 0], target = [0, 0], start = performance.now(), last = 0;
   function layout() {
     const r = canvas.getBoundingClientRect();
@@ -164,21 +171,40 @@ void main(){
     gl.uniform2f(uRes, W, H);
     gl.uniform1f(uTime, (now - start) / 1000 + 20);
     gl.uniform2f(uMouse, mouse[0], mouse[1]);
-    gl.uniform1f(uHorizon, phone ? .24 : .36);
+    gl.uniform1f(uHorizon, (phone ? .24 : .36) + dive * (phone ? .22 : .3));   // при прокрутке «камера» уходит под воду
     gl.uniform1f(uBergX, wide ? .79 : phone ? .78 : .74);
     gl.uniform1f(uBergS, wide ? .26 : phone ? .17 : .28);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
+  /* Подстройка под устройство: если кадры приходят заметно реже задуманного, сцена рисуется
+     в меньшем разрешении; если не помогает и это — замирает на последнем кадре (страница не тормозит). */
+  const gaps = [];
+  let frozen = false;
+  function adapt(gap) {
+    if (gap > 250) { gaps.length = 0; return; }            // вкладка просыпалась — не считаем
+    gaps.push(gap);
+    if (gaps.length < 40) return;
+    const sorted = gaps.slice().sort((a, b) => a - b), med = sorted[gaps.length >> 1];
+    gaps.length = 0;
+    if (med < step * 1.45) return;
+    if (scale > .26) { scale = Math.max(.25, scale * .78); layout(); }
+    else frozen = true;
+  }
   function loop(now) {
     requestAnimationFrame(loop);
-    if (!visible || document.hidden) return;
-    if (now - last < (phone ? 40 : 30)) return;       // 25–33 кадра в секунду хватает для неба
+    if (!visible || document.hidden || frozen) return;
+    if (now - last < step) return;
+    if (last) adapt(now - last);
     last = now;
     draw(now);
   }
   layout(); draw(performance.now());
   document.documentElement.classList.add('gl');
   addEventListener('resize', () => { layout(); draw(performance.now()); });
+  if (!calm) addEventListener('scroll', () => {
+    dive = Math.min(1, Math.max(0, scrollY / Math.max(1, canvas.clientHeight)));
+    if (frozen) requestAnimationFrame(() => draw(performance.now()));
+  }, { passive: true });
   if ('IntersectionObserver' in window) new IntersectionObserver(e => { visible = e[0].isIntersecting; }).observe(canvas);
   if (!calm) {
     if (matchMedia('(hover: hover)').matches) {

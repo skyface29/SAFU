@@ -409,11 +409,132 @@ async function docxToText(buf) {
   return { text: paragraphs.join('\n'), flags: { hidden_chars: hiddenChars, hidden_kinds: kinds, hidden_samples: samples } };
 }
 
+/* =====================================================================
+   Оформление по ГОСТу (.docx): поля, шрифт, кегль, интервал, отступ,
+   выравнивание, номера страниц, структура. Требования — ГОСТ 7.32-2017
+   и типичные методички вузов. Считается по тексту основных абзацев.
+   ===================================================================== */
+async function tryEntry(buf, name) { try { return new TextDecoder().decode(await unzipEntry(buf, name)); } catch (e) { return ''; } }
+const wAttr = (el, name) => el ? el.getAttributeNS(W_NS, name) : null;
+const wKid = (el, name) => { if (!el) return null; for (const c of el.childNodes) if (c.namespaceURI === W_NS && c.localName === name) return c; return null; };
+
+async function gostCheck(buf) {
+  const parse = s => new DOMParser().parseFromString(s, 'application/xml');
+  const doc = parse(await tryEntry(buf, 'word/document.xml'));
+  const stylesXml = await tryEntry(buf, 'word/styles.xml'), themeXml = await tryEntry(buf, 'word/theme/theme1.xml');
+  const styles = stylesXml ? parse(stylesXml) : null;
+  const theme = {};
+  if (themeXml) {
+    const t = parse(themeXml);
+    for (const [k, tag] of [['minor', 'minorFont'], ['major', 'majorFont']]) {
+      const f = t.getElementsByTagNameNS('*', tag)[0], latin = f && f.getElementsByTagNameNS('*', 'latin')[0];
+      if (latin) theme[k] = latin.getAttribute('typeface');
+    }
+  }
+  /* стили: id → {based, pPr, rPr, heading} */
+  const S = new Map();
+  let defP = null, defR = null, defStyle = null;
+  if (styles) {
+    const dd = styles.getElementsByTagNameNS(W_NS, 'docDefaults')[0];
+    if (dd) { defP = wKid(wKid(dd, 'pPrDefault'), 'pPr'); defR = wKid(wKid(dd, 'rPrDefault'), 'rPr'); }
+    for (const st of styles.getElementsByTagNameNS(W_NS, 'style')) {
+      const id = wAttr(st, 'styleId'), name = (wAttr(wKid(st, 'name'), 'val') || '').toLowerCase();
+      const pPr = wKid(st, 'pPr');
+      S.set(id, { based: wAttr(wKid(st, 'basedOn'), 'val'), pPr, rPr: wKid(st, 'rPr'),
+        heading: /heading|заголовок|title|toc|caption|название/.test(name + ' ' + id.toLowerCase()) || !!wKid(pPr, 'outlineLvl') });
+      if (wAttr(st, 'type') === 'paragraph' && ['1', 'true'].includes(wAttr(st, 'default'))) defStyle = id;
+    }
+  }
+  const chain = id => { const out = []; for (let i = 0; id && i < 12 && S.has(id); i++) { out.push(S.get(id)); id = S.get(id).based; } return out; };
+  /* значение свойства: первое найденное по цепочке */
+  const pick = (list, get) => { for (const x of list) { const v = x && get(x); if (v != null && v !== '') return v; } return null; };
+
+  const body = doc.getElementsByTagNameNS(W_NS, 'body')[0];
+  const tally = {}; const add = (k, v, n) => { (tally[k] = tally[k] || new Map()).set(v, (tally[k].get(v) || 0) + n); };
+  const headings = [];
+  let bodyChars = 0;
+  for (const p of body ? body.getElementsByTagNameNS(W_NS, 'p') : []) {
+    let inTable = false;
+    for (let a = p.parentNode; a && a !== body; a = a.parentNode) if (a.localName === 'tbl') { inTable = true; break; }
+    if (inTable) continue;
+    const pPr = wKid(p, 'pPr'), sid = wAttr(wKid(pPr, 'pStyle'), 'val') || defStyle;
+    const sts = chain(sid), text = [...p.getElementsByTagNameNS(W_NS, 't')].map(t => t.textContent).join('').trim();
+    if (!text) continue;
+    const isHead = sts.some(s => s.heading) || !!wKid(pPr, 'outlineLvl') || (text.length < 80 && !/[.!?;:,]$/.test(text) && /^[\dIVX.\s]*[A-ZА-ЯЁ]/.test(text) && text === text.toUpperCase());
+    if (isHead || text.length < 25) { if (text.length < 120) headings.push(text); continue; }
+    const pp = [pPr, ...sts.map(s => s.pPr), defP];
+    const spacing = pick(pp, x => wKid(x, 'spacing') && wAttr(wKid(x, 'spacing'), 'line') ? wKid(x, 'spacing') : null);
+    const line = spacing ? +wAttr(spacing, 'line') / 240 : 1, rule = spacing ? wAttr(spacing, 'lineRule') || 'auto' : 'auto';
+    const ind = pick(pp, x => { const i = wKid(x, 'ind'); return i && (wAttr(i, 'firstLine') != null || wAttr(i, 'hanging') != null) ? i : null; });
+    const first = ind ? (+wAttr(ind, 'firstLine') || 0) - (+wAttr(ind, 'hanging') || 0) : 0;
+    const jc = pick(pp, x => wAttr(wKid(x, 'jc'), 'val')) || 'left';
+    for (const r of p.getElementsByTagNameNS(W_NS, 'r')) {
+      const n = [...r.getElementsByTagNameNS(W_NS, 't')].reduce((s, t) => s + t.textContent.length, 0);
+      if (!n) continue;
+      const rPr = wKid(r, 'rPr'), rs = chain(wAttr(wKid(rPr, 'rStyle'), 'val'));
+      const rr = [rPr, ...rs.map(s => s.rPr), ...sts.map(s => s.rPr), defR];
+      let font = pick(rr, x => { const f = wKid(x, 'rFonts'); if (!f) return null;
+        const th = wAttr(f, 'asciiTheme') || wAttr(f, 'hAnsiTheme'); if (th) return theme[/major/i.test(th) ? 'major' : 'minor'] || null;
+        return wAttr(f, 'hAnsi') || wAttr(f, 'ascii') || wAttr(f, 'cs'); }) || theme.minor || 'Calibri';
+      const sz = +(pick(rr, x => wAttr(wKid(x, 'sz'), 'val')) || 20) / 2;
+      add('font', font, n); add('size', sz, n);
+      add('line', rule === 'auto' ? Math.round(line * 100) / 100 : 'точно ' + Math.round(+wAttr(spacing, 'line') / 20) + ' пт', n);
+      add('indent', Math.round(first / 567 * 100) / 100, n); add('jc', jc, n);
+      bodyChars += n;
+    }
+  }
+  const top = k => { const m = tally[k]; if (!m) return [null, 0]; let best = null, c = 0, all = 0; for (const [v, x] of m) { all += x; if (x > c) { best = v; c = x; } } return [best, c / all]; };
+  const share = (k, ok) => { const m = tally[k]; if (!m) return 1; let good = 0, all = 0; for (const [v, x] of m) { all += x; if (ok(v)) good += x; } return good / all; };
+  const pct = x => Math.round(x * 100) + '%';
+  const items = [];
+  const item = (name, ok, need, found) => items.push({ name, ok, need, found });
+
+  /* поля и формат листа — по последнему разделу */
+  const sect = body && [...body.getElementsByTagNameNS(W_NS, 'sectPr')].pop();
+  const mar = wKid(sect, 'pgMar'), sz = wKid(sect, 'pgSz');
+  const mm = v => Math.round((+v || 0) / 56.7);
+  if (sz) { const w = mm(wAttr(sz, 'w')), h = mm(wAttr(sz, 'h')); const a4 = Math.abs(Math.min(w, h) - 210) <= 2 && Math.abs(Math.max(w, h) - 297) <= 2;
+    item('Формат листа', a4, 'A4 (210 × 297 мм)', `${w} × ${h} мм`); }
+  if (mar) {
+    const L = mm(wAttr(mar, 'left')), R = mm(wAttr(mar, 'right')), T = mm(wAttr(mar, 'top')), B = mm(wAttr(mar, 'bottom'));
+    item('Поля', Math.abs(L - 30) <= 1 && R >= 10 && R <= 15 && Math.abs(T - 20) <= 1 && Math.abs(B - 20) <= 1,
+      'левое 30, правое 10–15, верхнее и нижнее 20 мм', `левое ${L}, правое ${R}, верхнее ${T}, нижнее ${B} мм`);
+  }
+  if (bodyChars > 200) {
+    const [f] = top('font'), [s] = top('size'), [l] = top('line'), [i] = top('indent'), [j] = top('jc');
+    const okFont = share('font', v => /times new roman/i.test(v));
+    item('Шрифт', okFont >= .9, 'Times New Roman', okFont >= .9 ? 'Times New Roman' : `${f}${okFont > 0 ? ` (Times New Roman — ${pct(okFont)} текста)` : ''}`);
+    const okSize = share('size', v => v >= 12 && v <= 14);
+    item('Размер шрифта', okSize >= .9, '12–14 пт (чаще требуют 14)', okSize >= .9 || okSize === 0 ? `${s} пт` : `${s} пт, в норме ${pct(okSize)} текста`);
+    const okLine = share('line', v => v === 1.5);
+    item('Межстрочный интервал', okLine >= .9, 'полуторный (1,5)', typeof l === 'number' ? String(l).replace('.', ',') + (okLine < .9 && okLine > 0 ? `, полуторный у ${pct(okLine)} текста` : '') : l);
+    const okInd = share('indent', v => Math.abs(v - 1.25) <= .05);
+    item('Абзацный отступ', okInd >= .9, '1,25 см', (i ? String(i).replace('.', ',') + ' см' : 'нет') + (okInd < .9 && okInd > 0 ? `, верно у ${pct(okInd)} абзацев` : ''));
+    const okJc = share('jc', v => v === 'both' || v === 'distribute');
+    item('Выравнивание', okJc >= .9, 'по ширине', { both: 'по ширине', left: 'по левому краю', start: 'по левому краю', center: 'по центру', right: 'по правому краю', end: 'по правому краю' }[j] || j);
+  }
+  /* номера страниц — поле PAGE в колонтитулах */
+  let pageNum = false;
+  for (const kind of ['footer', 'header']) for (let k = 1; k <= 6 && !pageNum; k++) {
+    const x = await tryEntry(buf, `word/${kind}${k}.xml`);
+    if (x && /PAGE(?![A-Z])/.test(x)) pageNum = true;
+  }
+  item('Номера страниц', pageNum, 'есть, обычно внизу по центру', pageNum ? 'есть' : 'не найдены');
+  /* структура */
+  const H = headings.map(h => h.toLowerCase());
+  const has = re => H.some(h => re.test(h));
+  const parts = [['Содержание', /^(содержание|оглавление)/], ['Введение', /^введение/], ['Заключение', /^(заключение|выводы)/],
+    ['Список литературы', /(список\s+(использованн\S*\s+)?(литературы|источников)|библиограф|литература$)/]];
+  const missing = parts.filter(([, re]) => !has(re)).map(([n]) => n);
+  item('Структура работы', !missing.length, 'содержание, введение, заключение, список литературы', missing.length ? 'не найдено: ' + missing.join(', ').toLowerCase() : 'все разделы на месте');
+  return { items, problems: items.filter(x => !x.ok).length };
+}
+
 /** Текст из файла, который выбрал человек: .docx, .pdf, .txt. */
 async function readFile(file) {
   const name = file.name.toLowerCase(), buf = await file.arrayBuffer();
   if (/\.(doc|rtf|odt|pages)$/.test(name)) throw new Error('Этот формат не поддерживается. Сохраните документ как .docx или .pdf.');
-  if (name.endsWith('.docx')) return docxToText(buf);
+  if (name.endsWith('.docx')) { const r = await docxToText(buf); try { r.gost = await gostCheck(buf); } catch (e) { r.gost = null; } return r; }
   if (name.endsWith('.pdf')) return { text: await pdfToText(buf, 400), flags: {} };
   return { text: decodeBytes(buf, ''), flags: {} };
 }
@@ -471,12 +592,16 @@ async function viaProxy(url, body, ms = 16000) {
   }, ms);
 }
 let YANDEX = false;   // помощник умеет искать через Yandex Search API (включается в облаке)
+let PAID = false;     // поиск Яндекса платный: нужен билет полной проверки (antiplagiat-api/pay.js)
+let TICKET = '';      // билет текущей полной проверки
+function setTicket(t) { TICKET = t || ''; }
+const yandexReady = () => YANDEX && (!PAID || !!TICKET);
 async function pingProxy() {
   if (!API) return false;
   try {
     return await timed(async signal => {
       const r = await fetch(API, { signal }); if (!r.ok) return false;
-      const d = await r.json(); YANDEX = d.yandex === true; return d.ok === true;
+      const d = await r.json(); YANDEX = d.yandex === true; PAID = d.paid === true; return d.ok === true;
     }, 8000);
   } catch (e) { return false; }
 }
@@ -485,11 +610,12 @@ async function searchYandex(query, cancel) {
   const ask = async qs => timed(async signal => {
     const r = await fetch(API + (API.includes('?') ? '&' : '?') + qs, { signal });
     const d = await r.json().catch(() => ({}));
+    if (r.status === 402) { TICKET = ''; throw new Blocked('yandex'); }
     if (r.status === 429 || r.status === 503) { YANDEX = false; throw new Blocked('yandex'); }
     if (!r.ok) throw new Error(d.error || 'поиск Яндекса ответил ' + r.status);
     return d;
   }, 20000);
-  let d = await ask('ysearch=' + encodeURIComponent(query));
+  let d = await ask('ysearch=' + encodeURIComponent(query) + (TICKET ? '&t=' + encodeURIComponent(TICKET) : ''));
   for (let i = 0; i < 30 && !d.done; i++) {
     if (cancel && cancel()) return [];
     await sleep(2000);
@@ -554,7 +680,7 @@ async function searchSeznam(query, cancel) {
 /** Точная фраза (в кавычках) — DuckDuckGo находит по ней даже малоизвестные страницы с рефератами,
     которые по обычному запросу тонут среди похожих по теме. Если DuckDuckGo отказывает — Seznam. */
 async function searchPhrase(phrase, cancel) {
-  if (YANDEX) {
+  if (yandexReady()) {
     try { return [await searchYandex(phrase, cancel), 'yandex']; } catch (e) { /* дальше бесплатные */ }
   }
   if (ddg.available()) {
@@ -937,7 +1063,7 @@ async function runCheck(rawText, opts, ui) {
       if (ui.query) ui.query(i, 'web');
       const q = webQuery(i);
       const phrase = phraseQuery(i);
-      const note = ([res, engine]) => { engines[engine] = (engines[engine] || 0) + 1; return res; };
+      const note = ([res, engine]) => { engines[engine] = (engines[engine] || 0) + 1; if (engine === 'yandex') stats.yandex = (stats.yandex || 0) + 1; return res; };
       launch('web', async () => stop() ? null : note(await searchPhrase(phrase, stop)));
       launch('web', async () => stop() ? null : note(await searchFree(q, stop)));
     }
@@ -1016,5 +1142,5 @@ async function runCheck(rawText, opts, ui) {
   };
 }
 
-global.Iceberg = { runCheck, readFile, setApi, pingProxy, setRing, ringAdd, ringDelete, ringPing, fingerprints, bibliographyStart, cleanText, Tokens, align, htmlToText, docxToText, normalizeWord, stem };
+global.Iceberg = { runCheck, readFile, gostCheck, setApi, pingProxy, setTicket, yandexInfo: () => ({ yandex: YANDEX, paid: PAID }), setRing, ringAdd, ringDelete, ringPing, fingerprints, bibliographyStart, cleanText, Tokens, align, htmlToText, docxToText, normalizeWord, stem };
 })(window);

@@ -54,16 +54,54 @@ Cloudflare (запасной вариант): Workers → «Create» → вст�
 ## Поиск Яндекса (платная полная проверка)
 
 `yandex.js` умеет искать через Yandex Search API v2 в отложенном режиме (30,5 ₽ за 1000 запросов днём,
-25,4 ₽ ночью). Выключено, пока не задано `YSEARCH=on`. Чтобы включить:
+25,4 ₽ ночью). Выключено, пока не задано `YSEARCH=on`. Одна полная проверка — примерно 30–80 запросов, то есть 1–2,5 ₽.
 
 1. Привязать карту в биллинге Yandex Cloud.
 2. Создать сервисный аккаунт с ролью `search-api.webSearch.user` и выбрать его в настройках функции `antiplagiat`.
-3. Переменные функции: `YSEARCH=on`, `FOLDER_ID=<каталог>`, при желании `YSEARCH_DAILY=5000` — потолок запросов в сутки
-   на экземпляр (защита от перерасхода).
+3. Переменные функции: `YSEARCH=on`, `FOLDER_ID=<каталог>`, `TICKET_SECRET=<длинная случайная строка>` (та же, что у
+   `antiplagiat-pay`), при желании `YSEARCH_DAILY=5000` — потолок запросов в сутки на экземпляр.
 
-Запросы: `GET ?ysearch=<фраза>` → `{done, results}` или `{done:false, op}`, тогда `GET ?yop=<op>`.
-Страница сама узнаёт, что поиск включён (`yandex: true` в ответе на пустой запрос), и ищет точные фразы через Яндекс.
-Пока нет оплаты, его увидят все — включать вместе с кодами доступа.
+С `TICKET_SECRET` поиск Яндекса работает только с билетом полной проверки (`GET ?ysearch=<фраза>&t=<билет>`, без билета —
+402). Без `TICKET_SECRET` он открыт всем, поэтому включать `YSEARCH=on` только вместе с ним.
+
+## Оплата (`pay.js`)
+
+Оплата через Robokassa: у самозанятых чеки уходят в «Мой налог» сами («Робочеки СМЗ»). ЮKassa с 29.12.2025
+сервисы для самозанятых не поддерживает. Тарифы — `PLANS` в начале `pay.js` (сейчас 49 ₽ / 149 ₽ / 299 ₽ и 990 ₽ для преподавателей).
+
+Как работает: страница просит `create` → получает ссылку на оплату → после оплаты Robokassa присылает уведомление на
+ResultURL → функция сверяет подпись (Пароль №2) и сумму и выдаёт код `AIS-XXXX-XXXX` → перед каждой полной проверкой
+страница обменивает код на билет (`ticket`, списывается одна проверка) → билет проверяет `yandex.js`.
+
+Выложить: отдельная функция `antiplagiat-pay`, Node.js 22, точка входа `pay.handler`, файлы `pay.js` и `package.json`,
+память 128 МБ, таймаут 15 с, **публичная**. Сервисный аккаунт с ролью `ydb.editor`, переменные:
+
+| Переменная | Что это |
+|---|---|
+| `YDB_DATABASE` | путь к базе (можно ту же, что у «Кольца»: таблицы `pay_orders` и `pay_codes` создадутся сами) |
+| `ROBO_LOGIN`, `ROBO_PASS1`, `ROBO_PASS2` | идентификатор магазина и пароли №1 и №2 из «Технических настроек» Robokassa (алгоритм MD5) |
+| `ROBO_TEST=1` | тестовые платежи; тогда пароли — тестовые. Убрать после проверки |
+| `TICKET_SECRET` | та же строка, что у функции `antiplagiat` |
+| `BOT_SECRET`, `BOT_WEBHOOK_URL` | для оплаты заказов бота «Без хвостов» (ниже) |
+
+В Robokassa → «Технические настройки»: Result URL — `https://functions.yandexcloud.net/<id>?robokassa=result`, метод POST;
+Success URL — `https://arktika-app.ru/antiplagiat/?pay=ok`; Fail URL — `https://arktika-app.ru/antiplagiat/?pay=fail`.
+Адрес функции вписать в `PAY_DEFAULT` в `site/antiplagiat/index.html`, заполнить ФИО, ИНН и почту в
+`site/antiplagiat/oferta.html`. Блок «Полная проверка» и цены появляются на странице, только когда оплата настроена
+и `yandex.js` сообщает, что поиск Яндекса включён и платный.
+
+Запросы (POST, JSON): `{action:"plans"}` · `{action:"create", plan}` → `{order, url}` · `{action:"status", order}` →
+`{paid, code, left, until}` · `{action:"balance", code}` · `{action:"ticket", code}` → `{ticket, left, until}` (402 —
+проверки кончились или срок истёк).
+
+**Заказы бота.** Сервер бота создаёт заказ сам: `{action:"create", purpose:"bot", order_id, amount, description, sig}`,
+где `sig` = HMAC-SHA256(`BOT_SECRET`, `"<order_id>:<amount с двумя знаками>"`) в hex, например `"z1:500.00"`. В ответ —
+`url` для оплаты. После оплаты функция шлёт на `BOT_WEBHOOK_URL` POST `{order_id, amount, inv, paid_at}` с заголовком
+`X-Signature` = HMAC-SHA256(`BOT_SECRET`, тело). Если бот не ответил 2xx, функция не подтверждает уведомление и
+Robokassa присылает его ещё раз.
+
+Проверить у себя: `python3 antiplagiat/site_dev.py --fake-yandex` (нужен Node.js) — вместо Robokassa страница
+`/pay-fake` сразу «оплачивает» заказ. Тесты: `node --test antiplagiat-api/tests/pay.test.mjs`.
 
 ## «Кольцо САФУ» (`ring.js`)
 

@@ -8,6 +8,9 @@
 Страница на localhost сама выбирает /proxy.
 По адресу /pulse — счётчик «сейчас на сайте» в памяти (пароль админки — local).
 По адресу /ring — «Кольцо САФУ» в памяти (то же, что antiplagiat-api/ring.js, но без YDB; после перезапуска пусто).
+По адресу /pay — оплата полной проверки (antiplagiat-api/pay-local.js, нужен Node.js): вместо Robokassa — /pay-fake,
+которая сразу «оплачивает» заказ. Блок полной проверки виден, только если помощник сообщает, что поиск Яндекса включён —
+у себя это: python3 antiplagiat/site_dev.py --fake-yandex (поиск Яндекса подменяется пустой выдачей).
 """
 import hashlib
 import json
@@ -18,6 +21,9 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 import urllib.error
+import urllib.request
+import subprocess
+import shutil
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.normpath(os.path.join(HERE, "..", "site"))
@@ -25,6 +31,8 @@ sys.path.insert(0, HERE)
 from antiplag import sources  # noqa: E402
 
 sources.GUARD = True  # только открытый интернет, как у настоящего помощника
+FAKE_YANDEX = "--fake-yandex" in sys.argv
+PAY_PORT = 8791
 POST_OK = ("https://cyberleninka.ru/api/search",)
 MAX = 2_500_000
 TYPES = {"html": "text/html; charset=utf-8", "js": "text/javascript; charset=utf-8", "css": "text/css; charset=utf-8",
@@ -179,10 +187,34 @@ class Handler(BaseHTTPRequestHandler):
         ctype = (ctype or "application/octet-stream") + (f"; charset={charset}" if charset else "")
         self.reply(200, ctype, raw[:MAX], [("X-Status", str(status)), ("X-Final-Url", final)])
 
+    def pay(self, body=None):
+        req = urllib.request.Request(f"http://127.0.0.1:{PAY_PORT}{self.path}", data=body, method="POST" if body is not None else "GET",
+                                     headers={"Content-Type": "application/json"})
+        opener = urllib.request.build_opener(type("NoRedirect", (urllib.request.HTTPRedirectHandler,), {"redirect_request": lambda *a: None}))
+        try:
+            r = opener.open(req, timeout=10)
+            status, headers, data = r.status, r.headers, r.read()
+        except urllib.error.HTTPError as e:
+            status, headers, data = e.code, e.headers, e.read()
+        except OSError:
+            return self.reply(503, "application/json", '{"error":"Оплата у себя не запущена: нужен Node.js."}'.encode())
+        extra = [("Location", headers["Location"])] if headers.get("Location") else []
+        self.reply(status, headers.get("Content-Type") or "application/json", data, extra)
+
     def do_GET(self):
         path = urlsplit(self.path).path
         if path == "/proxy":
+            q = parse_qs(urlsplit(self.path).query)
+            if FAKE_YANDEX and not q.get("url"):
+                if q.get("ysearch"):
+                    t = (q.get("t") or [""])[0]
+                    if not t:
+                        return self.reply(402, "application/json", '{"error":"нужен код полной проверки"}'.encode())
+                    return self.reply(200, "application/json", b'{"done":true,"results":[]}')
+                return self.reply(200, "application/json", b'{"ok":true,"service":"antiplagiat","yandex":true,"paid":true}')
             return self.proxy("GET")
+        if path == "/pay-fake":
+            return self.pay()
         if path == "/pulse":
             if self.headers.get("X-Admin-Token") != "local":
                 return self.reply(403, "application/json", '{"error":"Нужен пароль администратора."}'.encode())
@@ -201,6 +233,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if urlsplit(self.path).path == "/proxy":
             return self.proxy("POST")
+        if urlsplit(self.path).path == "/pay":
+            length = min(int(self.headers.get("Content-Length") or 0), 10000)
+            return self.pay(self.rfile.read(length))
         if urlsplit(self.path).path == "/pulse":
             length = min(int(self.headers.get("Content-Length") or 0), 2000)
             try:
@@ -240,6 +275,10 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8790
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    port = int(args[0]) if args else 8790
+    PAY_PORT = port + 1
+    if shutil.which("node"):
+        subprocess.Popen(["node", os.path.join(HERE, "..", "antiplagiat-api", "pay-local.js"), str(PAY_PORT), f"http://localhost:{port}"])
     print(f"Страница: http://localhost:{port}/antiplagiat/  (остановить — Ctrl+C)", flush=True)
     ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
