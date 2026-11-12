@@ -243,6 +243,30 @@ footer a{color:var(--aur1);text-decoration:none;font-weight:800}
 .dev{display:inline-flex;align-items:center;gap:9px;color:var(--tx2)}
 .dev .d{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--aur1),var(--aur2));display:grid;place-items:center;color:#fff;font:800 11px var(--ff-d)}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sky2);border:1px solid var(--rim2);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60}
+/* счётчик пар за неделю: скромная кнопка у недели → панель справа (расписание остаётся главным) */
+.wkbtn{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;font-size:13px;color:var(--tx2)}
+.wkbtn{height:40px}
+.wklink{display:none;border:0;background:none;padding:0;font:inherit;color:var(--aur1);font-weight:800}
+@media (max-width:640px){.wkbtn{display:none}.wklink{display:inline}}
+.wkbtn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.wkhl{display:inline-flex;align-items:center;gap:6px;max-width:100%;border:1px solid var(--rim2);background:color-mix(in srgb,var(--aur1) 11%,transparent);border-radius:20px;padding:4px 6px 4px 12px;font-size:12.5px;font-weight:700;color:var(--tx2);margin:-4px 0 12px}
+.wkhl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wkhl button{border:0;background:var(--ice3);color:var(--tx);border-radius:50%;width:22px;height:22px;font-weight:800;line-height:1;flex:none}
+.wksum{font-weight:700;color:var(--tx2);font-size:13.5px;margin:0 0 10px}
+.wkbar{display:flex;gap:3px;height:8px;margin-bottom:9px}
+.wkbar u{display:block;border-radius:4px;background:var(--k)}
+.wkleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;font-weight:700;color:var(--tx2);margin-bottom:12px}
+.wkleg span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:3px;background:var(--k);margin-right:6px;vertical-align:0}
+.wkl{border-top:1px solid var(--rim);margin:0 -4px}
+.wkr{display:grid;grid-template-columns:minmax(0,1fr) auto 28px;align-items:center;gap:4px 12px;width:100%;border:0;border-bottom:1px solid var(--rim);background:none;color:inherit;font:inherit;text-align:left;padding:9px 4px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.wkr:hover{background:var(--ice2)}
+.wkr.on{background:color-mix(in srgb,var(--aur1) 11%,transparent)}
+.wkr .n{font-weight:700;font-size:14px;line-height:1.3}
+.wkr .n small{display:block;font-size:12px;font-weight:600;color:var(--tx3)}
+.wkr .d{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;max-width:110px}
+.wkr .d u{width:10px;height:10px;border-radius:3px;background:var(--k)}
+.wkr>b{font:800 17px var(--ff-d);text-align:right;font-variant-numeric:tabular-nums}
+.les.dim{opacity:.28}
 @media (max-width:900px){.days{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){
   .strip{display:flex}
@@ -601,9 +625,12 @@ function showSched(keep){
       subs.map(function(n){return '<button data-sub="'+n+'"'+(cur===n?' class="on"':'')+'>'+n+'</button>';}).join('')+'</div>'+
       (cur?'<small>пары других подгрупп скрыты</small>':'<small>выбери — и пары чужих подгрупп пропадут</small>')+'</div>';}
   h+=heroHtml(ids,now);
+  WG=[];for(var d=0;d<7;d++)if(days[week+d])bundle(days[week+d]).forEach(function(all){WG.push(isT?all:applyPick(all));});
+  if(hlSubj&&!WG.some(function(g){return S[L[g[0]][2]]===hlSubj;}))hlSubj=null;
   h+='<div class="weekbar"><button class="btn icon" id="pw" '+(week<=w0?'disabled':'')+' aria-label="Прошлая неделя">‹</button>'+
-    '<div class="lbl">'+dm(week,1)+' — '+dm(week+5,1)+'<small>'+(total?total+' '+plural(total,'занятие','занятия','занятий'):'занятий нет')+'</small></div>'+
-    '<button class="btn" id="tw">Сегодня</button><button class="btn icon" id="nw" '+(week>=w1?'disabled':'')+' aria-label="Следующая неделя">›</button></div>';
+    '<div class="lbl">'+dm(week,1)+' — '+dm(week+5,1)+'<small>'+(total?total+' '+plural(total,'занятие','занятия','занятий'):'занятий нет')+(WG.length?' · <button class="wklink" id="wkLink">итоги ›</button>':'')+'</small></div>'+
+    (WG.length?'<button class="btn wkbtn" id="wkBtn" title="Итоги недели: сколько пар по каждому предмету" aria-label="Итоги недели"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg><span>Итоги</span></button>':'')+'<button class="btn" id="tw">Сегодня</button><button class="btn icon" id="nw" '+(week>=w1?'disabled':'')+' aria-label="Следующая неделя">›</button></div>';
+  if(hlSubj)h+='<div class="wkhl"><span>Подсвечено: '+esc(hlSubj)+'</span><button id="hlOff" aria-label="Снять подсветку">✕</button></div>';
   h+='<div class="strip" role="tablist">';
   for(d=0;d<7;d++){k=week+d;if(d===6&&!days[k])continue;
     h+='<button data-d="'+k+'" class="'+(k===selDay?'on ':'')+(days[k]?'has ':'')+(k===today?'today':'')+'"><small>'+WDs[d]+'</small><b>'+new Date(k*DAY).getUTCDate()+'</b><i></i></button>';}
@@ -612,7 +639,7 @@ function showSched(keep){
     h+='<section class="card day'+(k===today?' today':'')+(k===selDay?' sel':'')+'"><div class="h"><b>'+WD[d]+'</b><span>'+dm(k)+'</span></div>';
     if(!list)h+='<div class="free">Пар нет — отдыхаем</div>';
     else bundle(list).forEach(function(all){var grp=isT?all:applyPick(all),picked=grp.length<all.length,l=L[grp[0]],st=BASE+l[0]*6e4,en=st+l[1]*6e4,kind=S[l[3]],tm=hm(st);
-      var cls=en<now?' past':(st<=now&&now<en?' now':''),mark=chs[st+'|'+S[l[2]]];
+      var cls=(en<now?' past':(st<=now&&now<en?' now':''))+(hlSubj&&S[l[2]]!==hlSubj?' dim':''),mark=chs[st+'|'+S[l[2]]];
       function who(l){if(isT)return l.slice(GO).map(function(x){var s=subText(subRaw(l,G[x][0]),true);return '<a data-og="'+esc(G[x][0])+'">'+esc(G[x][0])+'</a>'+(s?' <span class="subg">'+esc(s)+'</span>':'');}).join(', ');
         return S[l[4]]?S[l[4]].split(',').map(function(t){t=t.trim();return '<a data-ot="'+esc(t)+'">'+esc(t)+'</a>';}).join(', '):'';}
       function place(l){return [S[l[5]]?'ауд. '+S[l[5]]:'',S[l[6]]].filter(Boolean).join(', ');}
@@ -628,6 +655,8 @@ function showSched(keep){
     h+='</section>';}
   app.innerHTML=h+'</div>';
   document.getElementById('chg').onclick=function(){isT?showTeachers():showGroups();};
+  ['wkBtn','wkLink'].forEach(function(id){var b=document.getElementById(id);if(b)b.onclick=openWeekCount;});
+  var ho=document.getElementById('hlOff');if(ho)ho.onclick=function(){hlSubj=null;showSched();};
   document.getElementById('pw').onclick=function(){week-=7;selDay=null;showSched();};
   document.getElementById('nw').onclick=function(){week+=7;selDay=null;showSched();};
   document.getElementById('tw').onclick=function(){week=null;selDay=null;showSched();};
@@ -640,6 +669,30 @@ function showSched(keep){
   app.querySelectorAll('[data-sub]').forEach(function(b){b.onclick=function(){mem.sub=mem.sub||{};if(b.dataset.sub)mem.sub[mem.group]=b.dataset.sub;else delete mem.sub[mem.group];save();showSched();};});
   app.querySelectorAll('[data-pick]').forEach(function(b){b.onclick=function(e){e.preventDefault();mem.pick=mem.pick||{};(mem.pick[mem.group]=mem.pick[mem.group]||{})[b.dataset.pick]=b.dataset.key;save();showSched();toast('Запомнил: дальше «'+b.dataset.pick+'» — только твой вариант');};});
   app.querySelectorAll('[data-unpick]').forEach(function(b){b.onclick=function(){if(mem.pick&&mem.pick[mem.group])delete mem.pick[mem.group][b.dataset.unpick];save();showSched();};});
+}
+/* счётчик пар за неделю: пара = одно время + предмет + вид (подгруппы в одно время — одна пара) */
+var KF={'лекция':['лекция','лекции','лекций'],'практика':['практика','практики','практик'],'лабораторная':['лабораторная','лабораторные','лабораторных'],
+  'зачет':['зачёт','зачёта','зачётов'],'экзамен':['экзамен','экзамена','экзаменов'],'консультация':['консультация','консультации','консультаций'],'занятие':['занятие','занятия','занятий']};
+function kindWord(k,n){var f=KF[(k||'').toLowerCase()];return n+' '+(f?plural(n,f[0],f[1],f[2]):(k||'другое').toLowerCase());}
+function kindRank(k){k=(k||'').toLowerCase();return k.indexOf('лекц')>=0?0:k.indexOf('практ')>=0?1:k.indexOf('лаб')>=0?2:/экзам|зач/.test(k)?4:3;}
+var hlSubj=null;
+var WG=[];
+function openWeekCount(){
+  var groups=WG,subj={},order=[],kinds={},total=0,mins=0;
+  groups.forEach(function(g){var l=L[g[0]],sj=S[l[2]],kd=S[l[3]]||'Занятие';total++;mins+=l[1];kinds[kd]=(kinds[kd]||0)+1;
+    var e=subj[sj];if(!e){e=subj[sj]={n:sj,c:0,k:{}};order.push(e);}e.c++;e.k[kd]=(e.k[kd]||0)+1;});
+  var ks=Object.keys(kinds).sort(function(a,b){return kindRank(a)-kindRank(b)||kinds[b]-kinds[a];});
+  order.sort(function(a,b){return b.c-a.c||a.n.localeCompare(b.n,'ru');});
+  var h=Math.round(mins/6)/10;
+  var out='<div class="top"><h2>Пары за неделю</h2><button class="btn icon" data-close aria-label="Закрыть">✕</button></div>'+
+    '<p class="wksum">'+dm(week,1)+' — '+dm(week+5,1)+' · '+total+' '+plural(total,'пара','пары','пар')+' · '+String(h).replace('.',',')+' ч · '+order.length+' '+plural(order.length,'предмет','предмета','предметов')+'</p>'+
+    '<div class="wkbar">'+ks.map(function(k){return '<u style="--k:'+kc(k)+';flex:'+kinds[k]+'"></u>';}).join('')+'</div>'+
+    '<div class="wkleg">'+ks.map(function(k){return '<span style="--k:'+kc(k)+'">'+esc(kindWord(k,kinds[k]))+'</span>';}).join('')+'</div><div class="wkl">';
+  order.forEach(function(e){var ek=Object.keys(e.k).sort(function(a,b){return kindRank(a)-kindRank(b);});
+    out+='<button class="wkr'+(hlSubj===e.n?' on':'')+'" data-hl="'+esc(e.n)+'"><span class="n">'+esc(e.n)+'<small>'+esc(ek.map(function(k){return kindWord(k,e.k[k]);}).join(' · '))+'</small></span>'+
+      '<span class="d">'+ek.map(function(k){var d='';for(var i=0;i<e.k[k];i++)d+='<u style="--k:'+kc(k)+'"></u>';return d;}).join('')+'</span><b>'+e.c+'</b></button>';});
+  sheet(out+'</div><p class="hint" style="margin-top:12px">Нажми на предмет — его пары подсветятся в расписании. Пары подгрупп в одно время считаются за одну.</p>');
+  paneEl.querySelectorAll('[data-hl]').forEach(function(b){b.onclick=function(){hlSubj=hlSubj===b.dataset.hl?null:b.dataset.hl;closeSheet();};});
 }
 function bundle(list){var out=[];list.forEach(function(i){var l=L[i],p=out[out.length-1];
   if(p){var q=L[p[0]];if(q[0]===l[0]&&q[2]===l[2]&&q[3]===l[3]){p.push(i);return;}}out.push([i]);});return out;}
