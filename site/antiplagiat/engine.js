@@ -471,12 +471,16 @@ async function viaProxy(url, body, ms = 16000) {
   }, ms);
 }
 let YANDEX = false;   // помощник умеет искать через Yandex Search API (включается в облаке)
+let PAID = false;     // поиск Яндекса платный: нужен билет полной проверки (antiplagiat-api/pay.js)
+let TICKET = '';      // билет текущей полной проверки
+function setTicket(t) { TICKET = t || ''; }
+const yandexReady = () => YANDEX && (!PAID || !!TICKET);
 async function pingProxy() {
   if (!API) return false;
   try {
     return await timed(async signal => {
       const r = await fetch(API, { signal }); if (!r.ok) return false;
-      const d = await r.json(); YANDEX = d.yandex === true; return d.ok === true;
+      const d = await r.json(); YANDEX = d.yandex === true; PAID = d.paid === true; return d.ok === true;
     }, 8000);
   } catch (e) { return false; }
 }
@@ -485,11 +489,12 @@ async function searchYandex(query, cancel) {
   const ask = async qs => timed(async signal => {
     const r = await fetch(API + (API.includes('?') ? '&' : '?') + qs, { signal });
     const d = await r.json().catch(() => ({}));
+    if (r.status === 402) { TICKET = ''; throw new Blocked('yandex'); }
     if (r.status === 429 || r.status === 503) { YANDEX = false; throw new Blocked('yandex'); }
     if (!r.ok) throw new Error(d.error || 'поиск Яндекса ответил ' + r.status);
     return d;
   }, 20000);
-  let d = await ask('ysearch=' + encodeURIComponent(query));
+  let d = await ask('ysearch=' + encodeURIComponent(query) + (TICKET ? '&t=' + encodeURIComponent(TICKET) : ''));
   for (let i = 0; i < 30 && !d.done; i++) {
     if (cancel && cancel()) return [];
     await sleep(2000);
@@ -554,7 +559,7 @@ async function searchSeznam(query, cancel) {
 /** Точная фраза (в кавычках) — DuckDuckGo находит по ней даже малоизвестные страницы с рефератами,
     которые по обычному запросу тонут среди похожих по теме. Если DuckDuckGo отказывает — Seznam. */
 async function searchPhrase(phrase, cancel) {
-  if (YANDEX) {
+  if (yandexReady()) {
     try { return [await searchYandex(phrase, cancel), 'yandex']; } catch (e) { /* дальше бесплатные */ }
   }
   if (ddg.available()) {
@@ -1016,5 +1021,5 @@ async function runCheck(rawText, opts, ui) {
   };
 }
 
-global.Iceberg = { runCheck, readFile, setApi, pingProxy, setRing, ringAdd, ringDelete, ringPing, fingerprints, bibliographyStart, cleanText, Tokens, align, htmlToText, docxToText, normalizeWord, stem };
+global.Iceberg = { runCheck, readFile, setApi, pingProxy, setTicket, yandexInfo: () => ({ yandex: YANDEX, paid: PAID }), setRing, ringAdd, ringDelete, ringPing, fingerprints, bibliographyStart, cleanText, Tokens, align, htmlToText, docxToText, normalizeWord, stem };
 })(window);

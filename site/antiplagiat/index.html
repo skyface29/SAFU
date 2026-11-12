@@ -300,6 +300,20 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 .modal .panel{width:100%;max-width:620px;padding:28px;transform:translateY(24px) scale(.97);transition:transform .55s var(--ease);background:var(--bg2)}
 :root[data-theme=light] .modal .panel{background:#fff}
 .modal.on .panel{transform:none}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+.plan{display:flex;flex-direction:column;gap:6px;text-align:left;border:1px solid var(--line2);background:var(--glass);color:var(--ink);border-radius:18px;padding:16px;cursor:pointer;transition:border-color .2s,transform .2s}
+.plan:hover{border-color:var(--a2);transform:translateY(-2px)}
+.plan b{font:500 15px/1.25 var(--display)}
+.plan .pr{font:500 26px/1 var(--display);letter-spacing:-.03em}
+.plan small{font-size:12.5px;color:var(--muted)}
+.plan:disabled{opacity:.5;cursor:wait;transform:none}
+.paycode{display:flex;gap:8px;margin-top:8px}
+.paycode input{flex:1;min-width:0;border:1px solid var(--line2);background:var(--glass);color:var(--ink);border-radius:999px;padding:9px 16px;font:500 15px var(--mono,monospace);letter-spacing:.06em;text-transform:uppercase}
+.codeok{font:500 22px var(--mono,monospace);letter-spacing:.08em;margin:10px 0;user-select:all}
+#price .plans{grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;border-radius:24px;overflow:hidden;border:1px solid var(--line);background:var(--line);margin:0}
+#price .plan{border:0;border-radius:0;background:var(--bg2);padding:28px 24px;cursor:default}
+#price .plan:hover{transform:none}
+@media (max-width:720px){.plans,#price .plans{grid-template-columns:1fr}}
 .lib{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14.5px}
 
 /* кнопка у нижнего края на телефоне */
@@ -440,6 +454,13 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
           <label class="sw"><span><b>Моя коллекция</b><small>ваши документы в этом браузере</small></span><input type="checkbox" id="oLib" checked><i></i></label>
         </div>
       </div>
+      <div id="fullBox" class="hide">
+        <span class="label">Полная проверка</span>
+        <div class="sws">
+          <label class="sw"><span><b>Поиск Яндекса</b><small id="fullNote">находит рефераты и курсовые, которые пропускают бесплатные поисковики</small></span><input type="checkbox" id="oFull"><i></i></label>
+        </div>
+        <button class="link" id="btnPay" type="button">Купить или ввести код</button>
+      </div>
       <div>
         <span class="label">Как считать</span>
         <div class="sws">
@@ -530,6 +551,14 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
     <div>Поиск идёт по открытым источникам. Закрытые базы — диссертации РГБ, полные тексты eLibrary, работы других вузов — есть только у самих систем-владельцев, поэтому процент может отличаться от вузовского «Антиплагиата».</div></div>
 </section>
 
+<section class="sec hide" id="price">
+  <div class="sec-h reveal"><div><span class="label">Цены</span><h3>Обычная проверка — бесплатно. Полная — от 49 ₽</h3></div>
+    <p>Полная проверка добавляет поиск Яндекса: он находит русскоязычные рефераты, курсовые и учебные материалы, которые пропускают бесплатные поисковики. После оплаты вы получаете код, он списывает по одной проверке.</p></div>
+  <div class="plans" id="pricePlans"></div>
+  <div class="honest reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></svg>
+    <div>Оплата картой или через СБП в Robokassa, чек приходит на почту. Услуга оказывается сразу после оплаты. <a href="oferta.html">Договор-оферта</a> · <a href="oferta.html#contacts">Контакты</a> · <a href="oferta.html#privacy">Обработка данных</a></div></div>
+</section>
+
 <nav class="sections" aria-label="Разделы Арктики">
   <a href="../raspisanie/"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Расписание</a>
   <a href="../spravka/"><svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.5V17A2.5 2.5 0 0 1 4 14.5z"/><path d="M8.5 9h7M8.5 12.5h4.5"/></svg>Справочник</a>
@@ -560,6 +589,23 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
   </div>
 </div>
 
+<div class="modal" id="payModal">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 style="margin:0">Полная проверка</h2><button class="btn" id="payClose">Закрыть</button></div>
+    <div id="payDone" class="hide">
+      <p class="muted" style="margin:14px 0 0">Оплата прошла. Ваш код — сохраните его, по нему можно проверять и с другого устройства:</p>
+      <div class="codeok" id="payCodeShow"></div>
+    </div>
+    <p class="muted" style="margin:12px 0 0">К обычной проверке добавляется поиск Яндекса по точным фразам из вашего текста. Одна проверка списывается при её запуске.</p>
+    <div class="plans" id="payPlans"></div>
+    <span class="label">Уже есть код</span>
+    <div class="paycode"><input id="payCode" placeholder="AIS-XXXX-XXXX" autocomplete="off" spellcheck="false"><button class="btn" id="payApply">Применить</button></div>
+    <div class="muted" id="payInfo" style="margin-top:10px"></div>
+    <div class="err" id="payErr"></div>
+    <p class="muted" style="margin:14px 0 0;font-size:12.5px">Оплачивая, вы принимаете <a href="oferta.html" target="_blank">договор-оферту</a>. Оплата через Robokassa, чек приходит на почту.</p>
+  </div>
+</div>
+
 <script src="scene.js"></script>
 <script src="engine.js"></script>
 <script>
@@ -572,6 +618,9 @@ Iceberg.setApi((() => { try { return localStorage.getItem('antiplagiat.api') || 
 const RING_DEFAULT = '';
 const RING_URL = (API_LOCAL ? '/ring' : '') || RING_DEFAULT;
 Iceberg.setRing(RING_URL);
+/* Оплата полной проверки (antiplagiat-api/pay.js). Пусто — блок полной проверки и цены скрыты. */
+const PAY_DEFAULT = '';
+const PAY_URL = (API_LOCAL ? '/pay' : '') || PAY_DEFAULT;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -974,6 +1023,100 @@ const openReportRing = openReport;
 openReport = function(R){ openReportRing(R); const b = $('btnRing'); b.disabled = false; b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>В Кольцо САФУ'; };
 ringUi();
 updateCounter();
+
+/* ---------- полная проверка: оплата и коды ---------- */
+const PAY = {on: false, plans: []};
+const store = {get: k => { try{ return localStorage.getItem(k) || ''; }catch(e){ return ''; } },
+  set: (k, v) => { try{ v ? localStorage.setItem(k, v) : localStorage.removeItem(k); }catch(e){} }};
+async function payCall(body){
+  const r = await fetch(PAY_URL, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  const d = await r.json().catch(() => ({}));
+  if(!r.ok) throw Object.assign(new Error(d.error || 'Оплата сейчас недоступна.'), {status: r.status, data: d});
+  return d;
+}
+const until = t => new Date(t).toLocaleDateString('ru-RU', {day: 'numeric', month: 'long'});
+function payShow(d){
+  const code = store.get('pay.code');
+  if(!code){ $('fullNote').textContent = 'находит рефераты и курсовые, которые пропускают бесплатные поисковики'; $('btnPay').textContent = 'Купить или ввести код'; return; }
+  if(d && typeof d.left === 'number'){
+    $('fullNote').textContent = d.left > 0 ? 'осталось ' + d.left + ' ' + plural(d.left, 'проверка', 'проверки', 'проверок') + ' · до ' + until(d.until) : 'проверки по коду закончились';
+    $('payInfo').textContent = 'Код ' + code + ': ' + $('fullNote').textContent + '.';
+    if(d.left <= 0) $('oFull').checked = false;
+  }
+  $('btnPay').textContent = 'Код ' + code + ' · купить ещё';
+}
+const planCard = (p, button) => '<' + (button ? 'button type="button" data-plan="' + p.id + '"' : 'div') + ' class="plan"><b>' + esc(p.title.replace('Полная проверка — ', '')) + '</b><span class="pr">' + p.price + ' ₽</span><small>' + p.checks + ' ' + plural(p.checks, 'проверка', 'проверки', 'проверок') + ' · код действует ' + p.days + ' дн.</small></' + (button ? 'button' : 'div') + '>';
+function openPay(){ $('payErr').textContent = ''; $('payModal').classList.add('on'); }
+$('btnPay').onclick = openPay;
+$('payClose').onclick = () => $('payModal').classList.remove('on');
+$('payModal').addEventListener('click', e => { if(e.target === $('payModal')) $('payModal').classList.remove('on'); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') $('payModal').classList.remove('on'); });
+$('payPlans').addEventListener('click', async e => {
+  const b = e.target.closest('[data-plan]'); if(!b) return;
+  $('payErr').textContent = ''; $('payPlans').querySelectorAll('button').forEach(x => x.disabled = true);
+  try{
+    const d = await payCall({action: 'create', plan: b.dataset.plan});
+    store.set('pay.order', d.order);
+    location.href = d.url;
+  }catch(err){ $('payErr').textContent = err.message; $('payPlans').querySelectorAll('button').forEach(x => x.disabled = false); }
+});
+$('payApply').onclick = async () => {
+  $('payErr').textContent = '';
+  try{
+    const d = await payCall({action: 'balance', code: $('payCode').value});
+    store.set('pay.code', d.code); $('payCode').value = ''; $('oFull').checked = d.left > 0; payShow(d);
+  }catch(err){ $('payErr').textContent = err.message; }
+};
+async function payRefresh(){
+  const code = store.get('pay.code');
+  if(!code) return payShow();
+  try{ payShow(await payCall({action: 'balance', code})); }catch(e){ if(e.status === 404){ store.set('pay.code', ''); } payShow(); }
+}
+async function payCheckOrder(wait){
+  const order = store.get('pay.order'); if(!order) return;
+  for(let i = 0; i < (wait ? 40 : 1); i++){
+    try{
+      const d = await payCall({action: 'status', order});
+      if(d.paid){
+        store.set('pay.order', ''); store.set('pay.code', d.code); $('oFull').checked = true;
+        $('payCodeShow').textContent = d.code; $('payDone').classList.remove('hide'); openPay(); payShow(d); return;
+      }
+      if(d.expired){ store.set('pay.order', ''); return; }
+    }catch(e){ if(e.status === 404){ store.set('pay.order', ''); return; } }
+    if(wait) await new Promise(r => setTimeout(r, 3000));
+  }
+}
+(async () => {
+  if(!PAY_URL) return;
+  try{
+    const [d, ok] = await Promise.all([payCall({action: 'plans'}), Iceberg.pingProxy()]);
+    const y = Iceberg.yandexInfo();
+    if(!d.ready || !ok || !y.yandex || !y.paid) return;   // без поиска Яндекса продавать нечего
+    PAY.on = true; PAY.plans = d.plans;
+    $('payPlans').innerHTML = d.plans.map(p => planCard(p, true)).join('');
+    $('pricePlans').innerHTML = d.plans.map(p => planCard(p, false)).join('');
+    $('fullBox').classList.remove('hide'); $('price').classList.remove('hide');
+    $('price').querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
+    const back = new URLSearchParams(location.search).get('pay');
+    if(back) history.replaceState(null, '', location.pathname + location.hash);
+    if(back === 'fail'){ store.set('pay.order', ''); openPay(); $('payErr').textContent = 'Оплата не прошла или отменена. Деньги не списаны.'; }
+    await payRefresh();
+    await payCheckOrder(back === 'ok');
+  }catch(e){ /* оплата недоступна — работает бесплатная проверка */ }
+})();
+const runPlain = $('btnCheck').onclick;
+$('btnCheck').onclick = async () => {
+  Iceberg.setTicket('');
+  const text = $('text').value;
+  const valid = (text.match(/[\p{L}\p{N}]+/gu) || []).length >= 20 && text.length <= 600000;
+  if(PAY.on && $('oFull').checked && valid){
+    const code = store.get('pay.code');
+    if(!code){ openPay(); return; }
+    try{ const d = await payCall({action: 'ticket', code}); Iceberg.setTicket(d.ticket); payShow(d); }
+    catch(e){ $('inputError').textContent = e.message; if(e.status === 402){ payShow(e.data); openPay(); } return; }
+  }
+  try{ await runPlain(); } finally { Iceberg.setTicket(''); }
+};
 </script>
 <script src="../pulse.js" data-section="antiplagiat" defer></script>
 </body>

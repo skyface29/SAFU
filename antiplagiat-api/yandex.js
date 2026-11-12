@@ -81,7 +81,8 @@ async function readCapped(r) {
 /* ---------- поиск Яндекса (Yandex Search API v2, отложенный режим) ----------
    Включается переменной YSEARCH=on; нужен сервисный аккаунт функции с ролью search-api.webSearch.user
    и переменная FOLDER_ID. Дневной лимит запросов на экземпляр — YSEARCH_DAILY (защита от перерасхода).
-   GET ?ysearch=<запрос>  → {done, results} или {done:false, op} — тогда страница спрашивает ?yop=<op>. */
+   GET ?ysearch=<запрос>&t=<билет>  → {done, results} или {done:false, op} — тогда страница спрашивает ?yop=<op>.
+   Если задан TICKET_SECRET, без действующего билета (см. pay.js) поиск отвечает 402. */
 const YS = 'https://searchapi.api.cloud.yandex.net/v2/web/searchAsync', OPS = 'https://operation.api.cloud.yandex.net/operations/';
 let ysDay = '', ysCount = 0;
 function ysAllowed() {
@@ -125,6 +126,28 @@ async function ysearch(query, context) {
   }
   return opResult(op, token);
 }
+/* Билет полной проверки: его выдаёт функция оплаты pay.js после списания проверки с кода.
+   Подпись — HMAC-SHA256 общим секретом TICKET_SECRET. Без TICKET_SECRET поиск Яндекса открыт всем (как раньше). */
+const crypto = require('crypto');
+const ticketUse = new Map();   // билет → сколько запросов уже сделано (на экземпляр функции)
+function ticketOk(t) {
+  const secret = process.env.TICKET_SECRET;
+  if (!secret) return true;
+  const [payload, sig] = String(t || '').split('.');
+  if (!payload || !sig) return false;
+  const want = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  if (sig.length !== want.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(want))) return false;
+  let data;
+  try { data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')); } catch (e) { return false; }
+  const now = Date.now();
+  if (!(data.e > now)) return false;
+  for (const [k, v] of ticketUse) if (v.e <= now) ticketUse.delete(k);
+  const use = ticketUse.get(payload) || { n: 0, e: data.e };
+  if (++use.n > (+process.env.YTICKET_MAX || 250)) return false;   // глубокая проверка — около 150 запросов
+  ticketUse.set(payload, use);
+  return true;
+}
+
 async function yop(id, context) {
   const token = context && context.token && context.token.access_token;
   if (!token || !/^[\w-]{6,64}$/.test(id)) throw Object.assign(new Error('неверная операция'), { code: 400 });
@@ -142,11 +165,12 @@ module.exports.handler = async (event, context) => {
   const yandexOn = process.env.YSEARCH === 'on';
   if (qs.ysearch || qs.yop) {
     if (!yandexOn) return json(503, { error: 'поиск Яндекса выключен' }, head);
+    if (qs.ysearch && !ticketOk(qs.t)) return json(402, { error: 'нужен код полной проверки' }, head);
     try { return json(200, qs.ysearch ? await ysearch(qs.ysearch, context) : await yop(qs.yop, context), head); }
     catch (e) { return json(e.code || 502, { error: e.message }, head); }
   }
   const url = qs.url;
-  if (!url) return json(200, { ok: true, service: 'antiplagiat', yandex: yandexOn }, head);
+  if (!url) return json(200, { ok: true, service: 'antiplagiat', yandex: yandexOn, paid: yandexOn && !!process.env.TICKET_SECRET }, head);
   let init = { method: 'GET', headers: { 'User-Agent': UA, 'Accept-Language': 'ru,en;q=0.8',
     'Accept': 'text/html,application/xhtml+xml,application/json,application/pdf;q=0.9,*/*;q=0.5' } };
   if (method === 'POST') {
