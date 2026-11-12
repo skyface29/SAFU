@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<script>document.documentElement.classList.add("js");try{if(localStorage.getItem("theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}</script>
-<title>Айсберг — бесплатная проверка на заимствования · Арктика</title>
-<meta name="description" content="Бесплатная проверка текста на заимствования: интернет, Википедия, научные статьи. Полный отчёт с источниками, без регистрации.">
+<script>document.documentElement.classList.add("js");try{var n=navigator,c=n.connection||{};if(matchMedia("(max-width:760px)").matches||(n.hardwareConcurrency||8)<=4||(n.deviceMemory||8)<=4||c.saveData)document.documentElement.classList.add("lite")}catch(e){}try{if(localStorage.getItem("theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}</script>
+<title>Айсберг — проверка на антиплагиат онлайн для студентов любого вуза</title>
+<meta name="description" content="Бесплатная проверка курсовой, диплома и реферата на антиплагиат онлайн для студентов любого вуза России: интернет, Википедия, научные статьи, проверка оформления по ГОСТу. Полный отчёт без регистрации.">
+<meta name="keywords" content="проверка на антиплагиат онлайн бесплатно, проверить курсовую на антиплагиат, проверка диплома, оформление по ГОСТу, оригинальность текста">
+<link rel="canonical" href="https://arktika-app.ru/antiplagiat/">
 <meta name="theme-color" content="#05070e">
-<meta property="og:title" content="Айсберг — бесплатная проверка на заимствования">
-<meta property="og:description" content="Проверка текста на заимствования без регистрации: интернет, Википедия, научные статьи. Полный отчёт с источниками.">
+<meta property="og:title" content="Айсберг — проверка на антиплагиат для студентов любого вуза">
+<meta property="og:description" content="Проверка на заимствования и оформление по ГОСТу без регистрации: интернет, Википедия, научные статьи. Полный отчёт с источниками.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Арктика">
 <meta property="og:url" content="https://arktika-app.ru/antiplagiat/">
@@ -300,7 +302,52 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 .modal .panel{width:100%;max-width:620px;padding:28px;transform:translateY(24px) scale(.97);transition:transform .55s var(--ease);background:var(--bg2)}
 :root[data-theme=light] .modal .panel{background:#fff}
 .modal.on .panel{transform:none}
-.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+
+/* ---------- ГОСТ ---------- */
+.gost{margin-top:16px;border:1px solid var(--line);border-radius:18px;padding:16px 18px;background:var(--glass)}
+.gost h4{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0;font:500 15px/1.3 var(--display);letter-spacing:-.01em;cursor:pointer}
+.gost h4 .tag{font:600 12px var(--body);border-radius:999px;padding:4px 10px;background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.gost h4 .tag.bad{background:color-mix(in srgb,var(--para) 18%,transparent);color:var(--para)}
+.gost ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:2px}
+.gost li{display:grid;grid-template-columns:22px 1fr;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:14px;animation:up .6s var(--ease) both;animation-delay:calc(var(--i,0)*.04s)}
+.gost li i{font-style:normal;font-weight:700;color:var(--ok)}
+.gost li.no i{color:var(--para)}
+.gost li small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.gost.closed ul{display:none}
+#gostReport .gost{margin:0 0 18px}
+.need select{flex:none;border:1px solid var(--line2);background:var(--field);color:var(--ink);border-radius:999px;padding:6px 10px;font:500 14px var(--body)}
+.pass{display:inline-flex;align-items:center;gap:8px;margin-top:10px;border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:500;background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok)}
+.pass.fail{background:color-mix(in srgb,var(--exact) 14%,transparent);color:var(--exact)}
+/* ---------- вузы ---------- */
+.marquee{overflow:hidden;-webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);margin-top:14px}
+.mq{display:flex;gap:12px;width:max-content;animation:mq 60s linear infinite}
+.marquee.rev .mq{animation-direction:reverse;animation-duration:75s}
+.marquee:hover .mq{animation-play-state:paused}
+.mq span{flex:none;border:1px solid var(--line);background:var(--glass);border-radius:999px;padding:10px 18px;font:500 15px var(--display);letter-spacing:-.01em;color:var(--ink2);white-space:nowrap}
+.mq span:nth-child(5n+1){color:var(--ink);border-color:color-mix(in srgb,var(--a2) 40%,transparent)}
+@keyframes mq{to{transform:translateX(-50%)}}
+.off-screen .mq{animation-play-state:paused}
+/* ---------- движение ---------- */
+.step svg.art *{stroke-dasharray:420;stroke-dashoffset:420;transition:stroke-dashoffset 2.2s var(--ease)}
+.step.in svg.art *{stroke-dashoffset:0}
+.no-js .step svg.art *,.lite .step svg.art *{stroke-dashoffset:0}
+.primary.mag{transition:transform .35s var(--ease),box-shadow .4s}
+#check.panel{overflow:visible}
+#check::after{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;opacity:0;transition:opacity .6s;
+  background:conic-gradient(from var(--ang,0deg),transparent 0 70%,var(--a1) 80%,var(--a2) 88%,var(--a3) 94%,transparent);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:ang 6s linear infinite}
+#check:focus-within::after{opacity:1}
+@property --ang{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes ang{to{--ang:360deg}}
+/* ---------- лёгкий режим: слабые устройства и телефоны ---------- */
+.lite .panel,.lite .modal,.lite .ghost,.lite .eyebrow{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.lite .panel{background:var(--bg2)}
+.lite .grain{display:none}
+.lite .panel::before,.lite .feat::after,.lite #check::after{display:none}
+.lite .js .reveal,.lite.js .reveal{transform:translateY(16px)}
+@media (max-width:720px){.tfeats{grid-template-columns:1fr 1fr}.mq span{font-size:13.5px;padding:8px 14px}}
+@media (max-width:460px){.tfeats{grid-template-columns:1fr}}
+.plans{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0}
 .plan{display:flex;flex-direction:column;gap:6px;text-align:left;border:1px solid var(--line2);background:var(--glass);color:var(--ink);border-radius:18px;padding:16px;cursor:pointer;transition:border-color .2s,transform .2s}
 .plan:hover{border-color:var(--a2);transform:translateY(-2px)}
 .plan b{font:500 15px/1.25 var(--display)}
@@ -310,10 +357,10 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 .paycode{display:flex;gap:8px;margin-top:8px}
 .paycode input{flex:1;min-width:0;border:1px solid var(--line2);background:var(--glass);color:var(--ink);border-radius:999px;padding:9px 16px;font:500 15px var(--mono,monospace);letter-spacing:.06em;text-transform:uppercase}
 .codeok{font:500 22px var(--mono,monospace);letter-spacing:.08em;margin:10px 0;user-select:all}
-#price .plans{grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;border-radius:24px;overflow:hidden;border:1px solid var(--line);background:var(--line);margin:0}
+#price .plans{grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;border-radius:24px;overflow:hidden;border:1px solid var(--line);background:var(--line);margin:0}
 #price .plan{border:0;border-radius:0;background:var(--bg2);padding:28px 24px;cursor:default}
 #price .plan:hover{transform:none}
-@media (max-width:720px){.plans,#price .plans{grid-template-columns:1fr}}
+@media (max-width:900px){#price .plans{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:520px){.plans,#price .plans{grid-template-columns:1fr}}
 .lib{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14.5px}
 
 /* кнопка у нижнего края на телефоне */
@@ -399,25 +446,25 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M18 3l7 11-3.5 2.2L26 20H10l3.6-6L11 11.6z" fill="#fff"/><path d="M18 3l7 11-3.5 2.2L18 12z" fill="#cfe6ff"/><path d="M8 23h20l-3.4 6.2L18 32l-6.6-2.8z" fill="#5aa0ff" opacity=".85"/><path d="M3 21.5h30" stroke="#a6e6ff" stroke-width="1.4" stroke-linecap="round"/></svg>
       Айсберг<small>Арктика</small>
     </a>
-    <div class="links"><a href="#check">Проверка</a><a href="#how">Как работает</a><a href="#why">Возможности</a><a href="../">Приложение</a></div>
+    <div class="links"><a href="#check">Проверка</a><a href="#how">Как работает</a><a href="#why">Возможности</a><a href="#teachers">Преподавателям</a></div>
     <div class="nav-r">
       <button class="ghost" id="btnSettings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/></svg>Коллекция</button>
       <button class="ghost icon" id="btnTheme" title="Полярная ночь / полярный день" aria-label="Сменить тему"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M5.3 18.7l1.5-1.5M17.2 6.8l1.5-1.5"/></svg></button>
     </div>
   </nav>
   <div class="hero-in">
-    <div class="eyebrow"><i></i>Бесплатно для всех · без регистрации</div>
+    <div class="eyebrow"><i></i>Для студентов любого вуза · без регистрации</div>
     <h1>Видим то, что скрыто <em>под водой</em></h1>
-    <p class="sub">Проверка на заимствования с полным отчётом: интернет, Википедия и научные статьи. Замечает перефразирование и уловки, которые пропускают простые проверки.</p>
+    <p class="sub">Проверка курсовой, диплома или реферата на заимствования с полным отчётом: интернет, Википедия и научные статьи. Замечает перефразирование и уловки, а ещё проверяет оформление по ГОСТу.</p>
     <div class="cta">
       <a class="primary" href="#check">Проверить текст<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       <a class="ghost lg" href="#how">Как это работает</a>
     </div>
     <dl class="stats">
-      <div><dt>≈ 1 мин</dt><dd>стандартная проверка</dd></div>
-      <div><dt>0 ₽</dt><dd>без лимитов и подписок</dd></div>
-      <div><dt>4</dt><dd>вида источников</dd></div>
-      <div><dt>100%</dt><dd>отчёта — бесплатно</dd></div>
+      <div><dt>≈ <span data-count="1">1</span> мин</dt><dd>стандартная проверка</dd></div>
+      <div><dt><span data-count="0">0</span> ₽</dt><dd>обычная проверка</dd></div>
+      <div><dt><span data-count="9">9</span></dt><dd>правил ГОСТа в проверке оформления</dd></div>
+      <div><dt><span data-count="700">700</span>+</dt><dd>вузов России — любой подходит</dd></div>
     </dl>
   </div>
   <a class="cue" href="#check" aria-label="К проверке"></a>
@@ -434,6 +481,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
         <input type="file" id="file" accept=".docx,.pdf,.txt,.md" class="hide">
         <span id="fileNote">.docx · .pdf · .txt</span>
       </div>
+      <div id="gostBox" class="gost hide"></div>
     </div>
     <aside class="controls">
       <div>
@@ -450,7 +498,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
           <label class="sw"><span><b>Интернет</b><small>сайты, учебные порталы, рефераты</small></span><input type="checkbox" id="oWeb" checked><i></i></label>
           <label class="sw"><span><b>Википедия</b><small>статьи целиком</small></span><input type="checkbox" id="oWiki" checked><i></i></label>
           <label class="sw"><span><b>Научные статьи</b><small>КиберЛенинка</small></span><input type="checkbox" id="oSci" checked><i></i></label>
-          <label class="sw" id="ringSw"><span><b>Кольцо САФУ</b><small>работы, которые студенты добавили сами</small></span><input type="checkbox" id="oRing" checked><i></i></label>
+          <label class="sw" id="ringSw"><span><b>База студентов</b><small>работы, которые студенты разных вузов добавили сами</small></span><input type="checkbox" id="oRing" checked><i></i></label>
           <label class="sw"><span><b>Моя коллекция</b><small>ваши документы в этом браузере</small></span><input type="checkbox" id="oLib" checked><i></i></label>
         </div>
       </div>
@@ -466,6 +514,8 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
         <div class="sws">
           <label class="sw"><span><b>Без списка литературы</b></span><input type="checkbox" id="oBib" checked><i></i></label>
           <label class="sw"><span><b>Кавычки — это цитата</b></span><input type="checkbox" id="oQuotes" checked><i></i></label>
+          <label class="sw need"><span><b>Требование вуза</b><small>минимальная оригинальность</small></span><select id="oNeed" aria-label="Требование вуза к оригинальности">
+            <option value="0">не важно</option><option>40</option><option>50</option><option>60</option><option>65</option><option selected>70</option><option>75</option><option>80</option><option>85</option><option>90</option></select></label>
         </div>
       </div>
       <details><summary>Сравнить с конкретными страницами</summary><textarea id="urls" rows="3" placeholder="Адреса страниц, по одному в строке"></textarea></details>
@@ -506,11 +556,13 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       </div>
     </div>
     <div id="alerts"></div>
+    <div id="gostReport"></div>
     <div class="actions">
       <button class="btn" id="btnDownload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg>Скачать отчёт</button>
+      <button class="btn" id="btnCert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>Справка для преподавателя</button>
       <button class="btn" id="btnPrint">Печать / PDF</button>
       <button class="btn" id="btnAddLib">Добавить в коллекцию</button>
-      <button class="btn" id="btnRing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>В Кольцо САФУ</button>
+      <button class="btn" id="btnRing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>В базу студентов</button>
       <button class="btn" id="btnNew">Новая проверка</button>
     </div>
   </div>
@@ -540,15 +592,33 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 
 <section class="sec" id="why">
   <div class="sec-h reveal"><div><span class="label">Возможности</span><h3>То, за что обычно просят деньги</h3></div>
-    <p>Полный отчёт, перефразирование и защита от уловок — без подписок, лимитов и регистрации.</p></div>
+    <p>Полный отчёт, перефразирование, защита от уловок и проверка оформления — без регистрации. Для студентов любого вуза.</p></div>
   <div class="feats">
     <div class="feat reveal" style="--i:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M4 12h16M4 17h8"/><path d="M17 15l3 3-3 3"/></svg><b>Перефразирование</b><span>Ловит замену слов и форм, перестановку частей предложения.</span></div>
     <div class="feat reveal" style="--i:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><b>Защита от уловок</b><span>Латиница вместо кириллицы, невидимые символы, белый текст в .docx.</span></div>
-    <div class="feat reveal" style="--i:2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><b>Полный отчёт</b><span>Все источники и фрагменты, выгрузка в файл и на печать.</span></div>
+    <div class="feat reveal" style="--i:2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><b>Оформление по ГОСТу</b><span>Поля, шрифт, интервал, отступы, номера страниц и разделы — сразу после загрузки .docx.</span></div>
     <div class="feat reveal" style="--i:3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><b>Текст остаётся у вас</b><span>Сравнение идёт в браузере, ваша работа никуда не загружается.</span></div>
   </div>
   <div class="honest reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></svg>
     <div>Поиск идёт по открытым источникам. Закрытые базы — диссертации РГБ, полные тексты eLibrary, работы других вузов — есть только у самих систем-владельцев, поэтому процент может отличаться от вузовского «Антиплагиата».</div></div>
+</section>
+
+<section class="sec" id="unis">
+  <div class="sec-h reveal"><div><span class="label">Для любого вуза</span><h3>Одна проверка — для всей России</h3></div>
+    <p>Требования к оригинальности и оформлению у вузов похожи: укажите нужный процент, и отчёт сразу скажет, проходит ли работа. Оформление сверяется с ГОСТ 7.32 — на него опираются почти все методички.</p></div>
+  <div class="marquee reveal" aria-label="Вузы"><div class="mq"><span>МГУ</span><span>СПбГУ</span><span>ВШЭ</span><span>МФТИ</span><span>МГТУ им. Баумана</span><span>УрФУ</span><span>КФУ</span><span>НГУ</span><span>ТГУ</span><span>ДВФУ</span><span>САФУ</span><span>ЮФУ</span><span>СФУ</span><span>ИТМО</span><span>РУДН</span><span>МИФИ</span><span>РАНХиГС</span><span>Финансовый университет</span><span>ПетрГУ</span><span>СамГУ</span><span>ННГУ</span><span>ВолГУ</span><span>БФУ им. Канта</span><span>ТПУ</span><span>УГАТУ</span><span>РГПУ им. Герцена</span><span>МПГУ</span><span>КубГУ</span><span>ОмГУ</span><span>ИГУ</span><span>МГУ</span><span>СПбГУ</span><span>ВШЭ</span><span>МФТИ</span><span>МГТУ им. Баумана</span><span>УрФУ</span><span>КФУ</span><span>НГУ</span><span>ТГУ</span><span>ДВФУ</span><span>САФУ</span><span>ЮФУ</span><span>СФУ</span><span>ИТМО</span><span>РУДН</span><span>МИФИ</span><span>РАНХиГС</span><span>Финансовый университет</span><span>ПетрГУ</span><span>СамГУ</span><span>ННГУ</span><span>ВолГУ</span><span>БФУ им. Канта</span><span>ТПУ</span><span>УГАТУ</span><span>РГПУ им. Герцена</span><span>МПГУ</span><span>КубГУ</span><span>ОмГУ</span><span>ИГУ</span></div></div>
+  <div class="marquee rev reveal" aria-hidden="true"><div class="mq"><span>ИГУ</span><span>ОмГУ</span><span>КубГУ</span><span>МПГУ</span><span>РГПУ им. Герцена</span><span>УГАТУ</span><span>ТПУ</span><span>БФУ им. Канта</span><span>ВолГУ</span><span>ННГУ</span><span>СамГУ</span><span>ПетрГУ</span><span>Финансовый университет</span><span>РАНХиГС</span><span>МИФИ</span><span>РУДН</span><span>ИТМО</span><span>СФУ</span><span>ЮФУ</span><span>САФУ</span><span>ДВФУ</span><span>ТГУ</span><span>НГУ</span><span>КФУ</span><span>УрФУ</span><span>МГТУ им. Баумана</span><span>МФТИ</span><span>ВШЭ</span><span>СПбГУ</span><span>МГУ</span><span>ИГУ</span><span>ОмГУ</span><span>КубГУ</span><span>МПГУ</span><span>РГПУ им. Герцена</span><span>УГАТУ</span><span>ТПУ</span><span>БФУ им. Канта</span><span>ВолГУ</span><span>ННГУ</span><span>СамГУ</span><span>ПетрГУ</span><span>Финансовый университет</span><span>РАНХиГС</span><span>МИФИ</span><span>РУДН</span><span>ИТМО</span><span>СФУ</span><span>ЮФУ</span><span>САФУ</span><span>ДВФУ</span><span>ТГУ</span><span>НГУ</span><span>КФУ</span><span>УрФУ</span><span>МГТУ им. Баумана</span><span>МФТИ</span><span>ВШЭ</span><span>СПбГУ</span><span>МГУ</span></div></div>
+</section>
+
+<section class="sec" id="teachers">
+  <div class="sec-h reveal"><div><span class="label">Преподавателям</span><h3>Проверяйте работы всей группы</h3></div>
+    <p>Загрузите работу — получите отчёт с источниками и справку, которую можно распечатать или сохранить в PDF. Отдельный тариф для преподавателей и кафедр — с большим запасом полных проверок.</p></div>
+  <div class="feats tfeats">
+    <div class="feat reveal" style="--i:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M16 5.5a3 3 0 0 1 0 5.6M17.5 14.6c1.7.6 2.7 2.1 3 4.4"/></svg><b>Работы студентов</b><span>Каждую работу можно сохранить в своей коллекции и сверять с ней следующие.</span></div>
+    <div class="feat reveal" style="--i:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><b>Справка в PDF</b><span>Оригинальность, порог вуза, главные источники и оформление — на одной странице.</span></div>
+    <div class="feat reveal" style="--i:2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h3l2-6 4 12 2-6h5"/></svg><b>Поиск Яндекса</b><span>Полная проверка находит рефераты и курсовые, которые пропускают бесплатные поисковики.</span></div>
+    <div class="feat reveal" style="--i:3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><b>Работы не утекают</b><span>Текст сравнивается в браузере и не загружается на сервер.</span></div>
+  </div>
 </section>
 
 <section class="sec hide" id="price">
@@ -568,7 +638,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 </nav>
 <footer>
   <div>Проверка идёт прямо в вашем браузере: текст не загружается ни на какой сервер и нигде не сохраняется. В поисковые системы уходят только короткие фразы из текста. Коллекция документов хранится только в этом браузере.</div>
-  <div class="dev"><i>S</i>Разработчик: <a href="https://t.me/skf29" target="_blank" rel="noopener">@skf29</a> · Неофициальный сервис, не связан с САФУ</div>
+  <div class="dev"><i>S</i>Разработчик: <a href="https://t.me/skf29" target="_blank" rel="noopener">@skf29</a> · Неофициальный сервис, не связан с вузами и компанией «Антиплагиат»</div>
 </footer>
 </main>
 
@@ -582,7 +652,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
     <button class="btn" id="btnLibAdd">Добавить документы</button>
     <input type="file" id="libFile" accept=".docx,.pdf,.txt,.md" multiple class="hide">
     <div id="ringBox">
-      <h2 style="margin:28px 0 6px">Мои работы в Кольце САФУ</h2>
+      <h2 style="margin:28px 0 6px">Мои работы в базе студентов</h2>
       <p class="muted" style="margin:0 0 4px">Работы, которые вы добавили в общую базу с этого браузера. Удалённая работа сразу пропадает из базы.</p>
       <div id="ringList"></div>
     </div>
@@ -625,13 +695,13 @@ const PAY_URL = (API_LOCAL ? '/pay' : '') || PAY_DEFAULT;
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = x => (Math.round(x * 10) / 10).toLocaleString('ru-RU', {minimumFractionDigits: 1, maximumFractionDigits: 1});
-const KIND = {web:'интернет', wiki:'Википедия', science:'наука', sci:'наука', library:'коллекция', ring:'Кольцо САФУ'};
+const KIND = {web:'интернет', wiki:'Википедия', science:'наука', sci:'наука', library:'коллекция', ring:'база студентов'};
 const S = {result:null, enabled:new Set(), focus:null, spans:[], flags:{}, run:null, useQuotes:true, name:''};
 const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function plural(n, a, b, c){ const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c); }
 function hueOf(s){ let h = 0; for(const ch of s || '?') h = (h * 31 + ch.charCodeAt(0)) % 360; return h; }
 const avatar = (domain, kind) => '<span class="av" style="--h:' + (kind === 'library' ? 150 : kind === 'ring' ? 190 : hueOf(domain)) + '">' + esc(((domain || 'К').replace(/^(www|ru|en|m)\./, '')[0] || '?').toUpperCase()) + '</span>';
-const noUrlText = kind => kind === 'ring' ? 'работа студента из Кольца САФУ' : 'документ из вашей коллекции';
+const noUrlText = kind => kind === 'ring' ? 'работа из базы студентов' : 'документ из вашей коллекции';
 
 /* ---------- тема: круг от кнопки ---------- */
 $('btnTheme').onclick = e => {
@@ -659,13 +729,18 @@ $('btnTheme').onclick = e => {
   const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }), {threshold: .12}) : null;
   document.querySelectorAll('.reveal').forEach(el => io ? io.observe(el) : el.classList.add('in'));
   if(calm) return;
+  let pm = null;   // подсветка за курсором — не чаще одного раза за кадр
   document.addEventListener('pointermove', e => {
-    const p = e.target.closest && e.target.closest('.panel, .feat');
-    if(!p) return;
-    const r = p.getBoundingClientRect();
-    p.style.setProperty(p.classList.contains('feat') ? '--px' : '--mx', (e.clientX - r.left) + 'px');
-    p.style.setProperty(p.classList.contains('feat') ? '--py' : '--my', (e.clientY - r.top) + 'px');
-  });
+    if(pm || document.documentElement.classList.contains('lite')) { if(pm) pm.e = e; return; }
+    pm = {e}; requestAnimationFrame(() => {
+      const ev = pm.e; pm = null;
+      const p = ev.target.closest && ev.target.closest('.panel, .feat');
+      if(!p) return;
+      const r = p.getBoundingClientRect();
+      p.style.setProperty(p.classList.contains('feat') ? '--px' : '--mx', (ev.clientX - r.left) + 'px');
+      p.style.setProperty(p.classList.contains('feat') ? '--py' : '--my', (ev.clientY - r.top) + 'px');
+    });
+  }, {passive: true});
   document.addEventListener('pointerdown', e => {
     const b = e.target.closest('.primary,.btn,.ghost'); if(!b) return;
     const r = b.getBoundingClientRect(), s = Math.max(r.width, r.height) * 1.2, sp = document.createElement('span');
@@ -698,13 +773,13 @@ function updateCounter(){
   const t = $('text').value, n = (t.match(/[\p{L}\p{N}]+/gu) || []).length;
   $('counter').textContent = n.toLocaleString('ru-RU') + ' ' + plural(n, 'слово', 'слова', 'слов') + ' · ' + t.length.toLocaleString('ru-RU') + ' ' + plural(t.length, 'знак', 'знака', 'знаков');
 }
-$('text').addEventListener('input', () => { updateCounter(); S.flags = {}; S.name = ''; $('fileNote').textContent = '.docx · .pdf · .txt'; updateFab(); });
+$('text').addEventListener('input', () => { updateCounter(); S.flags = {}; if(S.gost){ S.gost = null; renderGost(); } S.name = ''; $('fileNote').textContent = '.docx · .pdf · .txt'; updateFab(); });
 async function takeFile(file){
   $('inputError').textContent = ''; $('fileNote').textContent = 'Читаю файл…';
   try{
     const r = await Iceberg.readFile(file);
     if(!r.text || r.text.trim().length < 20) throw new Error('В файле не нашлось текста — возможно, это скан без распознавания.');
-    $('text').value = r.text.trim(); updateCounter(); S.flags = r.flags || {}; S.name = file.name;
+    $('text').value = r.text.trim(); updateCounter(); S.flags = r.flags || {}; S.name = file.name; S.gost = r.gost || null; renderGost();
     $('fileNote').textContent = file.name; updateFab();
   }catch(e){ $('fileNote').textContent = '.docx · .pdf · .txt'; $('inputError').textContent = e.message; }
 }
@@ -718,7 +793,7 @@ drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if(f) ta
 /* ---------- экраны ---------- */
 function show(which){
   ['check','progressCard','report'].forEach(id => $(id).classList.toggle('hide', id !== which));
-  ['how','why'].forEach(id => $(id).classList.toggle('hide', which !== 'check'));
+  ['how','why','unis','teachers'].forEach(id => $(id).classList.toggle('hide', which !== 'check'));
   const el = $(which); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
   const top = el.getBoundingClientRect().top + scrollY - 20;
   if(Math.abs(scrollY - top) > 40) window.scrollTo({top, behavior: calm ? 'auto' : 'smooth'});
@@ -891,7 +966,7 @@ function renderAll(first){
     countUp($('pOrig'), S.pct.orig);
   } else $('pOrig').textContent = fmt(S.pct.orig);
   $('legend').innerHTML = legendHTML();
-  $('verdict').textContent = verdict(); $('meta').textContent = metaText();
+  $('verdict').innerHTML = esc(verdict()) + passHTML(); $('meta').textContent = metaText(); $('gostReport').innerHTML = S.gost ? gostHTML(S.gost, false) : '';
   $('alerts').innerHTML = alertsHTML();
   $('doc').innerHTML = markedText();
   $('srcCount').textContent = R.sources.length ? '· ' + R.sources.length : '';
@@ -995,18 +1070,18 @@ function refreshRing(){
 $('ringList').addEventListener('click', async e => {
   const k = e.target.dataset.rdel; if(k === undefined) return;
   const mine = ringMine(), r = mine[+k];
-  if(!r || !confirm('Удалить «' + (r.title || 'работу') + '» из Кольца САФУ? Это нельзя отменить.')) return;
+  if(!r || !confirm('Удалить «' + (r.title || 'работу') + '» из базы студентов? Это нельзя отменить.')) return;
   try{ await Iceberg.ringDelete(r.id, r.key); }
   catch(err){ if(!/не найдена/.test(err.message)){ alert(err.message); return; } }
   mine.splice(+k, 1); ringSaveMine(mine); refreshRing();
 });
 $('btnRing').onclick = async () => {
   if(!S.result) return;
-  const ok = confirm('Добавить эту работу в Кольцо САФУ?\n\n' +
+  const ok = confirm('Добавить эту работу в базу студентов?\n\n' +
     '• Она будет храниться в общей базе и помогать находить списывание в работах других студентов.\n' +
     '• Другие увидят только совпавшие куски, а не работу целиком.\n' +
     '• Перед добавлением уберите титульный лист с ФИО — список литературы отрежется сам.\n' +
-    '• Удалить работу можно в любой момент: «Коллекция» → «Мои работы в Кольце САФУ».');
+    '• Удалить работу можно в любой момент: «Коллекция» → «Мои работы в базе студентов».');
   if(!ok) return;
   const title = prompt('Тема или предмет (видно другим в отчёте, без ФИО):', '');
   if(title === null) return;
@@ -1023,6 +1098,88 @@ const openReportRing = openReport;
 openReport = function(R){ openReportRing(R); const b = $('btnRing'); b.disabled = false; b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>В Кольцо САФУ'; };
 ringUi();
 updateCounter();
+
+/* ---------- оформление по ГОСТу ---------- */
+function gostHTML(g, closed){
+  const n = g.problems;
+  return '<div class="gost' + (closed ? ' closed' : '') + '"><h4 data-gost><span>Оформление по ГОСТу</span><span class="tag' + (n ? ' bad' : '') + '">' +
+    (n ? n + ' ' + plural(n, 'замечание', 'замечания', 'замечаний') : 'всё по ГОСТу') + '</span></h4><ul>' +
+    g.items.map((x, i) => '<li class="' + (x.ok ? 'ok' : 'no') + '" style="--i:' + i + '"><i>' + (x.ok ? '✓' : '!') + '</i><div>' + esc(x.name) + ': ' + esc(x.found) +
+      (x.ok ? '' : '<small>Нужно: ' + esc(x.need) + '</small>') + '</div></li>').join('') + '</ul></div>';
+}
+function renderGost(){
+  const box = $('gostBox');
+  if(!S.gost){ box.classList.add('hide'); box.innerHTML = ''; return; }
+  box.classList.remove('hide'); box.innerHTML = gostHTML(S.gost, false).replace(/^<div class="gost[^"]*">|<\/div>$/g, '');
+  box.classList.toggle('closed', false);
+}
+document.addEventListener('click', e => { const h = e.target.closest('[data-gost]'); if(h) h.parentElement.classList.toggle('closed'); });
+
+/* ---------- требование вуза ---------- */
+try{ const v = localStorage.getItem('need'); if(v !== null) $('oNeed').value = v; }catch(e){}
+$('oNeed').onchange = () => { try{ localStorage.setItem('need', $('oNeed').value); }catch(e){} if(S.result) renderAll(); };
+function passHTML(){
+  const need = +$('oNeed').value; if(!need || !S.pct) return '';
+  const o = S.pct.orig, ok = o >= need;
+  return '<br><span class="pass' + (ok ? '' : ' fail') + '">' + (ok ? '✓ Проходит требование вуза — ' + need + '%' : 'Не хватает ' + fmt(need - o) + '% до требования вуза — ' + need + '%') + '</span>';
+}
+
+/* ---------- справка для преподавателя ---------- */
+$('btnCert').onclick = async () => {
+  const R = S.result; if(!R) return;
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(R.text || $('text').value)))].slice(0, 6).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  const need = +$('oNeed').value, o = S.pct.orig;
+  const top = R.sources.filter(x => S.enabled.has(x.id)).sort((a, b) => b.percent - a.percent).slice(0, 10);
+  const row = (k, v) => '<tr><th>' + k + '</th><td>' + v + '</td></tr>';
+  const html = '<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Справка о проверке на заимствования</title><style>' +
+    '@page{size:A4;margin:18mm 16mm}body{font:12pt/1.45 "Times New Roman",serif;color:#000;margin:0}h1{font-size:17pt;text-align:center;margin:0 0 4px}' +
+    '.sub{text-align:center;color:#444;font-size:10.5pt;margin-bottom:18px}table{width:100%;border-collapse:collapse;margin:10px 0 16px}th,td{border:1px solid #999;padding:6px 8px;text-align:left;vertical-align:top}' +
+    'th{width:38%;background:#f3f3f3;font-weight:normal}.big{font-size:22pt;font-weight:bold}.ok{color:#11734b}.bad{color:#b3261e}h2{font-size:13pt;margin:18px 0 6px}' +
+    '.foot{margin-top:24px;font-size:9.5pt;color:#555;border-top:1px solid #bbb;padding-top:8px}.sign{margin-top:28px;display:flex;justify-content:space-between}</style></head><body>' +
+    '<h1>Справка о проверке работы на заимствования</h1><div class="sub">Сервис «Айсберг» · arktika-app.ru/antiplagiat · № ' + hash + '</div><table>' +
+    row('Работа', esc(S.name || 'текст, вставленный вручную')) +
+    row('Дата проверки', esc(R.created)) +
+    row('Объём', R.area_end.toLocaleString('ru-RU') + ' ' + plural(R.area_end, 'слово', 'слова', 'слов')) +
+    row('Оригинальность', '<span class="big">' + fmt(o) + '%</span>') +
+    row('Заимствования', fmt(S.pct.exact) + '% дословно, ' + fmt(S.pct.para) + '% перефразировано; цитирования ' + fmt(S.pct.cite) + '%') +
+    (need ? row('Требование вуза', need + '% — <b class="' + (o >= need ? 'ok">выполнено' : 'bad">не выполнено') + '</b>') : '') +
+    (R.suspicious && R.suspicious.alert ? row('Технические уловки', '<b class="bad">обнаружены</b> — подробности в полном отчёте') : row('Технические уловки', 'не обнаружены')) +
+    '</table>' +
+    (top.length ? '<h2>Основные источники</h2><table><tr><th style="width:6%">№</th><th style="width:76%">Источник</th><th>Доля</th></tr>' +
+      top.map((x, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(x.title) + (x.url ? '<br><small>' + esc(x.url) + '</small>' : '') + '</td><td>' + fmt(x.percent) + '%</td></tr>').join('') + '</table>' : '<h2>Источники</h2><p>Совпадений с открытыми источниками не найдено.</p>') +
+    (S.gost ? '<h2>Оформление по ГОСТу</h2><table>' + S.gost.items.map(x => row(esc(x.name), (x.ok ? '<span class="ok">соответствует</span>: ' : '<span class="bad">не соответствует</span>: ') + esc(x.found) + (x.ok ? '' : '; нужно ' + esc(x.need)))).join('') + '</table>' : '') +
+    '<div class="sign"><span>Проверил: ____________________</span><span>Подпись: ____________</span></div>' +
+    '<div class="foot">Поиск выполнялся по открытым источникам: интернет, Википедия, КиберЛенинка' + (R.stats && R.stats.yandex ? ', Яндекс' : '') + '. Закрытые базы вузов не проверялись, поэтому результат может отличаться от системы вуза. Номер справки — отпечаток текста: по нему можно убедиться, что справка выдана на этот самый текст.</div>' +
+    '<script>onload=()=>setTimeout(()=>print(),300)<\/script></body></html>';
+  const w = window.open('', '_blank');
+  if(!w){ alert('Браузер заблокировал новое окно. Разрешите всплывающие окна для этого сайта.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+};
+
+/* ---------- движение ---------- */
+(() => {
+  const lite = document.documentElement.classList.contains('lite');
+  /* счётчики в шапке */
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => {
+    if(!e.isIntersecting) return; io.unobserve(e.target);
+    const el = e.target, to = +el.dataset.count; if(calm || !to) return;
+    const t0 = performance.now(), dur = to > 50 ? 1800 : 1100;
+    (function step(t){ const k = Math.min(1, (t - t0) / dur), v = Math.round(to * (1 - Math.pow(1 - k, 4))); el.textContent = v.toLocaleString('ru-RU'); if(k < 1) requestAnimationFrame(step); })(t0);
+  }), {threshold: .6}) : null;
+  if(io) document.querySelectorAll('[data-count]').forEach(el => { if(!calm && +el.dataset.count) el.textContent = '0'; io.observe(el); });
+  /* бегущие строки стоят, когда их не видно */
+  if('IntersectionObserver' in window){
+    const mo = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('off-screen', !e.isIntersecting)));
+    document.querySelectorAll('.marquee').forEach(m => mo.observe(m));
+  }
+  if(calm || lite || !matchMedia('(hover: hover)').matches) return;
+  /* «магнитные» главные кнопки */
+  document.querySelectorAll('.cta .primary, #btnCheck').forEach(b => {
+    b.classList.add('mag');
+    b.addEventListener('pointermove', e => { const r = b.getBoundingClientRect(); b.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * .18}px,${(e.clientY - r.top - r.height / 2) * .28}px)`; });
+    b.addEventListener('pointerleave', () => { b.style.transform = ''; });
+  });
+})();
 
 /* ---------- полная проверка: оплата и коды ---------- */
 const PAY = {on: false, plans: []};

@@ -23,6 +23,7 @@ const PLANS = {
   one:   { price: 49,  checks: 1,  days: 90,  title: 'Полная проверка — 1 раз' },
   five:  { price: 149, checks: 5,  days: 180, title: 'Полная проверка — 5 раз' },
   month: { price: 299, checks: 40, days: 30,  title: 'Полная проверка — месяц, до 40 раз' },
+  teacher: { price: 990, checks: 150, days: 30, title: 'Полная проверка — преподаватель, 150 раз' },
 };
 
 function cors(origin) {

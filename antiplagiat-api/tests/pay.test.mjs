@@ -22,7 +22,7 @@ test('ссылка на оплату подписана Паролем №1 вм
 test('без настроек оплата закрыта, тарифы видны', async () => {
   const db = memoryDb();
   const [s, d] = await handle({ action: 'plans' }, db, {}, 'ip');
-  assert.equal(s, 200); assert.equal(d.ready, false); assert.equal(d.plans.length, 3);
+  assert.equal(s, 200); assert.equal(d.ready, false); assert.equal(d.plans.length, 4);
   assert.equal((await handle({ action: 'create', plan: 'one' }, db, {}, 'ip'))[0], 503);
 });
 
