@@ -497,8 +497,8 @@ async function gostCheck(buf) {
     item('Формат листа', a4, 'A4 (210 × 297 мм)', `${w} × ${h} мм`); }
   if (mar) {
     const L = mm(wAttr(mar, 'left')), R = mm(wAttr(mar, 'right')), T = mm(wAttr(mar, 'top')), B = mm(wAttr(mar, 'bottom'));
-    item('Поля', Math.abs(L - 30) <= 1 && R >= 10 && R <= 15 && Math.abs(T - 20) <= 1 && Math.abs(B - 20) <= 1,
-      'левое 30, правое 10–15, верхнее и нижнее 20 мм', `левое ${L}, правое ${R}, верхнее ${T}, нижнее ${B} мм`);
+    item('Поля', L >= 24 && L <= 31 && R >= 10 && R <= 15 && Math.abs(T - 20) <= 1 && Math.abs(B - 20) <= 1,
+      'левое 25–30, правое 10–15, верхнее и нижнее 20 мм', `левое ${L}, правое ${R}, верхнее ${T}, нижнее ${B} мм`);
   }
   if (bodyChars > 200) {
     const [f] = top('font'), [s] = top('size'), [l] = top('line'), [i] = top('indent'), [j] = top('jc');
