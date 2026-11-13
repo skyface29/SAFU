@@ -33,7 +33,7 @@ const PROFILES = {
     margins: { left: 25, right: 15, top: 20, bottom: 20 }, bindingLeft: 30,
     font: 'Times New Roman', size: 14, line: 1.5, indent: 1.25,
     struct: { case: 'sentence', after: 12, newPage: true },
-    head: { indent: true, after: 12, subBefore: 12, chapterNewPage: true },
+    head: { indent: true, after: 12, subBefore: 12, chapterNewPage: true, dropWord: true },
     fig: { word: 'Рисунок', sep: '. ', sizeDelta: -2, around: 12 },
     tab: { word: 'Таблица', sep: '. ', before: 6, after: 6, afterTable: 12, cellSizeDelta: -2, borderSz: 6 },
     bib: { line: 1.5, plain: true },
@@ -259,6 +259,7 @@ function fixTypography(p, stats, bib) {
     s = s.replace(/ {2,}/g, ' ');
     s = s.replace(bib ? / +([,.!?)\]»])/g : / +([,.;:!?)\]»])/g, '$1');
     s = s.replace(/([(\[«]) +/g, '$1');
+    if (!bib) s = s.replace(/([а-яё]{2}[»)]?[.!?])(?=[А-ЯЁ][а-яё])/g, '$1 ').replace(/([а-яё]),(?=[а-яё])/g, '$1, ');
     s = s.replace(/(\S) +[-—] +(?=\S)/g, '$1 – ').replace(/(\S) -- (?=\S)/g, '$1 – ');
     if (/^[-—] /.test(s) && prev.endsWith(' ') && k > 0) s = '–' + s.slice(1);
     if (cyr) s = nbsp(s);
@@ -285,6 +286,7 @@ function nbsp(s) {
     .replace(/([А-ЯЁ]\.) ([А-ЯЁ]\.)/g, '$1' + NB + '$2')
     .replace(/(\d) (?=(с\.|г\.|гг\.|в\.|вв\.|руб\.|млн|млрд|тыс\.|%|кг|км|мм|см|м|ч|мин|л\.)(?=[\s.,;:)»]|$))/g, '$1' + NB)
     .replace(/(^|[\s(])(№|§|г\.|ул\.|пер\.|д\.|кв\.|стр\.|рис\.|табл\.|гл\.|ст\.|п\.|пп\.|ч\.|с\.) (?=[\dА-ЯЁA-Z])/g, '$1$2' + NB)
+    .replace(/(?<!\p{L})т\.(?=[едкп]\.)/gu, 'т.' + NB)
     .replace(/(?<!\p{L})(т|и т)\. (?=[едкп]\.)/gu, '$1.' + NB);
 }
 /** Табуляции и пробелы в начале абзаца, которыми вручную делали отступ. */
@@ -636,6 +638,12 @@ async function formatDocx(buf, opts) {
         replaceFirst(p, /^(\s*(?:(?:глава|раздел|часть)\s+)?\d+(?:\.\d+)*)\.(?=\s|[А-ЯЁA-Z])/i, '$1');
         replaceFirst(p, /^(\s*(?:(?:глава|раздел|часть)\s+)?\d+(?:\.\d+)*)(?=[А-ЯЁA-Z])/i, '$1 ');
         replaceLastTrailing(p, /([^.])\.\s*$/, '$1');
+        if (prof.head.dropWord && /^\s*(?:глава|раздел|часть)\s+\d/i.test(paraText(p))) {
+          replaceFirst(p, /^\s*(?:глава|раздел|часть)\s+/i, '');
+          const t = paraText(p).replace(/^(\d+(?:\.\d+)*\s+)([а-яё])/, (m, a, c) => a + c.toUpperCase());
+          if (!isAllCaps(x.text) && t !== paraText(p)) setParaText(p, t);
+          stats.chapterWord = (stats.chapterWord || 0) + 1;
+        }
         if (isAllCaps(x.text)) { recase(p, s => s); const all = ownTexts(p).map(t => t.textContent).join(''); setParaText(p, sentence(all)); }
         if (lvl === 1 && prof.head.chapterNewPage) pageStart.add(p);
         return;
@@ -777,8 +785,43 @@ async function formatDocx(buf, opts) {
   }
 
   /* ---------- 5. содержание ---------- */
-  const hasToc = B.some(b => { const x = info.get(b); return x && x.kind === 'struct' && isTocName(x.name); });
-  if (!hasToc && opts.toc) {
+  const tocP = (text, first, last) => {
+    const p = mk(doc, 'p'), pp = p.appendChild(mk(doc, 'pPr'));
+    pp.appendChild(mk(doc, 'tabs')).appendChild(mk(doc, 'tab', { val: 'right', leader: 'dot', pos: 9354 }));
+    pp.appendChild(mk(doc, 'spacing', { before: 0, after: 0, line: Math.round(prof.line * 240), lineRule: 'auto' }));
+    pp.appendChild(mk(doc, 'ind', { firstLine: 0, left: 0 }));
+    if (first) { p.appendChild(fld(doc, 'begin')); p.appendChild(instrRun(doc, ' TOC \\o "1-3" \\h \\z \\u ')); p.appendChild(fld(doc, 'separate')); }
+    p.appendChild(runEl(doc, prof, size, text, false));
+    if (last) p.appendChild(fld(doc, 'end'));
+    return p;
+  };
+  const tocItems = from => B.slice(Math.max(0, B.indexOf(from))).filter(b => { const x = info.get(b); return x && x.zone !== 'toc' && ['struct', 'head', 'appendix'].includes(x.kind) && !isTocName(x.name || ''); })
+    .map(b => paraText(b).replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const insertToc = before => {
+    const items = tocItems(before);
+    const ps = items.map((t, k) => tocP(t, k === 0, k === items.length - 1));
+    for (const p of ps) before.parentNode.insertBefore(p, before);
+    ps.forEach(p => info.set(p, { kind: 'tocline', zone: 'toc' }));
+    tocField = true;
+    return ps.length;
+  };
+  const tocHead = B.find(b => { const x = info.get(b); return x && x.kind === 'struct' && isTocName(x.name); });
+  if (tocHead && !tocField && opts.toc) {
+    // оглавление набрано вручную: номера страниц в нём почти всегда неверны — заменяем на автоматическое
+    const old = [];
+    for (let k = B.indexOf(tocHead) + 1; k < B.length; k++) {
+      const x = info.get(B[k]);
+      if (!x || x.zone !== 'toc' || !['tocline', 'empty', 'body'].includes(x.kind)) break;
+      old.push(B[k]);
+    }
+    const next = B[B.indexOf(tocHead) + 1 + old.length];
+    if (old.length && next) {
+      for (const p of old) { p.parentNode.removeChild(p); info.delete(p); }
+      if (insertToc(next)) { stats.tocRebuilt = true; }
+      B = blocks(body);
+    }
+  }
+  if (!tocHead && opts.toc) {
     const intro = B.find(b => { const x = info.get(b); return x && x.kind === 'struct' && x.name === 'введение'; });
     const heads = B.filter(b => { const x = info.get(b); return x && ['struct', 'head', 'appendix'].includes(x.kind); });
     if (intro && heads.length >= 3) {
@@ -792,24 +835,11 @@ async function formatDocx(buf, opts) {
       // заголовок «Содержание» не должен попадать в само содержание
       hp.appendChild(mk(doc, 'outlineLvl', { val: 9 }));
       h.appendChild(runEl(doc, prof, size, title, true));
-      const tocP = (text, first, last) => {
-        const p = mk(doc, 'p'), pp = p.appendChild(mk(doc, 'pPr'));
-        pp.appendChild(mk(doc, 'tabs')).appendChild(mk(doc, 'tab', { val: 'right', leader: 'dot', pos: 9354 }));
-        pp.appendChild(mk(doc, 'spacing', { before: 0, after: 0, line: Math.round(prof.line * 240), lineRule: 'auto' }));
-        pp.appendChild(mk(doc, 'ind', { firstLine: 0, left: 0 }));
-        if (first) { p.appendChild(fld(doc, 'begin')); p.appendChild(instrRun(doc, ' TOC \\o "1-3" \\h \\z \\u ')); p.appendChild(fld(doc, 'separate')); }
-        p.appendChild(runEl(doc, prof, size, text, false));
-        if (last) p.appendChild(fld(doc, 'end'));
-        return p;
-      };
-      const items = heads.map(b => paraText(b).replace(/\s+/g, ' ').trim()).filter(Boolean);
-      const ps = items.map((t, k) => tocP(t, k === 0, k === items.length - 1));
       intro.parentNode.insertBefore(h, intro);
-      for (const p of ps) intro.parentNode.insertBefore(p, intro);
+      insertToc(intro);
       info.set(h, { kind: 'struct', name: 'содержание', zone: 'toc' });
-      ps.forEach(p => info.set(p, { kind: 'tocline', zone: 'toc' }));
       pageStart.add(h);
-      stats.tocAdded = true; tocField = true;
+      stats.tocAdded = true;
       B = blocks(body);
     }
   }
@@ -1009,6 +1039,7 @@ async function formatDocx(buf, opts) {
   if (stats.struct) list.push(`Заголовки структурных элементов (${stats.struct}): ${prof.struct.case === 'upper' ? 'прописными' : 'с заглавной буквы'}, по центру, полужирные, с новой страницы`);
   if (stats.heads) list.push(`Заголовки глав и подразделов (${stats.heads}): полужирные, с абзацного отступа, без точки в конце, главы с новой страницы`);
   if (stats.tocAdded) list.push('Добавлено автоматическое содержание — Word обновит номера страниц при открытии (или: правая кнопка → «Обновить поле»)');
+  else if (stats.tocRebuilt) list.push('Оглавление, набранное вручную, заменено на автоматическое (номера страниц обновятся при открытии в Word)');
   else if (tocField) list.push('Содержание обновится при открытии в Word');
   if (stats.figs || stats.figCaps) list.push(`Рисунки (${stats.figs}) по центру, подписи (${stats.figCaps}) в виде «${prof.fig.word} 1${prof.fig.sep}Название», кегль ${capSize}`);
   if (stats.tabCaps || stats.tables) list.push(`Таблицы (${stats.tables}): по центру, текст ${cellSize} пт с одинарным интервалом; заголовки (${stats.tabCaps}) «${prof.tab.word} 1${prof.tab.sep}Название» над таблицей слева`);
