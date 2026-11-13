@@ -642,7 +642,7 @@ async function formatDocx(buf, opts) {
         setSpacing(pPr, 0, 0, prof.bib.line); setIndent(pPr, prof.indent, 0); setJc(pPr, 'both');
         runsOf(p, r => setRun(r, prof, size, prof.bib.plain ? { bold: false, italic: false } : {}));
         dropLeadingTabs(p);
-        if (opts.typography) fixTypography(p, stats, true);
+        if (opts.typography) fixTypography(p, stats, opts.profile !== 'safu');
         if (!replaceFirst(p, /^\s*\[?\d{1,3}\s*[\].)]?\s*(?=\S)/, n + ' ')) { const t = ownTexts(p)[0]; if (t) { t.textContent = n + ' ' + t.textContent.replace(/^\s+/, ''); t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve'); } }
         else if (hadNum) { /* номер был и в автонумерации, и в тексте — оставили текстовый */ }
         return;
@@ -690,6 +690,29 @@ async function formatDocx(buf, opts) {
     if (i > 0) ensure(pPr, 'pageBreakBefore');
   }
   B = blocks(body);
+
+  /* ---------- 4б. титульный лист из конструктора ---------- */
+  if (opts.titleXml) {
+    let removed = 0;
+    for (const b of B) {
+      const x = info.get(b);
+      if (!x || x.zone !== 'title') break;
+      if (b.localName === 'p' && kid(kid(b, 'pPr'), 'sectPr')) { for (const r of ownRuns(b)) r.parentNode.removeChild(r); continue; }
+      b.parentNode.removeChild(b); removed++;
+    }
+    const frag = new DOMParser().parseFromString(`<w:body xmlns:w="${W}" xmlns:r="${R_NS}">${opts.titleXml}</w:body>`, 'application/xml');
+    if (frag.getElementsByTagName('parsererror').length) throw new Error('Не получилось собрать титульный лист.');
+    const first = body.firstChild;
+    for (const n of [...frag.documentElement.childNodes]) {
+      const el = doc.importNode(n, true);
+      body.insertBefore(el, first);
+      if (el.nodeType === 1) info.set(el, { kind: el.localName === 'tbl' ? 'table' : 'title', zone: 'title', text: '' });
+    }
+    stats.title = removed ? 'replaced' : 'added';
+    B = blocks(body);
+    const firstMain = B.find(b => { const x = info.get(b); return x && x.zone !== 'title'; });
+    if (firstMain && firstMain.localName === 'p') ensure(pPrOf(firstMain), 'pageBreakBefore');
+  }
 
   /* ---------- 5. содержание ---------- */
   const hasToc = B.some(b => { const x = info.get(b); return x && x.kind === 'struct' && isTocName(x.name); });
@@ -749,7 +772,7 @@ async function formatDocx(buf, opts) {
     const relRoot = rels.documentElement;
     const used = new Set([...relRoot.getElementsByTagNameNS(PKG_REL, 'Relationship')].map(r => r.getAttribute('Id')));
     let rid = 'rIdFmt1'; for (let k = 1; used.has(rid); k++) rid = 'rIdFmt' + k;
-    let fn = 'footer_sto.xml'; for (let k = 1; get('word/' + fn); k++) fn = 'footer_sto' + k + '.xml';
+    let fn = 'footer1.xml'; for (let k = 2; get('word/' + fn); k++) fn = 'footer' + k + '.xml';
     const rel = rels.createElementNS(PKG_REL, 'Relationship');
     rel.setAttribute('Id', rid); rel.setAttribute('Type', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer'); rel.setAttribute('Target', fn);
     relRoot.appendChild(rel); put('word/_rels/document.xml.rels', rels);
@@ -928,6 +951,7 @@ async function formatDocx(buf, opts) {
   if (stats.figs || stats.figCaps) list.push(`Рисунки (${stats.figs}) по центру, подписи (${stats.figCaps}) в виде «${prof.fig.word} 1${prof.fig.sep}Название», кегль ${capSize}`);
   if (stats.tabCaps || stats.tables) list.push(`Таблицы (${stats.tables}): по центру, текст ${cellSize} пт с одинарным интервалом; заголовки (${stats.tabCaps}) «${prof.tab.word} 1${prof.tab.sep}Название» над таблицей слева`);
   if (stats.bib) list.push(`Список источников: ${stats.bib} ${pl(stats.bib, 'запись', 'записи', 'записей')} пронумерованы «1 …» с абзацного отступа${prof.bib.plain ? ', без полужирного и курсива' : ''}`);
+  if (stats.title) list.push(stats.title === 'replaced' ? 'Титульный лист заменён на сгенерированный по форме СТО САФУ (приложение Б)' : 'Добавлен титульный лист по форме СТО САФУ (приложение Б)');
   if (stats.renamed) list.push(`Заголовок списка литературы приведён к названию «${prof.bibTitle}» (п. 4.2.1)`);
   if (stats.lists) list.push('Перечисления: маркеры заменены на дефис «-», нумерация «1.» на «1)» (п. 4.4.3–4.4.4)');
   if (stats.appx) list.push(`Приложения (${stats.appx}): с новой страницы, по центру`);
@@ -951,5 +975,5 @@ function runEl(doc, prof, size, text, bold) {
 function fld(doc, type) { const r = mk(doc, 'r'); r.appendChild(mk(doc, 'fldChar', { fldCharType: type })); return r; }
 function instrRun(doc, s) { const r = mk(doc, 'r'), t = r.appendChild(mk(doc, 'instrText')); t.textContent = s; t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve'); return r; }
 
-global.Formatter = { formatDocx, PROFILES };
+global.Formatter = { formatDocx, PROFILES, zipFiles: zip };
 })(typeof window !== 'undefined' ? window : globalThis);

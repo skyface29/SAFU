@@ -450,7 +450,10 @@ async function gostCheck(buf) {
   const pick = (list, get) => { for (const x of list) { const v = x && get(x); if (v != null && v !== '') return v; } return null; };
 
   const body = doc.getElementsByTagNameNS(W_NS, 'body')[0];
-  const tally = {}; const add = (k, v, n) => { (tally[k] = tally[k] || new Map()).set(v, (tally[k].get(v) || 0) + n); };
+  /* титульный лист не считаем: учитываем текст после первого заголовка «Введение», «Содержание» и т. п., если он есть */
+  const tallyAll = {}, tallyMain = {};
+  let started = false;
+  const add = (k, v, n) => { for (const t of started ? [tallyAll, tallyMain] : [tallyAll]) (t[k] = t[k] || new Map()).set(v, (t[k].get(v) || 0) + n); };
   const headings = [];
   let bodyChars = 0;
   for (const p of body ? body.getElementsByTagNameNS(W_NS, 'p') : []) {
@@ -461,7 +464,13 @@ async function gostCheck(buf) {
     const sts = chain(sid), text = [...p.getElementsByTagNameNS(W_NS, 't')].map(t => t.textContent).join('').trim();
     if (!text) continue;
     const isHead = sts.some(s => s.heading) || !!wKid(pPr, 'outlineLvl') || (text.length < 80 && !/[.!?;:,]$/.test(text) && /^[\dIVX.\s]*[A-ZА-ЯЁ]/.test(text) && text === text.toUpperCase());
-    if (isHead || text.length < 25) { if (text.length < 120) headings.push(text); continue; }
+    if (isHead || text.length < 25) {
+      if (text.length < 120) headings.push(text);
+      if (/^(содержание|оглавление|введение|реферат|аннотация)$/i.test(text.replace(/[\s.:]+$/, ''))) started = true;
+      continue;
+    }
+    if (wKid(pPr, 'framePr')) continue;
+    if (/^(рисунок|рис\.|таблица|продолжение таблицы|листинг)\s/i.test(text)) continue;
     const pp = [pPr, ...sts.map(s => s.pPr), defP];
     const spacing = pick(pp, x => wKid(x, 'spacing') && wAttr(wKid(x, 'spacing'), 'line') ? wKid(x, 'spacing') : null);
     const line = spacing ? +wAttr(spacing, 'line') / 240 : 1, rule = spacing ? wAttr(spacing, 'lineRule') || 'auto' : 'auto';
@@ -483,6 +492,7 @@ async function gostCheck(buf) {
       bodyChars += n;
     }
   }
+  const tally = Object.keys(tallyMain).length ? tallyMain : tallyAll;
   const top = k => { const m = tally[k]; if (!m) return [null, 0]; let best = null, c = 0, all = 0; for (const [v, x] of m) { all += x; if (x > c) { best = v; c = x; } } return [best, c / all]; };
   const share = (k, ok) => { const m = tally[k]; if (!m) return 1; let good = 0, all = 0; for (const [v, x] of m) { all += x; if (ok(v)) good += x; } return good / all; };
   const pct = x => Math.round(x * 100) + '%';
