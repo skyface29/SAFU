@@ -321,6 +321,63 @@ function setParaText(p, text) {
 }
 function isAllCaps(s) { const l = s.replace(/[^A-Za-zА-Яа-яЁё]/g, ''); return l.length >= 3 && l === l.toUpperCase(); }
 
+/* ------------------- список источников: приведение записей ------------------- */
+/* Образцы — приложение М СТО САФУ 2026 (по ГОСТ Р 7.0.100–2018): «Иванов, И. И. Название: учебник /
+   И. И. Иванов. – Москва: Наука, 2020. – 300 с.» Правила только безопасные: что не распознали — не трогаем. */
+const CITIES = [[/^М\.?$/, 'Москва'], [/^СПб\.?$/, 'Санкт-Петербург'], [/^С\.-Пб\.?$/, 'Санкт-Петербург'], [/^Л\.?$/, 'Ленинград'], [/^Ростов н\/Д\.?$/, 'Ростов-на-Дону'],
+  [/^Н\.\s?Новгород$/, 'Нижний Новгород'], [/^Екб\.?$/, 'Екатеринбург'], [/^Арх\.?$/, 'Архангельск'], [/^Новосиб\.?$/, 'Новосибирск'], [/^К\.?$/, 'Киев'], [/^Мн\.?$/, 'Минск']];
+function bibToday() { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear(); }
+function normBib(src) {
+  let s = src.replace(/\s+/g, ' ').trim();
+  // ссылки прячем, чтобы правила про «/» и «:» их не задели
+  const urls = [];
+  s = s.replace(/https?:\/\/[^\s)]+|www\.[^\s)]+/gi, u => { urls.push(u.replace(/[.,;]+$/, '')); return '\u0001' + (urls.length - 1) + '\u0002' + (u.match(/[.,;]+$/) || [''])[0]; });
+  s = s.replace(/\s*\[(электронный ресурс|текст|electronic resource)\]\s*/gi, ' ');
+  s = s.replace(/\s*[.–-]?\s*[–-]?\s*Текст\s*:\s*(электронный|непосредственный)\s*\.?/gi, '.');
+  s = s.replace(/\s*\.\s*(?:--|[-—–])\s*/g, '. – ').replace(/ (?:--|[-—]) /g, ' – ');
+  s = s.replace(/\s*\/\/\s*/g, '\u0003').replace(/\s+\/\s*|\s*\/\s+/g, ' / ').replace(/\u0003/g, ' // ');
+  s = s.replace(/\s+:\s*/g, ': ').replace(/\s+;/g, ';');
+  s = s.replace(/Режим доступа:\s*(?=\u0001)/gi, 'URL: ').replace(/([^–\s])\.?\s+URL:/g, '$1. – URL:').replace(/\bURL\s*:?\s*(?=\u0001)/g, 'URL: ');
+  s = s.replace(/\(\s*дата обращения\s*:?\s*([\d.]+)\s*\)/gi, '(дата обращения: $1)');
+  // город издания полностью (п. 4.13.6.6.1)
+  s = s.replace(/(^|– |\. )([А-ЯЁ][а-яё]{0,3}\.|СПб\.?|С\.-Пб\.?|Ростов н\/Д|Н\.\s?Новгород)\s*:\s*(?=\S)/g, (m, pre, c) => {
+    for (const [re, full] of CITIES) if (re.test(c.trim())) return pre + full + ': ';
+    return m;
+  });
+  // страницы
+  s = s.replace(/(\d)\s*(?:с|стр)\.(?=\s|$|\s?[–.(])/g, '$1 с.').replace(/(^|[\s.])(?:С|Стр|стр)\.\s*(\d+)\s*[-—–]\s*(\d+)/g, '$1С. $2–$3');
+  // в аналитическом описании области разделяются «. – » (п. 4.13.6.10 допускает и точку, но берём как в образцах)
+  const dbl = s.indexOf(' // ');
+  if (dbl > 0) {
+    const tail = s.slice(dbl).replace(/([^.–\s])\.\s+(?=(\d{4}\b|№|Т\.\s?\d|Vol\.|С\.\s?\d|P\.\s?\d|Вып\.))/g, '$1. – ').replace(/,\s*(?=С\.\s?\d)/g, '. – ').replace(/(\d{4}),\s*(?=№)/g, '$1. – ');
+    s = s.slice(0, dbl) + tail;
+  }
+  // заголовок описания: «Иванов И.И.» → «Иванов, И. И.»; сведения об ответственности после заглавия, если их нет
+  const AU = /^([А-ЯЁA-Z][\p{L}'-]+),?\s+([А-ЯЁA-Z]\.)\s?([А-ЯЁA-Z]\.)?/u;
+  const authors = []; let rest = s, m;
+  while (authors.length < 4 && (m = AU.exec(rest))) {
+    authors.push({ fam: m[1], ini: [m[2], m[3]].filter(Boolean).join(' ') });
+    rest = rest.slice(m[0].length).replace(/^\s*,\s*/, ',').trimStart();
+    if (!rest.startsWith(',') && !/^и\s/.test(rest)) break;
+    rest = rest.replace(/^,\s*|^и\s+/, '');
+  }
+  if (authors.length && authors.length <= 3 && /^[«"A-ZА-ЯЁ0-9]/u.test(rest)) {
+    let body = rest;
+    const hasResp = (() => { const cut = body.search(/ \/\/ |\. – /); return (cut < 0 ? body : body.slice(0, cut)).includes(' / '); })();
+    if (!hasResp) {
+      const cut = body.search(/ \/\/ |\. – /);
+      const resp = ' / ' + authors.map(a => a.ini + ' ' + a.fam).join(', ');
+      body = cut < 0 ? body.replace(/\.?$/, resp + '.') : body.slice(0, cut).replace(/\.$/, '') + resp + body.slice(cut);
+    }
+    s = authors[0].fam + ', ' + authors[0].ini + ' ' + body;
+  }
+  // электронный ресурс без даты обращения
+  if (urls.length && !/дата обращения|Accessed/i.test(s)) s = s.replace(/(\u0001\d+\u0002)([.,;]?)(?!.*\u0001)/, '$1 (дата обращения: ' + bibToday() + ')$2');
+  s = s.replace(/\s+([.,;])/g, '$1').replace(/\.{2,}/g, '.').replace(/\s{2,}/g, ' ').trim();
+  if (!/\.$/.test(s)) s += '.';
+  return s.replace(/\u0001(\d+)\u0002/g, (x, i) => urls[+i]);
+}
+
 /* ---------------------------- распознавание ---------------------------- */
 const norm = s => s.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').replace(/[.:;]+$/, '').trim();
 const STRUCT_SET = new Set(STRUCT_SAFU.map(norm));
@@ -375,7 +432,7 @@ async function formatDocx(buf, opts) {
   const stylesDoc = parse('word/styles.xml');
   const St = buildStyles(stylesDoc);
   const body = doc.getElementsByTagNameNS(W, 'body')[0];
-  const stats = { body: 0, heads: 0, struct: 0, figs: 0, figCaps: 0, tabCaps: 0, tables: 0, bib: 0, empty: 0, typo: 0, breaks: 0, listings: 0, foot: 0, toc: false, tocAdded: false, appx: 0, lists: 0, renamed: false };
+  const stats = { body: 0, heads: 0, struct: 0, figs: 0, figCaps: 0, tabCaps: 0, tables: 0, bib: 0, empty: 0, typo: 0, breaks: 0, listings: 0, foot: 0, toc: false, tocAdded: false, appx: 0, lists: 0, renamed: false, bibFixed: 0 };
   const notes = [];
 
   /* ---------- 1. классификация ---------- */
@@ -642,6 +699,11 @@ async function formatDocx(buf, opts) {
         setSpacing(pPr, 0, 0, prof.bib.line); setIndent(pPr, prof.indent, 0); setJc(pPr, 'both');
         runsOf(p, r => setRun(r, prof, size, prof.bib.plain ? { bold: false, italic: false } : {}));
         dropLeadingTabs(p);
+        if (opts.profile === 'safu' && !hasDrawing(p)) {
+          const before = paraText(p).replace(/\s+/g, ' ').trim().replace(/^\[?\d{1,3}\s*[\].)]?\s*/, '');
+          const after = normBib(before);
+          if (after !== before && after.length > 10) { setParaText(p, after); stats.bibFixed++; }
+        }
         if (opts.typography) fixTypography(p, stats, opts.profile !== 'safu');
         if (!replaceFirst(p, /^\s*\[?\d{1,3}\s*[\].)]?\s*(?=\S)/, n + ' ')) { const t = ownTexts(p)[0]; if (t) { t.textContent = n + ' ' + t.textContent.replace(/^\s+/, ''); t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve'); } }
         else if (hadNum) { /* номер был и в автонумерации, и в тексте — оставили текстовый */ }
@@ -952,6 +1014,7 @@ async function formatDocx(buf, opts) {
   if (stats.tabCaps || stats.tables) list.push(`Таблицы (${stats.tables}): по центру, текст ${cellSize} пт с одинарным интервалом; заголовки (${stats.tabCaps}) «${prof.tab.word} 1${prof.tab.sep}Название» над таблицей слева`);
   if (stats.bib) list.push(`Список источников: ${stats.bib} ${pl(stats.bib, 'запись', 'записи', 'записей')} пронумерованы «1 …» с абзацного отступа${prof.bib.plain ? ', без полужирного и курсива' : ''}`);
   if (stats.title) list.push(stats.title === 'replaced' ? 'Титульный лист заменён на сгенерированный по форме СТО САФУ (приложение Б)' : 'Добавлен титульный лист по форме СТО САФУ (приложение Б)');
+  if (stats.bibFixed) list.push(`Описания источников приведены к образцам приложения М СТО: ${stats.bibFixed} ${pl(stats.bibFixed, 'запись', 'записи', 'записей')} (заголовок «Фамилия, И. О.», «/ И. О. Фамилия», « – », город полностью, «С. 12–25», дата обращения)`);
   if (stats.renamed) list.push(`Заголовок списка литературы приведён к названию «${prof.bibTitle}» (п. 4.2.1)`);
   if (stats.lists) list.push('Перечисления: маркеры заменены на дефис «-», нумерация «1.» на «1)» (п. 4.4.3–4.4.4)');
   if (stats.appx) list.push(`Приложения (${stats.appx}): с новой страницы, по центру`);
@@ -975,5 +1038,5 @@ function runEl(doc, prof, size, text, bold) {
 function fld(doc, type) { const r = mk(doc, 'r'); r.appendChild(mk(doc, 'fldChar', { fldCharType: type })); return r; }
 function instrRun(doc, s) { const r = mk(doc, 'r'), t = r.appendChild(mk(doc, 'instrText')); t.textContent = s; t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve'); return r; }
 
-global.Formatter = { formatDocx, PROFILES, zipFiles: zip };
+global.Formatter = { formatDocx, PROFILES, zipFiles: zip, normBib };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -466,7 +466,7 @@ async function gostCheck(buf) {
     const isHead = sts.some(s => s.heading) || !!wKid(pPr, 'outlineLvl') || (text.length < 80 && !/[.!?;:,]$/.test(text) && /^[\dIVX.\s]*[A-ZА-ЯЁ]/.test(text) && text === text.toUpperCase());
     if (isHead || text.length < 25) {
       if (text.length < 120) headings.push(text);
-      if (/^(содержание|оглавление|введение|реферат|аннотация)$/i.test(text.replace(/[\s.:]+$/, ''))) started = true;
+      if (/^(содержание|оглавление|введение)$/i.test(text.replace(/[\s.:]+$/, ''))) started = true;
       continue;
     }
     if (wKid(pPr, 'framePr')) continue;

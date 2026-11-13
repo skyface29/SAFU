@@ -290,7 +290,7 @@ void main(){
   let idle = 0, ticking = false;
   if (!calm) addEventListener('scroll', () => {
     scrolling = true; clearTimeout(idle); idle = setTimeout(() => { scrolling = false; last = 0; gaps.length = 0; }, 150);
-    if (ticking) return; ticking = true;
+    if (ticking || lite) return; ticking = true;   // на телефонах сцена не двигается при прокрутке: в Safari это давало рывки
     requestAnimationFrame(() => {
       ticking = false;
       dive = Math.min(1, Math.max(0, scrollY / Math.max(1, canvas.clientHeight)));
