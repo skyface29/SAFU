@@ -115,6 +115,40 @@ h1 em{font-style:normal;background:var(--aurora);background-size:200% 100%;-webk
 .btn svg{width:16px;height:16px}
 .link{border:0;background:none;color:var(--accent);padding:0;font-size:14px}
 
+/* оформление по СТО САФУ */
+.sto-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:-20px 0 18px}
+.sto-tabs button{border:1px solid var(--line2);background:var(--glass);color:var(--ink2);border-radius:999px;padding:10px 18px;font:500 14.5px var(--body);cursor:pointer;transition:background .3s,color .3s,border-color .3s}
+.sto-tabs button[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sto-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+.sto-form .wide{grid-column:1/-1}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--muted);min-width:0}
+.fld input,.fld select{width:100%;border-radius:12px;border:1px solid var(--line);background:var(--field);color:var(--ink);padding:11px 13px;font:15px var(--body);outline:0;min-width:0}
+.fld input:focus,.fld select:focus{border-color:var(--accent)}
+.sto-pane{padding:26px 28px}
+.sto-preview{margin-top:16px;border:1px dashed var(--line2);border-radius:14px;padding:14px 16px;font:15px/1.6 'Times New Roman',Times,serif;color:var(--ink);min-height:3.2em}
+.sto-list{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+.sto-list li{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line);font:14.5px/1.55 'Times New Roman',Times,serif}
+.sto-list li button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1}
+.sto-acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.sto-delta{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:14.5px}
+.sto-delta b{font:600 20px var(--display)}
+@media (max-width:820px){.sto-form{grid-template-columns:minmax(0,1fr)}.sto-pane{padding:22px 20px}.sto-tabs{margin-top:-10px}}
+#sto .panel{overflow:hidden}
+.sto-main{padding:26px 28px 24px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:16px;min-width:0}
+.sto-drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:200px;border:1.5px dashed var(--line2);border-radius:20px;
+  padding:28px 20px;text-align:center;cursor:pointer;transition:border-color .3s,background .3s}
+.sto-drop:hover,.sto-drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.sto-drop svg{width:34px;height:34px;color:var(--accent)}
+.sto-drop b{font-size:17px;font-weight:600}
+.sto-drop small{color:var(--muted);font-size:13.5px}
+.sto-drop.has{border-style:solid}
+.sto-res:not(:empty){padding:0 28px 26px}
+.sto-res .gost{margin:0}
+@media (max-width:820px){.sto-res:not(:empty){padding:0 20px 22px}.sto-main{border-right:0;border-bottom:1px solid var(--line);padding:22px 20px 18px}}
+.sto-res .gost h4{cursor:default}
+.sto-res li.tip i{color:var(--accent)}
+.sto-dl{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sto-src{font-size:12.5px;color:var(--muted);line-height:1.5}
 /* ===================== основа ===================== */
 main{position:relative;z-index:2;max-width:1240px;margin:-64px auto 0;padding:0 28px 40px}
 .panel{position:relative;border-radius:28px;background:linear-gradient(180deg,var(--glass2),var(--glass));box-shadow:var(--shadow);
@@ -477,7 +511,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M18 3l7 11-3.5 2.2L26 20H10l3.6-6L11 11.6z" fill="#fff"/><path d="M18 3l7 11-3.5 2.2L18 12z" fill="#cfe6ff"/><path d="M8 23h20l-3.4 6.2L18 32l-6.6-2.8z" fill="#5aa0ff" opacity=".85"/><path d="M3 21.5h30" stroke="#a6e6ff" stroke-width="1.4" stroke-linecap="round"/></svg>
       Айсберг<small>Арктика</small>
     </a>
-    <div class="links"><a href="#check">Проверка</a><a href="#how">Как работает</a><a href="#why">Возможности</a><a href="#teachers">Преподавателям</a></div>
+    <div class="links"><a href="#check">Проверка</a><a href="#sto">Оформление по СТО</a><a href="#how">Как работает</a><a href="#why">Возможности</a><a href="#teachers">Преподавателям</a></div>
     <div class="nav-r">
       <button class="ghost" id="btnSettings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/></svg>Коллекция</button>
       <button class="ghost icon" id="btnTheme" title="Полярная ночь / полярный день" aria-label="Сменить тему"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M5.3 18.7l1.5-1.5M17.2 6.8l1.5-1.5"/></svg></button>
@@ -489,7 +523,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
     <p class="sub">Проверка курсовой, диплома или реферата на заимствования с полным отчётом: интернет, Википедия и научные статьи. Замечает перефразирование и уловки, а ещё проверяет оформление по ГОСТу.</p>
     <div class="cta">
       <a class="primary" href="#check">Проверить текст<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      <a class="ghost lg" href="#how">Как это работает</a>
+      <a class="ghost lg" href="#sto">Оформить по СТО САФУ</a>
     </div>
     <dl class="stats">
       <div><dt>≈ <span data-count="1">1</span> мин</dt><dd>стандартная проверка</dd></div>
@@ -608,6 +642,71 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
   </div>
 </section>
 
+<section class="sec" id="sto">
+  <div class="sec-h reveal"><div><span class="label">Новое · СТО САФУ 2026</span><h3>Оформим работу по СТО САФУ за пару секунд</h3></div>
+    <p>Загрузите .docx — курсовую, реферат, отчёт по практике или ВКР. Поля, шрифты, заголовки, рисунки, таблицы, список источников, сноски и номера страниц станут как в стандарте. Плюс титульный лист по форме СТО и конструктор списка литературы. Файл обрабатывается в вашем браузере и никуда не загружается.</p></div>
+  <div class="sto-tabs" role="tablist">
+    <button type="button" role="tab" aria-selected="true" data-tab="stoFmt">Оформить работу</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="stoTitle">Титульный лист</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="stoBib">Список литературы</button>
+  </div>
+  <div class="panel" id="stoFmt"><div class="grid">
+    <div class="sto-main">
+      <div class="sto-drop" id="stoDrop" tabindex="0" role="button" aria-label="Выбрать файл .docx">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>
+        <b id="stoName">Перетащите сюда работу в .docx</b><small id="stoHint">или нажмите, чтобы выбрать файл</small>
+      </div>
+      <input type="file" id="stoFile" accept=".docx" class="hide">
+    </div>
+    <aside class="controls">
+      <div>
+        <span class="label">Настройки</span>
+        <div class="sws">
+          <label class="sw"><span><b>Поле для переплёта</b><small>левое поле 30 мм вместо 25 мм</small></span><input type="checkbox" id="stoBind"><i></i></label>
+          <label class="sw"><span><b>Содержание</b><small>добавить автоматическое, если его нет</small></span><input type="checkbox" id="stoToc" checked><i></i></label>
+          <label class="sw"><span><b>Кегль 12</b><small>по умолчанию 14 — оба варианта допускает п. 4.1.5</small></span><input type="checkbox" id="stoSmall"><i></i></label>
+          <label class="sw"><span><b>Мой титульный лист</b><small id="stoTitleNote">заполните вкладку «Титульный лист» — вставлю его в работу</small></span><input type="checkbox" id="stoUseTitle" disabled><i></i></label>
+          <label class="sw"><span><b>Типографика</b><small>пробелы, тире «–», кавычки «ёлочки», неразрывные пробелы</small></span><input type="checkbox" id="stoTypo" checked><i></i></label>
+        </div>
+      </div>
+      <div class="sto-src">Правила взяты из СТО САФУ 2026 «Методические указания по оформлению и изложению документов образовательной и научной деятельности обучающихся». Без нейросетей: каждое правило зашито в код.</div>
+      <div style="margin-top:auto">
+        <button class="primary block" id="stoGo" disabled>Оформить по СТО<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <div class="err" id="stoErr"></div>
+      </div>
+    </aside>
+  </div><div class="sto-res" id="stoRes"></div></div>
+  <div class="panel hide" id="stoTitle"><div class="sto-pane">
+    <div class="sto-form" id="tForm">
+      <label class="fld wide">Вид работы<select id="tType"></select></label>
+      <label class="fld wide">Высшая школа / институт / филиал<input id="tSchool" list="tSchools" placeholder="Высшая школа информационных технологий и автоматизированных систем"></label>
+      <label class="fld wide tnp">Дисциплина<input id="tDiscipline" placeholder="Информатика"></label>
+      <label class="fld wide tnp">Тема<input id="tTopic" placeholder="Тема работы без кавычек"></label>
+      <label class="fld tp">Вид практики<input id="tKind" placeholder="учебная / производственная"></label>
+      <label class="fld tp">Тип практики<input id="tPtype" placeholder="ознакомительная"></label>
+      <label class="fld wide tp">Место прохождения практики<input id="tPlace" placeholder="наименование организации"></label>
+      <label class="fld tp">Начало практики<input id="tFrom" placeholder="«01» июля 2026 г."></label>
+      <label class="fld tp">Окончание практики<input id="tTo" placeholder="«14» июля 2026 г."></label>
+      <label class="fld">Ф.И.О. обучающегося<input id="tStudent" placeholder="Иванов Иван Иванович"></label>
+      <label class="fld">Пол<select id="tGender"><option value="m">Выполнил обучающийся</option><option value="f">Выполнила обучающаяся</option></select></label>
+      <label class="fld wide">Направление подготовки / специальность<input id="tDirection" placeholder="10.03.01 Информационная безопасность"></label>
+      <label class="fld">Курс<input id="tCourse" inputmode="numeric" placeholder="1"></label>
+      <label class="fld">Группа<input id="tGroup" inputmode="numeric" placeholder="151621"></label>
+      <label class="fld wide">Руководитель<input id="tTeacher" placeholder="Петров Пётр Петрович, доцент, канд. техн. наук"></label>
+      <label class="fld">Год<input id="tYear" inputmode="numeric"></label>
+    </div>
+    <datalist id="tSchools"><option>Высшая школа информационных технологий и автоматизированных систем</option><option>Высшая инженерная школа</option><option>Высшая школа энергетики, нефти и газа</option><option>Высшая школа естественных наук и технологий</option><option>Высшая школа экономики, управления и права</option><option>Высшая школа социально-гуманитарных наук и международной коммуникации</option><option>Высшая школа психологии, педагогики и физической культуры</option></datalist>
+    <div class="sto-acts"><button class="primary" id="tDl" type="button">Скачать титульный лист .docx</button><span class="muted">Форма — приложение Б СТО САФУ. Вкладка «Оформить работу» вставит этот титульник в вашу работу вместо старого.</span></div>
+  </div></div>
+  <div class="panel hide" id="stoBib"><div class="sto-pane">
+    <div class="sto-form" id="bForm"><label class="fld wide">Что описываем<select id="bType"></select></label><div class="wide sto-form" id="bFields"></div></div>
+    <div class="sto-preview" id="bPreview"><span class="muted">Заполните поля — запись появится здесь по образцам приложения М СТО САФУ.</span></div>
+    <div class="sto-acts"><button class="primary" id="bAdd" type="button">Добавить в список</button><button class="btn" id="bCopyOne" type="button">Копировать запись</button></div>
+    <ol class="sto-list" id="bList"></ol>
+    <div class="sto-acts" id="bListActs"><button class="btn" id="bCopy" type="button">Копировать список</button><button class="btn" id="bDocx" type="button">Скачать .docx</button><button class="btn" id="bClear" type="button">Очистить</button><span class="muted">Список отсортирован по алфавиту, иностранные источники в конце (п. 4.13.4.1).</span></div>
+  </div></div>
+</section>
+
 <section class="sec" id="how">
   <div class="sec-h reveal"><div><span class="label">Как работает</span><h3>Три шага от текста до отчёта</h3></div>
     <p>Всё сравнение идёт прямо в вашем браузере. Наружу уходят только короткие фразы — чтобы найти, где ещё встречается текст.</p></div>
@@ -709,6 +808,8 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 
 <script src="scene.js"></script>
 <script src="engine.js"></script>
+<script src="format.js"></script>
+<script src="sto-tools.js"></script>
 <script>
 /* Адрес помощника, который скачивает страницы сайтов и выдачу поисковиков (antiplagiat-api/ в репозитории).
    Пусто — работает только Википедия и своя коллекция. Для проверки у себя: python3 antiplagiat/site_dev.py */
@@ -810,7 +911,7 @@ async function takeFile(file){
   try{
     const r = await Iceberg.readFile(file);
     if(!r.text || r.text.trim().length < 20) throw new Error('В файле не нашлось текста — возможно, это скан без распознавания.');
-    $('text').value = r.text.trim(); updateCounter(); S.flags = r.flags || {}; S.name = file.name; S.gost = r.gost || null; renderGost();
+    $('text').value = r.text.trim(); updateCounter(); S.flags = r.flags || {}; S.name = file.name; S.gost = r.gost || null; S.docx = /\.docx$/i.test(file.name) ? file : null; renderGost();
     $('fileNote').textContent = file.name; updateFab();
   }catch(e){ $('fileNote').textContent = '.docx · .pdf · .txt'; $('inputError').textContent = e.message; }
 }
@@ -824,7 +925,7 @@ drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if(f) ta
 /* ---------- экраны ---------- */
 function show(which){
   ['check','progressCard','report'].forEach(id => $(id).classList.toggle('hide', id !== which));
-  ['how','why','unis','teachers'].forEach(id => $(id).classList.toggle('hide', which !== 'check'));
+  ['sto','how','why','unis','teachers'].forEach(id => $(id).classList.toggle('hide', which !== 'check'));
   const el = $(which); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
   const top = el.getBoundingClientRect().top + scrollY - 20;
   if(Math.abs(scrollY - top) > 40) window.scrollTo({top, behavior: calm ? 'auto' : 'smooth'});
@@ -1141,10 +1242,113 @@ function gostHTML(g, closed){
 function renderGost(){
   const box = $('gostBox');
   if(!S.gost){ box.classList.add('hide'); box.innerHTML = ''; return; }
-  box.classList.remove('hide'); box.innerHTML = gostHTML(S.gost, false).replace(/^<div class="gost[^"]*">|<\/div>$/g, '');
+  box.classList.remove('hide'); box.innerHTML = gostHTML(S.gost, false).replace(/^<div class="gost[^"]*">|<\/div>$/g, '') +
+    (S.docx ? '<button class="btn" id="btnStoFix" type="button" style="margin-top:12px">Исправить оформление по СТО САФУ автоматически</button>' : '');
   box.classList.toggle('closed', false);
 }
 document.addEventListener('click', e => { const h = e.target.closest('[data-gost]'); if(h) h.parentElement.classList.toggle('closed'); });
+
+/* ---------- оформление по СТО САФУ ---------- */
+const STO = { file: null, url: null };
+function stoPick(file){
+  $('stoErr').textContent = ''; $('stoRes').innerHTML = '';
+  if(!file) return;
+  if(!/\.docx$/i.test(file.name)){ $('stoErr').textContent = /\.doc$/i.test(file.name) ? 'Это старый формат .doc. Откройте файл в Word и сохраните как .docx.' : 'Нужен файл Word в формате .docx.'; return; }
+  STO.file = file; $('stoName').textContent = file.name; $('stoHint').textContent = 'нажмите «Оформить по СТО» или выберите другой файл';
+  $('stoDrop').classList.add('has'); $('stoGo').disabled = false;
+}
+function stoOut(name){ return name.replace(/\.docx$/i, '') + ' (СТО САФУ).docx'; }
+async function stoRun(){
+  if(!STO.file) return;
+  const btn = $('stoGo'); btn.disabled = true; $('stoErr').textContent = ''; $('stoRes').innerHTML = '<div class="muted" style="padding-top:22px">Оформляю…</div>';
+  try{
+    const buf = await STO.file.arrayBuffer();
+    const r = await Formatter.formatDocx(buf, { profile: 'safu', binding: $('stoBind').checked, toc: $('stoToc').checked,
+      typography: $('stoTypo').checked, size: $('stoSmall').checked ? 12 : 14, titleXml: $('stoUseTitle').checked ? StoTools.titleXml(titleData()) : null });
+    let delta = '';
+    try{
+      const a = await Iceberg.gostCheck(buf), b = await Iceberg.gostCheck(await r.blob.arrayBuffer());
+      delta = '<div class="sto-delta"><span class="muted">Замечаний по оформлению:</span><b style="color:var(--para)">' + a.problems + '</b><span>→</span><b style="color:var(--ok)">' + b.problems + '</b></div>';
+    }catch(e){}
+    if(STO.url) URL.revokeObjectURL(STO.url);
+    STO.url = URL.createObjectURL(r.blob);
+    const name = stoOut(STO.file.name);
+    const items = r.report.map((t, i) => '<li class="ok" style="--i:' + i + '"><i>✓</i><div>' + esc(t) + '</div></li>').join('') +
+      r.notes.map((t, i) => '<li class="tip" style="--i:' + (r.report.length + i) + '"><i>!</i><div>' + esc(t) + '</div></li>').join('');
+    $('stoRes').innerHTML = delta + '<div class="gost"><h4><span>Готово: оформлено по СТО САФУ</span><span class="tag">файл готов</span></h4><ul>' + items + '</ul></div>' +
+      '<div class="sto-dl" style="margin-top:14px"><a class="primary" id="stoDl" href="' + STO.url + '" download="' + esc(name) + '">Скачать .docx<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg></a>' +
+      '<span class="muted">Откройте в Word: он предложит обновить поля — нажмите «Да», чтобы проставились номера страниц в содержании.</span></div>';
+    try{ $('stoDl').click(); }catch(e){}
+  }catch(e){ $('stoRes').innerHTML = ''; $('stoErr').textContent = e.message || 'Не получилось оформить файл.'; }
+  btn.disabled = false;
+}
+$('stoDrop').onclick = () => $('stoFile').click();
+$('stoDrop').onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); $('stoFile').click(); } };
+$('stoFile').onchange = e => { stoPick(e.target.files[0]); e.target.value = ''; };
+['dragenter','dragover'].forEach(ev => $('stoDrop').addEventListener(ev, e => { e.preventDefault(); $('stoDrop').classList.add('over'); }));
+['dragleave','drop'].forEach(ev => $('stoDrop').addEventListener(ev, e => { e.preventDefault(); $('stoDrop').classList.remove('over'); }));
+$('stoDrop').addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if(f) stoPick(f); });
+$('stoGo').onclick = stoRun;
+document.addEventListener('click', e => { if(e.target.id === 'btnStoFix' && S.docx){ stoPick(S.docx); $('sto').scrollIntoView({behavior: calm ? 'auto' : 'smooth'}); stoRun(); } });
+
+/* ---------- вкладки СТО ---------- */
+document.querySelectorAll('.sto-tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.sto-tabs button').forEach(x => { x.setAttribute('aria-selected', x === b); $(x.dataset.tab).classList.toggle('hide', x !== b); });
+});
+const lsGet = (k, d) => { try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } };
+const lsSet = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+
+/* ---------- титульный лист ---------- */
+const T_FIELDS = ['type','school','discipline','topic','kind','ptype','place','from','to','student','gender','direction','course','group','teacher','year'];
+const tId = f => 't' + f[0].toUpperCase() + f.slice(1);
+$('tType').innerHTML = Object.entries(StoTools.TITLE_TYPES).map(([k, v]) => '<option value="' + k + '">' + esc(v.name) + '</option>').join('');
+function titleData(){ const d = {}; T_FIELDS.forEach(f => d[f] = $(tId(f)).value.trim()); return d; }
+function titleSync(){
+  const d = titleData(), pr = d.type === 'praktika';
+  document.querySelectorAll('#tForm .tp').forEach(e => e.classList.toggle('hide', !pr));
+  document.querySelectorAll('#tForm .tnp').forEach(e => e.classList.toggle('hide', pr));
+  const ready = !!(d.student && (pr || d.topic));
+  $('stoUseTitle').disabled = !ready; if(!ready) $('stoUseTitle').checked = false;
+  $('stoTitleNote').textContent = ready ? 'заменить титульник в работе на заполненный по форме СТО' : 'заполните вкладку «Титульный лист» — вставлю его в работу';
+  lsSet('stoTitle', d);
+}
+{ const saved = lsGet('stoTitle', {}); T_FIELDS.forEach(f => { if(saved[f]) $(tId(f)).value = saved[f]; }); if(!$('tYear').value) $('tYear').value = new Date().getFullYear(); }
+$('tForm').addEventListener('input', titleSync); $('tForm').addEventListener('change', titleSync); titleSync();
+function saveBlob(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
+$('tDl').onclick = async () => { const d = titleData(); saveBlob(await StoTools.docxFromBody(StoTools.titleXml(d)), 'Титульный лист' + (d.student ? ' — ' + d.student.split(' ')[0] : '') + '.docx'); };
+
+/* ---------- список литературы ---------- */
+const B_LABELS = { authors: ['Авторы (через ;)', 'Иванов И. И.; Петров П. П.'], title: ['Название', ''], subtitle: ['Вид издания', 'учебник / монография / учеб. пособие'],
+  edition: ['Издание', '2-е изд., перераб. и доп.'], city: ['Город', 'Москва'], publisher: ['Издательство', 'Юрайт'], year: ['Год', '2025'], pages: ['Страниц всего', '256'],
+  url: ['Ссылка (для электронного ресурса)', 'https://…'], journal: ['Журнал', 'Вопросы экономики'], volume: ['Том', ''], issue: ['Номер', '5'], pagesRange: ['Страницы статьи', '12–25'],
+  doi: ['DOI', '10.37482/…'], collection: ['Сборник', 'Название сборника'], collectionSub: ['Вид сборника', 'сб. науч. трудов'], site: ['Сайт', 'САФУ: [офиц. сайт]'],
+  accessed: ['Дата обращения', StoTools.today()], lawTitle: ['Название', 'Об образовании в Российской Федерации'], lawKind: ['Вид акта', 'Федер. закон'], lawNumber: ['Номер', '273-ФЗ'],
+  lawDate: ['Дата принятия', '29.12.2012'], source: ['Где опубликован', 'КонсультантПлюс'], gostNumber: ['Номер стандарта', 'ГОСТ Р 7.0.100–2018'], introduced: ['Дата введения', '2019-07-01'] };
+$('bType').innerHTML = Object.entries(StoTools.BIB_TYPES).map(([k, v]) => '<option value="' + k + '">' + esc(v.name) + '</option>').join('');
+let bList = lsGet('stoBib', []);
+function bRender(){
+  const t = $('bType').value, keep = {};
+  $('bFields').querySelectorAll('input').forEach(i => keep[i.dataset.f] = i.value);
+  $('bFields').innerHTML = StoTools.BIB_TYPES[t].fields.map(f => '<label class="fld' + (['title','authors','url','lawTitle','collection'].includes(f) ? ' wide' : '') + '">' + esc(B_LABELS[f][0]) +
+    '<input data-f="' + f + '" placeholder="' + esc(B_LABELS[f][1]) + '" value="' + esc(keep[f] || '') + '"></label>').join('');
+  bPreview();
+}
+function bData(){ const d = {}; $('bFields').querySelectorAll('input').forEach(i => d[i.dataset.f] = i.value); return d; }
+function bPreview(){ const d = bData(), any = Object.values(d).some(v => v.trim()); $('bPreview').innerHTML = any ? esc(StoTools.bibEntry($('bType').value, d)) : '<span class="muted">Заполните поля — запись появится здесь по образцам приложения М СТО САФУ.</span>'; }
+function bShow(){
+  bList = StoTools.sortBib(bList); lsSet('stoBib', bList);
+  $('bList').innerHTML = bList.map((e, i) => '<li><span>' + (i + 1) + ' ' + esc(e) + '</span><button type="button" data-del="' + i + '" aria-label="Удалить">×</button></li>').join('');
+  $('bListActs').classList.toggle('hide', !bList.length);
+}
+$('bType').onchange = bRender; $('bFields').addEventListener('input', bPreview);
+$('bAdd').onclick = () => { const d = bData(); if(!(d.title || d.lawTitle)) return; bList.push(StoTools.bibEntry($('bType').value, d)); bShow(); $('bFields').querySelectorAll('input').forEach(i => i.value = ''); bPreview(); };
+$('bList').onclick = e => { const i = e.target.dataset.del; if(i != null){ bList.splice(+i, 1); bShow(); } };
+const copy = t => { try{ navigator.clipboard.writeText(t); }catch(e){} };
+$('bCopyOne').onclick = e => { copy($('bPreview').textContent); e.target.textContent = 'Скопировано'; setTimeout(() => e.target.textContent = 'Копировать запись', 1500); };
+$('bCopy').onclick = e => { copy(bList.map((x, i) => (i + 1) + ' ' + x).join('\n')); e.target.textContent = 'Скопировано'; setTimeout(() => e.target.textContent = 'Копировать список', 1500); };
+$('bDocx').onclick = async () => saveBlob(await StoTools.bibDocx(bList), 'Список использованных источников.docx');
+$('bClear').onclick = () => { bList = []; bShow(); };
+bRender(); bShow();
 
 /* ---------- требование вуза ---------- */
 try{ const v = localStorage.getItem('need'); if(v !== null) $('oNeed').value = v; }catch(e){}
