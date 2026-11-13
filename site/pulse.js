@@ -1,6 +1,7 @@
 /* Анонимный счётчик «сейчас на сайте» для arktika-app.ru (сервер — stats-api/pulse.js).
-   Отправляет при открытии и потом раз в 5 минут, пока вкладка открыта и видна: случайный номер этого браузера и
-   название раздела. Ни имени, ни IP, ни того, что открыто на странице, не отправляет.
+   Отправляет при открытии и потом раз в 5 минут, пока вкладка открыта и видна: случайный номер этого браузера,
+   название раздела и есть ли сенсорный экран (чтобы отличить iPad от Mac). Ни имени, ни того, что открыто на странице,
+   не отправляет. Тип устройства сервер берёт из User-Agent, а IP хранит только как обезличенный отпечаток на сутки.
    В ответ может прийти объявление из админки — тогда оно показывается внизу страницы (закрыл — больше не появится).
    Подключение: <script src="../pulse.js" data-section="raspisanie" defer></script> */
 (function () {
@@ -46,7 +47,7 @@
     if (document.visibilityState !== 'visible' || Date.now() - last < 240000) return;
     last = Date.now();
     try {
-      fetch(PULSE, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ s: id, p: section }) })
+      fetch(PULSE, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ s: id, p: section, m: navigator.maxTouchPoints > 1 ? 1 : 0 }) })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) { if (d && d.b) showBanner(d.b); })
         .catch(function () {});

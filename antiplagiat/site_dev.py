@@ -112,8 +112,19 @@ def ring_handle(body):
     return 400, {"error": "Неизвестное действие."}
 
 
-PULSE = {}   # (час, раздел, браузер) → время
+PULSE = {}   # (час, раздел, браузер) → (время, устройство, отпечаток сети)
 PULSE_CFG = {"banner": None}
+
+
+def pulse_device(ua, touch):
+    """То же, что device() в stats-api/pulse.js (упрощённо)."""
+    import re as _re
+    os_ = ("iOS" if _re.search(r"iPhone|iPod", ua) else "iPadOS" if "iPad" in ua or ("Macintosh" in ua and touch)
+           else "Android" if "Android" in ua else "Windows" if "Windows" in ua else "macOS" if "Mac OS X" in ua else "Linux" if "Linux" in ua else "другая")
+    kind = "tablet" if os_ == "iPadOS" or (os_ == "Android" and "Mobile" not in ua) else "phone" if os_ == "iOS" or "Mobi" in ua else "desktop"
+    br = ("Яндекс Браузер" if "YaBrowser" in ua else "Edge" if "Edg" in ua else "Firefox" if "Firefox" in ua
+          else "Chrome" if "Chrome" in ua else "Safari" if "Safari" in ua else "другой")
+    return kind + "|" + os_ + "|" + br
 
 
 def pulse_stats():
@@ -122,19 +133,27 @@ def pulse_stats():
     day = int((now + 3 * 3600e3) // (24 * 3600e3)) * 24 - 3
     def by(cond):
         out = {}
-        for (hh, p, sid), t in PULSE.items():
+        for (hh, p, sid), (t, _, _) in PULSE.items():
             if cond(hh, t):
                 out.setdefault(p, set()).add(sid)
         return {p: len(v) for p, v in out.items()}
     def total(cond):
-        return len({sid for (hh, p, sid), t in PULSE.items() if cond(hh, t)})
+        return len({sid for (hh, p, sid), (t, _, _) in PULSE.items() if cond(hh, t)})
+    def nets(cond):
+        return len({n for (hh, p, sid), (t, _, n) in PULSE.items() if cond(hh, t) and n})
     on = lambda hh, t: hh >= h - 1 and t > now - 390e3
-    hourly = {}
-    for (hh, p, sid), t in PULSE.items():
+    today = lambda hh, t: hh >= day
+    hourly, hourly_total, devices = {}, {}, {}
+    for (hh, p, sid), (t, dev, _) in PULSE.items():
         if hh >= h - 47:
             hourly.setdefault((hh, p), set()).add(sid)
-    return {"now": now, "online": by(on), "onlineTotal": total(on), "today": by(lambda hh, t: hh >= day),
-            "todayTotal": total(lambda hh, t: hh >= day), "weekTotal": total(lambda hh, t: hh >= h - 167),
+            hourly_total.setdefault(hh, set()).add(sid)
+        if today(hh, t) and dev:
+            devices.setdefault(dev, set()).add(sid)
+    return {"now": now, "online": by(on), "onlineTotal": total(on), "today": by(today),
+            "todayTotal": total(today), "weekTotal": total(lambda hh, t: hh >= h - 167),
+            "onlineNets": nets(on), "todayNets": nets(today), "devices": {d: len(v) for d, v in devices.items()},
+            "hourlyTotal": [{"h": hh, "n": len(v)} for hh, v in sorted(hourly_total.items())],
             "hourly": [{"h": hh, "p": p, "n": len(v)} for (hh, p), v in sorted(hourly.items())],
             "banner": PULSE_CFG["banner"] if PULSE_CFG["banner"] and (not PULSE_CFG["banner"]["until"] or PULSE_CFG["banner"]["until"] > now) else None,
             "can": {"dispatch": False, "billing": True},
@@ -257,7 +276,9 @@ class Handler(BaseHTTPRequestHandler):
                         return js(400, {"error": "Кнопки управления не подключены: задайте GH_TOKEN у функции."})
                     return js(400, {"error": "Неизвестная команда."})
                 if _re.fullmatch(r"[\w-]{8,40}", str(d.get("s"))) and _re.fullmatch(r"[a-z]{2,20}", str(d.get("p"))):
-                    PULSE[(int(now // 3600e3), d["p"], d["s"])] = now
+                    ip = (self.headers.get("X-Forwarded-For") or self.client_address[0]).split(",")[0].strip()
+                    PULSE[(int(now // 3600e3), d["p"], d["s"])] = (now, pulse_device(self.headers.get("User-Agent") or "", d.get("m") == 1),
+                                                                   hashlib.sha256(("net|" + time.strftime("%Y-%m-%d") + ip).encode()).hexdigest()[:16])
                     b = PULSE_CFG["banner"]
                     live = b and (not b["until"] or b["until"] > now) and (not b["sections"] or d["p"] in b["sections"])
                     return js(200, {"b": {"id": b["id"], "text": b["text"], "kind": b["kind"]}} if live else {})
