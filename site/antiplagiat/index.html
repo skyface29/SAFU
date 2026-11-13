@@ -1248,12 +1248,22 @@ function stoPick(file){
   if(!/\.docx$/i.test(file.name)){ $('stoErr').textContent = /\.doc$/i.test(file.name) ? 'Это старый формат .doc. Откройте файл в Word и сохраните как .docx.' : 'Нужен файл Word в формате .docx.'; return; }
   STO.file = file; $('stoName').textContent = file.name; $('stoHint').textContent = 'нажмите «Оформить по СТО» или выберите другой файл';
   $('stoDrop').classList.add('has'); $('stoGo').disabled = false;
+  STO.fileTitle = false;
+  // данные со старого титульника работы: собираем титул по форме СТО без ручного ввода
+  STO.titleP = file.arrayBuffer().then(b => Formatter.readTitle(b)).then(d => {
+    if(STO.file !== file || !d || !d.found) { titleSync(); return; }
+    // поля конкретной работы берём из файла, а личные (ФИО, группа…) — если в файле они есть
+    ['type','discipline','topic','school','student','gender','direction','course','group','teacher','year'].forEach(k => { if(d[k]) $(tId(k)).value = d[k]; });
+    if(!d.discipline) $('tDiscipline').value = ''; if(!d.topic) $('tTopic').value = '';
+    STO.fileTitle = true; titleSync();
+  }).catch(() => titleSync());
 }
 function stoOut(name){ return name.replace(/\.docx$/i, '') + ' (СТО САФУ).docx'; }
 async function stoRun(){
   if(!STO.file) return;
   const btn = $('stoGo'); btn.disabled = true; $('stoErr').textContent = ''; $('stoRes').innerHTML = '<div class="muted" style="padding-top:22px">Оформляю…</div>';
   try{
+    try{ await STO.titleP; }catch(e){}
     const buf = await STO.file.arrayBuffer();
     const r = await Formatter.formatDocx(buf, { profile: 'safu', binding: $('stoBind').checked, toc: $('stoToc').checked,
       typography: $('stoTypo').checked, size: $('stoSmall').checked ? 12 : 14, titleXml: STO.useTitle ? StoTools.titleXml(titleData()) : null });
@@ -1295,8 +1305,8 @@ function titleSync(){
   document.querySelectorAll('#tForm .tp').forEach(e => e.classList.toggle('hide', !pr));
   document.querySelectorAll('#tForm .tnp').forEach(e => e.classList.toggle('hide', pr));
   const ready = !!(d.student && (pr || d.topic));
-  STO.useTitle = ready;
-  $('stoTitleNote').textContent = ready ? '✓ заполнен — заменит титульный лист в работе' : 'необязательно — заполните, и он заменит титульник в работе';
+  STO.useTitle = ready || !!STO.fileTitle;
+  $('stoTitleNote').textContent = STO.fileTitle ? '✓ взят из вашей работы и будет пересобран по форме СТО — проверьте поля' : ready ? '✓ заполнен — заменит титульный лист в работе' : 'необязательно — заполните, и титульник по форме СТО появится в работе';
   lsSet('stoTitle', d);
 }
 { const saved = lsGet('stoTitle', {}); T_FIELDS.forEach(f => { if(saved[f]) $(tId(f)).value = saved[f]; }); if(!$('tYear').value) $('tYear').value = new Date().getFullYear(); }

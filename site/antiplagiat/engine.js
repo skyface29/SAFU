@@ -470,6 +470,8 @@ async function gostCheck(buf) {
       continue;
     }
     if (wKid(pPr, 'framePr')) continue;
+    // строки оглавления: «Название ……… 12» — у них свой стиль (без отступа, по левому краю)
+    if (/\d$/.test(text) && p.getElementsByTagNameNS(W_NS, 'tab').length) continue;
     if (/^(рисунок|рис\.|таблица|продолжение таблицы|листинг)\s/i.test(text)) continue;
     const pp = [pPr, ...sts.map(s => s.pPr), defP];
     const spacing = pick(pp, x => wKid(x, 'spacing') && wAttr(wKid(x, 'spacing'), 'line') ? wKid(x, 'spacing') : null);
@@ -499,8 +501,10 @@ async function gostCheck(buf) {
   const items = [];
   const item = (name, ok, need, found) => items.push({ name, ok, need, found });
 
-  /* поля и формат листа — по последнему разделу */
-  const sect = body && [...body.getElementsByTagNameNS(W_NS, 'sectPr')].pop();
+  /* поля и формат листа — по последнему книжному разделу (альбомные листы с таблицами не в счёт) */
+  const sects = body ? [...body.getElementsByTagNameNS(W_NS, 'sectPr')] : [];
+  const portrait = x => { const z = wKid(x, 'pgSz'); return !z || (wAttr(z, 'orient') !== 'landscape' && !(+wAttr(z, 'w') > +wAttr(z, 'h'))); };
+  const sect = sects.filter(portrait).pop() || sects.pop();
   const mar = wKid(sect, 'pgMar'), sz = wKid(sect, 'pgSz');
   const mm = v => Math.round((+v || 0) / 56.7);
   if (sz) { const w = mm(wAttr(sz, 'w')), h = mm(wAttr(sz, 'h')); const a4 = Math.abs(Math.min(w, h) - 210) <= 2 && Math.abs(Math.max(w, h) - 297) <= 2;
