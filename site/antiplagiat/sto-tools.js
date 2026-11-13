@@ -45,11 +45,11 @@ function filled(value, caption, o) {
     (caption ? para(run(caption, { size: 10 }), { after: o.after == null ? 6 : o.after, jc: o.jc || 'center', left: o.left }) : '');
 }
 /** Таблица без рамок: подпись руководителя и т. п. widths — в твипах. */
-function grid(rows, widths) {
+function grid(rows, widths, ind) {
   const tw = widths.reduce((a, b) => a + b, 0);
   const cell = (c, w) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${c.bottom ? '<w:tcBorders><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders>' : ''}<w:vAlign w:val="bottom"/></w:tcPr>` +
     para(run(c.text || '', { size: c.size || 14 }), { jc: c.jc || 'left', after: 0 }) + '</w:tc>';
-  return `<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/><w:jc w:val="left"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders>` +
+  return `<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/><w:jc w:val="left"/>${ind ? `<w:tblInd w:w="${ind}" w:type="dxa"/>` : ''}<w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders>` +
     `<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="57" w:type="dxa"/><w:right w:w="57" w:type="dxa"/></w:tblCellMar><w:tblLook w:val="0000"/></w:tblPr><w:tblGrid>${widths.map(w => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>` +
     rows.map(r => '<w:tr>' + r.map((c, k) => cell(c, widths[k])).join('') + '</w:tr>').join('') + '</w:tbl>';
 }
@@ -88,9 +88,9 @@ function titleXml(d) {
   out.push(filled(d.teacher, '(Ф.И.О. руководителя, должность / уч. степень / звание)', { jc: 'left', left: L, blank: 30, after: 18 }));
   const markLabel = t.mark === 'zachet' ? 'Отметка о зачете' : t.mark === 'report' ? 'Признать, что отчет выполнен и защищен с отметкой' : 'Признать, что работа выполнена и защищена с отметкой';
   out.push(para(run(markLabel), { jc: 'left', left: L, after: 0 }));
-  out.push(grid([[{ text: '', bottom: true }, { text: '' }, { text: '', bottom: true }], [{ text: '(отметка прописью)', size: 10, jc: 'center' }, { text: '' }, { text: '(дата)', size: 10, jc: 'center' }]], [2700, 300, 1900]).replace('<w:tblW', '<w:tblInd w:w="' + L + '" w:type="dxa"/><w:tblW'));
+  out.push(grid([[{ text: '', bottom: true }, { text: '' }, { text: '', bottom: true }], [{ text: '(отметка прописью)', size: 10, jc: 'center' }, { text: '' }, { text: '(дата)', size: 10, jc: 'center' }]], [2700, 300, 1900], L));
   out.push(para(run('Руководитель'), { jc: 'left', left: L, before: 6, after: 0 }));
-  out.push(grid([[{ text: '', bottom: true }, { text: '' }, { text: shortName(d.teacher), bottom: true, jc: 'center' }], [{ text: '(подпись руководителя)', size: 10, jc: 'center' }, { text: '' }, { text: '(инициалы, фамилия)', size: 10, jc: 'center' }]], [2300, 300, 2300]).replace('<w:tblW', '<w:tblInd w:w="' + L + '" w:type="dxa"/><w:tblW'));
+  out.push(grid([[{ text: '', bottom: true }, { text: '' }, { text: shortName(d.teacher), bottom: true, jc: 'center' }], [{ text: '(подпись руководителя)', size: 10, jc: 'center' }, { text: '' }, { text: '(инициалы, фамилия)', size: 10, jc: 'center' }]], [2300, 300, 2300], L));
   out.push(para(run('Архангельск ' + year), { frameBottom: true }));
   // пустой крошечный абзац: на нём заканчивается раздел титульного листа, рамка с городом остаётся на титуле
   out.push(para(run('', { size: 1 }), { jc: 'left' }));

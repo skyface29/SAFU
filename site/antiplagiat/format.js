@@ -13,6 +13,7 @@
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const M_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/math';
+const WP_NS = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
 const PKG_REL = 'http://schemas.openxmlformats.org/package/2006/relationships';
 const CT_NS = 'http://schemas.openxmlformats.org/package/2006/content-types';
 const TW_MM = 56.6929;           // twips в миллиметре
@@ -41,7 +42,7 @@ const PROFILES = {
     listing: { size: 10 },
     appendix: { line: 1, after: 12 },
     hideNumbersOn: ['лист для замечаний', 'реферат', 'аннотация', 'abstract'],
-    bibTitle: 'Список использованных источников', listsDash: true,
+    bibTitle: 'Список использованных источников', tocTitle: 'Оглавление', listsDash: true,
     source: 'СТО САФУ 2026 «Методические указания по оформлению и изложению документов образовательной и научной деятельности обучающихся»'
   },
   gost: {
@@ -246,48 +247,66 @@ function runsOf(p, fn) { for (const r of ownRuns(p)) fn(r); }
 
 /* -------------------------- типографика -------------------------- */
 const CYR = /[а-яё]/i;
+/** Текст абзаца как одна строка с владельцем каждого символа: правила работают поперёк границ прогонов. */
+function joined(ts) { let s = '', own = []; ts.forEach((t, k) => { const x = t.textContent; s += x; for (let i = 0; i < x.length; i++) own.push(k); }); return { s, own }; }
+function rep(st, re, to) {
+  let out = '', own = [], last = 0;
+  st.s.replace(re, (...a) => {
+    const m = a[0], hasGroups = typeof a[a.length - 1] === 'object', i = a[a.length - (hasGroups ? 3 : 2)];
+    const r = typeof to === 'function' ? to(...a) : to.replace(/\$(\d|&)/g, (_, g) => g === '&' ? m : (a[+g] === undefined || typeof a[+g] !== 'string' ? '' : a[+g]));
+    out += st.s.slice(last, i); own.push(...st.own.slice(last, i));
+    let pre = 0; while (pre < m.length && pre < r.length && m[pre] === r[pre]) pre++;
+    let suf = 0; while (suf < m.length - pre && suf < r.length - pre && m[m.length - 1 - suf] === r[r.length - 1 - suf]) suf++;
+    const base = st.own[i + pre] !== undefined && pre < m.length - suf ? st.own[i + pre] : (st.own[i + pre - 1] !== undefined ? st.own[i + pre - 1] : st.own[i] || 0);
+    out += r; own.push(...st.own.slice(i, i + pre)); for (let k = pre; k < r.length - suf; k++) own.push(base); own.push(...st.own.slice(i + m.length - suf, i + m.length));
+    last = i + m.length; return m;
+  });
+  out += st.s.slice(last); own.push(...st.own.slice(last));
+  st.s = out; st.own = own; return st;
+}
 function fixTypography(p, stats, bib) {
   const ts = ownTexts(p);
   if (!ts.length) return;
-  const full = ts.map(t => t.textContent).join('');
-  const cyr = CYR.test(full);
-  let prev = '', quoteOpen = false, changed = false;
+  const st = joined(ts), orig = st.s;
+  const cyr = CYR.test(st.s);
+  rep(st, /^[ \u00a0]+/, '');
+  rep(st, / {2,}/g, ' ');
+  rep(st, bib ? / +([,.!?)\]»])/g : / +([,.;:!?)\]»])/g, '$1');
+  rep(st, /([(\[«]) +/g, '$1');
+  if (!bib) { rep(st, /([а-яё]{2}[»)]?[.!?])(?=[А-ЯЁ][а-яё])/g, '$1 '); rep(st, /([а-яё]),(?=[а-яё])/g, '$1, '); }
+  rep(st, /(\S) +[-—] +(?=\S)/g, '$1 – '); rep(st, /(\S) -- (?=\S)/g, '$1 – ');
+  if (cyr) nbsp(st);
+  if (cyr && st.s.includes('"')) {
+    const s0 = st.s;
+    rep(st, /"/g, (m, i) => { const before = i > 0 ? s0[i - 1] : ''; return !before || /[\s(\[«—–-]/.test(before) ? '«' : '»'; });
+  }
+  rep(st, /[ \u00a0]+$/, '');
+  if (st.s === orig) return;
   ts.forEach((t, k) => {
-    let s = t.textContent, o = s;
-    if (k === 0 || !prev.trim()) s = s.replace(/^[  ]+/, '');
-    if (prev.endsWith(' ')) s = s.replace(/^ +/, '');
-    s = s.replace(/ {2,}/g, ' ');
-    s = s.replace(bib ? / +([,.!?)\]»])/g : / +([,.;:!?)\]»])/g, '$1');
-    s = s.replace(/([(\[«]) +/g, '$1');
-    if (!bib) s = s.replace(/([а-яё]{2}[»)]?[.!?])(?=[А-ЯЁ][а-яё])/g, '$1 ').replace(/([а-яё]),(?=[а-яё])/g, '$1, ');
-    s = s.replace(/(\S) +[-—] +(?=\S)/g, '$1 – ').replace(/(\S) -- (?=\S)/g, '$1 – ');
-    if (/^[-—] /.test(s) && prev.endsWith(' ') && k > 0) s = '–' + s.slice(1);
-    if (cyr) s = nbsp(s);
-    if (cyr && s.includes('"')) {
-      s = s.replace(/"/g, (m, i) => {
-        const before = i > 0 ? s[i - 1] : prev.slice(-1);
-        const open = !before || /[\s(\[«—–-]/.test(before);
-        quoteOpen = open; return open ? '«' : '»';
-      });
-    }
-    if (k > 0 && (bib ? /^[,.!?)»]/ : /^[,.;:!?)»]/).test(s) && ts[k - 1].textContent.endsWith(' ')) ts[k - 1].textContent = ts[k - 1].textContent.replace(/ +$/, '');
-    if (k === ts.length - 1) s = s.replace(/[  ]+$/, '');
-    if (s !== o) { t.textContent = s; changed = true; }
-    if (/^\s|\s$/.test(s)) t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve');
-    prev = (prev + s).slice(-3);
+    let x = ''; for (let i = 0; i < st.s.length; i++) if (st.own[i] === k) x += st.s[i];
+    if (x !== t.textContent) t.textContent = x;
+    if (/^\s|\s$/.test(x)) t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve');
   });
-  if (changed) stats.typo++;
+  stats.typo++;
 }
 /** Неразрывные пробелы (п. 4.1.14 СТО): инициалы, числа с единицами, сокращения, №. */
 const NB = '\u00A0';
+const NBSP_RULES = [
+  // «Иванов, И. И. Название»: после инициалов в заголовке записи идёт название, а не фамилия
+  [/(?<=^|[\s(«\u00a0]|[А-ЯЁ]\.)(?<!, [А-ЯЁ]\.[ \u00a0])([А-ЯЁA-Z]\.) (?=[А-ЯЁA-Z][.а-яёa-z])/g, '$1' + NB],
+  [/(?<=[А-ЯЁ][а-яё]+) (?=[А-ЯЁ]\.[ \u00a0]?[А-ЯЁ]\.(?![А-ЯЁа-яё]))/g, NB],
+  [/(?<=\S) ([–—] )/g, NB + '$1'],
+  [/\b(ISBN|ISSN|DOI|УДК|ББК) (?=[\dA-Za-z])/g, '$1' + NB],
+  [/([А-ЯЁ]\.) ([А-ЯЁ]\.)/g, '$1' + NB + '$2'],
+  [/(\d) (?=(с\.|г\.|гг\.|в\.|вв\.|руб\.|млн|млрд|тыс\.|%|кг|км|мм|см|м|ч|мин|л\.)(?=[\s.,;:)»]|$))/g, '$1' + NB],
+  [/(?<!\d|(?<![а-яёА-ЯЁA-Za-z])т\.)(^|[\s(])(№|§|г\.|ул\.|пер\.|д\.|кв\.|стр\.|рис\.|табл\.|гл\.|ст\.|п\.|пп\.|ч\.|с\.|С\.|Т\.|Вып\.) (?=[\dА-ЯЁA-Z])/g, '$1$2' + NB],
+  [/(?<!\p{L})т\.(?=[едкп]\.)/gu, 'т.' + NB],
+  [/(?<!\p{L})(т|и т)\. (?=[едкп]\.)/gu, '$1.' + NB],
+];
 function nbsp(s) {
-  return s
-    .replace(/(^|[\s(«])([А-ЯЁ]\.) (?=[А-ЯЁ][.а-яё])/g, '$1$2' + NB)
-    .replace(/([А-ЯЁ]\.) ([А-ЯЁ]\.)/g, '$1' + NB + '$2')
-    .replace(/(\d) (?=(с\.|г\.|гг\.|в\.|вв\.|руб\.|млн|млрд|тыс\.|%|кг|км|мм|см|м|ч|мин|л\.)(?=[\s.,;:)»]|$))/g, '$1' + NB)
-    .replace(/(^|[\s(])(№|§|г\.|ул\.|пер\.|д\.|кв\.|стр\.|рис\.|табл\.|гл\.|ст\.|п\.|пп\.|ч\.|с\.) (?=[\dА-ЯЁA-Z])/g, '$1$2' + NB)
-    .replace(/(?<!\p{L})т\.(?=[едкп]\.)/gu, 'т.' + NB)
-    .replace(/(?<!\p{L})(т|и т)\. (?=[едкп]\.)/gu, '$1.' + NB);
+  const st = typeof s === 'string' ? { s, own: [...s].map(() => 0) } : s;
+  NBSP_RULES.forEach(([re, to]) => rep(st, re, to));
+  return typeof s === 'string' ? st.s : st;
 }
 /** Табуляции и пробелы в начале абзаца, которыми вручную делали отступ. */
 function dropLeadingTabs(p) {
@@ -303,6 +322,23 @@ function dropLeadingTabs(p) {
 function replaceFirst(p, re, to) {
   for (const t of ownTexts(p)) { if (!t.textContent) continue; const s = t.textContent.replace(re, to); if (s !== t.textContent) { t.textContent = s; return true; } return false; }
   return false;
+}
+/** Убирает начало абзаца, совпавшее с re, даже если оно разбито на несколько прогонов или содержит табуляцию. */
+function stripLead(p, re) {
+  const parts = [];
+  for (const r of ownRuns(p)) for (const c of kids(r)) {
+    if (c.localName === 't') parts.push({ c, s: c.textContent });
+    else if (c.localName === 'tab') parts.push({ c, s: '\t' });
+  }
+  const m = re.exec(parts.map(x => x.s).join(''));
+  if (!m || m.index !== 0 || !m[0]) return false;
+  let left = m[0].length;
+  for (const x of parts) {
+    if (!left) break;
+    if (x.c.localName === 'tab') { x.c.parentNode.removeChild(x.c); left--; continue; }
+    const k = Math.min(left, x.s.length); x.c.textContent = x.s.slice(k); left -= k;
+  }
+  return true;
 }
 function replaceLastTrailing(p, re, to) {
   const ts = ownTexts(p).filter(t => t.textContent.trim());
@@ -326,23 +362,28 @@ function isAllCaps(s) { const l = s.replace(/[^A-Za-zА-Яа-яЁё]/g, ''); ret
 /* ------------------- список источников: приведение записей ------------------- */
 /* Образцы — приложение М СТО САФУ 2026 (по ГОСТ Р 7.0.100–2018): «Иванов, И. И. Название: учебник /
    И. И. Иванов. – Москва: Наука, 2020. – 300 с.» Правила только безопасные: что не распознали — не трогаем. */
-const CITIES = [[/^М\.?$/, 'Москва'], [/^СПб\.?$/, 'Санкт-Петербург'], [/^С\.-Пб\.?$/, 'Санкт-Петербург'], [/^Л\.?$/, 'Ленинград'], [/^Ростов н\/Д\.?$/, 'Ростов-на-Дону'],
+const CITIES = [[/^М\.?$/, 'Москва'], [/^СПб\.?$/, 'Санкт-Петербург'], [/^С\.-Пб\.?$/, 'Санкт-Петербург'], [/^С\.-Петерб\.?$/, 'Санкт-Петербург'], [/^Л\.?$/, 'Ленинград'], [/^Ростов н\/Д\.?$/, 'Ростов-на-Дону'],
   [/^Н\.\s?Новгород$/, 'Нижний Новгород'], [/^Екб\.?$/, 'Екатеринбург'], [/^Арх\.?$/, 'Архангельск'], [/^Новосиб\.?$/, 'Новосибирск'], [/^К\.?$/, 'Киев'], [/^Мн\.?$/, 'Минск']];
 function bibToday() { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear(); }
 function normBib(src) {
-  let s = src.replace(/\s+/g, ' ').trim();
+  let s = src.replace(/[ \t\r\n]+/g, ' ').trim();
   // ссылки прячем, чтобы правила про «/» и «:» их не задели
   const urls = [];
   s = s.replace(/https?:\/\/[^\s)]+|www\.[^\s)]+/gi, u => { urls.push(u.replace(/[.,;]+$/, '')); return '\u0001' + (urls.length - 1) + '\u0002' + (u.match(/[.,;]+$/) || [''])[0]; });
   s = s.replace(/\s*\[(электронный ресурс|текст|electronic resource)\]\s*/gi, ' ');
   s = s.replace(/\s*[.–-]?\s*[–-]?\s*Текст\s*:\s*(электронный|непосредственный)\s*\.?/gi, '.');
-  s = s.replace(/\s*\.\s*(?:--|[-—–])\s*/g, '. – ').replace(/ (?:--|[-—]) /g, ' – ');
+  // «. – » между областями; дефис внутри сокращений («С.-Петерб.», «М.-Л.», «Изд-во») не трогаем
+  s = s.replace(/[ \u00a0]*\.[ \u00a0]*(?:--|[—–]|-(?=[ \u00a0]))[ \u00a0]*/g, '. – ').replace(/[ \u00a0](?:--|[-—])[ \u00a0]/g, ' – ');
   s = s.replace(/\s*\/\/\s*/g, '\u0003').replace(/\s+\/\s*|\s*\/\s+/g, ' / ').replace(/\u0003/g, ' // ');
   s = s.replace(/\s+:\s*/g, ': ').replace(/\s+;/g, ';');
   s = s.replace(/Режим доступа:\s*(?=\u0001)/gi, 'URL: ').replace(/([^–\s])\.?\s+URL:/g, '$1. – URL:').replace(/\bURL\s*:?\s*(?=\u0001)/g, 'URL: ');
-  s = s.replace(/\(\s*дата обращения\s*:?\s*([\d.]+)\s*\)/gi, '(дата обращения: $1)');
+  s = s.replace(/\(\s*дата обращения\s*:?\s*(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s*\)/gi, (m, d, mo, y) => '(дата обращения: ' + d.padStart(2, '0') + '.' + mo.padStart(2, '0') + '.' + (y.length === 2 ? '20' + y : y) + ')');
+  // «И.И.» → «И. И.» (но не «С.-Петерб.», «М.-Л.»)
+  s = s.replace(/(^|[\s(«])([А-ЯЁA-Z])\.([А-ЯЁA-Z])\.(?![-–])/g, '$1$2. $3.');
+  // ссылка и дата обращения: «…/b. (дата» → «…/b (дата»
+  s = s.replace(/(\u0002)[.,;]\s*(?=\(дата обращения)/g, '$1 ');
   // город издания полностью (п. 4.13.6.6.1)
-  s = s.replace(/(^|– |\. )([А-ЯЁ][а-яё]{0,3}\.|СПб\.?|С\.-Пб\.?|Ростов н\/Д|Н\.\s?Новгород)\s*:\s*(?=\S)/g, (m, pre, c) => {
+  s = s.replace(/(^|– |\. )([А-ЯЁ][а-яё]{0,3}\.|СПб\.?|С\.-Пб\.?|С\.-Петерб\.|Ростов н\/Д|Н\.\s?Новгород)\s*:\s*(?=\S)/g, (m, pre, c) => {
     for (const [re, full] of CITIES) if (re.test(c.trim())) return pre + full + ': ';
     return m;
   });
@@ -363,15 +404,17 @@ function normBib(src) {
     if (!rest.startsWith(',') && !/^и\s/.test(rest)) break;
     rest = rest.replace(/^,\s*|^и\s+/, '');
   }
-  if (authors.length && authors.length <= 3 && /^[«"A-ZА-ЯЁ0-9]/u.test(rest)) {
+  if (authors.length && /^[«"A-ZА-ЯЁ0-9]/u.test(rest)) {
     let body = rest;
-    const hasResp = (() => { const cut = body.search(/ \/\/ |\. – /); return (cut < 0 ? body : body.slice(0, cut)).includes(' / '); })();
-    if (!hasResp) {
-      const cut = body.search(/ \/\/ |\. – /);
+    const cut = body.search(/ \/\/ |\. – /);
+    const hasResp = (cut < 0 ? body : body.slice(0, cut)).includes(' / ');
+    // сведения об ответственности ставим только туда, где граница заглавия видна точно (« – » или « // »)
+    if (!hasResp && cut >= 0) {
       const resp = ' / ' + authors.map(a => a.ini + ' ' + a.fam).join(', ');
-      body = cut < 0 ? body.replace(/\.?$/, resp + '.') : body.slice(0, cut).replace(/\.$/, '') + resp + body.slice(cut);
+      body = body.slice(0, cut).replace(/\.$/, '') + resp + body.slice(cut);
     }
-    s = authors[0].fam + ', ' + authors[0].ini + ' ' + body;
+    if (authors.length <= 3) s = authors[0].fam + ', ' + authors[0].ini + ' ' + body;
+    else if (hasResp || cut >= 0) s = body; // четыре автора и больше: описание начинается с заглавия (ГОСТ Р 7.0.100, 4.13.6.2)
   }
   // электронный ресурс без даты обращения
   if (urls.length && !/дата обращения|Accessed/i.test(s)) s = s.replace(/(\u0001\d+\u0002)([.,;]?)(?!.*\u0001)/, '$1 (дата обращения: ' + bibToday() + ')$2');
@@ -388,6 +431,7 @@ function structName(text, raw) {
   const n = norm(text.replace(/^\d+\s+/, ''));
   if (n.length > 110) return null;
   if (STRUCT_SET.has(n)) return n;
+  { const m = /^(содержание|оглавление) (работы|реферата|отч[её]та|проекта|курсовой работы|эссе)$/.exec(n); if (m) return m[1]; }
   if (/^список (использованн\S* )?(литературы|источников)/.test(n) && n.length < 70) return 'список использованных источников';
   return null;
 }
@@ -460,6 +504,8 @@ async function formatDocx(buf, opts) {
     }
     return true;
   };
+  // рисунок перед подписью: пропускаем пустые абзацы между ними
+  const prevDrawing = i => { for (let k = i - 1; k >= 0 && k >= i - 3; k--) { const b = B[k]; if (b.localName !== 'p') return false; if (hasDrawing(b)) return true; if (paraText(b).trim()) return false; } return false; };
   B.forEach((b, i) => {
     if (b.localName === 'tbl') { info.set(b, { kind: 'table' }); return; }
     const raw = paraText(b, true), text = raw.replace(/\s+/g, ' ').trim();
@@ -471,8 +517,8 @@ async function formatDocx(buf, opts) {
     else if (hasDrawing(b) && text.length < 4) x.kind = 'figure';
     else if (hasMath(b) && text.replace(/\(\s*[\dА-ЯA-Z.]+\s*\)/g, '').trim().length < 4) x.kind = 'formula';
     else if (structName(text, raw) && !titleWord(structName(text, raw), i)) { x.kind = 'struct'; x.name = structName(text, raw); }
-    else if (APPX.test(text) && text.length < 90) x.kind = 'appendix';
-    else if (FIG.test(text) && text.length < 300 && !/^рис\S*\s+\d+\s+[а-яё]/.test(text) && /^рис/i.test(text) && (B[i - 1] && hasDrawing(B[i - 1]) || /^рисунок\s/i.test(text) && text.length < 200)) x.kind = 'figcap';
+    else if (APPX.test(text) && text.length < 90 && !/\t|\.{3,}|…/.test(raw)) x.kind = 'appendix';
+    else if (FIG.test(text) && text.length < 300 && !/^рис\S*\s+\d+\s+[а-яё]/.test(text) && /^рис/i.test(text) && (prevDrawing(i) || /^рисунок\s/i.test(text) && text.length < 200)) x.kind = 'figcap';
     else if (TAB.test(text) && text.length < 300 && (B[i + 1] && B[i + 1].localName === 'tbl' || B[i + 2] && B[i + 2].localName === 'tbl' && !paraText(B[i + 1]).trim())) x.kind = 'tabcap';
     else if (monoShare(b) > .8) x.kind = 'listing';
     else {
@@ -488,7 +534,29 @@ async function formatDocx(buf, opts) {
   /* зоны: титульная часть (до первого структурного заголовка), содержание, список источников, приложения */
   const firstStruct = B.findIndex(b => info.get(b).kind === 'struct');
   const firstHead = B.findIndex(b => ['struct', 'head'].includes(info.get(b).kind));
-  const titleEnd = firstStruct >= 0 ? firstStruct : (firstHead > 0 && firstHead < 40 ? firstHead : 0);
+  let titleEnd = firstStruct >= 0 ? firstStruct : (firstHead > 0 && firstHead < 40 ? firstHead : 0);
+  {
+    // титул отдельным разделом (так вставляет его и сам сайт): весь первый раздел — титул
+    const k = B.findIndex((b, j) => j < 60 && b.localName === 'p' && kid(kid(b, 'pPr'), 'sectPr'));
+    if (k >= 0 && titleEnd < k + 1 && (firstStruct < 0 || firstStruct > k)) {
+      const zoneText = B.slice(0, k + 1).map(b => b.localName === 'p' ? info.get(b).text : '').join(' ');
+      if (/министерств|университет|высшая школа/i.test(zoneText) && !B.slice(0, k + 1).some(b => b.localName === 'p' && info.get(b).text.length > 250)) titleEnd = k + 1;
+    }
+  }
+  {
+    // титул кончается строкой «Архангельск 2026»: всё, что после неё, уже работа (иначе можно потерять текст при замене титула)
+    const j = B.slice(0, titleEnd).findIndex(b => b.localName === 'p' && /^[А-ЯЁ][а-яё-]+,?\s+(?:19|20)\d\d(?:\s*г\.?)?$/.test(info.get(b).text));
+    if (j >= 0) { titleEnd = j + 1; while (titleEnd < B.length && B[titleEnd].localName === 'p' && !info.get(B[titleEnd]).text && !hasDrawing(B[titleEnd])) titleEnd++; }
+  }
+  {
+    // титульный лист короткий: если до первого заголовка уже идёт обычный текст, титул кончается на разрыве страницы перед ним (или его нет)
+    const long = B.slice(0, titleEnd).findIndex(b => b.localName === 'p' && info.get(b).text.length > 250);
+    if (long >= 0) {
+      let cut = 0;
+      for (let k = 0; k < long; k++) { const b = B[k]; if (b.localName === 'p' && ([...b.getElementsByTagNameNS(W, 'br')].some(e => attr(e, 'type') === 'page') || kid(kid(b, 'pPr'), 'pageBreakBefore') || kid(kid(b, 'pPr'), 'sectPr'))) cut = k + 1; }
+      titleEnd = cut;
+    }
+  }
   let zone = 'title';
   B.forEach((b, i) => {
     const x = info.get(b);
@@ -497,8 +565,11 @@ async function formatDocx(buf, opts) {
     else if (x.kind === 'appendix') zone = 'appx';
     else if (x.kind === 'head' && zone === 'toc' && !/\t|\.{3,}|…|\d$/.test(x.raw)) zone = 'main';
     x.zone = zone;
+    // обычный абзац текста (длинный, без номера страницы в конце) значит, что оглавление кончилось
+    if (zone === 'toc' && x.kind === 'body' && !/\t|\.{3,}|…|\d\s*$/.test(x.raw) && (x.text.length > 100 || x.text.length > 50 && /[.!?:;»"]$/.test(x.text))) zone = 'main';
+    x.zone = zone;
     if (zone === 'toc' && x.kind === 'body') x.kind = 'tocline';
-    if (zone === 'toc' && x.kind === 'head' && /\t|\d$/.test(x.raw)) { x.kind = 'tocline'; }
+    if (zone === 'toc' && x.kind === 'head' && /\t|\.{3,}|…|\d$/.test(x.raw)) { x.kind = 'tocline'; }
     if (zone === 'bib' && ['body', 'head'].includes(x.kind)) x.kind = 'bibitem';
     if (zone === 'title' && x.kind !== 'table') x.kind = x.kind === 'empty' ? 'empty' : 'title';
   });
@@ -582,18 +653,23 @@ async function formatDocx(buf, opts) {
       }
       case 'struct': {
         stats.struct++;
-        const sid = styleId(1); if (sid) ensure(pPr, 'pStyle', { val: sid });
+        const isToc = isTocName(x.name);
+        const sid = styleId(1); if (sid && !isToc) ensure(pPr, 'pStyle', { val: sid });
+        if (isToc) { const st = attr(kid(pPr, 'pStyle'), 'val'); if (st && St.map.get(st) && St.map.get(st).level) drop(pPr, 'pStyle'); }
         drop(pPr, 'numPr', 'outlineLvl');
         setSpacing(pPr, 0, prof.struct.after, prof.line); setIndent(pPr, 0, 0); setJc(pPr, 'center');
         ensure(pPr, 'keepNext'); ensure(pPr, 'suppressAutoHyphens');
         runsOf(p, r => setRun(r, prof, size, { bold: true, italic: false, underline: false }));
+        {
+          let t = paraText(p).replace(/^\s*\d+\s+/, '').replace(/\.\s*$/, '');
+          t = prof.struct.case === 'upper' ? t.toUpperCase() : t.toLowerCase().replace(/^\s*[а-яёa-z]/, c => c.toUpperCase()).replace(/\(ии\)/, '(ИИ)');
+          if (t !== paraText(p)) setParaText(p, t);
+        }
         if (opts.typography) fixTypography(p, stats);
-        replaceFirst(p, /^\d+\s+/, '');
-        replaceLastTrailing(p, /\.\s*$/, '');
-        recase(p, s => s);
-        if (prof.struct.case === 'upper') recase(p, s => s.toUpperCase());
-        else { const all = ownTexts(p).map(t => t.textContent).join(''); const fixed = all.toLowerCase().replace(/^\s*[а-яёa-z]/, c => c.toUpperCase()).replace(/\(ии\)/, '(ИИ)'); setParaText(p, fixed); }
         if (prof.bibTitle && isBibName(x.name) && norm(paraText(p)) !== norm(prof.bibTitle)) { setParaText(p, prof.struct.case === 'upper' ? prof.bibTitle.toUpperCase() : prof.bibTitle); stats.renamed = true; }
+        // п. 3.3.1 СТО САФУ: у работы на одну тему — «Оглавление»
+        if (isToc && prof.tocTitle && norm(paraText(p)) !== norm(prof.tocTitle)) { setParaText(p, prof.struct.case === 'upper' ? prof.tocTitle.toUpperCase() : prof.tocTitle); stats.tocRenamed = true; }
+        if (isToc) ensure(pPr, 'outlineLvl', { val: 9 });
         if (prof.struct.newPage) pageStart.add(p);
         return;
       }
@@ -603,8 +679,7 @@ async function formatDocx(buf, opts) {
         setSpacing(pPr, 0, 0, prof.appendix.line); setIndent(pPr, 0, 0); setJc(pPr, 'center'); ensure(pPr, 'keepNext');
         const sid = styleId(1); if (sid) ensure(pPr, 'pStyle', { val: sid });
         runsOf(p, r => setRun(r, prof, size, { bold: true, italic: false, underline: false }));
-        replaceLastTrailing(p, /\.\s*$/, '');
-        if (isAllCaps(x.text) && prof.struct.case !== 'upper') recase(p, s => s.replace(/ПРИЛОЖЕНИЕ/, 'Приложение'));
+        { let t = paraText(p).replace(/\.\s*$/, ''); if (prof.struct.case !== 'upper') t = t.replace(/^(\s*)ПРИЛОЖЕНИЕ/, '$1Приложение'); if (t !== paraText(p)) setParaText(p, t); }
         pageStart.add(p);
         // следующая строка — «(обязательное)» и/или заголовок приложения: по центру, интервал после
         let j = i + 1;
@@ -634,17 +709,20 @@ async function formatDocx(buf, opts) {
         setJc(pPr, 'left'); ensure(pPr, 'keepNext'); ensure(pPr, 'keepLines'); ensure(pPr, 'suppressAutoHyphens');
         runsOf(p, r => setRun(r, prof, size, { bold: true, italic: false, underline: false }));
         dropLeadingTabs(p);
-        if (opts.typography) fixTypography(p, stats);
-        replaceFirst(p, /^(\s*(?:(?:глава|раздел|часть)\s+)?\d+(?:\.\d+)*)\.(?=\s|[А-ЯЁA-Z])/i, '$1');
-        replaceFirst(p, /^(\s*(?:(?:глава|раздел|часть)\s+)?\d+(?:\.\d+)*)(?=[А-ЯЁA-Z])/i, '$1 ');
-        replaceLastTrailing(p, /([^.])\.\s*$/, '$1');
-        if (prof.head.dropWord && /^\s*(?:глава|раздел|часть)\s+\d/i.test(paraText(p))) {
-          replaceFirst(p, /^\s*(?:глава|раздел|часть)\s+/i, '');
-          const t = paraText(p).replace(/^(\d+(?:\.\d+)*\s+)([а-яё])/, (m, a, c) => a + c.toUpperCase());
-          if (!isAllCaps(x.text) && t !== paraText(p)) setParaText(p, t);
-          stats.chapterWord = (stats.chapterWord || 0) + 1;
+        {
+          // весь текст заголовка целиком: номер мог быть разбит на несколько прогонов
+          let t = paraText(p).replace(/^\s+/, '');
+          t = t.replace(/^((?:(?:глава|раздел|часть)\s+)?\d+(?:\.\d+)*)\.(?=\s|[А-ЯЁA-Z])/i, '$1');
+          t = t.replace(/^((?:(?:глава|раздел|часть)\s+)?\d+(?:\.\d+)*)(?=[А-ЯЁA-Z])/i, '$1 ');
+          t = t.replace(/([^.])\.\s*$/, '$1');
+          if (prof.head.dropWord && /^(?:глава|раздел|часть)\s+\d/i.test(t)) {
+            t = t.replace(/^(?:глава|раздел|часть)\s+/i, '').replace(/^(\d+(?:\.\d+)*\s+)([а-яё])/, (m, a, c) => a + c.toUpperCase());
+            stats.chapterWord = (stats.chapterWord || 0) + 1;
+          }
+          if (isAllCaps(x.text)) t = sentence(t);
+          if (t !== paraText(p)) setParaText(p, t);
         }
-        if (isAllCaps(x.text)) { recase(p, s => s); const all = ownTexts(p).map(t => t.textContent).join(''); setParaText(p, sentence(all)); }
+        if (opts.typography) fixTypography(p, stats);
         if (lvl === 1 && prof.head.chapterNewPage) pageStart.add(p);
         return;
       }
@@ -708,13 +786,19 @@ async function formatDocx(buf, opts) {
         runsOf(p, r => setRun(r, prof, size, prof.bib.plain ? { bold: false, italic: false } : {}));
         dropLeadingTabs(p);
         if (opts.profile === 'safu' && !hasDrawing(p)) {
-          const before = paraText(p).replace(/\s+/g, ' ').trim().replace(/^\[?\d{1,3}\s*[\].)]?\s*/, '');
+          const before = paraText(p).replace(/[ \t\r\n]+/g, ' ').trim().replace(/^\[?\d{1,3}[\s\u00a0]*[\].)]?[\s\u00a0]*/, '');
           const after = normBib(before);
           if (after !== before && after.length > 10) { setParaText(p, after); stats.bibFixed++; }
         }
         if (opts.typography) fixTypography(p, stats, opts.profile !== 'safu');
-        if (!replaceFirst(p, /^\s*\[?\d{1,3}\s*[\].)]?\s*(?=\S)/, n + ' ')) { const t = ownTexts(p)[0]; if (t) { t.textContent = n + ' ' + t.textContent.replace(/^\s+/, ''); t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve'); } }
-        else if (hadNum) { /* номер был и в автонумерации, и в тексте — оставили текстовый */ }
+        // номер, набранный вручную («1.», «1)», «[1]», «1<tab>»), снимаем и ставим свой — без повторов «1 1»
+        for (let k = 0; k < 2; k++) {
+          const lead = /^[\s\u00a0]*\[?(\d{1,3})(?:[\s\u00a0]*[\].)]|\t)[\s\u00a0]*/;
+          const plain = new RegExp('^[\\s\\u00a0]*' + n + '[\\s\\u00a0]+(?=\\S)');
+          if (!stripLead(p, lead) && !stripLead(p, plain)) break;
+        }
+        { const t = ownTexts(p).find(t => t.textContent.length) || ownTexts(p)[0]; if (t) { t.textContent = n + ' ' + t.textContent.replace(/^[\s\u00a0]+/, ''); t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve'); } }
+        void hadNum;
         return;
       }
       default: { // основной текст и перечисления
@@ -728,7 +812,7 @@ async function formatDocx(buf, opts) {
         setJc(pPr, 'both');
         runsOf(p, r => setRun(r, prof, size, {}));
         dropLeadingTabs(p);
-        if (opts.typography) { fixTypography(p, stats); replaceFirst(p, /^[•·▪●◦]\s*/, '- '); }
+        if (opts.typography) { if (stripLead(p, /^[•·▪●◦][\s\u00a0]*/)) { const t0 = ownTexts(p).find(t => t.textContent) || ownTexts(p)[0]; if (t0) t0.textContent = '- ' + t0.textContent; } fixTypography(p, stats); }
         if (nx && nx.kind === 'figure') ensure(pPr, 'keepNext');
       }
     }
@@ -795,11 +879,12 @@ async function formatDocx(buf, opts) {
     if (last) p.appendChild(fld(doc, 'end'));
     return p;
   };
+  const tocLinks = [];
   const tocItems = from => B.slice(Math.max(0, B.indexOf(from))).filter(b => { const x = info.get(b); return x && x.zone !== 'toc' && ['struct', 'head', 'appendix'].includes(x.kind) && !isTocName(x.name || ''); })
-    .map(b => paraText(b).replace(/\s+/g, ' ').trim()).filter(Boolean);
+    .map(b => ({ b, t: paraText(b).replace(/\s+/g, ' ').trim() })).filter(x => x.t);
   const insertToc = before => {
     const items = tocItems(before);
-    const ps = items.map((t, k) => tocP(t, k === 0, k === items.length - 1));
+    const ps = items.map((it, k) => { const p = tocP(it.t, k === 0, k === items.length - 1); tocLinks.push({ p, head: it.b, lvl: (info.get(it.b) || {}).level || 1 }); return p; });
     for (const p of ps) before.parentNode.insertBefore(p, before);
     ps.forEach(p => info.set(p, { kind: 'tocline', zone: 'toc' }));
     tocField = true;
@@ -809,13 +894,17 @@ async function formatDocx(buf, opts) {
   if (tocHead && !tocField && opts.toc) {
     // оглавление набрано вручную: номера страниц в нём почти всегда неверны — заменяем на автоматическое
     const old = [];
+    const normToc = t => t.toLowerCase().replace(/[^а-яёa-z0-9]+/g, '');
+    const laterTexts = new Set(B.slice(B.indexOf(tocHead) + 1).map(b => info.get(b)).filter(x => x && x.zone !== 'toc' && x.text && x.text.length < 160).map(x => normToc(x.text)));
     for (let k = B.indexOf(tocHead) + 1; k < B.length; k++) {
       const x = info.get(B[k]);
       if (!x || x.zone !== 'toc' || !['tocline', 'empty', 'body'].includes(x.kind)) break;
+      // убираем только то, что похоже на строку оглавления: иначе можно потерять текст работы
+      if (x.text && !/\t|\.{3,}|…|\d\s*$/.test(x.raw) && !laterTexts.has(normToc(x.text))) break;
       old.push(B[k]);
     }
     const next = B[B.indexOf(tocHead) + 1 + old.length];
-    if (old.length && next) {
+    if (next) {
       for (const p of old) { p.parentNode.removeChild(p); info.delete(p); }
       if (insertToc(next)) { stats.tocRebuilt = true; }
       B = blocks(body);
@@ -829,7 +918,8 @@ async function formatDocx(buf, opts) {
       const sid = styleId(1);
       if (sid) hp.appendChild(mk(doc, 'pStyle', { val: sid }));
       hp.appendChild(mk(doc, 'keepNext')); hp.appendChild(mk(doc, 'pageBreakBefore'));
-      const title = prof.struct.case === 'upper' ? 'СОДЕРЖАНИЕ' : 'Содержание';
+      const tt = prof.tocTitle || 'Содержание';
+      const title = prof.struct.case === 'upper' ? tt.toUpperCase() : tt;
       hp.appendChild(mk(doc, 'spacing', { before: 0, after: prof.struct.after * 20, line: Math.round(prof.line * 240), lineRule: 'auto' }));
       hp.appendChild(mk(doc, 'ind', { firstLine: 0, left: 0 })); hp.appendChild(mk(doc, 'jc', { val: 'center' }));
       // заголовок «Содержание» не должен попадать в само содержание
@@ -886,7 +976,8 @@ async function formatDocx(buf, opts) {
       const prevSect = prev.localName === 'p' && kid(kid(prev, 'pPr'), 'sectPr');
       if (!prevSect) {
         // разрыв раздела: на титуле (и реферате) номеров нет, нумерация сквозная
-        const s = lastSect.cloneNode(true);
+        // берём параметры раздела, в котором стоит титул (первого), а не последнего — последний бывает альбомным
+        const s = (allSects()[0] || lastSect).cloneNode(true);
         drop(s, 'headerReference', 'footerReference', 'titlePg', 'pgNumType', 'type');
         ensure(s, 'type', { val: 'nextPage' });
         let holder = prev;
@@ -895,7 +986,13 @@ async function formatDocx(buf, opts) {
         drop(pPrOf(B[numStart]), 'pageBreakBefore');
         removePageBreaks(holder);
         if (!paraText(holder).trim() && !hasDrawing(holder)) setSpacing(hp, 0, 0, 1);
-      } else drop(pPrOf(B[numStart]), 'pageBreakBefore');
+      } else {
+        drop(pPrOf(B[numStart]), 'pageBreakBefore');
+        // разрыв после титула должен начинать новую страницу, даже если в исходнике он был «на текущей странице»
+        const ps = kid(kid(prev, 'pPr'), 'sectPr'), ty = kid(ps, 'type');
+        if (ty && attr(ty, 'val') === 'continuous') ty.parentNode.removeChild(ty);
+        if (!paraText(prev).trim() && !hasDrawing(prev)) { drop(pPrOf(prev), 'pageBreakBefore'); removePageBreaks(prev); }
+      }
     }
     B = blocks(body);
     const startBlock = numStart >= 0 ? B.findIndex(b => b === (numStart >= 0 ? blocks(body)[numStart] : null)) : 0;
@@ -1019,7 +1116,36 @@ async function formatDocx(buf, opts) {
       notes.push('Если при работе вы пользовались нейросетями, перед заключением нужен раздел «Информация об использовании технологий искусственного интеллекта (ИИ)» (п. 3.9 СТО).');
   }
 
+  /* ---------- 8в. номера страниц в оглавлении: оцениваем сразу, Word уточнит при открытии ---------- */
+  if (tocLinks.length) {
+    const pages = estimatePages(blocks(body), Object.assign({ margins, size, line: prof.line, font: prof.font, cellSize }, opts.est || {}));
+    if (opts.est && opts.est.debug) stats.debugPages = blocks(body).map(b => [b.localName === 'tbl' ? '[таблица]' : paraText(b).slice(0, 40), pages.get(b) || 0]);
+    for (const { p, head } of tocLinks) {
+      const n = pages.get(head); if (!n) continue;
+      const end = [...p.childNodes].reverse().find(c => c.localName === 'r' && c.getElementsByTagNameNS(W, 'fldChar').length && attr(c.getElementsByTagNameNS(W, 'fldChar')[0], 'fldCharType') === 'end');
+      const tabR = runEl(doc, prof, size, '', false); tabR.removeChild(kid(tabR, 't')); tabR.appendChild(mk(doc, 'tab'));
+      const numR = runEl(doc, prof, size, String(n), false);
+      p.insertBefore(tabR, end || null); p.insertBefore(numR, end || null);
+    }
+    // уровень вложенности: подразделы с отступом
+    for (const { p, head } of tocLinks) { const t = paraText(head); if (/^\s*\d+\.\d+/.test(t)) setAttrs(ensure(pPrOf(p), 'ind'), { left: Math.round(prof.indent * TW_CM / 2), firstLine: 0 }); }
+    stats.tocPages = true;
+  }
+
   /* ---------- 9. настройки: автоперенос, обновление содержания ---------- */
+  if (!get('word/settings.xml')) {
+    // в файле нет настроек (так сохраняют некоторые конвертеры) — добавляем, иначе Word не обновит оглавление сам
+    putText('word/settings.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:settings xmlns:w="${W}"/>`);
+    const rels = parse('word/_rels/document.xml.rels'), rr = rels.documentElement;
+    if (![...rr.getElementsByTagNameNS(PKG_REL, 'Relationship')].some(r => /\/settings$/.test(r.getAttribute('Type')))) {
+      const rel = rels.createElementNS(PKG_REL, 'Relationship');
+      rel.setAttribute('Id', 'rIdFmtSettings'); rel.setAttribute('Type', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings'); rel.setAttribute('Target', 'settings.xml');
+      rr.appendChild(rel); put('word/_rels/document.xml.rels', rels);
+    }
+    const ct = parse('[Content_Types].xml');
+    const ov = ct.createElementNS(CT_NS, 'Override'); ov.setAttribute('PartName', '/word/settings.xml'); ov.setAttribute('ContentType', 'application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml');
+    ct.documentElement.appendChild(ov); put('[Content_Types].xml', ct);
+  }
   const sdoc = parse('word/settings.xml');
   if (sdoc) {
     const root = sdoc.documentElement;
@@ -1046,6 +1172,7 @@ async function formatDocx(buf, opts) {
   if (stats.bib) list.push(`Список источников: ${stats.bib} ${pl(stats.bib, 'запись', 'записи', 'записей')} пронумерованы «1 …» с абзацного отступа${prof.bib.plain ? ', без полужирного и курсива' : ''}`);
   if (stats.title) list.push(stats.title === 'replaced' ? 'Титульный лист заменён на сгенерированный по форме СТО САФУ (приложение Б)' : 'Добавлен титульный лист по форме СТО САФУ (приложение Б)');
   if (stats.bibFixed) list.push(`Описания источников приведены к образцам приложения М СТО: ${stats.bibFixed} ${pl(stats.bibFixed, 'запись', 'записи', 'записей')} (заголовок «Фамилия, И. О.», «/ И. О. Фамилия», « – », город полностью, «С. 12–25», дата обращения)`);
+  if (stats.tocRenamed) list.push(`Заголовок «Содержание» заменён на «${prof.tocTitle}» (п. 3.3.1)`);
   if (stats.renamed) list.push(`Заголовок списка литературы приведён к названию «${prof.bibTitle}» (п. 4.2.1)`);
   if (stats.lists) list.push('Перечисления: маркеры заменены на дефис «-», нумерация «1.» на «1)» (п. 4.4.3–4.4.4)');
   if (stats.appx) list.push(`Приложения (${stats.appx}): с новой страницы, по центру`);
@@ -1056,6 +1183,119 @@ async function formatDocx(buf, opts) {
   if (stats.typo) list.push(`Исправлены пробелы, тире и кавычки в ${stats.typo} ${pl(stats.typo, 'абзаце', 'абзацах', 'абзацах')}`);
   list.push('Включён автоматический перенос слов, текст — чёрным цветом');
   return { blob, report: list, notes, stats, profile: prof };
+}
+
+const TNR_CH = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u0410\u0411\u0412\u0413\u0414\u0415\u0401\u0416\u0417\u0418\u0419\u041a\u041b\u041c\u041d\u041e\u041f\u0420\u0421\u0422\u0423\u0424\u0425\u0426\u0427\u0428\u0429\u042a\u042b\u042c\u042d\u042e\u042f\u0430\u0431\u0432\u0433\u0434\u0435\u0451\u0436\u0437\u0438\u0439\u043a\u043b\u043c\u043d\u043e\u043f\u0440\u0441\u0442\u0443\u0444\u0445\u0446\u0447\u0448\u0449\u044a\u044b\u044c\u044d\u044e\u044f\u00ab\u00bb\u2013\u2014\u2026\u2116\u00a0";
+const TNR_R = [250,333,408,500,500,833,778,180,333,333,500,564,250,333,250,278,500,500,500,500,500,500,500,500,500,500,278,278,564,564,564,444,921,722,667,667,722,611,556,722,722,333,389,722,611,889,722,722,556,722,667,556,611,722,722,944,722,722,611,333,278,333,469,500,333,444,500,444,500,444,333,500,500,278,278,500,278,778,500,500,500,500,333,389,278,500,500,722,500,500,444,480,200,480,541,722,574,667,578,682,611,611,896,501,722,722,667,678,889,722,722,722,556,667,611,708,790,722,722,650,1009,1009,706,872,574,660,1028,667,444,509,472,410,509,444,444,691,395,535,535,486,499,633,535,500,535,500,444,437,500,648,500,535,503,770,770,517,672,456,429,747,460,500,500,500,1000,1000,954,250], TNR_B = [250,333,555,500,500,1000,833,278,333,333,500,570,250,333,250,278,500,500,500,500,500,500,500,500,500,500,333,333,570,570,570,500,930,722,667,722,722,667,611,778,778,389,500,778,667,944,722,778,611,778,722,556,667,722,722,1000,722,722,667,333,278,333,581,500,333,500,556,444,556,444,333,500,556,278,333,556,278,833,556,500,556,556,444,389,333,556,500,722,500,500,444,394,220,394,520,722,661,667,636,688,667,667,989,528,778,778,725,745,944,778,778,778,611,722,667,734,859,722,778,734,1098,1098,765,982,661,678,1126,722,500,500,540,454,506,444,444,725,402,576,576,576,561,681,576,500,576,556,444,491,500,692,500,576,564,844,844,583,781,529,432,764,541,500,500,500,1000,1000,1005,250];
+/** Ширина строки в пунктах по метрикам Times New Roman (совпадают с Liberation Serif). */
+const TNR_IDX = new Map([...TNR_CH].map((c, i) => [c, i]));
+function textW(s, size, bold) {
+  const tb = bold ? TNR_B : TNR_R; let w = 0;
+  for (const c of s) { const i = TNR_IDX.get(c); w += i == null ? 520 : tb[i]; }
+  return w * size / 1000;
+}
+/** Сколько строк займёт текст при ширине колонки widthPt (жадный перенос по словам + автоперенос длинных слов). */
+function countLines(text, size, bold, widthPt, firstPt) {
+  const words = text.split(/[ \t]+/).filter(Boolean); if (!words.length) return 1;
+  const sp = 250 * size / 1000, hy = 333 * size / 1000;
+  let lines = 1, x = firstPt || 0, start = true;
+  for (let w of words) {
+    let ww = textW(w, size, bold);
+    const need = (start ? 0 : sp) + ww;
+    if (x + need <= widthPt) { x += need; start = false; continue; }
+    // автоперенос: часть слова остаётся на этой строке, если влезают хотя бы 3 буквы
+    const room = widthPt - x - (start ? 0 : sp) - hy;
+    if (w.length >= 6 && room > 0) {
+      let k = 0, acc = 0; for (const c of w) { const cw = textW(c, size, bold); if (acc + cw > room) break; acc += cw; k++; }
+      if (k >= 3 && w.length - k >= 2) { w = w.slice(k); ww = textW(w, size, bold); }
+    }
+    lines++; x = ww; start = false;
+    while (x > widthPt) { lines++; x -= widthPt; }
+  }
+  return lines;
+}
+/** Грубая вёрстка: на какой странице окажется каждый блок. Без шрифтовых метрик — по средней ширине знака
+    Times New Roman; ошибка обычно ±1 страница, точные номера Word проставит, обновив поле. */
+function estimatePages(B, o) {
+  const MM = 25.4 / 72; // мм в пункте
+  const pageH = 297 - o.margins.top - o.margins.bottom - 4;
+  const textW = 210 - o.margins.left - o.margins.right;
+  const LH = o.lh || 1.15;
+  const lineOf = (sz, mult) => sz * LH * mult * MM;
+  // высота абзаца: строки по метрикам шрифта + интервалы до/после
+  const measure = (p, w) => {
+    const pPr = kid(p, 'pPr'), sp = kid(pPr, 'spacing');
+    const r = ownRuns(p).find(x => kids(x, 't').length) || ownRuns(p)[0], szEl = r && kid(kid(r, 'rPr'), 'sz');
+    const sz = szEl ? +attr(szEl, 'val') / 2 : o.size;
+    const mult = sp && attr(sp, 'line') && (attr(sp, 'lineRule') || 'auto') === 'auto' ? +attr(sp, 'line') / 240 : o.line;
+    let pic = 0;
+    for (const d of p.getElementsByTagNameNS(WP_NS, 'extent')) { if (d.parentNode && d.parentNode.localName === 'inline') pic += (+d.getAttribute('cy') || 0) / 36000; }
+    const t = paraText(p);
+    const ind = kid(pPr, 'ind'), first = ind ? (+attr(ind, 'firstLine') || 0) / 56.7 : 0;
+    const bold = !!(r && kid(kid(r, 'rPr'), 'b'));
+    const indL = ind ? ((+attr(ind, 'left') || 0) + (+attr(ind, 'right') || 0)) / 56.7 : 0;
+    const lines = t.trim() ? countLines(t, sz, bold, (w - indL) / MM, first / MM) : (pic ? 0 : 1);
+    const lh = lineOf(sz, mult);
+    const before = sp ? (+attr(sp, 'before') || 0) / 20 * MM : 0, after = sp ? (+attr(sp, 'after') || 0) / 20 * MM : 0;
+    return { lines, lh, before, after, pic, h: before + after + pic + lines * lh };
+  };
+  // 1) блоки → элементы вёрстки
+  const items = [];
+  for (const b of B) {
+    if (b.localName === 'tbl') {
+      const grid = kids(kid(b, 'tblGrid'), 'gridCol').map(g => (+attr(g, 'w') || 0) / 56.7);
+      const rows = kids(b, 'tr');
+      rows.forEach((tr, k) => {
+        let rh = 0, col = 0;
+        for (const tc of kids(tr, 'tc')) {
+          const span = +attr(kid(kid(tc, 'tcPr'), 'gridSpan'), 'val') || 1;
+          let cw = grid.slice(col, col + span).reduce((a, c) => a + c, 0); col += span;
+          if (!cw) cw = textW / Math.max(1, kids(tr, 'tc').length);
+          let ch = 0; for (const p of kids(tc, "p")) ch += measure(p, cw - 3.9).h;
+          rh = Math.max(rh, ch);
+        }
+        items.push({ b: k === 0 ? b : null, h: rh * (o.tf || 1.05) + 0.6, whole: true, keepNext: false });
+      });
+      continue;
+    }
+    if (b.localName !== 'p') continue;
+    const pPr = kid(b, 'pPr');
+    if (kid(pPr, 'framePr')) { items.push({ b, h: 0, whole: true, frame: true }); continue; }
+    const m = measure(b, textW);
+    items.push(Object.assign(m, { b, whole: !!(kid(pPr, 'keepLines') || m.pic || m.lines <= 1), keepNext: !!kid(pPr, 'keepNext'),
+      breakBefore: !!kid(pPr, 'pageBreakBefore'),
+      breaksAfter: [...b.getElementsByTagNameNS(W, 'br')].filter(x => attr(x, 'type') === 'page').length +
+        (kid(pPr, 'sectPr') && attr(kid(kid(pPr, 'sectPr'), 'type'), 'val') !== 'continuous' ? 1 : 0) }));
+  }
+  // 2) раскладка по страницам: «не отрывать от следующего», висячие строки (минимум 2 строки на странице)
+  const pages = new Map();
+  let page = 1, y = 0;
+  const brk = () => { page++; y = 0; };
+  const head = it => it.whole ? it.h : Math.min(it.h, it.before + 2 * it.lh);
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (it.breakBefore && y > 0) brk();
+    if (it.frame) { if (it.b) pages.set(it.b, page); continue; }
+    let need = it.whole ? it.h : head(it);
+    if (it.keepNext) { need = it.h; for (let j = i; items[j] && items[j].keepNext && items[j + 1] && j < i + 4; j++) need += items[j + 1].keepNext ? items[j + 1].h : head(items[j + 1]); }
+    if (y > 0 && y + need > pageH) brk();
+    if (it.b) pages.set(it.b, page);
+    if (it.whole || y + it.h <= pageH) { y += it.h; while (y > pageH + 0.5) { y -= pageH; page++; } }
+    else {
+      // абзац рвётся: на этой странице минимум 2 строки, на следующей тоже минимум 2
+      let lines = it.lines, fit = Math.floor((pageH - y - it.before) / it.lh);
+      if (lines - fit < 2) fit = lines - 2;
+      if (fit < 2) { brk(); if (it.b) pages.set(it.b, page); y = it.h; }
+      else {
+        lines -= fit; page++;
+        const per = Math.floor(pageH / it.lh);
+        while (lines > per) { lines -= per; page++; }
+        y = lines * it.lh + it.after;
+      }
+    }
+    for (let k = 0; k < (it.breaksAfter || 0); k++) brk();
+  }
+  return pages;
 }
 
 function runEl(doc, prof, size, text, bold) {
@@ -1069,5 +1309,80 @@ function runEl(doc, prof, size, text, bold) {
 function fld(doc, type) { const r = mk(doc, 'r'); r.appendChild(mk(doc, 'fldChar', { fldCharType: type })); return r; }
 function instrRun(doc, s) { const r = mk(doc, 'r'), t = r.appendChild(mk(doc, 'instrText')); t.textContent = s; t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve'); return r; }
 
-global.Formatter = { formatDocx, PROFILES, zipFiles: zip, normBib };
+/* ------------------- данные со старого титульного листа ------------------- */
+/** Читает титульник работы: вид, дисциплина, тема, ФИО, группа, руководитель… Чтобы собрать титул по форме СТО без ручного ввода. */
+async function readTitle(buf) {
+  const entries = await unzip(buf);
+  const e = entries.find(x => x.name === 'word/document.xml'); if (!e) return null;
+  const doc = new DOMParser().parseFromString(new TextDecoder().decode(e.data), 'application/xml');
+  const body = doc.getElementsByTagNameNS(W, 'body')[0]; if (!body) return null;
+  const lines = [];
+  const pushP = p => { const t = paraText(p).replace(/[\s ]+/g, ' ').trim(); if (t) lines.push(t); };
+  outer: for (const b of kids(body)) {
+    const ps = b.localName === 'p' ? [b] : b.localName === 'tbl' ? [...b.getElementsByTagNameNS(W, 'p')] : b.localName === 'sdt' ? [...b.getElementsByTagNameNS(W, 'p')] : [];
+    for (const p of ps) {
+      const t = paraText(p).replace(/[\s ]+/g, ' ').trim();
+      if (/^(содержание|оглавление|введение)\.?$/i.test(t) || lines.length > 70 || t.length > 250) break outer;
+      pushP(p);
+      if (lines.length > 3 && b.localName === 'p' && ([...p.getElementsByTagNameNS(W, 'br')].some(e => attr(e, 'type') === 'page') || kid(kid(p, 'pPr'), 'sectPr'))) break outer;
+      if (/^(архангельск|северодвинск|коряжма)(?![а-яёА-ЯЁA-Za-z]).*\b(19|20)\d\d(?![а-яёА-ЯЁA-Za-z])/i.test(t)) break outer;
+    }
+  }
+  if (!lines.length) return null;
+  const all = lines.join('\n');
+  const d = {};
+  const TYPES = [[/^реферат(?![а-яёА-ЯЁA-Za-z])/i, 'referat'], [/^эссе(?![а-яёА-ЯЁA-Za-z])/i, 'esse'], [/^контрольная работа(?![а-яёА-ЯЁA-Za-z])/i, 'kontrol'], [/^расч[её]тно-графическая(?![а-яёА-ЯЁA-Za-z])/i, 'rgr'],
+    [/^курсовая работа(?![а-яёА-ЯЁA-Za-z])/i, 'kursovaya'], [/^курсовой проект(?![а-яёА-ЯЁA-Za-z])/i, 'kproekt'], [/^отч[её]т(?![а-яёА-ЯЁA-Za-z]).*практик|^отч[её]т$/i, 'praktika']];
+  for (const l of lines) { const hit = TYPES.find(([re]) => re.test(l)); if (hit) { d.type = hit[1]; break; } }
+  const clean = s => {
+    s = s.replace(/\s*_{2,}\s*/g, ' ').trim().replace(/\.$/, '');
+    s = s.replace(/(\S) +(?:[-—]|--) +(?=\S)/g, '$1 – ');
+    // кавычки снимаем, только если они обрамляют всю строку или стоят без пары
+    const bal = x => (x.match(/«/g) || []).length === (x.match(/»/g) || []).length;
+    if (/^[«"“„]/.test(s) && /[»"”]$/.test(s) && bal(s.slice(1, -1))) s = s.slice(1, -1);
+    else if (!bal(s)) s = s.replace(/^«(?!.*»)|(?<!«.*)»$/g, '');
+    if (/^"[^"]*$/.test(s) || /^[^"]*"$/.test(s)) s = s.replace(/"/g, '');
+    return s.trim();
+  };
+  const after = (re, stop) => {
+    for (let i = 0; i < lines.length; i++) {
+      const m = re.exec(lines[i]); if (!m) continue;
+      let v = lines[i].slice(m.index + m[0].length).replace(/^[\s:–—-]+/, '');
+      if (!clean(v) && lines[i + 1] && !(stop && stop.test(lines[i + 1]))) v = lines[i + 1];
+      v = clean(v); if (v && !/^_+$/.test(v)) return v;
+    }
+    return '';
+  };
+  d.discipline = after(/(?:^|\s)по (?:дисциплине|курсу|предмету)(?![а-яёА-ЯЁA-Za-z])/i, /тем/i);
+  d.topic = after(/(?:^|\s)(?:на тему|тема(?: работы)?)(?![а-яёА-ЯЁA-Za-z])/i, /выполнил|студент|обучающ/i);
+  if (d.topic) d.topic = d.topic.replace(/^(?:на тему|тема)\s*:?\s*/i, '');
+  const sch = lines.find(l => /^(высшая\s+\S*\s*школа|высшая школа|институт|колледж|филиал)/i.test(l) && l.length < 140); if (sch) d.school = sch.replace(/\s*\(.*$/, '');
+  const FIO = /([А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?)\s+(?:([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+(?:вич|вна|ична|оглы|кызы))|([А-ЯЁ])\.\s?([А-ЯЁ])\.?)/;
+  const FIO2 = /([А-ЯЁ])\.\s?([А-ЯЁ])\.\s?([А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?)/;
+  const fioFrom = s => { let m = FIO.exec(s); if (m) return m[2] ? m[1] + ' ' + m[2] + ' ' + m[3] : m[1] + ' ' + m[4] + '. ' + m[5] + '.'; m = FIO2.exec(s); return m ? m[3] + ' ' + m[1] + '. ' + m[2] + '.' : ''; };
+  const iStud = lines.findIndex(l => /выполнил|обучающ|студент(ка)?(?![а-яёА-ЯЁA-Za-z])|автор/i.test(l));
+  const iTeach = lines.findIndex(l => /проверил|руководител|преподавател|принял/i.test(l));
+  if (iStud >= 0) {
+    for (let i = iStud; i < Math.min(lines.length, iStud + 4) && (iTeach < 0 || i < iTeach || i === iStud); i++) { const f = fioFrom(lines[i].replace(/^.*?(выполнил[аи]?|студент(ка)?|обучающ\S*)\s*:?/i, '')); if (f) { d.student = f; break; } }
+    if (/выполнила|обучающаяся|студентка/i.test(lines[iStud])) d.gender = 'f';
+  }
+  if (iTeach >= 0) {
+    for (let i = iTeach; i < Math.min(lines.length, iTeach + 3); i++) {
+      const raw = lines[i].replace(/^.*?(проверил[аи]?|руководитель( практики)?( от университета)?|научный руководитель|преподаватель|принял[аи]?)\s*:?\s*/i, '');
+      const f = fioFrom(raw);
+      if (f) { const rank = (raw.match(/(профессор|доцент|ст(арший|\.)\s*преподаватель|преподаватель|ассистент|канд\.[^,]*наук|д-р[^,]*наук|к\.\s?\S+\.?\s?н\.|д\.\s?\S+\.?\s?н\.)/gi) || []).join(', '); d.teacher = f + (rank ? ', ' + rank : ''); break; }
+    }
+  }
+  let m;
+  if ((m = /групп[аы]\s*[:№]?\s*(\d{4,7})/i.exec(all))) d.group = m[1];
+  if ((m = /(\d)\s*-?\s*(?:го\s*)?курса?(?![а-яёА-ЯЁA-Za-z])/i.exec(all) || /курс\s*:?\s*(\d)(?![а-яёА-ЯЁA-Za-z])/i.exec(all))) d.course = m[1];
+  if ((m = /(?<![\d.])(\d{2}\.\d{2}\.\d{2})(?![\d.])\s*[«"]?([А-ЯЁа-яё][^»"\n]*)/.exec(all))) d.direction = (m[1] + ' ' + m[2].replace(/[»"]/g, '')).trim();
+  if ((m = /(?:архангельск|северодвинск|коряжма)[\s,]*((?:19|20)\d\d)/i.exec(all))) d.year = m[1];
+  for (const k of Object.keys(d)) if (!d[k]) delete d[k];
+  // пересобираем титул, только если узнали из него главное — иначе оставляем титульник автора как есть
+  d.found = !!(d.topic || d.student);
+  return d;
+}
+
+global.Formatter = { formatDocx, readTitle, PROFILES, zipFiles: zip, normBib, _countLines: countLines, _textW: textW, _nbsp: nbsp };
 })(typeof window !== 'undefined' ? window : globalThis);
