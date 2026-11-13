@@ -19,8 +19,6 @@ body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:14.5px
 .bg{position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:radial-gradient(60% 50% at 20% 0%,rgba(90,160,255,.16),transparent 70%),radial-gradient(50% 40% at 90% 10%,rgba(94,242,208,.1),transparent 70%),
   linear-gradient(rgba(95,231,255,.045) 1px,transparent 1px) 0 0/44px 44px,linear-gradient(90deg,rgba(95,231,255,.045) 1px,transparent 1px) 0 0/44px 44px}
-.bg::after{content:"";position:absolute;left:0;right:0;height:180px;top:-180px;background:linear-gradient(transparent,rgba(95,231,255,.05),transparent);animation:sweep 9s linear infinite}
-@keyframes sweep{to{top:110%}}
 button{font:inherit;color:inherit;cursor:pointer}
 a{color:var(--cy)}
 .hide{display:none!important}
@@ -60,30 +58,81 @@ nav.tabs a:hover,nav.tabs a.on{color:var(--cy);border-color:var(--line2);backgro
 .label{font:500 11px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--cy)}
 .muted{color:var(--muted);font-size:13px}
 .mono{font-family:var(--mono)}
-/* реактор */
-.reactor{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:center}
-.ring{position:relative;width:224px;height:224px}
-.ring svg{position:absolute;inset:0;width:100%;height:100%;transform-origin:50% 50%}
-.ring .r1{animation:spin 24s linear infinite}.ring .r2{animation:spin 14s linear infinite reverse}.ring .r3{animation:spin 40s linear infinite}
-@keyframes spin{to{transform:rotate(1turn)}}
-.ring .core{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center}
-.ring .core b{font:400 60px/1 var(--display);letter-spacing:-.05em;font-variant-numeric:tabular-nums;text-shadow:0 0 30px rgba(95,231,255,.5)}
-.ring .core span{font:500 10px/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--ink2);margin-top:10px}
-.kpis{display:grid;gap:12px}
-.kpi{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:rgba(3,6,13,.4)}
-.kpi b{display:block;font:500 28px/1 var(--mono);letter-spacing:-.02em;margin-top:8px;font-variant-numeric:tabular-nums}
-.kpi small{color:var(--muted)}
-.sec{display:grid;grid-template-columns:10px minmax(0,1fr) auto auto;gap:4px 12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
-.sec:first-child{border-top:0}
-.sec i{width:10px;height:10px;border-radius:3px;background:var(--c);box-shadow:0 0 12px var(--c)}
-.sec .nm{font-weight:500}
-.sec .now{font:500 26px/1 var(--mono);min-width:48px;text-align:right}
-.sec .day{color:var(--muted);font:12.5px var(--mono);min-width:88px;text-align:right}
-.sec .bar{grid-column:2/5;height:3px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:6px}
+/* живой счётчик */
+.live{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:stretch}
+.hero{display:flex;flex-direction:column;justify-content:space-between;gap:16px;min-width:0}
+.onair{display:inline-flex;align-items:center;gap:9px;font:600 11px/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--ok)}
+.onair i{position:relative;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok)}
+.onair i::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1.5px solid var(--ok);animation:ping 2s var(--ease) infinite}
+.onair.off{color:var(--warn)}.onair.off i{background:var(--warn);box-shadow:0 0 12px var(--warn)}.onair.off i::after{display:none}
+@keyframes ping{from{transform:scale(.4);opacity:.9}to{transform:scale(1.6);opacity:0}}
+.big{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.big b{font:500 clamp(72px,10vw,118px)/.85 var(--display);letter-spacing:-.06em;font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,#fff,#9fe9ff);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 28px rgba(95,231,255,.35))}
+.big span{font-size:17px;line-height:1.3;color:var(--ink);padding-bottom:8px}
+.big span small{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips span{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:rgba(3,6,13,.45);border-radius:10px;padding:7px 11px;font-size:13px;color:var(--ink2)}
+.chips span i{width:8px;height:8px;border-radius:2px;background:var(--c);box-shadow:0 0 8px var(--c)}
+.chips span b{font:600 14px/1 var(--mono);color:var(--ink)}
+.chips span.zero{opacity:.45}
+.refresh{display:flex;align-items:center;gap:10px;font:12px var(--mono);color:var(--muted)}
+.refresh .track{flex:1;max-width:200px;height:2px;background:var(--line);border-radius:2px;overflow:hidden}
+.refresh .track span{display:block;height:100%;width:0;background:var(--cy);box-shadow:0 0 8px var(--cy)}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:stretch}
+.kpi{border:1px solid var(--line);border-radius:14px;padding:14px 15px;background:rgba(3,6,13,.4);display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+.kpi b{display:block;font:500 30px/1 var(--mono);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi small{color:var(--muted);font-size:12.5px;line-height:1.35}
+.kpi.wide{grid-column:span 2}
+/* разделы */
+.thead,.sec{display:grid;grid-template-columns:minmax(0,1fr) 92px 92px;gap:12px;align-items:center}
+.thead{font:500 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:0 0 10px;border-bottom:1px solid var(--line)}
+.thead span:not(:first-child),.sec .n{text-align:right}
+.sec{padding:12px 0 10px;border-bottom:1px solid var(--line)}
+.sec:last-child{border-bottom:0}
+.sec .nm{display:flex;align-items:center;gap:10px;font-weight:500;min-width:0}
+.sec .nm i{flex:none;width:10px;height:10px;border-radius:3px;background:var(--c);box-shadow:0 0 12px var(--c)}
+.sec .n{font:500 22px/1 var(--mono);font-variant-numeric:tabular-nums}
+.sec .n.now{color:var(--ok)}.sec .n.now.z{color:var(--muted)}
+.sec .n small{display:block;font:11px var(--mono);color:var(--muted);margin-top:4px}
+.sec .bar{grid-column:1/-1;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
 .sec .bar span{display:block;height:100%;background:var(--c);box-shadow:0 0 8px var(--c);transition:width .9s var(--ease)}
-.chart svg{width:100%;height:240px;display:block;overflow:visible}
-.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:12.5px;color:var(--ink2)}
-.legend span{display:inline-flex;align-items:center;gap:7px}.legend i{width:10px;height:3px;border-radius:2px;background:var(--c)}
+/* устройства */
+.split{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--line);gap:2px}
+.split span{height:100%;background:var(--c);transition:flex-grow .9s var(--ease)}
+.dkinds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.dkinds div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:rgba(3,6,13,.4)}
+.dkinds b{display:block;font:500 22px/1 var(--mono);margin-top:6px}
+.dkinds small{color:var(--muted);font-size:12px}
+.dkinds em{font-style:normal;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2)}
+.dkinds em::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--c)}
+.dlists{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px}
+.dl{margin-top:8px;font-size:13px}
+.dl>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;margin-bottom:8px}
+.dl>div>span:nth-child(2){font:12.5px var(--mono);color:var(--ink2);text-align:right}
+.dl .b{grid-column:1/-1;height:3px;border-radius:2px;background:var(--line);overflow:hidden}.dl .b i{display:block;height:100%;background:var(--a2)}
+/* график */
+.chart-wrap{position:relative;touch-action:pan-y;user-select:none}
+.chart-wrap svg{display:block;width:100%;height:280px;overflow:visible}
+.chart-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:none;padding:6px 11px;font:500 11.5px/1 var(--mono);color:var(--ink2);letter-spacing:.06em}
+.seg button.on{background:rgba(95,231,255,.12);color:var(--cy)}
+.cstats{display:flex;gap:22px;flex-wrap:wrap;margin:2px 0 12px;font-size:13px;color:var(--muted)}
+.cstats b{font:500 15px var(--mono);color:var(--ink);margin-left:6px}
+.tip{position:absolute;top:0;z-index:3;pointer-events:none;min-width:170px;padding:10px 12px;border-radius:12px;background:rgba(6,12,22,.95);
+  box-shadow:inset 0 0 0 1px var(--line2),0 16px 34px -12px rgba(0,0,0,.8);font-size:12.5px;opacity:0;transition:opacity .15s}
+.tip.on{opacity:1}
+.tip .t{font:500 11px var(--mono);color:var(--cy);letter-spacing:.06em;margin-bottom:6px}
+.tip div{display:flex;align-items:center;gap:8px;padding:2px 0}.tip div b{margin-left:auto;font:500 13px var(--mono);padding-left:12px}
+.tip div i{width:8px;height:8px;border-radius:2px;background:var(--c)}
+.tip div.tot{border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:3px;color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.legend button{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:none;border-radius:999px;padding:5px 11px;font-size:12.5px;color:var(--ink2);transition:opacity .2s,border-color .2s}
+.legend button i{width:12px;height:3px;border-radius:2px;background:var(--c);box-shadow:0 0 6px var(--c)}
+.legend button.off{opacity:.38}.legend button:hover{border-color:var(--line2)}
+.nowdot{animation:ping2 1.8s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes ping2{from{transform:scale(1);opacity:.8}to{transform:scale(3.2);opacity:0}}
 .row{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
 .row:first-child{border-top:0}
 .row .st{width:10px;height:10px;border-radius:50%;background:var(--muted)}
@@ -130,9 +179,9 @@ textarea:focus,select:focus,input:focus{border-color:var(--cy);box-shadow:0 0 0 
 .login h1{font:500 22px/1.2 var(--display);margin:14px 0 18px}
 .primary{width:100%;margin-top:12px;border:0;border-radius:12px;padding:13px;background:linear-gradient(90deg,var(--a1),var(--a2));color:#03060d;font-weight:600}
 .err{color:var(--warn);font-size:13.5px;min-height:1.4em;margin-top:10px}
-@media (max-width:1000px){.s5,.s7,.s6{grid-column:span 12}}
-@media (max-width:560px){.wrap{padding:16px 16px 60px}nav.tabs{margin:14px -16px 10px;padding:10px 16px}.reactor{grid-template-columns:1fr;justify-items:center}.kpis{width:100%;grid-template-columns:1fr 1fr}
-  .ring{width:200px;height:200px}.clock{display:none}.links{grid-template-columns:1fr}.panel{padding:16px}.spent{font-size:30px}.ax .h6{display:none}.sec .day{min-width:0}}
+@media (max-width:1000px){.s5,.s7,.s6{grid-column:span 12}.live{grid-template-columns:1fr}}
+@media (max-width:560px){.wrap{padding:16px 16px 60px}nav.tabs{margin:14px -16px 10px;padding:10px 16px}.kpi b{font-size:24px}.thead,.sec{grid-template-columns:minmax(0,1fr) 64px 64px}.sec .n{font-size:19px}
+  .dlists{grid-template-columns:1fr}.chart-wrap svg{height:240px}.clock{display:none}.links{grid-template-columns:1fr}.panel{padding:16px}.spent{font-size:30px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -163,28 +212,35 @@ textarea:focus,select:focus,input:focus{border-color:var(--cy);box-shadow:0 0 0 
       <a href="#p-now" class="on">Обзор</a><a href="#p-svc">Сервисы</a><a href="#p-money">Деньги</a><a href="#p-banner">Объявления</a><a href="#p-ctl">Управление</a>
     </nav>
     <div class="grid">
-      <section class="panel s5" id="p-now">
-        <div class="ph"><span class="label">Сейчас на сайте</span><span class="muted mono" id="upd"></span></div>
-        <div class="reactor">
-          <div class="ring" aria-hidden="true">
-            <svg class="r3" viewBox="0 0 200 200"><circle cx="100" cy="100" r="96" fill="none" stroke="rgba(95,231,255,.3)" stroke-width="1" stroke-dasharray="1 5"/></svg>
-            <svg class="r1" viewBox="0 0 200 200"><circle cx="100" cy="100" r="84" fill="none" stroke="#5fe7ff" stroke-width="2" stroke-dasharray="60 24 8 24" opacity=".7"/></svg>
-            <svg class="r2" viewBox="0 0 200 200"><defs><linearGradient id="gr"><stop offset="0" stop-color="#5ef2d0"/><stop offset="1" stop-color="#8b7bff"/></linearGradient></defs>
-              <circle cx="100" cy="100" r="70" fill="none" stroke="url(#gr)" stroke-width="5" stroke-linecap="round" stroke-dasharray="120 320"/></svg>
+      <section class="panel" id="p-now">
+        <div class="live">
+          <div class="hero">
+            <span class="onair" id="onair"><i></i><span id="onairText">в эфире</span></span>
+            <div class="big"><b id="online">0</b><span id="onlineWord">человек на сайте<br>прямо сейчас<small>были активны за последние 6 минут</small></span></div>
+            <div class="chips" id="onlineBy"></div>
+            <div class="refresh"><span id="upd">—</span><span class="track"><span id="updBar"></span></span></div>
           </div>
           <div class="kpis">
-            <div class="kpi"><span class="label">Сегодня</span><b id="today">0</b><small>разных людей</small></div>
-            <div class="kpi"><span class="label">7 дней</span><b id="week">0</b><small>разных людей</small></div>
+            <div class="kpi"><span class="label">Сегодня</span><b id="today">0</b><small>разных посетителей с полуночи (МСК)</small></div>
+            <div class="kpi"><span class="label">7 дней</span><b id="week">0</b><small>разных посетителей за неделю</small></div>
+            <div class="kpi"><span class="label">Сети сейчас</span><b id="netsNow">—</b><small>разных IP-адресов среди тех, кто онлайн</small></div>
+            <div class="kpi"><span class="label">Сети сегодня</span><b id="netsDay">—</b><small>разных IP-адресов за день</small></div>
           </div>
         </div>
       </section>
       <section class="panel s7">
-        <div class="ph"><span class="label">Разделы</span><span class="muted">сейчас · за сегодня</span></div>
+        <div class="ph"><span class="label">Разделы</span><span class="muted">полоса — доля от всех посетителей за сегодня</span></div>
+        <div class="thead"><span>Раздел</span><span>Сейчас</span><span>Сегодня</span></div>
         <div id="secs"></div>
       </section>
-      <section class="panel chart">
-        <div class="ph"><span class="label">Люди по часам · двое суток</span></div>
-        <svg id="chart" viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" aria-label="График посещений по часам"></svg>
+      <section class="panel s5">
+        <div class="ph"><span class="label">Устройства · сегодня</span><span class="muted" id="devNote"></span></div>
+        <div id="devs"><div class="muted">Загружаю…</div></div>
+      </section>
+      <section class="panel">
+        <div class="ph chart-head"><span class="label">Люди по часам</span><span class="seg" id="range"><button data-h="24">24 ч</button><button data-h="48" class="on">48 ч</button></span></div>
+        <div class="cstats" id="cstats"></div>
+        <div class="chart-wrap" id="chartBox"><svg id="chart" role="img" aria-label="График посещений по часам"></svg><div class="tip" id="tip"></div></div>
         <div class="legend" id="legend"></div>
       </section>
 
@@ -214,6 +270,7 @@ textarea:focus,select:focus,input:focus{border-color:var(--cy);box-shadow:0 0 0 
           <label class="chip"><input type="radio" name="bKind" value="warn">Важно</label>
           <label class="chip"><input type="radio" name="bKind" value="ok">Хорошая новость</label>
           <span class="optsep"></span>
+          <label class="chip"><input type="checkbox" class="bSec" value="main">Дневник</label>
           <label class="chip"><input type="checkbox" class="bSec" value="raspisanie">Расписание</label>
           <label class="chip"><input type="checkbox" class="bSec" value="otmetki">Отметки</label>
           <label class="chip"><input type="checkbox" class="bSec" value="antiplagiat">Антиплагиат</label>
@@ -239,12 +296,14 @@ textarea:focus,select:focus,input:focus{border-color:var(--cy);box-shadow:0 0 0 
           <a href="https://github.com/skyface29/SAFU/releases" target="_blank" rel="noopener">Релизы приложения</a>
           <a href="https://console.yandex.cloud/" target="_blank" rel="noopener">Yandex Cloud</a>
           <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener">Cloudflare</a>
+          <a href="../" target="_blank">Сайт · Дневник разработки</a>
           <a href="../raspisanie/" target="_blank">Сайт · Расписание</a>
           <a href="../otmetki/" target="_blank">Сайт · Отметки</a>
+          <a href="../antiplagiat/" target="_blank">Сайт · Антиплагиат</a>
         </div>
       </section>
     </div>
-    <p class="muted" style="margin-top:22px;max-width:760px">Люди — это браузеры: телефон и компьютер одного человека — двое. Приложение «Арктика» не учитывается, только сайт. Счётчик не хранит имён и IP: только случайный номер браузера, раздел и время.</p>
+    <p class="muted" style="margin-top:22px;max-width:820px">Как считаем. «Посетитель» — это браузер: у каждого свой случайный номер, поэтому один человек, открывший сайт пять раз, — один посетитель, а его телефон и ноутбук — двое. «Сети» — разные IP-адреса: они точнее для одного человека с двумя устройствами, но занижают общежития и Wi‑Fi САФУ, где сотни студентов выходят в интернет с одного адреса. Правда — между этими двумя числами. Тип устройства, система и браузер определяются на сервере по User-Agent; роботы поисковиков не считаются. IP не хранится: только обезличенный отпечаток, соль которого меняется каждые сутки. Приложение «Арктика» не учитывается, только сайт.</p>
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -261,8 +320,9 @@ const SERVICES = [   // свои сервисы: что проверяем из 
   {name: 'Антиплагиат · помощник', about: 'функция Yandex Cloud', url: 'https://functions.yandexcloud.net/d4er34jsfe1f9gqu4vg8', opaque: true},
   {name: 'Статус САФУ · проверка', about: 'Cloudflare Worker, раз в 5 минут', url: 'https://safu-status.zarubin-kirillcka.workers.dev/status.json', safu: true},
 ];
-const NAMES = {raspisanie: 'Расписание', otmetki: 'Отметки', antiplagiat: 'Антиплагиат', spravka: 'Справочник', status: 'Статус', main: 'Главная'};
-const COLORS = {raspisanie: '#5aa0ff', otmetki: '#5ef2d0', antiplagiat: '#8b7bff', spravka: '#f6c25b', status: '#ff6b7f', main: '#cfd8e8'};
+const SECTIONS = ['main', 'raspisanie', 'otmetki', 'antiplagiat'];   // всегда в списке, даже если сегодня там пусто
+const NAMES = {main: 'Дневник разработки', raspisanie: 'Расписание', otmetki: 'Отметки', antiplagiat: 'Антиплагиат', spravka: 'Справочник', status: 'Статус'};
+const COLORS = {main: '#ff9fdb', raspisanie: '#5aa0ff', otmetki: '#5ef2d0', antiplagiat: '#8b7bff', spravka: '#f6c25b', status: '#ff6b7f'};
 const KIND_COLORS = {info: '#5aa0ff', warn: '#f6c25b', ok: '#46e0a6'};
 const BUILD_ORDER = ['Сайт', 'Расписание РУЗ', 'Build IPA', 'Build macOS', 'Build Windows', 'App Store (TestFlight)', 'Пост в Telegram'];
 const $ = id => document.getElementById(id);
@@ -271,10 +331,9 @@ const fmt = n => Math.round(n).toLocaleString('ru-RU');
 const ago = t => { const s = Math.max(0, (Date.now() - t) / 1000); return s < 90 ? 'только что' : s < 3600 ? Math.round(s / 60) + ' мин назад' : s < 86400 ? Math.round(s / 3600) + ' ч назад' : Math.round(s / 86400) + ' дн назад'; };
 const span = t => { const s = Math.max(0, (Date.now() - t) / 1000); return s < 3600 ? Math.max(1, Math.round(s / 60)) + ' мин' : s < 86400 ? Math.round(s / 3600) + ' ч' : Math.round(s / 86400) + ' дн'; };
 let token = ''; try { token = localStorage.getItem('arktika.admin') || ''; } catch (e) {}
-let timer = 0, side = 0, shown = {}, can = {};
+let timer = 0, side = 0, shown = {}, can = {}, last = null, lastOk = 0;
+const EVERY = 30;   // секунд между обновлениями «сейчас на сайте»
 
-/* «реактор»: число в центре кольца */
-document.querySelector('.ring').insertAdjacentHTML('beforeend', '<div class="core"><b id="online">0</b><span>сейчас</span></div>');
 function tick(){ $('clock').textContent = new Date().toLocaleString('ru-RU', {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit'}); }
 tick(); setInterval(tick, 1000);
 function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 3400); }
@@ -299,46 +358,141 @@ async function load(){
     const d = await api('GET');
     showDash(); render(d);
     $('lamp').classList.remove('off'); $('lampText').textContent = 'на связи';
-    $('upd').textContent = new Date().toLocaleTimeString('ru-RU');
+    $('onair').classList.remove('off'); $('onairText').textContent = 'в эфире'; lastOk = Date.now(); ticker();
   }catch(e){
     $('lamp').classList.add('off'); $('lampText').textContent = 'нет связи';
+    $('onair').classList.add('off'); $('onairText').textContent = 'нет связи';
     if($('dash').classList.contains('hide') && token) $('err').textContent = 'Не получилось: ' + e.message;
   }
-  if(token && document.visibilityState === 'visible') timer = setTimeout(load, 60000);
+  if(token && document.visibilityState === 'visible') timer = setTimeout(load, EVERY * 1000);
 }
+function ticker(){   // «обновлено N с назад» и полоска до следующего обновления
+  if(!lastOk) return;
+  const s = Math.floor((Date.now() - lastOk) / 1000);
+  $('upd').textContent = s < 3 ? 'обновлено только что' : 'обновлено ' + s + ' с назад';
+  $('updBar').style.width = Math.min(100, 100 * s / EVERY) + '%';
+}
+setInterval(ticker, 1000);
 function render(d){
-  can = d.can || {};
+  can = d.can || {}; last = d;
+  const on = d.online || {}, day = d.today || {};
   tween($('online'), d.onlineTotal || 0); tween($('today'), d.todayTotal || 0); tween($('week'), d.weekTotal || 0);
-  const secs = [...new Set(['raspisanie', 'otmetki', 'antiplagiat', ...Object.keys(d.today || {})])];
-  const max = Math.max(1, ...secs.map(p => (d.online || {})[p] || 0));
-  $('secs').innerHTML = secs.map(p => { const on = (d.online || {})[p] || 0, day = (d.today || {})[p] || 0;
-    return '<div class="sec" style="--c:' + (COLORS[p] || '#9ab') + '"><i></i><span class="nm">' + esc(NAMES[p] || p) + '</span><span class="now">' + fmt(on) + '</span><span class="day">' + fmt(day) + ' за день</span>' +
-      '<div class="bar"><span style="width:' + (100 * on / max) + '%"></span></div></div>'; }).join('');
-  drawChart(d); drawLimits(d); drawBannerState(d.banner);
+  if(d.onlineNets != null) tween($('netsNow'), d.onlineNets); else $('netsNow').textContent = '—';
+  if(d.todayNets != null) tween($('netsDay'), d.todayNets); else $('netsDay').textContent = '—';
+  $('onlineWord').innerHTML = plural(d.onlineTotal || 0, 'человек', 'человека', 'человек') + ' на сайте<br>прямо сейчас<small>были активны за последние 6 минут</small>';
+  const secs = [...new Set([...SECTIONS, ...Object.keys(day), ...Object.keys(on)])];
+  $('onlineBy').innerHTML = secs.map(p => '<span style="--c:' + (COLORS[p] || '#9ab') + '"' + (on[p] ? '' : ' class="zero"') + '><i></i>' + esc(NAMES[p] || p) + ' <b>' + fmt(on[p] || 0) + '</b></span>').join('');
+  const dayTotal = Math.max(1, d.todayTotal || 0);
+  $('secs').innerHTML = secs.sort((a, b) => (day[b] || 0) - (day[a] || 0)).map(p => { const n = on[p] || 0, t = day[p] || 0;
+    return '<div class="sec" style="--c:' + (COLORS[p] || '#9ab') + '"><span class="nm"><i></i>' + esc(NAMES[p] || p) + '</span>' +
+      '<span class="n now' + (n ? '' : ' z') + '" title="на сайте сейчас">' + fmt(n) + '<small>онлайн</small></span>' +
+      '<span class="n" title="разных посетителей за сегодня">' + fmt(t) + '<small>за день</small></span>' +
+      '<div class="bar"><span style="width:' + (100 * t / dayTotal).toFixed(1) + '%"></span></div></div>'; }).join('');
+  drawDevices(d); drawChart(); drawLimits(d); drawBannerState(d.banner);
   $('ctlNote').textContent = can.dispatch ? '' : 'Кнопки заработают, когда у функции будет задан GH_TOKEN (см. stats-api/README.md).';
   document.querySelectorAll('[data-wf]').forEach(b => b.disabled = !can.dispatch);
 }
-function drawChart(d){
-  const hNow = Math.floor(d.now / 3600e3), hours = Array.from({length: 48}, (_, k) => hNow - 47 + k), series = {};
-  for(const r of d.hourly || []) (series[r.p] = series[r.p] || {})[r.h] = r.n;
-  const ps = Object.keys(series), max = Math.max(1, ...(d.hourly || []).map(r => r.n));
-  const W = 1000, H = 210, x = k => k / 47 * W, y = v => H - v / max * (H - 14);
-  let s = '';
-  for(let g = 0; g <= 4; g++){ const yy = H - g / 4 * (H - 14); s += '<line x1="0" x2="' + W + '" y1="' + yy + '" y2="' + yy + '" stroke="rgba(95,231,255,.08)" vector-effect="non-scaling-stroke"/>'; }
-  hours.forEach((h, k) => { const t = new Date(h * 3600e3); if(t.getHours() % 6 === 0) s += '<line x1="' + x(k) + '" x2="' + x(k) + '" y1="0" y2="' + H + '" stroke="rgba(95,231,255,.05)" vector-effect="non-scaling-stroke"/>'; });
-  for(const p of ps){
-    const c = COLORS[p] || '#9ab', pts = hours.map((h, k) => x(k).toFixed(1) + ',' + y(series[p][h] || 0).toFixed(1));
-    s += '<polygon points="0,' + H + ' ' + pts.join(' ') + ' ' + W + ',' + H + '" fill="' + c + '" opacity=".07"/><polyline points="' + pts.join(' ') + '" fill="none" stroke="' + c + '" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>';
-  }
-  $('chart').innerHTML = s;
-  /* подписи HTML поверх, чтобы текст не растягивался вместе с графиком */
-  const box = $('chart').parentNode; box.querySelectorAll('.ax').forEach(e => e.remove());
-  let ax = '<div class="ax" style="position:relative;height:18px;margin-top:-26px;font:11px var(--mono);color:var(--muted)">';
-  hours.forEach((h, k) => { const t = new Date(h * 3600e3); if(t.getHours() % 6 === 0) ax += '<span' + (t.getHours() % 12 ? ' class="h6"' : '') + ' style="position:absolute;left:' + (k / 47 * 100) + '%;transform:translateX(-50%)">' + String(t.getHours()).padStart(2, '0') + ':00</span>'; });
-  ax += '</div><div class="ax muted mono" style="font-size:11px;margin-top:6px">макс. ' + fmt(max) + ' чел. в час</div>';
-  $('chart').insertAdjacentHTML('afterend', ax);
-  $('legend').innerHTML = ps.map(p => '<span style="--c:' + (COLORS[p] || '#9ab') + '"><i></i>' + esc(NAMES[p] || p) + '</span>').join('');
+function plural(n, one, few, many){ n = Math.abs(n) % 100; const k = n % 10; return n > 10 && n < 20 ? many : k === 1 ? one : k >= 2 && k <= 4 ? few : many; }
+
+/* ---------- устройства: тип, система и браузер определяет сервер по User-Agent ---------- */
+const KINDS = [['phone', 'Телефоны', '#5ef2d0'], ['desktop', 'Компьютеры', '#5aa0ff'], ['tablet', 'Планшеты', '#8b7bff']];
+function drawDevices(d){
+  const dev = d.devices;
+  if(!dev){ $('devNote').textContent = ''; $('devs').innerHTML = '<div class="muted">Функция статистики ещё старой версии — обновите arktika-pulse из stats-api/pulse.js, и здесь появятся настоящие данные об устройствах.</div>'; return; }
+  const kinds = {}, oses = {}, brs = {}; let total = 0;
+  for(const [k, n] of Object.entries(dev)){ const [kind, os, br] = k.split('|'); kinds[kind] = (kinds[kind] || 0) + n; oses[os] = (oses[os] || 0) + n; brs[br] = (brs[br] || 0) + n; total += n; }
+  if(!total){ $('devNote').textContent = ''; $('devs').innerHTML = '<div class="muted">Сегодня пока никого не было (или данные начали собираться только что).</div>'; return; }
+  $('devNote').textContent = fmt(total) + ' ' + plural(total, 'браузер', 'браузера', 'браузеров');
+  const pct = n => Math.round(100 * n / total);
+  const list = o => { const e = Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    return '<div class="dl">' + e.map(([k, n]) => '<div><span>' + esc(k) + '</span><span>' + pct(n) + '% · ' + fmt(n) + '</span><span class="b"><i style="width:' + pct(n) + '%"></i></span></div>').join('') + '</div>'; };
+  $('devs').innerHTML = '<div class="split">' + KINDS.filter(([k]) => kinds[k]).map(([k, , c]) => '<span style="--c:' + c + ';flex-grow:' + kinds[k] + '"></span>').join('') + '</div>' +
+    '<div class="dkinds">' + KINDS.map(([k, nm, c]) => '<div style="--c:' + c + '"><em>' + nm + '</em><b>' + pct(kinds[k] || 0) + '%</b><small>' + fmt(kinds[k] || 0) + '</small></div>').join('') + '</div>' +
+    '<div class="dlists"><div><div class="sub">Система</div>' + list(oses) + '</div><div><div class="sub">Браузер</div>' + list(brs) + '</div></div>';
 }
+
+/* ---------- живой график по часам: наведение, выбор линий, текущий час обновляется каждые 30 секунд ---------- */
+let range = 48, hidden = new Set(), drawn = false, hoverK = -1;
+function chartData(){
+  const d = last, hNow = Math.floor(d.now / 3600e3), hours = Array.from({length: range}, (_, k) => hNow - range + 1 + k), series = {};
+  for(const r of d.hourly || []) (series[r.p] = series[r.p] || {})[r.h] = r.n;
+  const tot = {};
+  if(d.hourlyTotal) for(const r of d.hourlyTotal) tot[r.h] = r.n;
+  else for(const r of d.hourly || []) tot[r.h] = Math.max(tot[r.h] || 0, r.n);   // старая функция: без общего итога — берём самый большой раздел
+  const ps = [...new Set([...SECTIONS.filter(p => series[p]), ...Object.keys(series)])];
+  const lines = [{p: 'total', name: d.hourlyTotal ? 'Все разделы' : 'Максимум по разделу', c: '#5fe7ff', v: hours.map(h => tot[h] || 0), total: true}]
+    .concat(ps.map(p => ({p, name: NAMES[p] || p, c: COLORS[p] || '#9ab', v: hours.map(h => series[p][h] || 0)})));
+  return {hours, lines};
+}
+function smooth(pts){   // монотонная кривая (без выбросов ниже нуля)
+  if(pts.length < 2) return '';
+  let s = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
+  for(let i = 0; i < pts.length - 1; i++){
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], dx = (x1 - x0) / 3;
+    const m0 = i ? (y1 - pts[i - 1][1]) / 2 : y1 - y0, m1 = i < pts.length - 2 ? (pts[i + 2][1] - y0) / 2 : y1 - y0;
+    const c0 = Math.sign(y1 - y0) === Math.sign(m0) || !i ? m0 : 0, c1 = Math.sign(y1 - y0) === Math.sign(m1) || i === pts.length - 2 ? m1 : 0;
+    s += 'C' + (x0 + dx).toFixed(1) + ',' + (y0 + c0 / 3).toFixed(1) + ' ' + (x1 - dx).toFixed(1) + ',' + (y1 - c1 / 3).toFixed(1) + ' ' + x1.toFixed(1) + ',' + y1.toFixed(1);
+  }
+  return s;
+}
+function geo(){
+  const svg = $('chart'), W = Math.max(280, svg.clientWidth), H = 280, L = 34, R = 14, T = 16, B = 26;
+  const {hours, lines} = chartData(), vis = lines.filter(l => !hidden.has(l.p));
+  const max = Math.max(4, ...vis.flatMap(l => l.v)), step = Math.max(1, Math.ceil(max / 4 / (max > 20 ? 5 : 1)) * (max > 20 ? 5 : 1)), top = step * 4;
+  return {svg, W, H, L, R, T, B, hours, lines, vis, top, step, x: k => L + k / (hours.length - 1) * (W - L - R), y: v => T + (1 - v / top) * (H - T - B)};
+}
+function drawChart(){
+  if(!last) return;
+  const g = geo(), {W, H, L, R, T, B, hours, lines, vis, top, step, x, y} = g, n = hours.length;
+  g.svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  let s = '<defs>' + lines.map((l, i) => '<linearGradient id="fill' + i + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="' + l.c + '" stop-opacity="' + (l.total ? .28 : .12) + '"/><stop offset="1" stop-color="' + l.c + '" stop-opacity="0"/></linearGradient>').join('') +
+    '<filter id="glow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+  for(let v = 0; v <= top; v += step) s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="rgba(95,231,255,' + (v ? .07 : .2) + ')"/><text x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end" fill="#5f7390" font-size="10.5" font-family="JetBrains Mono,monospace">' + v + '</text>';
+  hours.forEach((h, k) => { const t = new Date(h * 3600e3), hh = t.getHours();
+    if(hh === 0) s += '<line x1="' + x(k) + '" x2="' + x(k) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="rgba(95,231,255,.16)" stroke-dasharray="3 4"/><text x="' + (x(k) + 6) + '" y="' + (T + 10) + '" fill="#5f7390" font-size="10.5" font-family="JetBrains Mono,monospace">' + t.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'}) + '</text>';
+    if(hh % (range > 24 ? 6 : 3) === 0 && (W > 520 || hh % 12 === 0)) s += '<text x="' + x(k) + '" y="' + (H - 6) + '" text-anchor="middle" fill="#5f7390" font-size="10.5" font-family="JetBrains Mono,monospace">' + String(hh).padStart(2, '0') + ':00</text>'; });
+  lines.forEach((l, i) => { if(hidden.has(l.p)) return;
+    const pts = l.v.map((v, k) => [x(k), y(v)]), path = smooth(pts);
+    s += '<path d="' + path + 'L' + x(n - 1) + ',' + (H - B) + 'L' + L + ',' + (H - B) + 'Z" fill="url(#fill' + i + ')"/>';
+    s += '<path class="ln" d="' + path + '" fill="none" stroke="' + l.c + '" stroke-width="' + (l.total ? 2.6 : 1.6) + '" stroke-linejoin="round" stroke-linecap="round"' + (l.total ? ' filter="url(#glow)"' : ' opacity=".9"') + '/>';
+  });
+  const tl = lines[0];
+  if(!hidden.has('total')){
+    const pk = tl.v.indexOf(Math.max(...tl.v));
+    if(tl.v[pk] > 0) s += '<g><circle cx="' + x(pk) + '" cy="' + y(tl.v[pk]) + '" r="3.5" fill="#03060d" stroke="#5fe7ff" stroke-width="2"/><text x="' + Math.min(W - R - 30, Math.max(L + 30, x(pk))) + '" y="' + (y(tl.v[pk]) - 10) + '" text-anchor="middle" fill="#9fe9ff" font-size="11" font-family="JetBrains Mono,monospace">пик ' + tl.v[pk] + '</text></g>';
+    s += '<circle class="nowdot" cx="' + x(n - 1) + '" cy="' + y(tl.v[n - 1]) + '" r="4" fill="#5fe7ff"/><circle cx="' + x(n - 1) + '" cy="' + y(tl.v[n - 1]) + '" r="4" fill="#5fe7ff"/>';
+  }
+  s += '<g id="hover" opacity="0"><line id="hx" y1="' + T + '" y2="' + (H - B) + '" stroke="rgba(95,231,255,.5)" stroke-dasharray="2 3"/><g id="hdots"></g></g>';
+  s += '<rect id="hit" x="' + L + '" y="0" width="' + (W - L - R) + '" height="' + H + '" fill="transparent"/>';
+  g.svg.innerHTML = s;
+  if(!drawn && !matchMedia('(prefers-reduced-motion: reduce)').matches){ drawn = true;
+    g.svg.querySelectorAll('.ln').forEach(p => { const len = p.getTotalLength(); p.style.strokeDasharray = len; p.style.strokeDashoffset = len; p.getBoundingClientRect(); p.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(.16,1,.3,1)'; p.style.strokeDashoffset = 0; }); }
+  const sumDay = tl.v.slice(-24).reduce((a, b) => a + b, 0), pkk = tl.v.indexOf(Math.max(...tl.v));
+  $('cstats').innerHTML = '<span>в этот час<b>' + fmt(tl.v[n - 1]) + '</b></span><span>пик за ' + range + ' ч<b>' + fmt(tl.v[pkk]) + '</b>' + (tl.v[pkk] ? ' <span class="mono">в ' + String(new Date(hours[pkk] * 3600e3).getHours()).padStart(2, '0') + ':00</span>' : '') + '</span><span>в среднем<b>' + (sumDay / 24).toFixed(1) + '</b> в час за сутки</span>';
+  $('legend').innerHTML = lines.map(l => '<button type="button" data-p="' + esc(l.p) + '" style="--c:' + l.c + '"' + (hidden.has(l.p) ? ' class="off"' : '') + ' aria-pressed="' + !hidden.has(l.p) + '"><i></i>' + esc(l.name) + '</button>').join('');
+  if(hoverK >= 0) hover(hoverK);
+}
+function hover(k){
+  const g = geo(), {hours, vis, x, y, W} = g, hg = $('hover'), tip = $('tip');
+  if(k < 0 || !hg){ hoverK = -1; if(hg) hg.setAttribute('opacity', 0); tip.classList.remove('on'); return; }
+  hoverK = k;
+  hg.setAttribute('opacity', 1); $('hx').setAttribute('x1', x(k)); $('hx').setAttribute('x2', x(k));
+  $('hdots').innerHTML = vis.map(l => '<circle cx="' + x(k) + '" cy="' + y(l.v[k]) + '" r="' + (l.total ? 4.5 : 3.5) + '" fill="' + l.c + '" stroke="#03060d" stroke-width="2"/>').join('');
+  const t = new Date(hours[k] * 3600e3), hh = t.getHours(), isNow = k === hours.length - 1;
+  tip.innerHTML = '<div class="t">' + t.toLocaleDateString('ru-RU', {weekday: 'short', day: 'numeric', month: 'short'}) + ' · ' + String(hh).padStart(2, '0') + ':00–' + String((hh + 1) % 24).padStart(2, '0') + ':00' + (isNow ? ' · идёт сейчас' : '') + '</div>' +
+    vis.map(l => '<div' + (l.total ? ' class="tot"' : '') + ' style="--c:' + l.c + '"><i></i>' + esc(l.name) + '<b>' + fmt(l.v[k]) + '</b></div>').join('');
+  tip.classList.add('on');
+  const box = $('chartBox').clientWidth, tw = tip.offsetWidth, px = x(k) / W * box;
+  tip.style.left = Math.max(0, Math.min(box - tw, px + (px > box / 2 ? -tw - 14 : 14))) + 'px'; tip.style.top = '8px';
+}
+$('chartBox').addEventListener('pointermove', e => { if(!last) return; const g = geo(), r = $('chart').getBoundingClientRect(), px = (e.clientX - r.left) / r.width * g.W;
+  hover(Math.max(0, Math.min(g.hours.length - 1, Math.round((px - g.L) / (g.W - g.L - g.R) * (g.hours.length - 1))))); });
+$('chartBox').addEventListener('pointerleave', () => hover(-1));
+$('legend').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; const p = b.dataset.p;
+  if(hidden.has(p)) hidden.delete(p); else if(hidden.size < (last ? chartData().lines.length - 1 : 0)) hidden.add(p); drawChart(); });
+$('range').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; range = +b.dataset.h;
+  $('range').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); hoverK = -1; drawChart(); });
+new ResizeObserver(() => drawChart()).observe($('chartBox'));
 
 /* ---------- деньги и лимиты ---------- */
 function drawLimits(d){

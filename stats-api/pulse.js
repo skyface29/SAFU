@@ -1,7 +1,11 @@
 // Счётчик «сейчас на сайте» для arktika-app.ru (функция Yandex Cloud, Node.js 22, точка входа pulse.handler).
 //
-// Страницы при открытии и раз в 5 минут присылают POST {s, p}: s — случайный номер браузера (без имени, IP не сохраняется),
-// p — раздел (raspisanie, otmetki, …). Хранится одна строка на браузер, раздел и час: pulse(h, p, s, t).
+// Страницы при открытии и раз в 5 минут присылают POST {s, p}: s — случайный номер браузера (без имени),
+// p — раздел (main — дневник разработки, raspisanie, otmetki, …). Хранится одна строка на браузер, раздел и час:
+// pulse(h, p, s, t, d, n). d — устройство, его определяет сервер по заголовку User-Agent («phone|iOS|Safari»),
+// n — отпечаток сети: SHA-256 от IP-адреса с секретной солью, которая меняется каждые сутки. Сам IP не хранится
+// и из отпечатка не восстанавливается; по нему можно только посчитать, сколько разных сетей было за день.
+// Боты и поисковые роботы (по User-Agent) не считаются.
 // Админка (site/admin/) спрашивает GET с заголовком X-Admin-Token и получает: сколько сейчас на сайте,
 // сколько было за сегодня и за неделю, и график по часам за двое суток.
 //
@@ -121,7 +125,33 @@ const isAdmin = headers => {
   return !!token && sameSecret(headers['X-Admin-Token'] || headers['x-admin-token'] || '', token);
 };
 
-async function handle(method, body, headers, db, now = Date.now(), context = null) {
+/* ---------- устройство и сеть: только на сервере, по заголовкам запроса ---------- */
+const BOT = /bot\/|\bbot\b|telegrambot|twitterbot|crawl|spider|slurp|headless|lighthouse|pagespeed|preview|facebookexternalhit|vkshare|python|curl|wget|node-fetch|axios|go-http/i;
+function device(ua, touch) {
+  ua = String(ua || '');
+  let os = 'другая';
+  if (/iPhone|iPod/.test(ua)) os = 'iOS';
+  else if (/iPad/.test(ua) || (/Macintosh/.test(ua) && touch)) os = 'iPadOS';
+  else if (/Android/.test(ua)) os = 'Android';
+  else if (/Windows/.test(ua)) os = 'Windows';
+  else if (/CrOS/.test(ua)) os = 'ChromeOS';
+  else if (/Mac OS X|Macintosh/.test(ua)) os = 'macOS';
+  else if (/Linux/.test(ua)) os = 'Linux';
+  const kind = os === 'iPadOS' || /Tablet/i.test(ua) || (os === 'Android' && !/Mobile/.test(ua)) ? 'tablet'
+    : os === 'iOS' || /Mobi|Android/.test(ua) ? 'phone' : 'desktop';
+  const br = /YaBrowser|YaSearchBrowser/.test(ua) ? 'Яндекс Браузер' : /Edg[A-Z]?\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera'
+    : /SamsungBrowser/.test(ua) ? 'Samsung' : /Firefox|FxiOS/.test(ua) ? 'Firefox' : /Chrome|CriOS|Chromium/.test(ua) ? 'Chrome'
+    : /Safari/.test(ua) ? 'Safari' : 'другой';
+  return kind + '|' + os + '|' + br;
+}
+function netPrint(ip, now) {
+  if (!ip) return '';
+  const day = new Date(now + MSK).toISOString().slice(0, 10);   // соль меняется в полночь по Москве
+  const salt = crypto.createHmac('sha256', process.env.ADMIN_TOKEN || 'arktika-pulse').update('net|' + day).digest();
+  return crypto.createHmac('sha256', salt).update(String(ip)).digest('hex').slice(0, 16);
+}
+
+async function handle(method, body, headers, db, now = Date.now(), context = null, ip = '') {
   if (method === 'POST' && body && body.action) {                    // команды админки
     if (!isAdmin(headers)) return [403, { error: 'Нужен пароль администратора.' }];
     if (body.action === 'banner') {
@@ -152,7 +182,10 @@ async function handle(method, body, headers, db, now = Date.now(), context = nul
     if (!/^[\w-]{8,40}$/.test(s) || !/^[a-z]{2,20}$/.test(p)) return [400, { error: 'bad' }];
     const day = new Date(now).toISOString().slice(0, 10);
     if (day !== capDay) { capDay = day; capCount = 0; }
-    if (++capCount <= DAILY_CAP) await db.beat({ h: Math.floor(now / HOUR), p, s, t: now });   // сверх лимита молча не пишем
+    const ua = headers['User-Agent'] || headers['user-agent'] || '';
+    if (BOT.test(ua)) return [200, {}];                                // роботов не считаем
+    const d = device(ua, body.m === 1), n = netPrint(ip, now);
+    if (++capCount <= DAILY_CAP) await db.beat({ h: Math.floor(now / HOUR), p, s, t: now, d, n });   // сверх лимита молча не пишем
     const b = liveBanner(await getConfig(db, now), now);
     return [200, b && (!b.sections.length || b.sections.includes(p)) ? { b: { id: b.id, text: b.text, kind: b.kind } } : {}];
   }
@@ -180,9 +213,13 @@ function memoryDb() {
       const by = (filter) => { const m = distinct(filter, r => ({ g: r.p, v: r.s })); const o = {}; for (const [p, set] of m) o[p] = set.size; return o; };
       const all = (filter) => new Set([...rows.values()].filter(filter).map(r => r.s)).size;
       const on = r => r.h >= c.h - 1 && r.t > c.cut, day = r => r.h >= c.dayStart, week = r => r.h >= c.weekStart;
-      const hourly = [];
+      const nets = f => new Set([...rows.values()].filter(r => f(r) && r.n).map(r => r.n)).size;
+      const hourly = [], hourlyTotal = [], devices = {};
       for (const [k, set] of distinct(r => r.h >= c.from48, r => ({ g: r.h + '|' + r.p, v: r.s }))) { const [h, p] = k.split('|'); hourly.push({ h: +h, p, n: set.size }); }
-      return { online: by(on), onlineTotal: all(on), today: by(day), todayTotal: all(day), weekTotal: all(week), hourly };
+      for (const [h, set] of distinct(r => r.h >= c.from48, r => ({ g: r.h, v: r.s }))) hourlyTotal.push({ h: +h, n: set.size });
+      for (const [d, set] of distinct(r => day(r) && r.d, r => ({ g: r.d, v: r.s }))) devices[d] = set.size;
+      return { online: by(on), onlineTotal: all(on), today: by(day), todayTotal: all(day), weekTotal: all(week), hourly, hourlyTotal,
+        devices, onlineNets: nets(on), todayNets: nets(day) };
     },
     async purge(h) { for (const [k, r] of rows) if (r.h < h) rows.delete(k); },
     async getKv(k) { return kv.get(k) || null; },
@@ -194,7 +231,7 @@ function memoryDb() {
 let ydb = null, slow = null;
 const SLOW_MS = 10 * 60e3;
 function ydbDb(context) {
-  const { Driver, TokenAuthService, getCredentialsFromEnv, TypedValues, TypedData, Types, TableDescription, Column } = require('ydb-sdk');
+  const { Driver, TokenAuthService, getCredentialsFromEnv, TypedValues, TypedData, Types, TableDescription, AlterTableDescription, Column } = require('ydb-sdk');
   const tok = context && context.token && context.token.access_token;
   if (!ydb || (tok && tok !== ydb.tok)) {
     if (ydb) ydb.driver.destroy().catch(() => {});
@@ -210,8 +247,17 @@ function ydbDb(context) {
         try { await s.describeTable('pulse'); } catch (e) {
           await s.createTable('pulse', new TableDescription()
             .withColumns(new Column('h', Types.optional(Types.UINT32)), new Column('p', Types.optional(Types.UTF8)),
-              new Column('s', Types.optional(Types.UTF8)), new Column('t', Types.optional(Types.UINT64)))
+              new Column('s', Types.optional(Types.UTF8)), new Column('t', Types.optional(Types.UINT64)),
+              new Column('d', Types.optional(Types.UTF8)), new Column('n', Types.optional(Types.UTF8)))
             .withPrimaryKeys('h', 'p', 's'));
+        }
+        // таблица из прошлой версии — дописываем столбцы устройства и сети (один раз)
+        const have = new Set(((await s.describeTable('pulse')).columns || []).map(c => c.name));
+        const add = ['d', 'n'].filter(c => !have.has(c));
+        if (add.length) {
+          const alter = new AlterTableDescription();
+          alter.addColumns = add.map(c => new Column(c, Types.optional(Types.UTF8)));
+          await s.alterTable('pulse', alter);
         }
       });
       return driver;
@@ -230,29 +276,44 @@ function ydbDb(context) {
   const toObj = rows => { const o = {}; for (const r of rows || []) o[r.p] = Number(r.n); return o; };
   return {
     async beat(r) {
-      await q('DECLARE $h AS Uint32; DECLARE $p AS Utf8; DECLARE $s AS Utf8; DECLARE $t AS Uint64; UPSERT INTO pulse (h, p, s, t) VALUES ($h, $p, $s, $t);',
-        { $h: H(r.h), $p: U(r.p), $s: U(r.s), $t: T(r.t) });
+      await q('DECLARE $h AS Uint32; DECLARE $p AS Utf8; DECLARE $s AS Utf8; DECLARE $t AS Uint64; DECLARE $d AS Utf8; DECLARE $n AS Utf8;' +
+        ' UPSERT INTO pulse (h, p, s, t, d, n) VALUES ($h, $p, $s, $t, $d, $n);',
+        { $h: H(r.h), $p: U(r.p), $s: U(r.s), $t: T(r.t), $d: U(r.d || ''), $n: U(r.n || '') });
     },
     async stats(c) {
       const one = rows => Number(((rows || [])[0] || {}).n || 0);
-      // «Сейчас» и «сегодня» — каждый раз; неделя и график за двое суток читают много строк, поэтому не чаще раза в 10 минут.
-      const [onBy, onAll, dayBy, dayAll] = await q([
+      // «Сейчас», «сегодня» и текущий час — каждый раз (график живой); неделя, прошлые часы, устройства и сети читают
+      // много строк, поэтому не чаще раза в 10 минут.
+      const [onBy, onAll, onNets, dayBy, dayAll, hourBy, hourAll] = await q([
           'DECLARE $h AS Uint32; DECLARE $cut AS Uint64; DECLARE $day AS Uint32;',
           'SELECT p, COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $h - 1 AND t > $cut GROUP BY p;',
           'SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $h - 1 AND t > $cut;',
+          'SELECT COUNT(DISTINCT n) AS n FROM pulse WHERE h >= $h - 1 AND t > $cut AND n IS NOT NULL AND n != ""u;',
           'SELECT p, COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $day GROUP BY p;',
-          'SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $day;'].join('\n'),
+          'SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $day;',
+          'SELECT p, COUNT(*) AS n FROM pulse WHERE h = $h GROUP BY p;',
+          'SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h = $h;'].join('\n'),
         { $h: H(c.h), $cut: T(c.cut), $day: H(c.dayStart) });
       if (!slow || Date.now() - slow.at > SLOW_MS) {
-        const [weekAll, hourly] = await q([
-          'DECLARE $week AS Uint32; DECLARE $from AS Uint32;',
+        const [weekAll, hourly, hourlyTotal, devices, dayNets] = await q([
+          'DECLARE $week AS Uint32; DECLARE $from AS Uint32; DECLARE $day AS Uint32;',
           'SELECT COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $week;',
-          'SELECT h, p, COUNT(*) AS n FROM pulse WHERE h >= $from GROUP BY h, p ORDER BY h LIMIT 1000;'].join('\n'),
-          { $week: H(c.weekStart), $from: H(c.from48) });
-        slow = { at: Date.now(), weekTotal: one(weekAll), hourly: (hourly || []).map(r => ({ h: Number(r.h), p: r.p, n: Number(r.n) })) };
+          'SELECT h, p, COUNT(*) AS n FROM pulse WHERE h >= $from GROUP BY h, p ORDER BY h LIMIT 1000;',
+          'SELECT h, COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $from GROUP BY h ORDER BY h LIMIT 100;',
+          'SELECT d, COUNT(DISTINCT s) AS n FROM pulse WHERE h >= $day AND d IS NOT NULL AND d != ""u GROUP BY d LIMIT 200;',
+          'SELECT COUNT(DISTINCT n) AS n FROM pulse WHERE h >= $day AND n IS NOT NULL AND n != ""u;'].join('\n'),
+          { $week: H(c.weekStart), $from: H(c.from48), $day: H(c.dayStart) });
+        const dev = {}; for (const r of devices || []) dev[r.d] = Number(r.n);
+        slow = { at: Date.now(), weekTotal: one(weekAll), hourly: (hourly || []).map(r => ({ h: Number(r.h), p: r.p, n: Number(r.n) })),
+          hourlyTotal: (hourlyTotal || []).map(r => ({ h: Number(r.h), n: Number(r.n) })), devices: dev, todayNets: one(dayNets) };
       }
+      // текущий час подставляем свежий поверх закэшированного графика
+      const hourly = slow.hourly.filter(r => r.h !== c.h).concat((hourBy || []).map(r => ({ h: c.h, p: r.p, n: Number(r.n) })));
+      const hourlyTotal = slow.hourlyTotal.filter(r => r.h !== c.h).concat([{ h: c.h, n: one(hourAll) }]);
       const todayTotal = one(dayAll);
-      return { online: toObj(onBy), onlineTotal: one(onAll), today: toObj(dayBy), todayTotal, weekTotal: Math.max(slow.weekTotal, todayTotal), hourly: slow.hourly };
+      return { online: toObj(onBy), onlineTotal: one(onAll), onlineNets: one(onNets), today: toObj(dayBy), todayTotal,
+        weekTotal: Math.max(slow.weekTotal, todayTotal), hourly, hourlyTotal, devices: slow.devices, todayNets: slow.todayNets,
+        slowAt: slow.at };
     },
     async purge(h) { await q('DECLARE $h AS Uint32; DELETE FROM pulse WHERE h < $h;', { $h: H(h) }); },
     async getKv(k) { const [rows] = await q('DECLARE $k AS Utf8; SELECT v FROM admin_kv WHERE k = $k;', { $k: U(k) }); return rows && rows[0] ? rows[0].v : null; },
@@ -273,11 +334,13 @@ module.exports.handler = async (event, context) => {
   try { body = body ? JSON.parse(body) : {}; } catch (e) { return reply(400, { error: 'bad' }, head); }
   try {
     const db = process.env.YDB_DATABASE ? ydbDb(context) : (mem = mem || memoryDb());
-    const [status, obj] = await handle(method, body, h, db, Date.now(), context);
+    const ip = (event.requestContext && event.requestContext.identity && event.requestContext.identity.sourceIp)
+      || String(h['X-Forwarded-For'] || h['x-forwarded-for'] || '').split(',')[0].trim();
+    const [status, obj] = await handle(method, body, h, db, Date.now(), context, ip);
     return reply(status, obj || {}, head);
   } catch (e) {
     console.error('pulse', e && e.message);
     return reply(500, { error: 'Статистика сейчас недоступна.' }, head);
   }
 };
-module.exports._test = { handle, memoryDb, clock, parseCsv, billingUsage };
+module.exports._test = { handle, memoryDb, clock, parseCsv, billingUsage, device, netPrint };
