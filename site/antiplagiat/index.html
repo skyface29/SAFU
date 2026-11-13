@@ -82,6 +82,23 @@ button{cursor:pointer}
 .eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:13px;letter-spacing:.02em;color:#c9d6ea;border:1px solid rgba(255,255,255,.12);
   background:rgba(8,14,28,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:7px 14px 7px 10px;border-radius:999px}
 .eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--a1);box-shadow:0 0 0 4px rgba(94,242,208,.15),0 0 12px var(--a1);animation:beat 2.4s ease-in-out infinite}
+.sto-promo{display:flex;width:max-content;max-width:100%;align-items:center;gap:12px;margin:0 0 14px;padding:8px 16px 8px 8px;border-radius:999px;text-decoration:none;color:#fff;font-size:15px;line-height:1.3;
+  background:linear-gradient(rgba(8,14,28,.72),rgba(8,14,28,.72)) padding-box,var(--aurora) border-box;border:1.5px solid transparent;box-shadow:0 0 28px rgba(94,242,208,.28);transition:transform .25s var(--ease),box-shadow .25s}
+.sto-promo:hover{transform:translateY(-2px);box-shadow:0 0 40px rgba(94,242,208,.45)}
+.sto-promo b{flex:none;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#04121f;background:var(--aurora);padding:5px 10px;border-radius:999px;animation:promo 2.4s ease-in-out infinite}
+.sto-promo strong{color:var(--a1)}
+.sto-promo svg{flex:none;width:18px;height:18px;color:var(--a1)}
+@keyframes promo{50%{box-shadow:0 0 0 6px rgba(94,242,208,0),0 0 16px rgba(94,242,208,.7)}}
+.sto-cta{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:999px;text-decoration:none;font-weight:600;font-size:16px;color:#fff;
+  background:linear-gradient(rgba(8,14,28,.55),rgba(8,14,28,.55)) padding-box,var(--aurora) border-box;border:2px solid transparent;box-shadow:0 0 24px rgba(90,160,255,.3);transition:transform .25s var(--ease),box-shadow .25s}
+.sto-cta:hover{transform:translateY(-2px);box-shadow:0 0 36px rgba(94,242,208,.45)}
+.sto-cta svg{width:20px;height:20px;color:var(--a1)}
+.sto-cta em{font-style:normal;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#04121f;background:var(--a1);padding:3px 8px;border-radius:999px}
+.links a.nav-sto{color:#fff;font-weight:600}
+.nav-sto sup{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#04121f;background:var(--a1);padding:1px 5px;border-radius:5px;margin-left:5px;vertical-align:4px}
+@media (max-width:560px){.sto-promo{font-size:13.5px;gap:9px;padding:7px 12px 7px 7px;width:auto}.sto-cta{white-space:nowrap;font-size:15px;padding:13px 18px;gap:8px}.sto-cta em{font-size:10px;padding:3px 7px}}
+.lite .sto-promo b{animation:none}
+.js .sto-promo{animation:up 1s .25s var(--ease) both}
 @keyframes beat{50%{box-shadow:0 0 0 7px rgba(94,242,208,0),0 0 12px var(--a1)}}
 h1{font:500 clamp(36px,6.4vw,84px)/1.02 var(--display);letter-spacing:-.045em;margin:26px 0 22px;max-width:11.5em;text-wrap:balance}
 h1 em{font-style:normal;background:var(--aurora);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 8s ease-in-out infinite alternate}
@@ -509,19 +526,20 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M18 3l7 11-3.5 2.2L26 20H10l3.6-6L11 11.6z" fill="#fff"/><path d="M18 3l7 11-3.5 2.2L18 12z" fill="#cfe6ff"/><path d="M8 23h20l-3.4 6.2L18 32l-6.6-2.8z" fill="#5aa0ff" opacity=".85"/><path d="M3 21.5h30" stroke="#a6e6ff" stroke-width="1.4" stroke-linecap="round"/></svg>
       Айсберг<small>Арктика</small>
     </a>
-    <div class="links"><a href="#check">Проверка</a><a href="#sto">Оформление по СТО</a><a href="#how">Как работает</a><a href="#why">Возможности</a><a href="#teachers">Преподавателям</a></div>
+    <div class="links"><a href="#check">Проверка</a><a href="#sto" class="nav-sto">Оформление по СТО<sup>new</sup></a><a href="#how">Как работает</a><a href="#why">Возможности</a><a href="#teachers">Преподавателям</a></div>
     <div class="nav-r">
       <button class="ghost" id="btnSettings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/></svg>Коллекция</button>
       <button class="ghost icon" id="btnTheme" title="Полярная ночь / полярный день" aria-label="Сменить тему"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M5.3 18.7l1.5-1.5M17.2 6.8l1.5-1.5"/></svg></button>
     </div>
   </nav>
   <div class="hero-in">
+    <a class="sto-promo" href="#sto"><b>Новое</b><span>Оформление работы по СТО САФУ за 10 секунд — <strong>бесплатно</strong></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
     <div class="eyebrow"><i></i>Для студентов любого вуза · без регистрации</div>
     <h1>Видим то, что скрыто <em>под водой</em></h1>
     <p class="sub">Проверка курсовой, диплома или реферата на заимствования с полным отчётом: интернет, Википедия и научные статьи. Замечает перефразирование и уловки, а ещё проверяет оформление по ГОСТу.</p>
     <div class="cta">
       <a class="primary" href="#check">Проверить текст<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      <a class="ghost lg" href="#sto">Оформить по СТО САФУ</a>
+      <a class="sto-cta" href="#sto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 14l2 2 4-4"/></svg>Оформить по СТО САФУ<em>бесплатно</em></a>
     </div>
     <dl class="stats">
       <div><dt>≈ <span data-count="1">1</span> мин</dt><dd>стандартная проверка</dd></div>
