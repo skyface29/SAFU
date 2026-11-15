@@ -195,6 +195,14 @@ button.card:hover{border-color:var(--rim2);background:var(--ice2);transform:tran
 .subbar b{font:700 13px var(--ff-d)}
 .subbar .seg button{padding:6px 14px;font-size:13.5px}
 .subbar small{color:var(--tx3);font-weight:600;font-size:12.5px}
+.msq{width:100%;box-sizing:border-box;margin:2px 0 8px;padding:10px 12px;border-radius:12px;border:1px solid var(--rim2);background:var(--sky);color:var(--tx);font:inherit;font-size:15px}
+.msr{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--rim);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.msr[hidden]{display:none}
+.msr input{width:20px;height:20px;flex:none;accent-color:var(--lec);margin:0}
+.msr .n{font-weight:700;font-size:14px;line-height:1.3}
+.msr .n small{display:block;font-size:12px;font-weight:600;color:var(--tx3)}
+.msr input:not(:checked)+.n{opacity:.5}
+.msa{display:flex;gap:8px;margin-top:12px}
 .mine{border:0;background:none;padding:0 0 0 6px;color:var(--aur1);font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap}
 .mine.alt{color:var(--tx3)}
 .subg{display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:20px;margin-right:6px;vertical-align:1px;white-space:nowrap;
@@ -330,7 +338,7 @@ var TYPES={add:'Новая пара',del:'Отменена',mod:'Изменен�
 var KEY='safu.mirror.v1', mem={};
 try{mem=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(mem));}catch(e){}}
-if(location.hash){var h='';try{h=decodeURIComponent(location.hash.slice(1));}catch(e){}if(/^g\d{4,7}( Д)?$/.test(h)){mem.mode='group';mem.group=h.slice(1);}}
+if(location.hash){var h='';try{h=decodeURIComponent(location.hash.slice(1));}catch(e){}if(/^g\d{4,7}(-\d{1,2}|[А-ЯЁ]| Д)?$/.test(h)){mem.mode='group';mem.group=h.slice(1);}}
 mem.mode=mem.mode||'group'; mem.seen=mem.seen||{};
 
 /* ---------- время ---------- */
@@ -381,6 +389,28 @@ function groupSubs(ids,num){var s={};ids.forEach(function(i){var n=subNum(L[i],n
 /* «Моя подгруппа»: номер на группу (mem.sub) + выбор варианта для предмета, где подгруппы не номерные (mem.pick) */
 function mySub(){return (mem.sub||{})[mem.group]||'';}
 function myFilter(ids){var sel=mySub();if(!sel)return ids;return ids.filter(function(i){var n=subNum(L[i],mem.group);return !n||n===sel;});}
+/* «Мои предметы» (идея #17): со 2 курса много дисциплин по выбору — скрытые предметы группы (mem.hide[группа][предмет]) не показываются нигде */
+function myHide(){return (mem.hide||{})[mem.group]||{};}
+function hideFilter(ids){var h=myHide();for(var k in h)return ids.filter(function(i){return !h[S[L[i][2]]];});return ids;}
+var MS=[];
+function openMySubjects(){var gi=gIdx[mem.group];if(gi==null)return;var ids=byGroup[gi]||[],now=Date.now(),c={},fut={};
+  ids.forEach(function(i){var n=S[L[i][2]],t=L[i][0];c[n]=1;if(BASE+t*6e4>now)(fut[n]=fut[n]||{})[t]=1;});   /* подгруппы в одно время — одно занятие */
+  MS=Object.keys(c).sort(function(a,b){return a.localeCompare(b,'ru');});var h=myHide(),off=MS.filter(function(n){return h[n];}).length;
+  var out='<div class="top"><h2>Мои предметы</h2><button class="btn icon" data-close aria-label="Закрыть">✕</button></div>'+
+    '<p class="wksum">'+(off?'В расписании '+(MS.length-off)+' из '+MS.length:'Показаны все '+MS.length+' '+plural(MS.length,'предмет','предмета','предметов'))+'</p>'+
+    '<input class="msq" id="msq" type="search" placeholder="Найти предмет" aria-label="Найти предмет"><div class="msl">'+
+    MS.map(function(n,i){var f=Object.keys(fut[n]||{}).length;return '<label class="msr" data-n="'+esc(n.toLowerCase())+'"><input type="checkbox" data-ms="'+i+'"'+(h[n]?'':' checked')+'><span class="n">'+esc(n)+
+      '<small>'+(f?'впереди '+f+' '+plural(f,'занятие','занятия','занятий'):'в этом семестре больше нет')+'</small></span></label>';}).join('')+'</div>'+
+    '<div class="msa"><button class="btn" id="msAll">Отметить все</button><button class="btn" id="msNone">Снять все</button></div>'+
+    '<p class="hint" style="margin-top:12px">Сними галочки с предметов по выбору, которые ты не выбирал, — их пары пропадут из расписания, «Сейчас идёт», итогов недели и картинки «Поделиться». Выбор хранится в этом браузере. Свою подгруппу выбирай над расписанием, а «это я» у пары запомнит твой вариант.</p>';
+  sheet(out);
+  function set(i,on){var n=MS[i];mem.hide=mem.hide||{};var g=mem.hide[mem.group]=mem.hide[mem.group]||{};if(on)delete g[n];else g[n]=1;
+    if(!Object.keys(g).length)delete mem.hide[mem.group];save();}
+  function sum(){var h2=myHide(),o=MS.filter(function(n){return h2[n];}).length;paneEl.querySelector('.wksum').textContent=o?'В расписании '+(MS.length-o)+' из '+MS.length:'Показаны все '+MS.length+' '+plural(MS.length,'предмет','предмета','предметов');}
+  paneEl.querySelectorAll('[data-ms]').forEach(function(b){b.onchange=function(){set(+b.dataset.ms,b.checked);sum();};});
+  function all(on){paneEl.querySelectorAll('.msr:not([hidden]) [data-ms]').forEach(function(b){b.checked=on;set(+b.dataset.ms,on);});sum();}
+  paneEl.querySelector('#msAll').onclick=function(){all(true);};paneEl.querySelector('#msNone').onclick=function(){all(false);};
+  var q=paneEl.querySelector('#msq');q.oninput=function(){var v=q.value.trim().toLowerCase();paneEl.querySelectorAll('.msr').forEach(function(r){r.hidden=!!v&&r.dataset.n.indexOf(v)<0;});};}
 function pickKey(l){return S[l[4]]+'|'+S[l[7]];}
 function myPick(subj){return ((mem.pick||{})[mem.group]||{})[subj];}
 function applyPick(grp){if(grp.length<2)return grp;var k=myPick(S[L[grp[0]][2]]);if(!k)return grp;
@@ -502,7 +532,7 @@ function showSchools(){
     if(!v){res.innerHTML='';sl.hidden=false;return;}sl.hidden=true;
     res.innerHTML=groupCards(AG.filter(function(g){return matchGroup(g,v);}),true);bindGroups(res);};
 }
-function matchGroup(g,v){v=v.toLowerCase();return g[0].indexOf(v)>=0||(g[3]||'').toLowerCase().indexOf(v)>=0;}
+function matchGroup(g,v){v=v.toLowerCase();return g[0].toLowerCase().indexOf(v)>=0||(g[3]||'').toLowerCase().indexOf(v)>=0;}
 function groupCards(list,showSchool){
   if(!list.length)return '<div class="empty">Ничего не нашлось</div>';
   var by={};list.forEach(function(g){var c=g[2]||0;(by[c]||(by[c]=[])).push(g);});
@@ -548,7 +578,7 @@ function relevant(){
   var isT=mem.mode==='teacher';
   var list=CHANGES.filter(function(x){
     if(isT){var a=x.a&&x.a.tch||'',b=x.b&&x.b.tch||'';return a.indexOf(mem.teacher)>=0||b.indexOf(mem.teacher)>=0;}
-    return x.g===mem.group;});
+    if(x.g!==mem.group)return false;var h=myHide(),l=x.a||x.b;return !(l&&h[l.subj]);});   /* правки скрытых предметов не считаем */
   if(isT){var seen={};list=list.filter(function(x){var k=x.at+'|'+x.t+'|'+JSON.stringify(x.a||x.b);if(seen[k])return false;seen[k]=1;return true;});}
   return list;
 }
@@ -606,7 +636,8 @@ function showSched(keep){
   else{var gi=gIdx[mem.group];if(gi==null){view=null;return SCH[mem.school]?showGroups():showSchools();}var g=G[gi];
     if(!SCH[mem.school]||g[1].indexOf(mem.school)<0){mem.school=g[1][0];save();}ids=byGroup[gi]||[];title='Группа '+g[0];
     var sc=SCH[mem.school]||SCH[g[1][0]];meta=[g[3],sc&&sc.short,g[2]?g[2]+' курс':''].filter(Boolean).join(' · ');
-    var subs=groupSubs(ids,mem.group);if(subs.indexOf(mySub())<0&&mem.sub)delete mem.sub[mem.group];ids=myFilter(ids);}
+    var subs=groupSubs(ids,mem.group);if(subs.indexOf(mySub())<0&&mem.sub)delete mem.sub[mem.group];ids=myFilter(ids);
+    var nAll=ids.length,hidN=Object.keys(myHide()).length;ids=hideFilter(ids);}
   var now=Date.now(),today=dk(now),w0=weekOf(minT),w1=weekOf(maxT-1);
   if(week==null){week=weekOf(now);if(wd(today)===6)week+=7;if(week<w0)week=w0;if(week>w1)week=w1;}
   var days={};ids.forEach(function(i){var k=dk(BASE+L[i][0]*6e4);if(k>=week&&k<week+7)(days[k]||(days[k]=[])).push(i);});
@@ -619,7 +650,11 @@ function showSched(keep){
   var h='<div class="crumbs"><button id="chg">← '+(isT?'Другой преподаватель':'Сменить группу')+'</button></div>'+
     '<div class="who"><div><h1>'+esc(title)+'</h1><div class="meta">'+esc(meta)+'</div></div><div class="tools">'+
     (viewingSnap?'':'<button class="btn pill" id="chBtn">Правки'+(cnt?' <span class="badge">'+cnt+'</span>':'')+'</button>')+
-    '<button class="btn pill" id="arBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Архив</button><button class="btn pill" id="shBtn">Поделиться</button></div></div>';
+    '<button class="btn pill" id="arBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Архив</button><button class="btn pill" id="shBtn">Поделиться</button>'+(isT?'':'<button class="btn pill" id="msBtn">Мои предметы'+(hidN?' <span class="badge">−'+hidN+'</span>':'')+'</button>')+'</div></div>';
+  /* баг #19: 111512 и 111512У (131600 и 131600-2…) — разные группы; раньше их пары были слиты, кто выбрал «не ту» — увидит соседку */
+  if(!isT){var base=(/^\d+/.exec(mem.group)||[''])[0],sib=base?AG.filter(function(x){return x[0]!==mem.group&&(/^\d+/.exec(x[0])||[''])[0]===base;}):[];
+    if(sib.length)h+='<div class="subbar"><small>С этим номером есть и '+(sib.length>1?'другие группы':'другая группа')+':</small> '+sib.map(function(x){return '<a class="mine alt" data-og="'+esc(x[0])+'">'+esc(x[0])+'</a>';}).join(' ')+'</div>';}
+  if(!isT&&hidN)h+='<div class="subbar"><small>Скрыто '+hidN+' '+plural(hidN,'предмет','предмета','предметов')+' по выбору — '+(nAll-ids.length)+' '+plural(nAll-ids.length,'занятие','занятия','занятий')+' не показано</small><button class="mine alt" id="msBar">изменить</button></div>';
   if(!isT&&subs.length>1){var cur=mySub();
     h+='<div class="subbar"><b>Моя подгруппа</b><div class="seg" role="tablist"><button data-sub=""'+(cur?'':' class="on"')+'>Все</button>'+
       subs.map(function(n){return '<button data-sub="'+n+'"'+(cur===n?' class="on"':'')+'>'+n+'</button>';}).join('')+'</div>'+
@@ -663,6 +698,7 @@ function showSched(keep){
   var cb=document.getElementById('chBtn');if(cb)cb.onclick=openChanges;
   document.getElementById('arBtn').onclick=openArchive;
   document.getElementById('shBtn').onclick=share;
+  ['msBtn','msBar'].forEach(function(id){var b=document.getElementById(id);if(b)b.onclick=openMySubjects;});
   app.querySelectorAll('.strip [data-d]').forEach(function(b){b.onclick=function(){selDay=+b.dataset.d;showSched();};});
   app.querySelectorAll('[data-ot]').forEach(function(a){a.onclick=function(){openTeacher(a.dataset.ot);};});
   app.querySelectorAll('[data-og]').forEach(function(a){a.onclick=function(){openGroup(a.dataset.og);};});
