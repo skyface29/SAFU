@@ -143,6 +143,47 @@ h1 em{font-style:normal;background:var(--aurora);background-size:200% 100%;-webk
 .sto-delta{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:14.5px}
 .sto-delta b{font:600 20px var(--display)}
 .sto-more{border-top:1px solid var(--line);padding-top:12px}
+/* вид работы: проверка по его правилам */
+.sto-kind{display:flex;flex-direction:column;gap:10px}
+.sto-steps{display:flex;gap:6px;list-style:none;margin:0;padding:0;counter-reset:s}
+.sto-steps li{flex:1;display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:14px;background:var(--glass);border:1px solid var(--line);color:var(--muted);font-size:13.5px;font-weight:500;transition:all .3s var(--ease)}
+.sto-steps li b{display:grid;place-items:center;width:22px;height:22px;flex:none;border-radius:50%;border:1.5px solid currentColor;font-size:12px}
+.sto-steps li.on{color:var(--ink);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.sto-steps li.on b{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.sto-steps li.done{color:var(--ok)}
+.sto-steps li.done b{background:var(--ok);border-color:var(--ok);color:var(--bg);font-size:0}
+.sto-steps li.done b::after{content:'✓';font-size:12px}
+@media (max-width:560px){.sto-steps li{font-size:12px;padding:8px;gap:6px}.sto-steps li b{width:20px;height:20px}}
+.sto-kind .kh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sto-kind .kh b{font:600 16px var(--display)}
+.sto-kind .kh small{color:var(--muted);font-size:13px}
+.kchips{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.kchip{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border-radius:14px;border:1px solid var(--line2);background:var(--glass);color:var(--ink);font:500 14px var(--body);text-align:left;cursor:pointer;transition:border-color .2s,background .2s,transform .2s var(--ease)}
+.kchip small{color:var(--muted);font-size:12px}
+.kchip:hover{border-color:var(--accent)}
+.kchip.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);box-shadow:0 0 0 1px var(--accent) inset}
+.kchip.on b{color:var(--accent)}
+.kchip b{font-weight:600}
+.kchips.few .kchip:nth-child(n+7){display:none}
+.kmore{align-self:flex-start}
+.ready{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;padding:18px;border:1px solid var(--line2);border-radius:20px;background:var(--glass);margin:0 0 12px}
+.ready svg{width:92px;height:92px}
+.ready .rv{font:700 22px var(--display)}
+.ready h4{margin:0 0 4px;font:600 17px var(--display)}
+.ready p{margin:0;color:var(--ink2);font-size:14px}
+.ready .facts{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px;color:var(--muted)}
+.ready .facts b{color:var(--ink);font-weight:600}
+.sto-res li.err i{color:var(--exact)}
+.sto-res li.warn i{color:var(--para)}
+.sto-res li small.how{display:block;color:var(--muted)}
+.kpill{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;vertical-align:1px;background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--ink2)}
+.kpill.auto{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.mystats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.mystats div{padding:10px 12px;border-radius:14px;background:var(--glass);border:1px solid var(--line)}
+.mystats b{display:block;font:600 19px var(--display)}
+.mystats small{color:var(--muted);font-size:12px}
+.mysave{margin-top:8px;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,var(--ok) 10%,transparent);color:var(--ink2);font-size:13.5px}
+@media (max-width:560px){.kchips{grid-template-columns:repeat(2,minmax(0,1fr))}.mystats{grid-template-columns:repeat(2,1fr)}.ready{grid-template-columns:1fr;justify-items:start}}
 .sto-more summary{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;padding:4px 0;text-align:left}
 .sto-more summary::before{grid-row:1/3}
 .sto-more summary::-webkit-details-marker{display:none}
@@ -659,11 +700,14 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
   <div class="sec-h reveal"><div><span class="label">Новое · СТО САФУ 2026</span><h3>Оформим работу по СТО САФУ за пару секунд</h3></div>
     <p>Загрузите .docx и скачайте готовый файл: поля, шрифты, заголовки, рисунки, таблицы, список источников, сноски и номера страниц станут как в стандарте. Бесплатно, файл никуда не загружается.</p></div>
   <div class="panel sto-one" id="stoFmt">
+    <ol class="sto-steps" id="stoSteps" aria-label="Шаги"><li class="on"><b>1</b>Файл .docx</li><li><b>2</b>Вид работы</li><li><b>3</b>Скачать</li></ol>
     <div class="sto-drop" id="stoDrop" tabindex="0" role="button" aria-label="Выбрать файл .docx">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>
       <b id="stoName">Перетащите сюда работу в .docx</b><small id="stoHint">или нажмите, чтобы выбрать файл</small>
     </div>
     <input type="file" id="stoFile" accept=".docx" class="hide">
+    <div class="sto-kind hide" id="stoKind"><div class="kh"><b>Какая это работа?</b><small id="kNote">проверю по правилам именно для неё: нужно ли содержание, что обязательно и какой объём</small></div>
+      <div class="kchips few" id="kChips" role="radiogroup" aria-label="Вид работы"></div><button class="link kmore" id="kMore" type="button">Все виды работ ›</button></div>
     <button class="primary block" id="stoGo" disabled>Оформить по СТО САФУ<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     <div class="err" id="stoErr"></div>
     <div class="sto-res" id="stoRes"></div>
@@ -803,6 +847,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 <script src="engine.js"></script>
 <script src="format.js"></script>
 <script src="sto-tools.js"></script>
+<script src="work-kinds.js"></script>
 <script>
 /* Адрес помощника, который скачивает страницы сайтов и выдачу поисковиков (antiplagiat-api/ в репозитории).
    Пусто — работает только Википедия и своя коллекция. Для проверки у себя: python3 antiplagiat/site_dev.py */
@@ -1244,16 +1289,41 @@ function renderGost(){
 document.addEventListener('click', e => { const h = e.target.closest('[data-gost]'); if(h) h.parentElement.classList.toggle('closed'); });
 
 /* ---------- оформление по СТО САФУ ---------- */
-const STO = { file: null, url: null };
+const STO = { file: null, url: null, kind: null };
+function stoStep(n){ document.querySelectorAll('#stoSteps li').forEach((li, i) => { li.classList.toggle('done', i < n - 1); li.classList.toggle('on', i === n - 1); }); }
+/* ---------- вид работы ---------- */
+function kindChips(){
+  const K = WorkKinds.KINDS, keys = Object.keys(K);
+  // выбранный вид — всегда среди первых, чтобы не прятался под «Все виды»
+  const order = ['kursovaya','referat','esse','doklad','kontrol','laba','kproekt','praktika','rgr','nir','statya','tezisy','vkr','specialist','magistr'].filter(k => K[k]);
+  const sel = STO.kind, top = order.slice(0, 6);
+  if(sel && top.indexOf(sel) < 0){ order.splice(order.indexOf(sel), 1); order.splice(5, 0, sel); }
+  $('kChips').innerHTML = order.map(k => '<button type="button" class="kchip' + (k === sel ? ' on' : '') + '" role="radio" aria-checked="' + (k === sel) + '" data-kind="' + k + '"><b>' + esc(K[k].name) + '</b><small>' + esc(K[k].hint) + '</small></button>').join('');
+}
+function setKind(k, auto){
+  if(!WorkKinds.KINDS[k]) k = 'referat';
+  STO.kind = k; const K = WorkKinds.KINDS[k];
+  $('stoToc').checked = !!K.toc;   // содержание — только там, где оно нужно
+  $('kNote').textContent = (auto ? 'Похоже на «' + K.name + '» — если нет, выбери свой вид. ' : '') + (K.toc ? 'Содержание добавлю автоматически' : 'Содержание для этого вида не нужно') +
+    (K.pages ? ', обычный объём ' + K.pages[0] + '–' + K.pages[1] + ' стр.' : '') + (K.src ? ', источников от ' + K.src : '') + '.';
+  kindChips();
+  const w = { kursovaya: 'курсовую', kproekt: 'курсовой проект', referat: 'реферат', esse: 'эссе', doklad: 'доклад', kontrol: 'контрольную', laba: 'лабораторную', rgr: 'РГР', praktika: 'отчёт о практике', nir: 'отчёт о НИР', statya: 'статью', tezisy: 'тезисы', vkr: 'ВКР', specialist: 'дипломный проект', magistr: 'диссертацию' }[k];
+  $('stoGo').firstChild.textContent = 'Оформить ' + (w || 'работу') + ' по СТО';
+  if(!STO.last) stoStep(2);
+  if(STO.last) stoKindReport();
+}
+$('kChips').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if(b){ setKind(b.dataset.kind); try{ localStorage.setItem('sto.kind', b.dataset.kind); }catch(x){} } });
+$('kMore').onclick = () => { const c = $('kChips'); c.classList.toggle('few'); $('kMore').textContent = c.classList.contains('few') ? 'Все виды работ ›' : 'Свернуть'; };
 function stoPick(file){
   $('stoErr').textContent = ''; $('stoRes').innerHTML = '';
   if(!file) return;
   if(!/\.docx$/i.test(file.name)){ $('stoErr').textContent = /\.doc$/i.test(file.name) ? 'Это старый формат .doc. Откройте файл в Word и сохраните как .docx.' : 'Нужен файл Word в формате .docx.'; return; }
-  STO.file = file; $('stoName').textContent = file.name; $('stoHint').textContent = 'нажмите «Оформить по СТО» или выберите другой файл';
+  STO.file = file; STO.last = null; $('stoName').textContent = file.name; $('stoHint').textContent = 'нажмите «Оформить по СТО» или выберите другой файл';
   $('stoDrop').classList.add('has'); $('stoGo').disabled = false;
   STO.fileTitle = false;
   // данные со старого титульника работы: собираем титул по форме СТО без ручного ввода
-  STO.titleP = file.arrayBuffer().then(b => Formatter.readTitle(b)).then(d => {
+  $('stoKind').classList.remove('hide');
+  STO.titleP = file.arrayBuffer().then(b => Formatter.readTitle(b).catch(() => null).then(d => WorkKinds.guess(b, d && d.found ? d.type : null).then(k => { if(STO.file === file) setKind(k, true); return d; }))).then(d => {
     if(STO.file !== file || !d || !d.found) { titleSync(); return; }
     // поля конкретной работы берём из файла, а личные (ФИО, группа…) — если в файле они есть
     ['type','discipline','topic','school','student','gender','direction','course','group','teacher','year'].forEach(k => { if(d[k]) $(tId(k)).value = d[k]; });
@@ -1262,6 +1332,38 @@ function stoPick(file){
   }).catch(() => titleSync());
 }
 function stoOut(name){ return name.replace(/\.docx$/i, '') + ' (СТО САФУ).docx'; }
+/* «Готовность к сдаче»: оформление после правки + правила вида работы */
+async function stoKindReport(){
+  const L = STO.last, box = $('stoReady'); if(!L || !box) return;
+  let kc = null;
+  try{ kc = await WorkKinds.check(await L.blob.arrayBuffer(), STO.kind || 'referat', true); }catch(e){ box.innerHTML = ''; return; }
+  const gl = L.gost ? L.gost.items.filter(x => !x.ok && x.name !== 'Структура работы') : [];
+  const errs = kc.items.filter(x => x.level === 'err'), warns = kc.items.filter(x => x.level === 'warn');
+  let score = 100 - gl.length * 8 - errs.length * 14 - warns.length * 4;
+  score = Math.max(5, Math.min(100, score));
+  const col = score >= 90 ? 'var(--ok)' : score >= 70 ? 'var(--para)' : 'var(--exact)';
+  const C = 2 * Math.PI * 40, off = C * (1 - score / 100);
+  const head = score >= 95 ? 'Можно сдавать' : score >= 80 ? 'Почти готово' : score >= 60 ? 'Осталось доделать' : 'Нужно доработать';
+  const sub = (errs.length + warns.length + gl.length) ? 'Оформление исправлено автоматически. Ниже — что можно поправить только вручную: этого программа за тебя не напишет.' : 'Оформление по СТО и всё обязательное для вида «' + kc.name + '» на месте.';
+  const row = (lvl, t, tag, how) => '<li class="' + lvl + '"><i>' + (lvl === 'err' ? '!' : lvl === 'warn' ? '?' : '✓') + '</i><div>' + esc(t) + (tag ? '<span class="kpill' + (tag === 'исправлю' ? ' auto' : '') + '">' + tag + '</span>' : '') + (how ? '<small class="how">Как исправить: ' + esc(how) + '</small>' : '') + '</div></li>';
+  const list = errs.map(x => row('err', x.text, 'вручную', x.how)).concat(gl.map(x => row('err', x.name + ': ' + x.found + ' (нужно: ' + x.need + ')', 'вручную')), warns.map(x => row('warn', x.text, 'проверь', x.how)));
+  box.innerHTML = '<div class="ready"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40" fill="none" stroke="var(--line2)" stroke-width="9"/>' +
+    '<circle cx="50" cy="50" r="40" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 50 50)"/>' +
+    '<text x="50" y="57" text-anchor="middle" font-family="Unbounded,sans-serif" font-weight="700" font-size="22" fill="currentColor">' + score + '</text></svg>' +
+    '<div><h4>' + head + ' · ' + esc(kc.name) + '</h4><p>' + esc(sub) + '</p><div class="facts"><span>основная часть ≈ <b>' + kc.pages + ' ' + plural(kc.pages, 'стр.', 'стр.', 'стр.') + '</b></span><span><b>' + kc.words.toLocaleString('ru-RU') + '</b> ' + plural(kc.words, 'слово', 'слова', 'слов') + '</span>' +
+    (kc.found.bib != null ? '<span>источников: <b>' + kc.sources + '</b></span>' : '') + '<span>готовность: <b>' + score + '/100</b></span></div></div></div>' +
+    (list.length ? '<div class="gost" id="kindGist"><h4 data-gost><span>Проверка по виду «' + esc(kc.name) + '»</span><span class="tag' + (errs.length + gl.length ? ' bad' : '') + '">' + list.length + ' ' + plural(list.length, 'пункт', 'пункта', 'пунктов') + '</span></h4><ul>' + list.join('') + '</ul></div>' : '');
+}
+/* «Моя статистика» — только в этом браузере */
+function stoStats(r){
+  const st = lsGet('sto.stats', { works: 0, fixed: 0, notes: 0, since: Date.now() });
+  st.works++; st.fixed += r.report.length; st.notes += r.notes.length; lsSet('sto.stats', st);
+  const min = st.works * 25 + st.fixed * 2;   // грубо: ~25 минут ручного оформления на работу и пара минут на каждую правку
+  const h = min >= 90 ? Math.round(min / 6) / 10 + ' ч' : min + ' мин';
+  $('stoRes').insertAdjacentHTML('beforeend', '<details class="sto-more" style="margin-top:14px"><summary><span>Моя статистика</span><small>с ' + new Date(st.since).toLocaleDateString('ru-RU') + ', хранится только в этом браузере</small></summary>' +
+    '<div class="mystats"><div><b>' + st.works + '</b><small>' + plural(st.works, 'работа оформлена', 'работы оформлено', 'работ оформлено') + '</small></div><div><b>' + st.fixed + '</b><small>' + plural(st.fixed, 'правка', 'правки', 'правок') + ' сделано</small></div><div><b>' + h.replace('.', ',') + '</b><small>сэкономлено примерно</small></div></div>' +
+    '<div class="mysave">Сравнение с ручным оформлением в Word — оценка, не замер.</div></details>');
+}
 async function stoRun(){
   if(!STO.file) return;
   const btn = $('stoGo'); btn.disabled = true; $('stoErr').textContent = ''; $('stoRes').innerHTML = '<div class="muted" style="padding-top:22px">Оформляю…</div>';
@@ -1280,8 +1382,14 @@ async function stoRun(){
     const name = stoOut(STO.file.name);
     const items = r.report.map((t, i) => '<li class="ok" style="--i:' + i + '"><i>✓</i><div>' + esc(t) + '</div></li>').join('') +
       r.notes.map((t, i) => '<li class="tip" style="--i:' + (r.report.length + i) + '"><i>!</i><div>' + esc(t) + '</div></li>').join('');
-    $('stoRes').innerHTML = delta + '<div class="sto-dl" style="margin-top:14px"><a class="primary" id="stoDl" href="' + STO.url + '" download="' + esc(name) + '">Скачать .docx<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg></a>' +
-      '<span class="muted">Откройте в Word: он предложит обновить поля — нажмите «Да», чтобы проставились номера страниц в содержании.</span></div>' + '<div class="gost closed" id="stoGist"><h4 data-gost><span>Что исправлено и что проверить</span><span class="tag">' + r.report.length + ' ✓' + (r.notes.length ? ' · ' + r.notes.length + ' !' : '') + '</span></h4><ul>' + items + '</ul></div>' ;
+    $('stoRes').innerHTML = '<div class="sto-dl"><a class="primary" id="stoDl" href="' + STO.url + '" download="' + esc(name) + '">Скачать .docx<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg></a>' +
+      '<span class="muted">Откройте в Word: он предложит обновить поля — нажмите «Да», чтобы проставились номера страниц в содержании.</span></div>' + delta.replace('margin:0 0 12px', '') + '<div class="gost closed" id="stoGist"><h4 data-gost><span>Что исправлено и что проверить</span><span class="tag">' + r.report.length + ' ✓' + (r.notes.length ? ' · ' + r.notes.length + ' !' : '') + '</span></h4><ul>' + items + '</ul></div>' ;
+    STO.last = { blob: r.blob, report: r.report, notes: r.notes, before: null, after: null };
+    try{ STO.last.before = (await Iceberg.gostCheck(buf)).problems; STO.last.gost = await Iceberg.gostCheck(await r.blob.arrayBuffer()); }catch(e){}
+    $('stoRes').querySelector('.sto-dl').insertAdjacentHTML('afterend', '<div id="stoReady" style="margin-top:14px"></div>');
+    stoStep(4);
+    await stoKindReport();
+    stoStats(r);
     try{ $('stoDl').click(); }catch(e){}
   }catch(e){ $('stoRes').innerHTML = ''; $('stoErr').textContent = e.message || 'Не получилось оформить файл.'; }
   btn.disabled = false;
