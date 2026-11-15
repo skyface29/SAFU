@@ -426,6 +426,17 @@ const newStatus = {
 
 let dataChanged = false;
 if (up) {
+  // «призраки» прежнего разборщика: до PARSER 6 «143507С» читалась как «143507». Номера нет в свежем списке РУЗа,
+  // а он же с буквой или «-N» есть — старую запись убираем, иначе она висела бы в списке групп до конца семестра
+  if (source === 'ruz') {
+    const freshNums = Object.keys(fresh.groups);
+    for (const n of Object.keys(prev.groups)) {
+      if (fresh.groups[n] || !/^\d{6}$/.test(n)) continue;
+      if (freshNums.some(k => k.length > n.length && k.startsWith(n) && /^(-\d|[А-ЯЁA-Z])/.test(k.slice(n.length)))) {
+        delete prev.groups[n]; delete prev.byGroup[n]; log(`убрана прежняя запись ${n}: в РУЗе это группа с суффиксом`);
+      }
+    }
+  }
   const prevIds = Object.fromEntries(Object.values(prev.groups).map(g => [g.number, g.id || '']));
   const m = merge(prev.byGroup, fresh, (prevData && prevData.cov) || {}, prevIds);
   const groups = { ...prev.groups, ...fresh.groups };
