@@ -136,6 +136,9 @@ h2{font:700 13px var(--ff-d);text-transform:uppercase;letter-spacing:.12em;color
 .tabs a[aria-current]{color:var(--tx);background:var(--ice2)}
 .tabs a[aria-current] svg{stroke:var(--aur1)}
 body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+
+/* во время прокрутки сияние стоит: размытие blur(60px) под движущимися пятнами пересчитывалось каждый кадр — микрорывки */
+.is-scrolling .aurora i{animation-play-state:paused!important}
 </style>
 </head>
 <body>
@@ -228,5 +231,6 @@ load();setInterval(load,60000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)load();});
 })();
 </script>
+<script>(function(){var r=document.documentElement,t=0;addEventListener('scroll',function(){if(!t)r.classList.add('is-scrolling');clearTimeout(t);t=setTimeout(function(){t=0;r.classList.remove('is-scrolling');},180);},{passive:true});})();</script>
 </body>
 </html>

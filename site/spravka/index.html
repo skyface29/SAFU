@@ -152,6 +152,9 @@ footer{margin-top:10px}
 .tabs a[aria-current]{color:var(--tx);background:var(--ice2)}
 .tabs a[aria-current] svg{stroke:var(--aur1)}
 body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+
+/* во время прокрутки сияние стоит: размытие blur(60px) под движущимися пятнами пересчитывалось каждый кадр — микрорывки */
+.is-scrolling .aurora i{animation-play-state:paused!important}
 </style>
 </head>
 <body>
@@ -397,5 +400,6 @@ fetch('data/spravka.json').then(function(r){if(!r.ok)throw 0;return r.json();}).
 }).catch(function(){chat.innerHTML='<div class="card">Не получилось загрузить справочник. Проверь интернет и обнови страницу.</div>';});
 })();
 </script>
+<script>(function(){var r=document.documentElement,t=0;addEventListener('scroll',function(){if(!t)r.classList.add('is-scrolling');clearTimeout(t);t=setTimeout(function(){t=0;r.classList.remove('is-scrolling');},180);},{passive:true});})();</script>
 </body>
 </html>

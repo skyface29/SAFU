@@ -178,6 +178,20 @@ h1 em{font-style:normal;background:var(--aurora);background-size:200% 100%;-webk
 .sto-res li small.how{display:block;color:var(--muted)}
 .kpill{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;vertical-align:1px;background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--ink2)}
 .kpill.auto{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.insp{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:9px 12px;border-radius:12px;background:color-mix(in srgb,var(--ok) 10%,transparent);font-size:13.5px;color:var(--ink2)}
+.insp i{font-style:normal;font-weight:700;color:var(--ok)}
+.insp.bad{background:color-mix(in srgb,var(--para) 10%,transparent)}
+.insp.bad i{color:var(--para)}
+.insp b{color:var(--ink)}
+.row-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.row-acts .btn{display:inline-flex;align-items:center;gap:8px}
+.row-acts svg{width:16px;height:16px}
+.sto-prev{margin:0 0 12px;padding:10px;border-radius:20px;border:1px solid var(--line2);background:#8a93a5;max-height:78vh;overflow:auto;overscroll-behavior:contain}
+.pv-bar{font-size:12.5px;color:#10151f;padding:2px 4px 10px}
+.pv-pages{--k:1;transform:scale(var(--k));transform-origin:top left;width:max-content}
+.pv-pages section.pv{position:relative;margin:0 0 14px !important;box-shadow:0 8px 30px -10px rgba(0,0,0,.5);background:#fff;color:#000}
+.pv-guide{position:absolute;border:1px dashed rgba(31,98,224,.55);pointer-events:none}
+.pv-n{position:absolute;right:10px;top:8px;font:600 11px var(--body);color:#8a93a5}
 .mystats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .mystats div{padding:10px 12px;border-radius:14px;background:var(--glass);border:1px solid var(--line)}
 .mystats b{display:block;font:600 19px var(--display)}
@@ -423,8 +437,11 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 #check.panel{overflow:visible}
 #check::after{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;opacity:0;transition:opacity .6s;
   background:conic-gradient(from var(--ang,0deg),transparent 0 70%,var(--a1) 80%,var(--a2) 88%,var(--a3) 94%,transparent);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:ang 6s linear infinite}
-#check:focus-within::after{opacity:1}
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+/* анимация угла (@property) идёт на главном потоке и перерисовывает панель каждый кадр — только когда рамка видна */
+#check:focus-within::after{opacity:1;animation:ang 6s linear infinite}
+/* во время прокрутки анимации, которые перерисовывают (фон, тень), стоят — кадры прокрутки остаются ровными */
+.is-scrolling h1 em,.is-scrolling .eyebrow i,.is-scrolling .cue::after,.is-scrolling #liveDoc .q,.is-scrolling .mq{animation-play-state:paused!important}
 @property --ang{syntax:"<angle>";inherits:false;initial-value:0deg}
 @keyframes ang{to{--ang:360deg}}
 /* ---------- лёгкий режим: слабые устройства и телефоны ---------- */
@@ -848,6 +865,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 <script src="format.js"></script>
 <script src="sto-tools.js"></script>
 <script src="work-kinds.js"></script>
+<script src="sto-inspect.js"></script>
 <script>
 /* Адрес помощника, который скачивает страницы сайтов и выдачу поисковиков (antiplagiat-api/ в репозитории).
    Пусто — работает только Википедия и своя коллекция. Для проверки у себя: python3 antiplagiat/site_dev.py */
@@ -1338,8 +1356,11 @@ async function stoKindReport(){
   let kc = null;
   try{ kc = await WorkKinds.check(await L.blob.arrayBuffer(), STO.kind || 'referat', true); }catch(e){ box.innerHTML = ''; return; }
   const gl = L.gost ? L.gost.items.filter(x => !x.ok && x.name !== 'Структура работы') : [];
+  // строгий инспектор: каждый абзац итогового файла по правилам СТО (независимо от оформителя)
+  if(!L.ins){ try{ L.ins = await StoInspect.inspect(await L.blob.arrayBuffer(), { size: $('stoSmall').checked ? 12 : 14, binding: $('stoBind').checked }); }catch(e){ L.ins = null; } }
+  const ins = L.ins, insRules = ins ? Object.keys(ins.byRule) : [];
   const errs = kc.items.filter(x => x.level === 'err'), warns = kc.items.filter(x => x.level === 'warn');
-  let score = 100 - gl.length * 8 - errs.length * 14 - warns.length * 4;
+  let score = 100 - gl.length * 8 - errs.length * 14 - warns.length * 4 - Math.min(20, insRules.length * 4);
   score = Math.max(5, Math.min(100, score));
   const col = score >= 90 ? 'var(--ok)' : score >= 70 ? 'var(--para)' : 'var(--exact)';
   const C = 2 * Math.PI * 40, off = C * (1 - score / 100);
@@ -1351,9 +1372,39 @@ async function stoKindReport(){
     '<circle cx="50" cy="50" r="40" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 50 50)"/>' +
     '<text x="50" y="57" text-anchor="middle" font-family="Unbounded,sans-serif" font-weight="700" font-size="22" fill="currentColor">' + score + '</text></svg>' +
     '<div><h4>' + head + ' · ' + esc(kc.name) + '</h4><p>' + esc(sub) + '</p><div class="facts"><span>основная часть ≈ <b>' + kc.pages + ' ' + plural(kc.pages, 'стр.', 'стр.', 'стр.') + '</b></span><span><b>' + kc.words.toLocaleString('ru-RU') + '</b> ' + plural(kc.words, 'слово', 'слова', 'слов') + '</span>' +
-    (kc.found.bib != null ? '<span>источников: <b>' + kc.sources + '</b></span>' : '') + '<span>готовность: <b>' + score + '/100</b></span></div></div></div>' +
+    (kc.found.bib != null ? '<span>источников: <b>' + kc.sources + '</b></span>' : '') + '<span>готовность: <b>' + score + '/100</b></span></div>' +
+    (ins ? '<div class="insp' + (ins.issues.length ? ' bad' : '') + '"><i>' + (ins.issues.length ? '!' : '✓') + '</i><span>Строгая проверка СТО: <b>' + ins.checked.toLocaleString('ru-RU') + '</b> ' + plural(ins.checked, 'абзац', 'абзаца', 'абзацев') + ', <b>' + ins.checks.toLocaleString('ru-RU') + '</b> ' + plural(ins.checks, 'проверка', 'проверки', 'проверок') + ' по ' + ins.rules.length + ' ' + plural(ins.rules.length, 'правилу', 'правилам', 'правилам') + ' — ' +
+      (ins.issues.length ? '<b>' + ins.issues.length + '</b> ' + plural(ins.issues.length, 'место', 'места', 'мест') + ' проверь' : '<b>нарушений нет</b>') + '</span></div>' : '') +
+    '<div class="row-acts"><button class="btn" id="stoPrevBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>Посмотреть страницы</button></div></div></div>' +
+    '<div id="stoPrev" class="sto-prev hide"></div>' +
+    (ins && ins.issues.length ? '<div class="gost closed"><h4 data-gost><span>Строгая проверка: что посмотреть</span><span class="tag">' + ins.issues.length + '</span></h4><ul>' +
+      insRules.map(r => '<li class="warn"><i>?</i><div>' + esc(r) + ' — ' + ins.byRule[r].length + ' ' + plural(ins.byRule[r].length, 'место', 'места', 'мест') + '<small class="how">' + ins.byRule[r].slice(0, 3).map(x => esc(x.where) + ': ' + esc(String(x.found)) + ' (нужно ' + esc(String(x.need)) + ')').join('<br>') + '</small></div></li>').join('') + '</ul></div>' : '') +
     (list.length ? '<div class="gost" id="kindGist"><h4 data-gost><span>Проверка по виду «' + esc(kc.name) + '»</span><span class="tag' + (errs.length + gl.length ? ' bad' : '') + '">' + list.length + ' ' + plural(list.length, 'пункт', 'пункта', 'пунктов') + '</span></h4><ul>' + list.join('') + '</ul></div>' : '');
 }
+/* предпросмотр страниц: docx-preview (Apache-2.0) + JSZip (MIT) — грузятся только по кнопке */
+function loadScript(src){ return new Promise((ok, no) => { if(document.querySelector('script[src="' + src + '"]')) return ok(); const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('Не загрузилось: ' + src)); document.head.appendChild(s); }); }
+async function stoPreview(){
+  const box = $('stoPrev'), btn = $('stoPrevBtn'); if(!STO.last || !box) return;
+  if(!box.classList.contains('hide') && box.dataset.done){ box.classList.add('hide'); btn.lastChild.textContent = 'Посмотреть страницы'; return; }
+  box.classList.remove('hide'); btn.lastChild.textContent = 'Скрыть страницы';
+  if(box.dataset.done) return;
+  box.innerHTML = '<div class="muted" style="padding:16px">Вёрстаю страницы…</div>';
+  try{
+    await loadScript('vendor/jszip.min.js'); await loadScript('vendor/docx-preview.min.js');
+    const host = document.createElement('div'); host.className = 'pv-pages';
+    await window.docx.renderAsync(await STO.last.blob.arrayBuffer(), host, null, { className: 'pv', inWrapper: false, breakPages: true, ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true, renderFootnotes: true, experimental: true, useBase64URL: true });
+    box.innerHTML = '<div class="pv-bar"><span>Страницы как в Word — пунктир показывает поля по СТО (25 · 15 · 20 · 20 мм). Точный перенос строк и номера страниц Word пересчитает сам.</span></div>';
+    box.appendChild(host);
+    const pages = host.querySelectorAll('section.pv');
+    pages.forEach((sec, i) => { const cs = getComputedStyle(sec), g = document.createElement('div'); g.className = 'pv-guide';
+      g.style.cssText = 'top:' + cs.paddingTop + ';right:' + cs.paddingRight + ';bottom:' + cs.paddingBottom + ';left:' + cs.paddingLeft;
+      sec.appendChild(g); const n = document.createElement('span'); n.className = 'pv-n'; n.textContent = (i + 1) + ' / ' + pages.length; sec.appendChild(n); });
+    const fit = () => { const w = box.clientWidth - 8, sec = host.querySelector('section.pv'); if(!sec) return; const k = Math.min(1, w / sec.offsetWidth); host.style.setProperty('--k', k); host.style.height = (host.scrollHeight * k) + 'px'; };
+    host.style.height = ''; fit(); addEventListener('resize', () => { host.style.height = ''; fit(); });
+    box.dataset.done = '1';
+  }catch(e){ box.innerHTML = '<div class="err" style="padding:12px">Предпросмотр не получился: ' + esc(e.message || String(e)) + '. Скачайте файл и откройте в Word.</div>'; }
+}
+document.addEventListener('click', e => { if(e.target.closest('#stoPrevBtn')) stoPreview(); });
 /* «Моя статистика» — только в этом браузере */
 function stoStats(r){
   const st = lsGet('sto.stats', { works: 0, fixed: 0, notes: 0, since: Date.now() });
@@ -1495,7 +1546,9 @@ $('btnCert').onclick = async () => {
     if(!calm && !lite && y < heroH){ const k = y / heroH; heroIn.style.transform = 'translate3d(0,' + (y * .35).toFixed(1) + 'px,0)'; heroIn.style.opacity = (1 - k * 1.1).toFixed(3); }
     else if(!calm && !lite && heroIn.style.opacity !== '0') heroIn.style.opacity = '0';
   };
-  addEventListener('scroll', () => { if(!tick){ tick = true; requestAnimationFrame(onScroll); } }, {passive: true});
+  let still = 0; const root = document.documentElement;
+  addEventListener('scroll', () => { if(!tick){ tick = true; requestAnimationFrame(onScroll); }
+    if(!still) root.classList.add('is-scrolling'); clearTimeout(still); still = setTimeout(() => { still = 0; root.classList.remove('is-scrolling'); }, 180); }, {passive: true});
   onScroll();
   /* бегущие строки стоят, когда их не видно */
   if('IntersectionObserver' in window){

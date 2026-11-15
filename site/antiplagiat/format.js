@@ -451,6 +451,7 @@ const HEAD_NUM = /^(?:(глава|раздел|часть)\s+)?(\d{1,2}(?:\.\d{1
 const FIG = /^(рис(?:унок|\.)?)\s*([А-ЯA-Z]?\.?\s?\d+(?:[.\-]\d+)?)\s*[.\-–—:]?\s*(.*)$/i;
 const TAB = /^(таблица|табл\.)\s*([А-ЯA-Z]?\.?\s?\d+(?:[.\-]\d+)?)\s*[.\-–—:]?\s*(.*)$/i;
 const MONO = /courier|consolas|mono|menlo|lucida console|source code/i;
+const BIBLIKE = /(https?:\/\/|www\.|\bURL\b|режим доступа|дата обращения|\bISBN\b|\bDOI\b|№\s*\d+-ФЗ|(?:^|\s)(от|изд\.?)\s+\d{2}\.\d{2}\.\d{4}|\[электронный ресурс\]|\s\/\/\s|\.\s*[–-]\s*\d{4}\.|:\s*[А-ЯЁA-Z][\p{L}-]+,\s*\d{4}|\d+\s*с\.\s*$)/iu;
 
 function buildStyles(stylesDoc) {
   const map = new Map(), byName = new Map();
@@ -534,7 +535,9 @@ async function formatOnce(buf, opts) {
       const lvl = styleLevel(b), m = HEAD_NUM.exec(text), bold = boldShare(b);
       const short = text.length <= 160 && !/[;:,]$/.test(text) && text.split(' ').length <= 22;
       if (lvl && lvl >= 1 && short) { x.kind = 'head'; x.level = Math.min(lvl, 4); }
-      else if (m && short && /^[А-ЯЁA-Z]/.test(m[4]) && (bold > .6 || lvl || (!/[.!?]$/.test(text) && text.length < 120) )) { x.kind = 'head'; x.level = m[1] ? 1 : m[2].split('.').length; x.num = m; }
+      // «6 Федеральный закон от … № 152-ФЗ», «7 OWASP Top 10. – URL: …» — запись списка источников, а не заголовок главы
+      // (иначе она попадала в автоматическое оглавление, если сам заголовок списка не распознан — фазз 15.11)
+      else if (m && short && /^[А-ЯЁA-Z]/.test(m[4]) && !BIBLIKE.test(text) && (bold > .6 || lvl || (!/[.!?]$/.test(text) && text.length < 120) )) { x.kind = 'head'; x.level = m[1] ? 1 : m[2].split('.').length; x.num = m; }
       else if (short && !/[.!?]$/.test(text) && text.length < 90 && (bold > .8 && isAllCaps(text))) { x.kind = 'head'; x.level = 1; }
     }
     info.set(b, x);
@@ -899,6 +902,28 @@ async function formatOnce(buf, opts) {
     tocField = true;
     return ps.length;
   };
+  // два оглавления: настоящее (поле Word) и набранное вручную — ручное с его заголовком лишнее (фазз 15.11: оставались оба)
+  if (tocField) {
+    const heads = B.filter(b => { const x = info.get(b); return x && x.kind === 'struct' && isTocName(x.name); });
+    const normToc = t => t.toLowerCase().replace(/[^а-яёa-z0-9]+/g, '');
+    for (const h of heads.length > 1 ? heads : []) {
+      const lines = [];
+      let field = false;
+      for (let k = B.indexOf(h) + 1; k < B.length; k++) {
+        const b = B[k], x = info.get(b);
+        if (!x || x.zone !== 'toc' || !['tocline', 'empty', 'body'].includes(x.kind)) break;
+        // настоящее оглавление — поле TOC или ссылки на закладки _Toc; любое другое поле (страница, дата) — не признак
+        const fi = [...b.getElementsByTagNameNS(W, 'instrText')].map(e => e.textContent).join('') + [...b.getElementsByTagNameNS(W, 'fldSimple')].map(e => attr(e, 'instr') || '').join('');
+        if (/\bTOC\b/.test(fi) || [...b.getElementsByTagNameNS(W, 'hyperlink')].some(e => /^_Toc/.test(attr(e, 'anchor') || ''))) { field = true; break; }
+        if (x.text && !/\t|\.{3,}|…|\d\s*$/.test(x.raw)) break;
+        lines.push(b);
+      }
+      if (field || !lines.some(b => (info.get(b) || {}).text)) continue;
+      for (const b of [h, ...lines]) { if (b.parentNode) b.parentNode.removeChild(b); info.delete(b); }
+      stats.tocDup = true;
+    }
+    B = blocks(body);
+  }
   const tocHead = B.find(b => { const x = info.get(b); return x && x.kind === 'struct' && isTocName(x.name); });
   if (tocHead && !tocField && opts.toc) {
     // оглавление набрано вручную: номера страниц в нём почти всегда неверны — заменяем на автоматическое
@@ -1174,6 +1199,7 @@ async function formatOnce(buf, opts) {
   if (stats.struct) list.push(`Заголовки структурных элементов (${stats.struct}): ${prof.struct.case === 'upper' ? 'прописными' : 'с заглавной буквы'}, по центру, полужирные, с новой страницы`);
   if (stats.heads) list.push(`Заголовки глав и подразделов (${stats.heads}): полужирные, с абзацного отступа, без точки в конце, главы с новой страницы`);
   if (stats.tocAdded) list.push('Добавлено автоматическое содержание — Word обновит номера страниц при открытии (или: правая кнопка → «Обновить поле»)');
+  if (stats.tocDup) list.push('Убрано лишнее оглавление, набранное вручную: в работе уже есть автоматическое.');
   else if (stats.tocRebuilt) list.push('Оглавление, набранное вручную, заменено на автоматическое (номера страниц обновятся при открытии в Word)');
   else if (tocField) list.push('Содержание обновится при открытии в Word');
   if (stats.figs || stats.figCaps) list.push(`Рисунки (${stats.figs}) по центру, подписи (${stats.figCaps}) в виде «${prof.fig.word} 1${prof.fig.sep}Название», кегль ${capSize}`);
