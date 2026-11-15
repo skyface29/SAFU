@@ -293,6 +293,8 @@ function fixTypography(p, stats, bib) {
 /** Неразрывные пробелы (п. 4.1.14 СТО): инициалы, числа с единицами, сокращения, №. */
 const NB = '\u00A0';
 const NBSP_RULES = [
+  // п. 4.1.11: строка не заканчивается предлогом — предлог держится со следующим словом неразрывным пробелом
+  [/(?<=^|[\s(«\u00a0])(в|во|к|ко|с|со|у|о|об|обо|от|до|на|по|из|за|под|над|при|про|без|для|через|перед|между|ко|изо|подо|надо|передо)(?= [«(]?[А-ЯЁA-Zа-яёa-z0-9])( )/gi, '$1' + NB],
   // «Иванов, И. И. Название»: после инициалов в заголовке записи идёт название, а не фамилия
   [/(?<=^|[\s(«\u00a0]|[А-ЯЁ]\.)(?<!, [А-ЯЁ]\.[ \u00a0])([А-ЯЁA-Z]\.) (?=[А-ЯЁA-Z][.а-яёa-z])/g, '$1' + NB],
   [/(?<=[А-ЯЁ][а-яё]+) (?=[А-ЯЁ]\.[ \u00a0]?[А-ЯЁ]\.(?![А-ЯЁа-яё]))/g, NB],
@@ -1136,6 +1138,26 @@ async function formatOnce(buf, opts) {
     put('word/numbering.xml', ndoc);
   }
 
+  /* ---------- 8в. знаки в конце позиций перечисления (п. 4.4.3): «;» после каждой, «.» после последней ---------- */
+  // только у настоящего перечисления: перед ним абзац с двоеточием, в каждой позиции одно предложение
+  {
+    const B2 = blocks(body), isItem = b => { if (b.localName !== 'p') return false; const x = info.get(b); if (!x || !['body'].includes(x.kind) || x.zone === 'bib' || x.zone === 'toc') return false;
+      const t = paraText(b).trim(); if (!t || t.length > 400) return false;
+      return !!kid(kid(b, 'pPr'), 'numPr') || /^([-–•]|[а-яa-z]\)|\d{1,2}\))\s/.test(t); };
+    for (let i = 1; i < B2.length; i++) {
+      if (!isItem(B2[i]) || isItem(B2[i - 1])) continue;
+      const lead = B2[i - 1].localName === 'p' ? paraText(B2[i - 1]).trim() : '';
+      let j = i; while (j < B2.length && isItem(B2[j])) j++;
+      const group = B2.slice(i, j);
+      if (!/:$/.test(lead) || group.length < 2) { i = j; continue; }
+      const single = t => !/[.!?…]\s+[А-ЯЁA-Z]/.test(t.replace(/(?<![А-ЯЁA-Zа-яёa-z])[А-ЯЁA-Z]\.\s?/g, ''));
+      if (!group.every(b => single(paraText(b).trim()))) { i = j; continue; }
+      group.forEach((b, k) => { const want = k === group.length - 1 ? '.' : ';'; if (/[!?…]\s*$/.test(paraText(b))) return;
+        if (replaceLastTrailing(b, /\s*[.,;:]?\s*$/, want)) stats.listPunct = (stats.listPunct || 0) + 1; });
+      i = j;
+    }
+  }
+
   /* что проверить вручную */
   {
     const bl = blocks(body).map(b => [b, info.get(b)]).filter(([, x]) => x);
@@ -1200,6 +1222,7 @@ async function formatOnce(buf, opts) {
   if (stats.struct) list.push(`Заголовки структурных элементов (${stats.struct}): ${prof.struct.case === 'upper' ? 'прописными' : 'с заглавной буквы'}, по центру, полужирные, с новой страницы`);
   if (stats.heads) list.push(`Заголовки глав и подразделов (${stats.heads}): полужирные, с абзацного отступа, без точки в конце, главы с новой страницы`);
   if (stats.tocAdded) list.push('Добавлено автоматическое содержание — Word обновит номера страниц при открытии (или: правая кнопка → «Обновить поле»)');
+  if (stats.listPunct) list.push('Перечисления: «;» в конце каждой позиции и «.» после последней (п. 4.4.3).');
   if (stats.tocDup) list.push('Убрано лишнее оглавление, набранное вручную: в работе уже есть автоматическое.');
   else if (stats.tocRebuilt) list.push('Оглавление, набранное вручную, заменено на автоматическое (номера страниц обновятся при открытии в Word)');
   else if (tocField) list.push('Содержание обновится при открытии в Word');

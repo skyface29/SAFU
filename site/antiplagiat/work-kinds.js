@@ -11,8 +11,8 @@ const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
 /* части работы: как называется в отчёте и как ищется среди заголовков */
 const PART = {
-  toc: ['содержание', /^(содержание|оглавление)$/],
-  abstract: ['реферат (аннотация отчёта)', /^(реферат|аннотация)$/],
+  toc: ['оглавление/содержание', /^(содержание|оглавление)$/],
+  abstract: ['реферат (аннотация)', /^(реферат|аннотация|abstract)$/],
   annot: ['аннотация', /^(аннотация|abstract|резюме)$/],
   keywords: ['ключевые слова', /^ключевые\s+слова/],
   intro: ['введение', /^введение$/],
@@ -51,23 +51,25 @@ const INTRO = {
   methods: ['методы', /метод\S*\s+(исследования|работы)|(?<![а-яёa-z0-9])методы(?![а-яёa-z0-9])/],
 };
 
-/* виды работ. pages — обычный объём основной части, src — обычно не меньше источников */
+/* виды работ — по таблице 1 СТО САФУ 2026 (п. 2.2): need — «+» (обязательно), soft — «р» (рекомендуется).
+   pages и src — типичные нормы кафедр (в СТО их нет), поэтому они только предупреждения.
+   Лабораторной, доклада-сообщения и тезисов в таблице 1 нет — для них правила обычные для таких работ. */
 const KINDS = {
-  esse:      { name: 'Эссе', hint: 'без содержания', toc: false, need: [], soft: ['bib'], intro: [], pages: [3, 10], src: 0 },
-  doklad:    { name: 'Доклад', hint: 'сообщение, выступление', toc: false, need: ['intro', 'concl'], soft: ['bib'], intro: ['actual'], pages: [5, 15], src: 5 },
-  referat:   { name: 'Реферат', hint: 'обзор по теме', toc: true, need: ['toc', 'intro', 'concl', 'bib'], intro: ['actual', 'goal', 'tasks'], pages: [10, 25], src: 8 },
-  kontrol:   { name: 'Контрольная', hint: 'задания и ответы', toc: false, need: [], soft: ['bib'], intro: [], pages: [5, 20], src: 0 },
+  esse:      { name: 'Эссе', hint: 'без содержания', toc: false, need: ['concl'], soft: ['intro', 'bib'], intro: [], pages: [3, 10], src: 0, sto: true },
+  doklad:    { name: 'Доклад', hint: 'сообщение, выступление', toc: false, need: [], soft: ['intro', 'concl', 'bib'], intro: ['actual'], pages: [5, 15], src: 5 },
+  referat:   { name: 'Реферат', hint: 'обзор по теме', toc: true, need: ['intro', 'concl', 'bib'], soft: ['toc'], intro: ['actual', 'goal', 'tasks'], pages: [10, 25], src: 8, sto: true },
+  kontrol:   { name: 'Контрольная', hint: 'задания и ответы', toc: false, need: [], soft: ['intro', 'concl', 'bib'], intro: [], pages: [5, 20], src: 0, sto: true },
   laba:      { name: 'Лабораторная', hint: 'цель, ход, выводы', toc: false, need: ['goal', 'concl'], intro: [], pages: [2, 20], src: 0 },
-  rgr:       { name: 'РГР', hint: 'расчётно-графическая', toc: true, need: ['task', 'concl'], soft: ['bib'], intro: [], pages: [8, 25], src: 3 },
-  kursovaya: { name: 'Курсовая работа', hint: 'введение, главы, заключение', toc: true, need: ['toc', 'intro', 'concl', 'bib'], intro: ['actual', 'goal', 'tasks', 'object', 'subject'], pages: [25, 40], src: 15 },
-  kproekt:   { name: 'Курсовой проект', hint: 'с расчётной частью', toc: true, need: ['toc', 'intro', 'concl', 'bib'], soft: ['calc'], intro: ['actual', 'goal', 'tasks'], pages: [25, 50], src: 15 },
-  praktika:  { name: 'Отчёт о практике', hint: 'дневник, характеристика', toc: true, need: ['toc', 'intro', 'concl'], soft: ['bib', 'diary'], intro: ['goal', 'tasks'], pages: [15, 30], src: 5 },
-  nir:       { name: 'Отчёт о НИР', hint: 'по ГОСТ 7.32', toc: true, need: ['abstract', 'toc', 'intro', 'concl', 'bib'], intro: ['actual', 'goal', 'tasks'], pages: [20, 60], src: 15 },
-  statya:    { name: 'Научная статья', hint: 'аннотация, ключевые слова', toc: false, need: ['annot', 'keywords', 'bib'], intro: [], pages: [4, 12], src: 8 },
+  rgr:       { name: 'РГР', hint: 'расчётно-графическая', toc: true, need: [], soft: ['toc', 'task', 'intro', 'concl', 'bib'], intro: [], pages: [8, 25], src: 3, sto: true },
+  kursovaya: { name: 'Курсовая работа', hint: 'введение, главы, заключение', toc: true, need: ['toc', 'intro', 'concl', 'bib'], soft: ['task'], intro: ['actual', 'goal', 'tasks', 'object', 'subject'], pages: [25, 40], src: 15, sto: true },
+  kproekt:   { name: 'Курсовой проект', hint: 'с расчётной частью', toc: true, need: ['toc', 'intro', 'concl', 'bib'], soft: ['task', 'calc'], intro: ['actual', 'goal', 'tasks'], pages: [25, 50], src: 15, sto: true },
+  praktika:  { name: 'Отчёт о практике', hint: 'дневник, характеристика', toc: true, need: ['toc'], soft: ['intro', 'concl', 'bib', 'diary'], intro: ['goal', 'tasks'], pages: [15, 30], src: 5, sto: true },
+  nir:       { name: 'Отчёт о НИР', hint: 'по ГОСТ 7.32', toc: true, need: ['abstract', 'intro', 'concl'], soft: ['toc', 'bib', 'task'], intro: ['actual', 'goal', 'tasks'], pages: [20, 60], src: 15, sto: true },
+  statya:    { name: 'Научная статья', hint: 'аннотация, ключевые слова', toc: false, notoc: true, need: ['annot', 'intro', 'concl', 'bib'], soft: ['keywords'], intro: [], pages: [4, 12], src: 8, sto: true },
   tezisy:    { name: 'Тезисы', hint: 'для конференции', toc: false, need: [], soft: ['bib'], intro: [], pages: [1, 4], src: 0 },
-  vkr:       { name: 'ВКР бакалавра', hint: 'дипломная работа', toc: true, need: ['toc', 'intro', 'concl', 'bib'], intro: ['actual', 'goal', 'tasks', 'object', 'subject', 'practical'], pages: [50, 80], src: 40 },
-  specialist:{ name: 'Дипломный проект', hint: 'специалитет', toc: true, need: ['toc', 'intro', 'concl', 'bib'], intro: ['actual', 'goal', 'tasks', 'object', 'subject', 'practical'], pages: [60, 100], src: 40 },
-  magistr:   { name: 'Магистерская диссертация', hint: 'ВКР магистра', toc: true, need: ['toc', 'intro', 'concl', 'bib'], intro: ['actual', 'goal', 'tasks', 'object', 'subject', 'novelty', 'practical', 'methods'], pages: [70, 110], src: 50 },
+  vkr:       { name: 'ВКР бакалавра', hint: 'дипломная работа', toc: true, need: ['abstract', 'toc', 'intro', 'concl', 'bib'], soft: ['task'], intro: ['actual', 'goal', 'tasks', 'object', 'subject', 'practical'], pages: [50, 80], src: 40, sto: true },
+  specialist:{ name: 'ВКР специалиста', hint: 'дипломный проект', toc: true, need: ['abstract', 'toc', 'intro', 'concl', 'bib'], soft: ['task'], intro: ['actual', 'goal', 'tasks', 'object', 'subject', 'practical'], pages: [60, 100], src: 40, sto: true },
+  magistr:   { name: 'Магистерская диссертация', hint: 'ВКР магистра', toc: true, need: ['abstract', 'toc', 'intro', 'concl', 'bib'], soft: ['task'], intro: ['actual', 'goal', 'tasks', 'object', 'subject', 'novelty', 'practical', 'methods'], pages: [70, 110], src: 50, sto: true },
 };
 /* вид с титульника (StoTools.TITLE_TYPES) → вид проверки */
 const FROM_TITLE = { referat: 'referat', esse: 'esse', kontrol: 'kontrol', rgr: 'rgr', kursovaya: 'kursovaya', kproekt: 'kproekt', praktika: 'praktika' };
@@ -128,10 +130,10 @@ async function check(buf, kind, after) {
   for (const k of K.need) {
     if (found[k] != null) continue;
     if (k === 'toc') add(after ? 'err' : 'fix', after ? `Нет содержания — для вида «${K.name}» оно нужно: включи «Содержание» в настройках и оформи ещё раз` : `Нет содержания — для вида «${K.name}» оно нужно. Добавлю автоматическое при оформлении`, { auto: !after, part: k });
-    else add('err', `Нет раздела «${PART[k][0]}» — для вида «${K.name}» это обязательно`, { part: k, how: HOW[k] });
+    else add('err', `Нет раздела «${PART[k][0]}» — для вида «${K.name}» это обязательно${K.sto ? ' (СТО, п. 2.2, табл. 1)' : ''}`, { part: k, how: HOW[k] });
   }
-  for (const k of K.soft || []) if (found[k] == null) add('warn', `Не нашёл «${PART[k][0]}» — для вида «${K.name}» обычно нужен`, { part: k, how: HOW[k] });
-  if (!K.toc && found.toc != null && found.toc >= 0 && !K.need.includes('toc')) add('warn', `Для вида «${K.name}» содержание обычно не делают — уточни у преподавателя`);
+  for (const k of K.soft || []) if (found[k] == null) add('warn', `Нет раздела «${PART[k][0]}» — для вида «${K.name}» ${K.sto && k !== 'diary' && k !== 'calc' ? 'СТО его рекомендует (п. 2.2)' : 'он обычно нужен'}`, { part: k, how: HOW[k] });
+  if (K.notoc && found.toc != null && found.toc >= 0) add('warn', `У вида «${K.name}» содержания по СТО нет (п. 2.2, табл. 1) — лучше убрать`);
 
   // введение
   const introAt = found.intro;
@@ -172,7 +174,29 @@ async function check(buf, kind, after) {
     }
     if (K.src && sources < K.src) add('warn', `В списке ${sources} ${plural(sources, 'источник', 'источника', 'источников')} — для вида «${K.name}» обычно не меньше ${K.src}`, { sources: true, how: `Добавь ещё ${K.src - sources}: учебники из ЭБС (Знаниум, Лань, Юрайт), статьи из eLibrary и КиберЛенинки, ГОСТы и законы по теме.` });
   }
-  return { kind, name: K.name, items, found, pages, words, chars, sources, introMissing, ok: !items.some(x => x.level === 'err') };
+  // п. 4.14.10: на каждый источник в тексте должна быть ссылка; п. 4.14.5: ссылка — номер по списку в [ ]
+  const cited = new Set(), wrong = new Set();
+  if (sources) {
+    for (let i = startAt; i < endAt; i++) {
+      for (const m of P[i].text.matchAll(/\[([^\[\]]{1,60})\]/g)) {
+        const body = m[1].replace(/\s*[,;]\s*(с|стр|л|рис|табл)\.\s*[\d\s–—,-]+/gi, '');   // «[5, с. 25]» — номер 5
+        if (!/^[\d\s,;–—-]+$/.test(body)) continue;
+        for (const part of body.split(/[,;]/)) {
+          const r = /^\s*(\d{1,3})\s*(?:[–—-]\s*(\d{1,3}))?\s*$/.exec(part); if (!r) continue;
+          const a = +r[1], b = r[2] ? +r[2] : a;
+          for (let n = a; n <= Math.min(b, a + 50); n++) (n >= 1 && n <= sources ? cited : wrong).add(n);
+        }
+      }
+    }
+    const never = []; for (let n = 1; n <= sources; n++) if (!cited.has(n)) never.push(n);
+    if (wrong.size) add('err', `Ссылка на источник, которого нет в списке: ${[...wrong].sort((a, b) => a - b).map(n => '[' + n + ']').join(', ')} — в списке ${sources} ${plural(sources, 'источник', 'источника', 'источников')}`,
+      { how: 'Проверь номера в квадратных скобках: ссылка — это номер источника по списку (п. 4.14.5).' });
+    if (cited.size && never.length) add('warn', `На ${never.length === 1 ? 'источник' : 'источники'} ${never.join(', ')} нет ссылок в тексте — по СТО ссылка нужна на каждый (п. 4.14.10)`,
+      { how: 'Поставь в тексте, где используешь источник, его номер в квадратных скобках: «…как показано в [3]» или «[3, с. 45]».' });
+    if (!cited.size && sources >= 2) add('warn', 'В тексте нет ни одной ссылки вида [1] на список источников — по СТО ссылка нужна на каждый источник (п. 4.14.5, 4.14.10)',
+      { how: 'После фразы, взятой из источника, ставь его номер по списку в квадратных скобках: [2] или [2, с. 15].' });
+  }
+  return { kind, name: K.name, items, found, pages, words, chars, sources, cited: cited.size, introMissing, ok: !items.some(x => x.level === 'err') };
 }
 
 /** Угадать вид по тексту, если титульника нет. */
