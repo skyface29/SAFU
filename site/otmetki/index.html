@@ -445,6 +445,9 @@ button.item:hover,a.item:hover{filter:brightness(1.1)}
 .legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
 @media (min-width:700px){.sc .nm{font-size:28px}.mono{width:132px;height:132px}.mono .av{width:104px;height:104px;font-size:36px}}
 @media (prefers-reduced-motion:reduce){.aurora i,.live::before,.ring .rm,.pass,.deck,.sheet,.shade{animation:none}}
+
+/* во время прокрутки сияние стоит: размытие blur(60px) под движущимися пятнами пересчитывалось каждый кадр — микрорывки */
+.is-scrolling .aurora i{animation-play-state:paused!important}
 </style>
 </head>
 <body>
@@ -1125,5 +1128,6 @@ route();flush();
 })();
 </script>
 <script src="../pulse.js" data-section="otmetki" defer></script>
+<script>(function(){var r=document.documentElement,t=0;addEventListener('scroll',function(){if(!t)r.classList.add('is-scrolling');clearTimeout(t);t=setTimeout(function(){t=0;r.classList.remove('is-scrolling');},180);},{passive:true});})();</script>
 </body>
 </html>
