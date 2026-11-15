@@ -89,7 +89,7 @@ async function inspect(buf, opts) {
   const body = doc.getElementsByTagNameNS(W, 'body')[0];
   const issues = [], rules = new Set();
   let checked = 0, checks = 0;
-  const bad = (rule, where, need, found, p) => issues.push({ rule, where, need, found, idx: p ? P.indexOf(p) : -1 });
+  const bad = (rule, where, need, found, p) => issues.push({ rule, where, need, found, idx: p ? P.indexOf(p) : -1, gi: p ? ALL.indexOf(p) : -1, text: p ? textOf(p).replace(/\s+/g, ' ').trim().slice(0, 80) : '' });
   const ok = rule => { rules.add(rule); checks++; };
 
   /* 1. листы: формат, поля — у каждого раздела (альбомные листы с широкими таблицами — свои поля) */
@@ -102,12 +102,14 @@ async function inspect(buf, opts) {
     ok('Формат A4'); if (Math.abs(Math.min(w, h) - 210) > 2 || Math.abs(Math.max(w, h) - 297) > 2) bad('Формат A4', 'раздел ' + (i + 1), '210 × 297 мм', `${w} × ${h} мм`);
     if (land) return;
     const L = mm(+at(m, 'left')), R = mm(+at(m, 'right')), Tp = mm(+at(m, 'top')), B = mm(+at(m, 'bottom'));
-    ok('Поля'); if (Math.abs(L - wantL) > 1 || Math.abs(R - prof.margins.right) > 1 || Math.abs(Tp - prof.margins.top) > 1 || Math.abs(B - prof.margins.bottom) > 1)
-      bad('Поля', 'раздел ' + (i + 1), `левое ${wantL}, правое ${prof.margins.right}, верхнее ${prof.margins.top}, нижнее ${prof.margins.bottom} мм`, `левое ${L}, правое ${R}, верхнее ${Tp}, нижнее ${B} мм`);
+    // п. 4.1.3: левое 25 (30 под переплёт), правое — не менее 10, верхнее 20, нижнее — не менее 20 мм
+    ok('Поля'); if (L < 24 || L > 31 || R < 10 || Math.abs(Tp - 20) > 1 || B < 19)
+      bad('Поля', 'раздел ' + (i + 1), 'левое 25 (30 под переплёт), правое не менее 10, верхнее 20, нижнее не менее 20 мм', `левое ${L}, правое ${R}, верхнее ${Tp}, нижнее ${B} мм`);
   });
 
   /* 2. абзацы основной части: от первого структурного заголовка (титульник не проверяем — у него своя форма) */
-  const P = [...body.getElementsByTagNameNS(W, 'p')].filter(p => !inside(p, body, ['tbl', 'txbxContent']));
+  const ALL = [...body.getElementsByTagNameNS(W, 'p')];   // все абзацы по порядку — для привязки к предпросмотру
+  const P = ALL.filter(p => !inside(p, body, ['tbl', 'txbxContent']));
   const texts = P.map(p => textOf(p).replace(/ /g, ' ').trim());
   // титульный лист — первая страница, у него своя форма (приложение Б): начинаем после первого разрыва страницы,
   // если перед ним есть титульные строки; иначе — с первого структурного заголовка
@@ -117,6 +119,13 @@ async function inspect(buf, opts) {
   if (titleish) for (let i = 0; i < Math.min(P.length, 80); i++) if (brk(i)) { start = on(kid(kid(P[i], 'pPr'), 'pageBreakBefore')) ? i : i + 1; break; }
   if (start < 0) start = texts.findIndex((t, i) => STRUCT.test(t.replace(/[.:\s]+$/, '')) || /^(глава\s+)?1\s+\S/i.test(t) && paraProps(T, P[i]).keepNext);
   if (start < 0) start = 0;
+  // исходный файл: на титульнике проверяем только шрифт (у титульника своя форма — приложение Б)
+  if (opts.all) for (let i = 0; i < start; i++) {
+    const p = P[i], t = texts[i]; if (!t) continue;
+    const pr = paraProps(T, p), runs = ownRuns(p).filter(r => r.getElementsByTagNameNS(W, 't').length); if (!runs.length) continue;
+    const R = runs.map(r => runProps(T, r, pr, theme)); checked++; ok('Шрифт Times New Roman');
+    if (R.some(x => !/times new roman|pt astra serif|tempora|courier|consolas|mono/i.test(x.font))) bad('Шрифт Times New Roman', '«' + (t.length > 60 ? t.slice(0, 57) + '…' : t) + '»', 'Times New Roman / PT Astra Serif / Tempora LGS', [...new Set(R.map(x => x.font))].join(', '), p);
+  }
   let inBib = false, inApp = false, inToc = false;
   for (let i = start; i < P.length; i++) {
     const p = P[i], t = texts[i]; if (!t) continue;
@@ -134,8 +143,8 @@ async function inspect(buf, opts) {
     checked++;
     /* шрифт везде, кроме формул и кода */
     const isCode = R.some(x => /courier|consolas|mono|lucida console/i.test(x.font));
-    ok('Шрифт Times New Roman');
-    if (!isCode && R.some(x => !/times new roman/i.test(x.font))) bad('Шрифт Times New Roman', where, prof.font, [...new Set(R.map(x => x.font))].join(', '), p);
+    ok('Шрифт Times New Roman');   // п. 4.1.5: Times New Roman / PT Astra Serif / Tempora LGS
+    if (!isCode && R.some(x => !/times new roman|pt astra serif|tempora/i.test(x.font))) bad('Шрифт Times New Roman', where, 'Times New Roman / PT Astra Serif / Tempora LGS', [...new Set(R.map(x => x.font))].join(', '), p);
     // заголовок: по номеру или по оформлению (держится со следующим, короткий, по центру или с интервалом после)
     const looksHead = pr.keepNext && t.length < 160 && !/[;:,]$/.test(t) && (pr.jc === 'center' || pr.after >= 200 || R.every(x => x.bold));
     const head = (struct || app || /^(\d+(\.\d+)*)\s+\S/.test(t) && pr.keepNext && t.length < 200 && !/[.;:,]$/.test(t) || looksHead) && !/^(рисунок|таблица)\s/i.test(t);

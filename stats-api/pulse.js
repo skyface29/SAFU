@@ -24,6 +24,8 @@ const ONLINE_MS = 390e3;                       // «сейчас» — был н
 // базы YDB в месяц на всё облако; одна запись — около 2 RU, 6000 записей в сутки — около 360 тысяч RU в месяц).
 const DAILY_CAP = +process.env.DAILY_CAP || 6000;
 let capDay = '', capCount = 0;
+let stoDay = '', stoPer = new Map();
+const BIBOT = ua => BOT.test(ua);
 const HOUR = 3600e3, MSK = 3 * HOUR, KEEP_HOURS = 24 * 35;
 
 function cors(origin) {
@@ -176,6 +178,17 @@ async function handle(method, body, headers, db, now = Date.now(), context = nul
       return [200, { ok: true, started: WORKFLOWS[wf] }];
     }
     return [400, { error: 'Неизвестная команда.' }];
+  }
+  if (method === 'POST' && body && (body.ev === 'sto' || body.ev === 'sto-count')) {   // счётчик оформленных работ (СТО)
+    const s = String(body.s || ''), ua = headers['User-Agent'] || headers['user-agent'] || '';
+    let n = +(await db.getKv('sto.count')) || 0;
+    if (body.ev === 'sto' && /^[\w-]{8,40}$/.test(s) && !BIBOT(ua)) {
+      const day = new Date(now).toISOString().slice(0, 10), k = day + s;
+      if (stoDay !== day) { stoDay = day; stoPer.clear(); }
+      const c = (stoPer.get(k) || 0) + 1; stoPer.set(k, c);
+      if (c <= 30) { n++; await db.setKv('sto.count', String(n)); }   // с одного браузера — не больше 30 работ в сутки
+    }
+    return [200, { n }];
   }
   if (method === 'POST') {
     const s = body && String(body.s || ''), p = body && String(body.p || '');

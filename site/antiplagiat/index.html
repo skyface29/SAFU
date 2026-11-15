@@ -144,6 +144,23 @@ h1 em{font-style:normal;background:var(--aurora);background-size:200% 100%;-webk
 .sto-delta b{font:600 20px var(--display)}
 .sto-more{border-top:1px solid var(--line);padding-top:12px}
 /* вид работы: проверка по его правилам */
+.sto-why{max-width:820px;margin:0 auto 18px;display:grid;grid-template-columns:auto 1fr;gap:18px 24px;align-items:center}
+.why-pages{display:flex;align-items:center;gap:10px}
+.mini{position:relative;width:84px;height:116px;border-radius:6px;background:#fff;padding:10px 9px;display:flex;flex-direction:column;gap:5px;box-shadow:0 10px 30px -12px rgba(0,0,0,.6)}
+.mini i{display:block;height:3px;border-radius:2px;background:#c8ced8;font-style:normal}
+.mini i.t{height:auto;background:none;color:#555;font:600 5px/1 var(--body);letter-spacing:.02em}
+.mini i.s{width:70%}.mini i.c{align-self:center}.mini i.r{align-self:flex-end;width:55%}.mini i.sp{flex:1;background:none}
+.mini b.h{font:700 7px/1 var(--body);color:#111}.mini b.c{align-self:center}
+.mini.bad{transform:rotate(-3deg)}.mini.bad i{background:#e2b4b4}.mini.bad b.h{color:#c33}
+.mini .tag{position:absolute;left:50%;bottom:-20px;transform:translateX(-50%);font-size:12px;font-weight:600;color:var(--muted)}
+.mini.good .tag{color:var(--ok)}
+.why-pages .arr{font-size:20px;color:var(--accent)}
+.why-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
+.why-list b{display:block;font-size:14.5px}.why-list small{color:var(--muted);font-size:12.5px}
+.why-list li{padding-left:16px;position:relative}.why-list li::before{content:"";position:absolute;left:0;top:8px;width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.why-count{grid-column:1/-1;justify-self:center;padding:8px 16px;border-radius:999px;border:1px solid var(--line2);background:var(--glass);font-size:14px;color:var(--ink2)}
+.why-count b{font:700 16px var(--display);color:var(--ink)}
+@media (max-width:640px){.sto-why{grid-template-columns:1fr;justify-items:center}.why-list{grid-template-columns:1fr}}
 .sto-kind{display:flex;flex-direction:column;gap:10px}
 .sto-steps{display:flex;gap:6px;list-style:none;margin:0;padding:0;counter-reset:s}
 .sto-steps li{flex:1;display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:14px;background:var(--glass);border:1px solid var(--line);color:var(--muted);font-size:13.5px;font-weight:500;transition:all .3s var(--ease)}
@@ -178,6 +195,23 @@ h1 em{font-style:normal;background:var(--aurora);background-size:200% 100%;-webk
 .sto-res li small.how{display:block;color:var(--muted)}
 .kpill{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;vertical-align:1px;background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--ink2)}
 .kpill.auto{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.err-sum{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;border-radius:16px;border:1px solid var(--warn-line);background:var(--warn-bg)}
+.err-sum div{font-size:14.5px}.err-sum b{font:700 18px var(--display);color:var(--para)}
+.err-sum small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.err-view .sto-prev{max-height:62vh}
+.pv-err{outline:2px solid #f08a24;outline-offset:2px;border-radius:2px;background:rgba(240,138,36,.08);position:relative}
+.pv-err::before{content:attr(data-n);position:absolute;left:-30px;top:0;min-width:20px;height:20px;padding:0 4px;border-radius:10px;background:#f08a24;color:#fff;font:700 12px/20px var(--body);text-align:center;text-indent:0}
+.pv-err.flash{animation:pvflash 1.2s ease}
+@keyframes pvflash{0%,40%{background:rgba(240,138,36,.45)}100%{background:rgba(240,138,36,.08)}}
+.err-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px;max-height:46vh;overflow:auto}
+.err-list li{display:grid;grid-template-columns:28px 1fr;gap:10px;padding:10px 12px;border-radius:14px;background:var(--glass);border:1px solid var(--line)}
+.err-list li[data-go]{cursor:pointer}.err-list li[data-go]:hover{border-color:#f08a24}
+.err-list .en{display:grid;place-items:center;width:24px;height:24px;border-radius:12px;background:#f08a24;color:#fff;font-size:12px}
+.err-list .et{display:block;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.err-list small{display:block;color:var(--ink2);font-size:12.5px;margin-top:2px}
+.err-list em{font-style:normal;font-weight:600;font-size:11.5px;padding:0 6px;border-radius:8px;margin-left:4px}
+.err-list em.auto{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.err-list em.man{color:var(--para);background:color-mix(in srgb,var(--para) 14%,transparent)}
 .insp{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:9px 12px;border-radius:12px;background:color-mix(in srgb,var(--ok) 10%,transparent);font-size:13.5px;color:var(--ink2)}
 .insp i{font-style:normal;font-weight:700;color:var(--ok)}
 .insp.bad{background:color-mix(in srgb,var(--para) 10%,transparent)}
@@ -188,7 +222,7 @@ h1 em{font-style:normal;background:var(--aurora);background-size:200% 100%;-webk
 .row-acts svg{width:16px;height:16px}
 .sto-prev{margin:0 0 12px;padding:10px;border-radius:20px;border:1px solid var(--line2);background:#8a93a5;max-height:78vh;overflow:auto;overscroll-behavior:contain}
 .pv-bar{font-size:12.5px;color:#10151f;padding:2px 4px 10px}
-.pv-pages{--k:1;transform:scale(var(--k));transform-origin:top left;width:max-content}
+.pv-pages{width:max-content;max-width:100%}
 .pv-pages section.pv{position:relative;margin:0 0 14px !important;box-shadow:0 8px 30px -10px rgba(0,0,0,.5);background:#fff;color:#000}
 .pv-guide{position:absolute;border:1px dashed rgba(31,98,224,.55);pointer-events:none}
 .pv-n{position:absolute;right:10px;top:8px;font:600 11px var(--body);color:#8a93a5}
@@ -716,6 +750,20 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 <section class="sec" id="sto">
   <div class="sec-h reveal"><div><span class="label">Новое · СТО САФУ 2026</span><h3>Оформим работу по СТО САФУ за пару секунд</h3></div>
     <p>Загрузите .docx и скачайте готовый файл: поля, шрифты, заголовки, рисунки, таблицы, список источников, сноски и номера страниц станут как в стандарте. Бесплатно, файл никуда не загружается.</p></div>
+  <div class="sto-why reveal">
+    <div class="why-pages" aria-hidden="true">
+      <div class="mini bad"><i class="t">МИНИСТЕРСТВО…</i><i class="l s"></i><i class="l s"></i><b class="h">Введение</b><i class="l"></i><i class="l"></i><i class="l"></i><span class="tag">до</span></div>
+      <span class="arr">→</span>
+      <div class="mini good"><i class="t c">МИНИСТЕРСТВО…</i><i class="l c s"></i><b class="h c">ЭССЕ</b><i class="l c s"></i><i class="sp"></i><i class="l r s"></i><i class="l r s"></i><span class="tag">после</span></div>
+    </div>
+    <ul class="why-list">
+      <li><b>Бесплатно и без регистрации</b><small>без оплаты и ограничений</small></li>
+      <li><b>Файл не уходит с устройства</b><small>оформление идёт прямо в браузере</small></li>
+      <li><b>По СТО САФУ 2026 пункт за пунктом</b><small>титульник по форме, разделы с новой страницы, «–», ссылки [1] на каждый источник</small></li>
+      <li><b>Проверено на тысячах «злых» файлов</b><small>и каждый результат перепроверяется строгим инспектором</small></li>
+    </ul>
+    <div class="why-count hide" id="stoCount"></div>
+  </div>
   <div class="panel sto-one" id="stoFmt">
     <ol class="sto-steps" id="stoSteps" aria-label="Шаги"><li class="on"><b>1</b>Файл .docx</li><li><b>2</b>Вид работы</li><li><b>3</b>Скачать</li></ol>
     <div class="sto-drop" id="stoDrop" tabindex="0" role="button" aria-label="Выбрать файл .docx">
@@ -723,6 +771,8 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       <b id="stoName">Перетащите сюда работу в .docx</b><small id="stoHint">или нажмите, чтобы выбрать файл</small>
     </div>
     <input type="file" id="stoFile" accept=".docx" class="hide">
+    <div class="err-sum hide" id="errSum"></div>
+    <div class="err-view hide" id="errView"></div>
     <div class="sto-kind hide" id="stoKind"><div class="kh"><b>Какая это работа?</b><small id="kNote">проверю по правилам именно для неё: нужно ли содержание, что обязательно и какой объём</small></div>
       <div class="kchips few" id="kChips" role="radiogroup" aria-label="Вид работы"></div><button class="link kmore" id="kMore" type="button">Все виды работ ›</button></div>
     <button class="primary block" id="stoGo" disabled>Оформить по СТО САФУ<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
@@ -1341,6 +1391,8 @@ function stoPick(file){
   STO.fileTitle = false;
   // данные со старого титульника работы: собираем титул по форме СТО без ручного ввода
   $('stoKind').classList.remove('hide');
+  STO.before = null; $('errSum').classList.add('hide'); $('errView').classList.add('hide'); $('errView').innerHTML = ''; delete $('errView').dataset.file;
+  file.arrayBuffer().then(b => StoInspect.inspect(b, { all: true, size: $('stoSmall').checked ? 12 : 14, binding: $('stoBind').checked })).then(r => { if(STO.file === file){ STO.before = r; errSummary(); } }).catch(() => {});
   STO.titleP = file.arrayBuffer().then(b => Formatter.readTitle(b).catch(() => null).then(d => WorkKinds.guess(b, d && d.found ? d.type : null).then(k => { if(STO.file === file) setKind(k, true); return d; }))).then(d => {
     if(STO.file !== file || !d || !d.found) { titleSync(); return; }
     // поля конкретной работы берём из файла, а личные (ФИО, группа…) — если в файле они есть
@@ -1374,7 +1426,7 @@ async function stoKindReport(){
     '<div><h4>' + head + ' · ' + esc(kc.name) + '</h4><p>' + esc(sub) + '</p><div class="facts"><span>основная часть ≈ <b>' + kc.pages + ' ' + plural(kc.pages, 'стр.', 'стр.', 'стр.') + '</b></span><span><b>' + kc.words.toLocaleString('ru-RU') + '</b> ' + plural(kc.words, 'слово', 'слова', 'слов') + '</span>' +
     (kc.found.bib != null ? '<span>источников: <b>' + kc.sources + '</b></span>' : '') + '<span>готовность: <b>' + score + '/100</b></span></div>' +
     (ins ? '<div class="insp' + (ins.issues.length ? ' bad' : '') + '"><i>' + (ins.issues.length ? '!' : '✓') + '</i><span>Строгая проверка СТО: <b>' + ins.checked.toLocaleString('ru-RU') + '</b> ' + plural(ins.checked, 'абзац', 'абзаца', 'абзацев') + ', <b>' + ins.checks.toLocaleString('ru-RU') + '</b> ' + plural(ins.checks, 'проверка', 'проверки', 'проверок') + ' по ' + ins.rules.length + ' ' + plural(ins.rules.length, 'правилу', 'правилам', 'правилам') + ' — ' +
-      (ins.issues.length ? '<b>' + ins.issues.length + '</b> ' + plural(ins.issues.length, 'место', 'места', 'мест') + ' проверь' : '<b>нарушений нет</b>') + '</span></div>' : '') +
+      (ins.issues.length ? '<b>' + ins.issues.length + '</b> ' + plural(ins.issues.length, 'место', 'места', 'мест') + ' проверь' : '<b>нарушений нет</b>') + (STO.before && STO.before.issues.length ? ' (в исходном файле было ' + STO.before.issues.length + ')' : '') + '</span></div>' : '') +
     '<div class="row-acts"><button class="btn" id="stoPrevBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>Посмотреть страницы</button></div></div></div>' +
     '<div id="stoPrev" class="sto-prev hide"></div>' +
     (ins && ins.issues.length ? '<div class="gost closed"><h4 data-gost><span>Строгая проверка: что посмотреть</span><span class="tag">' + ins.issues.length + '</span></h4><ul>' +
@@ -1383,6 +1435,64 @@ async function stoKindReport(){
 }
 /* предпросмотр страниц: docx-preview (Apache-2.0) + JSZip (MIT) — грузятся только по кнопке */
 function loadScript(src){ return new Promise((ok, no) => { if(document.querySelector('script[src="' + src + '"]')) return ok(); const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('Не загрузилось: ' + src)); document.head.appendChild(s); }); }
+/* постраничная вёрстка .docx в box: docx-preview; возвращает host со страницами */
+async function renderPages(box, buf, guides){
+  await loadScript('vendor/jszip.min.js'); await loadScript('vendor/docx-preview.min.js');
+  const host = document.createElement('div'); host.className = 'pv-pages';
+  await window.docx.renderAsync(buf, host, null, { className: 'pv', inWrapper: false, breakPages: true, ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true, renderFootnotes: true, experimental: true, useBase64URL: true });
+  box.appendChild(host);
+  const pages = host.querySelectorAll('section.pv');
+  pages.forEach((sec, i) => { const cs = getComputedStyle(sec);
+    if(guides){ const g = document.createElement('div'); g.className = 'pv-guide'; g.style.cssText = 'top:' + cs.paddingTop + ';right:' + cs.paddingRight + ';bottom:' + cs.paddingBottom + ';left:' + cs.paddingLeft; sec.appendChild(g); }
+    const n = document.createElement('span'); n.className = 'pv-n'; n.textContent = (i + 1) + ' / ' + pages.length; sec.appendChild(n); });
+  // масштаб — у каждой страницы свой (альбомный лист шире книжного); zoom меняет и раскладку, высоту считать не нужно
+  const fit = () => { const w = box.clientWidth - 24; pages.forEach(sec => { sec.style.zoom = ''; const k = Math.min(1, w / sec.offsetWidth); sec.style.zoom = k < 1 ? k.toFixed(4) : ''; }); };
+  fit(); addEventListener('resize', fit);
+  return host;
+}
+/* «Все ошибки с картинками»: исходный файл постранично, места с нарушениями обведены и пронумерованы */
+const RULE_MANUAL = new Set(['Название таблицы: над таблицей']);
+function errSummary(){
+  const ins = STO.before, el = $('errSum'); if(!ins){ el.classList.add('hide'); return; }
+  const paras = new Set(ins.issues.map(x => x.gi)).size;
+  el.classList.remove('hide');
+  el.innerHTML = ins.issues.length
+    ? '<div><b>' + ins.issues.length + '</b> ' + plural(ins.issues.length, 'нарушение', 'нарушения', 'нарушений') + ' СТО в <b>' + paras + '</b> ' + plural(paras, 'абзаце', 'абзацах', 'абзацах') + '<small>' + Object.keys(ins.byRule).slice(0, 3).map(r => esc(r) + ' — ' + ins.byRule[r].length).join(' · ') + '</small></div><button class="btn" id="errBtn" type="button">Посмотреть все — с картинками</button>'
+    : '<div><b>Нарушений не нашёл</b><small>' + ins.checked + ' ' + plural(ins.checked, 'абзац', 'абзаца', 'абзацев') + ' проверено — оформление всё равно приведу к единому виду</small></div>';
+}
+async function openErrView(){
+  const box = $('errView'), ins = STO.before; if(!ins || !STO.file) return;
+  if(!box.classList.contains('hide')){ box.classList.add('hide'); $('errBtn').textContent = 'Посмотреть все — с картинками'; return; }
+  box.classList.remove('hide'); $('errBtn').textContent = 'Скрыть';
+  if(box.dataset.file === STO.file.name + STO.file.size) return;
+  box.dataset.file = STO.file.name + STO.file.size;
+  box.innerHTML = '<div class="muted" style="padding:14px">Вёрстаю страницы и отмечаю места…</div>';
+  try{
+    const buf = await STO.file.arrayBuffer();
+    const pv = document.createElement('div'); pv.className = 'sto-prev';
+    box.innerHTML = ''; box.appendChild(pv);
+    const host = await renderPages(pv, buf, false);
+    const rp = [...host.querySelectorAll('article p')], norm = t => (t || '').replace(/\s+/g, ' ').trim().slice(0, 30);
+    const find = x => { const want = norm(x.text); if(rp[x.gi] && norm(rp[x.gi].textContent) === want) return rp[x.gi];
+      for(let d = 1; d < 25; d++) for(const k of [x.gi + d, x.gi - d]) if(rp[k] && norm(rp[k].textContent) === want) return rp[k]; return null; };
+    // группы по абзацам, в порядке документа
+    const groups = new Map();
+    ins.issues.filter(x => x.gi >= 0).sort((a, b) => a.gi - b.gi).forEach(x => { const g = groups.get(x.gi) || { x, list: [] }; g.list.push(x); groups.set(x.gi, g); });
+    let n = 0; const rows = [];
+    for(const g of groups.values()){
+      const el = find(g.x); n++;
+      if(el){ el.classList.add('pv-err'); el.dataset.n = n; el.id = 'pvErr' + n; }
+      rows.push('<li' + (el ? ' data-go="' + n + '"' : '') + '><b class="en">' + n + '</b><div><span class="et">' + esc(g.x.text || g.x.where) + '</span>' +
+        g.list.map(x => '<small>' + esc(x.rule) + ': ' + esc(String(x.found)) + ' → ' + esc(String(x.need)) + ' <em class="' + (RULE_MANUAL.has(x.rule) ? 'man' : 'auto') + '">' + (RULE_MANUAL.has(x.rule) ? 'вручную' : 'исправлю') + '</em></small>').join('') + '</div></li>');
+    }
+    const other = ins.issues.filter(x => x.gi < 0);
+    box.insertAdjacentHTML('beforeend', '<ol class="err-list">' + rows.join('') + other.map(x => '<li><b class="en">•</b><div><span class="et">' + esc(x.where) + '</span><small>' + esc(x.rule) + ': ' + esc(String(x.found)) + ' → ' + esc(String(x.need)) + ' <em class="auto">исправлю</em></small></div></li>').join('') + '</ol>');
+    box.querySelectorAll('[data-go]').forEach(li => li.onclick = () => { const t = document.getElementById('pvErr' + li.dataset.go); if(!t) return;
+      const top = t.getBoundingClientRect().top - pv.getBoundingClientRect().top + pv.scrollTop - 60;
+      pv.scrollTo({ top, behavior: calm ? 'auto' : 'smooth' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); });
+  }catch(e){ box.innerHTML = '<div class="err" style="padding:12px">Не получилось показать страницы: ' + esc(e.message || String(e)) + '</div>'; }
+}
+document.addEventListener('click', e => { if(e.target.closest('#errBtn')) openErrView(); });
 async function stoPreview(){
   const box = $('stoPrev'), btn = $('stoPrevBtn'); if(!STO.last || !box) return;
   if(!box.classList.contains('hide') && box.dataset.done){ box.classList.add('hide'); btn.lastChild.textContent = 'Посмотреть страницы'; return; }
@@ -1390,21 +1500,21 @@ async function stoPreview(){
   if(box.dataset.done) return;
   box.innerHTML = '<div class="muted" style="padding:16px">Вёрстаю страницы…</div>';
   try{
-    await loadScript('vendor/jszip.min.js'); await loadScript('vendor/docx-preview.min.js');
-    const host = document.createElement('div'); host.className = 'pv-pages';
-    await window.docx.renderAsync(await STO.last.blob.arrayBuffer(), host, null, { className: 'pv', inWrapper: false, breakPages: true, ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true, renderFootnotes: true, experimental: true, useBase64URL: true });
     box.innerHTML = '<div class="pv-bar"><span>Страницы как в Word — пунктир показывает поля по СТО (25 · 15 · 20 · 20 мм). Точный перенос строк и номера страниц Word пересчитает сам.</span></div>';
-    box.appendChild(host);
-    const pages = host.querySelectorAll('section.pv');
-    pages.forEach((sec, i) => { const cs = getComputedStyle(sec), g = document.createElement('div'); g.className = 'pv-guide';
-      g.style.cssText = 'top:' + cs.paddingTop + ';right:' + cs.paddingRight + ';bottom:' + cs.paddingBottom + ';left:' + cs.paddingLeft;
-      sec.appendChild(g); const n = document.createElement('span'); n.className = 'pv-n'; n.textContent = (i + 1) + ' / ' + pages.length; sec.appendChild(n); });
-    const fit = () => { const w = box.clientWidth - 8, sec = host.querySelector('section.pv'); if(!sec) return; const k = Math.min(1, w / sec.offsetWidth); host.style.setProperty('--k', k); host.style.height = (host.scrollHeight * k) + 'px'; };
-    host.style.height = ''; fit(); addEventListener('resize', () => { host.style.height = ''; fit(); });
+    await renderPages(box, await STO.last.blob.arrayBuffer(), true);
     box.dataset.done = '1';
   }catch(e){ box.innerHTML = '<div class="err" style="padding:12px">Предпросмотр не получился: ' + esc(e.message || String(e)) + '. Скачайте файл и откройте в Word.</div>'; }
 }
 document.addEventListener('click', e => { if(e.target.closest('#stoPrevBtn')) stoPreview(); });
+/* общий счётчик оформленных работ (функция arktika-pulse) — показываем, когда их уже заметное число */
+const STO_COUNT_URL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '/pulse' : 'https://functions.yandexcloud.net/d4e43red8p3b1m9jftnf';
+function stoCount(ev){
+  let s = ''; try{ s = localStorage.getItem('arktika.pid') || ''; }catch(e){}
+  fetch(STO_COUNT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ev, s }), keepalive: true })
+    .then(r => r.ok ? r.json() : null).then(d => { const n = d && +d.n; const el = $('stoCount'); if(!el || !(n >= 100)) return;
+      el.innerHTML = 'Уже оформлено <b>' + n.toLocaleString('ru-RU') + '</b> ' + plural(n, 'работа', 'работы', 'работ'); el.classList.remove('hide'); }).catch(() => {});
+}
+stoCount('sto-count');
 /* «Моя статистика» — только в этом браузере */
 function stoStats(r){
   const st = lsGet('sto.stats', { works: 0, fixed: 0, notes: 0, since: Date.now() });
@@ -1426,6 +1536,8 @@ async function stoRun(){
     let delta = '';
     try{
       const a = await Iceberg.gostCheck(buf), b = await Iceberg.gostCheck(await r.blob.arrayBuffer());
+      // структуру работы проверяет «Проверка по виду» с учётом вида — здесь только оформление
+      for (const g of [a, b]) g.problems = g.items.filter(x => !x.ok && x.name !== 'Структура работы').length;
       delta = '<div class="sto-delta"><span class="muted">Замечаний по оформлению:</span><b style="color:var(--para)">' + a.problems + '</b><span>→</span><b style="color:var(--ok)">' + b.problems + '</b></div>';
     }catch(e){}
     if(STO.url) URL.revokeObjectURL(STO.url);
@@ -1440,7 +1552,7 @@ async function stoRun(){
     $('stoRes').querySelector('.sto-dl').insertAdjacentHTML('afterend', '<div id="stoReady" style="margin-top:14px"></div>');
     stoStep(4);
     await stoKindReport();
-    stoStats(r);
+    stoStats(r); stoCount('sto');
     try{ $('stoDl').click(); }catch(e){}
   }catch(e){ $('stoRes').innerHTML = ''; $('stoErr').textContent = e.message || 'Не получилось оформить файл.'; }
   btn.disabled = false;

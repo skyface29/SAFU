@@ -511,13 +511,13 @@ async function gostCheck(buf) {
     item('Формат листа', a4, 'A4 (210 × 297 мм)', `${w} × ${h} мм`); }
   if (mar) {
     const L = mm(wAttr(mar, 'left')), R = mm(wAttr(mar, 'right')), T = mm(wAttr(mar, 'top')), B = mm(wAttr(mar, 'bottom'));
-    item('Поля', L >= 24 && L <= 31 && R >= 10 && R <= 15 && Math.abs(T - 20) <= 1 && Math.abs(B - 20) <= 1,
-      'левое 25–30, правое 10–15, верхнее и нижнее 20 мм', `левое ${L}, правое ${R}, верхнее ${T}, нижнее ${B} мм`);
+    item('Поля', L >= 24 && L <= 31 && R >= 10 && Math.abs(T - 20) <= 1 && B >= 19,   // п. 4.1.3 СТО
+      'левое 25 (30 под переплёт), правое не менее 10, верхнее 20, нижнее не менее 20 мм', `левое ${L}, правое ${R}, верхнее ${T}, нижнее ${B} мм`);
   }
   if (bodyChars > 200) {
     const [f] = top('font'), [s] = top('size'), [l] = top('line'), [i] = top('indent'), [j] = top('jc');
-    const okFont = share('font', v => /times new roman/i.test(v));
-    item('Шрифт', okFont >= .9, 'Times New Roman', okFont >= .9 ? 'Times New Roman' : `${f}${okFont > 0 ? ` (Times New Roman — ${pct(okFont)} текста)` : ''}`);
+    const okFont = share('font', v => /times new roman|pt astra serif|tempora/i.test(v));   // п. 4.1.5 СТО
+    item('Шрифт', okFont >= .9, 'Times New Roman / PT Astra Serif / Tempora LGS', okFont >= .9 ? f : `${f}${okFont > 0 ? ` (Times New Roman — ${pct(okFont)} текста)` : ''}`);
     const okSize = share('size', v => v >= 12 && v <= 14);
     item('Размер шрифта', okSize >= .9, '12–14 пт (чаще требуют 14)', okSize >= .9 || okSize === 0 ? `${s} пт` : `${s} пт, в норме ${pct(okSize)} текста`);
     const okLine = share('line', v => v === 1.5);
