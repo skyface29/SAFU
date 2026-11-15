@@ -4,10 +4,12 @@ W='{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
 WP='{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}'
 def words(path):
     z=zipfile.ZipFile(path); x=etree.fromstring(z.read('word/document.xml'))
-    s=' '.join(''.join(t.text or '' for t in p.iter(W+'t')) for p in x.iter(W+'p'))
+    # разрыв строки, табуляция, неразрывный дефис — тоже граница слова (иначе «процесс↵новая» считалось бы словом «процессновая»)
+    def ptxt(p): return ''.join((t.text or '') if t.tag==W+'t' else ' ' for t in p.iter(W+'t',W+'tab',W+'br',W+'cr',W+'noBreakHyphen'))
+    s=' '.join(ptxt(p) for p in x.iter(W+'p'))
     s=s.replace(' ',' ').replace('­','')
     return collections.Counter(w.lower() for w in re.findall(r'[A-Za-zА-Яа-яЁё]{3,}',s)), x, z
-def texts(x): return [''.join(t.text or '' for t in p.iter(W+'t')) for p in x.iter(W+'p')]
+def texts(x): return [''.join((t.text or '') if t.tag==W+'t' else ' ' for t in p.iter(W+'t',W+'tab',W+'br',W+'cr',W+'noBreakHyphen')) for p in x.iter(W+'p')]
 res=json.load(open(sys.argv[2]+'/res.json')); tot=collections.Counter()
 for f in sorted(res):
     r=res[f]; probs=[]

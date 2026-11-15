@@ -208,7 +208,8 @@ function paraText(p, tabs) {
   for (const r of ownRuns(p)) for (const c of kids(r)) {
     if (c.localName === 't') s += c.textContent;
     else if (c.localName === 'tab') s += tabs ? '\t' : ' ';
-    else if (c.localName === 'br' && attr(c, 'type') !== 'page') s += ' ';
+    else if ((c.localName === 'br' && attr(c, 'type') !== 'page') || c.localName === 'cr') s += ' ';
+    else if (c.localName === 'noBreakHyphen') s += '\u2011';
   }
   return s;
 }
@@ -354,8 +355,16 @@ function setParaText(p, text) {
     if (first) { t.textContent = text; t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve'); first = false; }
     else r.removeChild(t);
   }
-  for (const r of runs.slice(1)) { drop(r, 'tab'); if (!kids(r).filter(c => c.localName !== 'rPr').length) r.parentNode.removeChild(r); }
-  drop(runs[0], 'tab');
+  // всё, что paraText превратил в символы (табуляция, разрыв строки, неразрывный дефис), уже вошло в text —
+  // иначе оно оставалось бы в конце абзаца: «Данные‑b» → «Данныеb‑», лишняя пустая строка под заголовком (фазз 15.11)
+  const inline = r => { drop(r, 'tab', 'cr', 'noBreakHyphen', 'softHyphen'); for (const b of kids(r, 'br')) if (attr(b, 'type') !== 'page') r.removeChild(b); };
+  // «пустой» — только rPr и ничего больше в любом пространстве имён: надпись (mc:AlternateContent), рисунок, поле — не пустота
+  const els = r => [...r.childNodes].filter(n => n.nodeType === 1);
+  const empty = r => !els(r).some(c => !(c.namespaceURI === W && c.localName === 'rPr'));
+  const onlyInline = r => els(r).every(c => c.namespaceURI === W && (['rPr', 'tab', 'cr', 'noBreakHyphen', 'softHyphen', 'lastRenderedPageBreak'].includes(c.localName) || (c.localName === 'br' && attr(c, 'type') !== 'page')));
+  for (const r of ownRuns(p).filter(r => !kids(r, 't').length && onlyInline(r))) { inline(r); if (r.parentNode && empty(r)) r.parentNode.removeChild(r); }
+  for (const r of runs.slice(1)) { inline(r); if (r.parentNode && empty(r)) r.parentNode.removeChild(r); }
+  inline(runs[0]);
 }
 function isAllCaps(s) { const l = s.replace(/[^A-Za-zА-Яа-яЁё]/g, ''); return l.length >= 3 && l === l.toUpperCase(); }
 
@@ -462,7 +471,7 @@ function buildStyles(stylesDoc) {
 }
 
 /* ============================ главное ============================ */
-async function formatDocx(buf, opts) {
+async function formatOnce(buf, opts) {
   opts = Object.assign({ profile: 'safu', binding: false, toc: true, typography: true, pageNumbers: true }, opts || {});
   const prof = PROFILES[opts.profile] || PROFILES.safu;
   const size = opts.size || prof.size;
@@ -1384,5 +1393,16 @@ async function readTitle(buf) {
   return d;
 }
 
-global.Formatter = { formatDocx, readTitle, PROFILES, zipFiles: zip, normBib, _countLines: countLines, _textW: textW, _nbsp: nbsp };
+/** Оформление до неподвижной точки. Часть правил срабатывает только после других (кавычки «…» → пробел внутри,
+    «Табл.1.1.Данные» → подпись, «стр.» → «с.» после правки записи), и раньше второе оформление того же файла
+    находило доделки (фазз 15.11: 11 из 400 работ). Второй проход доводит работу до конца сразу; отчёт — по первому,
+    он описывает, что было в исходном файле. Третий проход не нужен: фазз проверяет, что после двух ничего не меняется. */
+async function formatDocx(buf, opts) {
+  const r1 = await formatOnce(buf, opts);
+  try {
+    const r2 = await formatOnce(await r1.blob.arrayBuffer(), Object.assign({}, opts, { titleXml: null }));
+    return Object.assign({}, r1, { blob: r2.blob, passes: 2 });
+  } catch (e) { return r1; }   // второй проход — улучшение; если он сломался, отдаём первый
+}
+global.Formatter = { formatDocx, readTitle, PROFILES, zipFiles: zip, unzip, normBib, _countLines: countLines, _textW: textW, _nbsp: nbsp };
 })(typeof window !== 'undefined' ? window : globalThis);
