@@ -848,7 +848,7 @@ function manualLesson(d){
 function openLesson(k,l,s){
   var les=s?JSON.parse(JSON.stringify(s)):{d:DAY,t:l.t,e:l.e||'',subj:l.subj,kind:l.kind||'',teacher:l.teacher||'',sub:l.sub||'',marks:{}};
   les.d=k.slice(2,12);
-  if(!s){var subs=(G.meta.subs||{})[les.sub]||null;G.meta.roster.forEach(function(st){if(credited(st.id,les.subj)&&(!subs||subs.indexOf(st.id)>=0))les.marks[st.id]='r';});}
+  if(!s){var subs=(G.meta.subs||{})[les.sub]||null;var ev=elect(les.subj);G.meta.roster.forEach(function(st){if(credited(st.id,les.subj)&&(!subs||subs.indexOf(st.id)>=0)&&(!ev||ev.indexOf(st.id)>=0))les.marks[st.id]='r';});}
   if(s)review(k,les);else swipe(k,les);
 }
 function deckTop(les,x,u){return '<div class="dtop"><button class="btn icon" id="'+x+'" aria-label="Закрыть">'+ico('x')+'</button><div class="m"><b>'+esc(les.subj||'Пара')+'</b><small>'+esc(human(les.d)+', '+les.t+(les.kind?', '+les.kind.toLowerCase():''))+'</small></div>'+
@@ -863,7 +863,7 @@ function prevLesson(k,les){var best=null;savedOn(les.d).forEach(function(x){if(x
 /* ---------- колода свайпов ---------- */
 function swipe(k,les){
   var subs=(G.meta.subs||{})[les.sub]||null;
-  var R=G.meta.roster.filter(function(s){return !les.marks[s.id]&&(!subs||subs.indexOf(s.id)>=0);}),all=R.length,hist=[],i=0,busy=false;
+  var ev=elect(les.subj),R=G.meta.roster.filter(function(s){return !les.marks[s.id]&&(!subs||subs.indexOf(s.id)>=0)&&(!ev||ev.indexOf(s.id)>=0);}),all=R.length,hist=[],i=0,busy=false;
   if(!R.length){review(k,les);return;}
   var past=pastMarks(k,les.d.slice(0,7)),prev=prevLesson(k,les);
   var el=document.createElement('div');el.className='deck';
@@ -873,6 +873,7 @@ function swipe(k,les){
     '<div class="bars'+(all>60?' dense':'')+'" id="bars">'+R.map(function(){return '<i></i>';}).join('')+'</div>'+
     '<div class="tally"><span class="k" id="pc"></span><span class="c p" id="tp">0</span><span class="c a" id="ta">0</span><span class="c e" id="te">0</span><span class="c l" id="tl">0</span></div>'+
     (prev?'<button class="cpv" id="cpv">'+ico('repeat')+'Как на паре в '+esc(prev.t)+': '+(pc.p+pc.l)+' из '+(pc.p+pc.l+pc.a+pc.e)+'</button>':'')+
+    (ev?'<p class="subnote">Предмет по выбору: '+ev.length+' '+plural(ev.length,'человек','человека','человек')+' из группы</p>':'')+
     (les.sub?'<p class="subnote">'+esc(subName(les.sub))+': '+(subs?subs.length+' '+plural(subs.length,'человек','человека','человек')+' по прошлым отметкам':'кого нет в подгруппе, пропусти кнопкой «Не на паре»')+'</p>':'')+
     '<div class="arena" id="ar"><span class="edge a">НЕТ</span><span class="edge p">БЫЛ</span><span class="edge e">УВАЖ.</span><span class="edge l">ОПОЗДАЛ</span><div class="cards" id="cards"></div></div>'+
     '<div class="acts">'+act('a','Нет','x',1)+act('l','Опоздал','late')+act('e','Уваж.','doc')+act('p','Был','check',1)+'</div>'+
@@ -1014,6 +1015,8 @@ function groupView(){
     '<h2 id="roster">Состав и ссылки студентам</h2><p class="muted" style="margin-top:-4px">У каждого студента своя ссылка: по ней видны только его отметки.</p>'+
     '<div class="row" style="margin:10px 0"><button class="btn" style="flex:1" id="allL">'+ico('link')+'Все ссылки</button><button class="btn" style="flex:1" id="addS">+ Добавить</button></div>'+
     '<div class="list">'+R.map(function(s,i){return '<div class="item"><span class="avs" style="'+av(s.n)+'">'+esc(initials(s.n))+'</span><span class="m"><b>'+esc(s.n)+'</b>'+(((G.meta.credits||{})[s.id]||[]).length?'<small class="cred">перезачёт: '+esc(G.meta.credits[s.id].join(', '))+'</small>':'')+'</span><button class="btn icon" data-cr="'+i+'" title="Перезачёты" aria-label="Перезачёты">'+ico('cred')+'</button><button class="btn icon" data-l="'+i+'" title="Ссылка студенту" aria-label="Ссылка студенту">'+ico('link')+'</button><button class="btn icon" data-e="'+i+'" title="Изменить" aria-label="Изменить">'+ico('edit')+'</button></div>';}).join('')+'</div>'+
+    '<h2>Предметы по выбору</h2><p class="muted" style="margin-top:-4px">'+(function(){var e=Object.keys(G.meta.elect||{});return e.length?esc(e.join(', ')):'Укажи, кто ходит на какой предмет по выбору, — в колоде на этих парах будут только они.';})()+'</p>'+
+    '<button class="btn wide" id="elect" style="margin-top:8px">Кто на чём</button>'+
     (G.meta.ruz?'<p class="muted" style="margin-top:14px">Расписание: группа '+esc(G.meta.ruz.num)+' из РУЗ.</p>':'<p class="muted" style="margin-top:14px">Расписание не подключено.</p>')+
     '<div class="stack" style="margin-top:18px"><button class="btn wide" id="other">Другая группа</button><button class="btn wide ghost" id="out" style="color:var(--a)">Выйти из группы на этом телефоне</button></div>';
   var role=who();$$('#role button').forEach(function(b){b.classList.toggle('on',b.dataset.r===role);b.onclick=function(){var s=store();s.who=b.dataset.r;save(s);groupView();setHeader(G.meta.name,who().toLowerCase());};});
@@ -1024,6 +1027,7 @@ function groupView(){
     if(!n){if(!confirm('Убрать '+s.n+' из группы? Прошлые отметки останутся в журнале.'))return;G.meta.roster=R.filter(function(x){return x!==s;});saveMeta().then(function(){toast('Убрал из группы');groupView();},function(e){toast(e.message);});return;}
     s.n=n;studentCardItems([s]).then(function(c){return saveMeta(c);}).then(function(){toast('Имя изменено');groupView();},function(e){toast(e.message);});};});
   $$('[data-cr]').forEach(function(b){b.onclick=function(){creditSheet(R[+b.dataset.cr]);};});
+  $('#elect').onclick=electSheet;
   $('#addS').onclick=function(){var n=prompt('Имя нового студента','');if(!n)return;n=n.replace(/\s+/g,' ').trim();if(!n)return;var s={id:rnd(6,ID_ABC),n:n,t:rnd(15,CODE_ABC)};G.meta.roster.push(s);
     studentCardItems([s]).then(function(c){return saveMeta(c);}).then(function(){toast('Добавлен');groupView();},function(e){toast(e.message);});};
   $('#other').onclick=home;
@@ -1034,6 +1038,28 @@ function groupView(){
 function ruzSubjects(ruz){if(!ruz)return Promise.resolve([]);
   return ruzSchool(ruz.inst).then(function(d){var gi=-1;d.G.forEach(function(g,i){if(String(g[0])===String(ruz.num))gi=i;});if(gi<0)return [];
     var out={};d.L.forEach(function(r){if(r.slice(9).indexOf(gi)>=0&&d.S[r[2]])out[d.S[r[2]]]=1;});return Object.keys(out);}).catch(function(){return [];});}
+/* ---------- предметы по выбору (идея #17): кто ходит — только они в колоде этой пары ---------- */
+function elect(subj){var e=subj&&(G.meta.elect||{})[subj];return e&&e.length?e:null;}
+function electSheet(){
+  var E=JSON.parse(JSON.stringify(G.meta.elect||{})),R=G.meta.roster,cur=null,known={};
+  Object.keys(G.months).forEach(function(m){var o=G.months[m];Object.keys(o).forEach(function(k){if(o[k].subj)known[o[k].subj]=1;});});Object.keys(E).forEach(function(x){known[x]=1;});
+  sheet('<h3>Предметы по выбору</h3><p class="muted" style="margin:0">Выбери предмет и отметь, кто на него ходит. На его парах в колоде будут только эти люди, остальным отметка не нужна. У обычных предметов ничего не меняй — там вся группа.</p>'+
+    '<div id="elB" class="crl"><div class="skeleton"></div></div><div class="row" style="margin-top:4px" id="elA"></div>',function(el,close){
+    function list(){cur=null;var L=Object.keys(known).sort(function(a,b){var x=E[a]?0:1,y=E[b]?0:1;return x-y||a.localeCompare(b,'ru');});
+      $('#elB',el).innerHTML=L.length?L.map(function(x,i){var n=(E[x]||[]).length;return '<label data-i="'+i+'" style="grid-template-columns:1fr auto"><span>'+esc(x)+'</span><small class="muted">'+(n?n+' из '+R.length:'вся группа')+' ›</small></label>';}).join(''):'<div class="muted">Предметов пока нет: подключи расписание или отметь первую пару.</div>';
+      $$('#elB [data-i]',el).forEach(function(b){b.onclick=function(){pick(L[+b.dataset.i]);};});
+      $('#elA',el).innerHTML='<button class="btn main wide" id="elSv">Сохранить</button>';$('#elSv',el).onclick=saveAll;}
+    function pick(subj){cur=subj;var on={};(E[subj]||[]).forEach(function(id){on[id]=1;});
+      $('#elB',el).innerHTML='<b style="display:block;margin:0 2px 4px">'+esc(subj)+'</b>'+R.map(function(st){return '<label><input type="checkbox" value="'+esc(st.id)+'"'+(on[st.id]?' checked':'')+'><span>'+esc(st.n)+'</span></label>';}).join('');
+      $('#elA',el).innerHTML='<button class="btn" style="flex:1" id="elAll">Вся группа</button><button class="btn main" style="flex:1" id="elOk">Готово</button>';
+      $('#elAll',el).onclick=function(){delete E[subj];list();};
+      $('#elOk',el).onclick=function(){var ids=$$('#elB input',el).filter(function(c){return c.checked;}).map(function(c){return c.value;});
+        if(ids.length&&ids.length<R.length)E[subj]=ids;else delete E[subj];list();};}
+    function saveAll(){var b=$('#elSv',el);b.disabled=true;b.textContent='Шифрую и сохраняю…';
+      if(Object.keys(E).length)G.meta.elect=E;else delete G.meta.elect;
+      saveMeta().then(function(){close();toast('Сохранено');groupView();},function(e){b.disabled=false;b.textContent='Сохранить';toast(e.message);});}
+    ruzSubjects(G.meta.ruz).then(function(L){L.forEach(function(x){known[x]=1;});if(cur==null)list();});
+  });}
 function creditSheet(s){
   var cur=((G.meta.credits||{})[s.id]||[]).slice();
   sheet('<h3>Перезачёт: '+esc(s.n)+'</h3><p class="muted" style="margin:0">Для тех, кому предмет перезачли после СПО, другого вуза, перевода или восстановления. На этих парах '+esc(surname(s.n))+' сразу получает «перезачёт», в колоде его нет, в процент посещаемости не идёт.</p>'+

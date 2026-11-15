@@ -24,6 +24,19 @@ export const SCHOOLS = [
 ];
 // Группы СПО: третья цифра номера — 4 (184615, 194602, 524601)
 export const isSpoGroup = n => /^\d{2}4\d{3}\b/.test(String(n));
+// Номер группы из подписи РУЗа. Буква или «-N» сразу после цифр — часть номера: 111512 и 111512У, 131600 и 131600-2 —
+// разные группы (раньше суффикс отрезался, и их пары сливались в одно расписание). «Д» оставлен вариантом — так
+// он хранится у всех с 10.2026 («121314 Д»). \b здесь не годится: для JS кириллица — не «буква», и \b стоит перед «У».
+export function groupNumberOf(txt) {
+  const m = /(^|[^\d.])(\d{6})(-\d{1,2}(?!\d)|[А-ЯЁа-яёA-Za-z](?![А-ЯЁа-яёA-Za-z]))?(?![\d.])/.exec(txt) ||
+            /(^|[^\d.])(\d{4,7})()(?![\d.])/.exec(txt);
+  if (!m) return null;
+  const digits = m[2], suf = m[3] || '';
+  if (/^[Дд]$/.test(suf)) return { number: digits, raw: digits + suf, d: true };
+  const number = digits + (suf.startsWith('-') ? suf : suf.toUpperCase().replace(/[A-Z]/g, c => LAT2CYR[c] || c));
+  return { number, raw: digits + suf, d: false };
+}
+const LAT2CYR = { A: 'А', B: 'В', C: 'С', E: 'Е', H: 'Н', K: 'К', M: 'М', O: 'О', P: 'Р', T: 'Т', X: 'Х', Y: 'У' };
 
 // Время в РУЗ — архангельское (UTC+3, без перехода)
 export const TZ = 3 * 3600e3, DAY = 864e5;
@@ -148,13 +161,14 @@ export function parseGroups(html) {
     const gt = u.indexOf('>'); if (gt >= 0) u = u.slice(gt + 1);
     const end = u.toLowerCase().indexOf('</a>'); if (end >= 0) u = u.slice(0, end);
     const txt = Wt(si(u)).replace(/\s+/g, ' ').trim();
-    const num = /\b(\d{6})\b/.exec(txt) || /\b(\d{4,7})\b/.exec(txt); if (!num) return;
-    let title = txt.replace(num[1], '').replace(/^[\s\-–—,.:()]+|[\s\-–—,.:()]+$/g, '');
+    const gn = groupNumberOf(txt); if (!gn) return;
+    let title = txt.replace(gn.raw, '').replace(/^[\s\-–—,.:()]+|[\s\-–—,.:()]+$/g, '');
     if ((title.match(/\(/g) || []).length > (title.match(/\)/g) || []).length) title += ')';
-    // «Д …» в начале названия — отдельная группа с тем же номером (у РУЗа это другая запись)
-    let variant = '';
-    const dm = /^[Дд]\s+(?=\S)/.exec(title);
+    // «Д» — отдельная группа с тем же номером (у РУЗа это другая запись): «121314Д» или «121314 Д …»
+    let variant = gn.d ? 'Д' : '';
+    const dm = !variant && /^[Дд]\s+(?=\S)/.exec(title);
     if (dm) { variant = 'Д'; title = title.slice(dm[0].length); }
+    const num = [, gn.number];
     const course = [...courses].reverse().find(c => c.pos < m.index)?.course ?? 0;
     seen.add(id); out.push({ id, number: num[1], title, course, variant });
   });
