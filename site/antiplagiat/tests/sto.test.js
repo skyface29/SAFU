@@ -198,7 +198,15 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
     assert(!ps.some(p => p.t === 'Практическая работа №10'), 'шапка осталась в тексте'); });
   await T('статистика: страница отправила работу с видом и числом исправлений', () => { assert(sent, 'запрос не ушёл'); eq(sent.kind, 'prakt'); assert(sent.fixed > 0, 'fixed=' + sent.fixed); });
   await T('статистика: полоска на странице показывает сегодня, исправлено и всего', async () => { const t = await page.textContent('#stoCount'); assert(/1\s*работа сегодня/.test(t) && /1\s*работа всего/.test(t) && /нарушени/.test(t), t); });
-  await T('страница: шаг «Скачать» отмечен', async () => eq(await page.evaluate(() => [...document.querySelectorAll('#stoSteps li')].map(l => l.className)), ['done', 'done', 'done', 'on']));
+  await T('страница: после оформления есть кнопка скачать', async () => assert(await page.isVisible('#stoDl')));
+  await T('вид по имени файла: «Зарубин_КВ_ЛР3.docx» без шапки → лабораторная №3', async () => {
+    const g = await page.evaluate(() => byFileName({ kind: 'referat', by: 'default', conf: .3 }, 'Зарубин_КВ_ЛР3_без_форматирования.docx')); eq([g.kind, g.by, g.header.num], ['laba', 'filename', '3']); });
+  await T('вид по имени файла: шапка в тексте главнее имени', async () => eq(await page.evaluate(() => byFileName({ kind: 'prakt', by: 'header', conf: .95 }, 'ЛР3.docx').kind), 'prakt'));
+  await T('вид по имени файла: «ПР-10 Сети», «Курсовая Иванов», «КР2»', async () => eq(await page.evaluate(() => ['ПР-10 Сети.docx', 'Курсовая Иванов.docx', 'КР2.docx', 'Документ1.docx', 'Проект.docx'].map(n => byFileName({ kind: 'referat', by: 'default', conf: .3 }, n).kind)), ['prakt', 'kursovaya', 'kontrol', 'referat', 'referat']));
+  await T('старый титульник в браузере: тип и тема не восстанавливаются', async () => {
+    await page.evaluate(() => localStorage.setItem('stoTitle', JSON.stringify({ type: 'praktika', topic: 'Старая тема', discipline: 'Старая', student: 'Иванов Иван' })));
+    await page.reload({ waitUntil: 'load' }); await setup();
+    eq(await page.evaluate(() => [tType.value !== 'praktika', tTopic.value, tDiscipline.value, tStudent.value]), [true, '', '', 'Иванов Иван']); });
 
   /* реферат с титулом: вид по титулу, тема из файла */
   await page.setInputFiles('#stoFile', await fixture('referat.docx', 'REFERAT'));
