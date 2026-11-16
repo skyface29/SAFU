@@ -212,7 +212,9 @@ body[data-mode=check] #sto{display:none!important}
 .sto-stat div{min-width:96px;padding:8px 12px;border-radius:13px;background:var(--glass2)}
 .sto-stat b{display:block;font:600 22px/1.1 var(--display);font-variant-numeric:tabular-nums;color:var(--ink)}
 .sto-stat div:first-child b{color:var(--ok)}
-.sto-stat small{display:block;color:var(--muted);font-size:11.5px;margin-top:3px;white-space:nowrap}
+.sto-stat small{display:block;color:var(--muted);font-size:11.5px;margin-top:3px;line-height:1.25}
+.sto-stat div.nodata{display:none}
+.sto-stat:not(.on){display:none}
 .sto-one{max-width:880px}
 .sto-drop>div{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
 .sto-swap{display:none;font-size:13px;color:var(--accent);font-weight:600;white-space:nowrap}
@@ -246,6 +248,7 @@ body[data-mode=check] #sto{display:none!important}
 .sto-title.ok .sto-ic{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
 .why-list.sto-why{max-width:880px;margin:20px auto 0;grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (max-width:760px){.modes{grid-template-columns:1fr;margin-top:-20px}.modes button em{display:none}.why-list.sto-why{grid-template-columns:1fr 1fr}.sto-stat{width:100%}.sto-stat div{flex:1;min-width:0}}
+@media (max-width:560px){.sto-card .sto-ic,.sto-title summary .sto-ic{display:none}.sto-drop.has{flex-wrap:wrap;padding:14px}.sto-drop.has>div{flex-basis:calc(100% - 44px)}.sto-drop.has b{overflow-wrap:anywhere}.sto-drop.has .sto-swap{margin-left:42px}.sto-head{margin-bottom:12px}}
 @media (max-width:480px){.why-list.sto-why{grid-template-columns:1fr}.sto-card{padding:12px}.sto-ic{width:34px;height:34px}}
 .ready{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;padding:18px;border:1px solid var(--line2);border-radius:20px;background:var(--glass);margin:0 0 12px}
 .ready svg{width:92px;height:92px}
@@ -716,15 +719,12 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
     <div class="sto-stat" id="stoCount" aria-live="polite"><div><b data-k="today">—</b><small>работ сегодня</small></div><div><b data-k="fixed">—</b><small>нарушений исправлено</small></div><div><b data-k="n">—</b><small>работ всего</small></div></div>
   </div>
   <div class="panel sto-one" id="stoFmt">
-    <ol class="sto-steps" id="stoSteps" aria-label="Шаги"><li class="on"><b>1</b>Файл</li><li><b>2</b>Вид и титул</li><li><b>3</b>Оформить</li><li><b>4</b>Скачать</li></ol>
     <div class="sto-drop" id="stoDrop" tabindex="0" role="button" aria-label="Выбрать файл .docx">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>
       <div><b id="stoName">Перетащи сюда работу в .docx</b><small id="stoHint">или нажми, чтобы выбрать файл</small></div>
       <span class="sto-swap">Другой файл</span>
     </div>
     <input type="file" id="stoFile" accept=".docx" class="hide">
-    <div class="err-sum hide" id="errSum"></div>
-    <div class="err-view hide" id="errView"></div>
     <div class="sto-kind hide" id="stoKind">
       <div class="sto-card kfound" id="kFoundBox">
         <span class="sto-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg></span>
@@ -759,6 +759,8 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       <div class="sto-acts"><button class="btn" id="tDl" type="button">Скачать только титульный лист</button></div>
       </details>
     </div>
+    <div class="err-sum hide" id="errSum"></div>
+    <div class="err-view hide" id="errView"></div>
     <button class="primary block" id="stoGo" disabled>Оформить по СТО<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     <button class="block sto-defense" id="stoZTop" disabled type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M7 10v4c0 1.2 2.4 2 5 2s5-.8 5-2v-4"/><path d="M21 7v5"/></svg>Собрать защиту: речь + слайды + вопросы</button>
     <div id="stoZOut"></div>
@@ -1445,6 +1447,21 @@ function kindChips(){
   if(sel && top.indexOf(sel) < 0){ order.splice(order.indexOf(sel), 1); order.splice(5, 0, sel); }
   $('kChips').innerHTML = order.map(k => '<button type="button" class="kchip' + (k === sel ? ' on' : '') + '" role="radio" aria-checked="' + (k === sel) + '" data-kind="' + k + '"><b>' + esc(K[k].name) + '</b><small>' + esc(K[k].hint) + '</small></button>').join('');
 }
+/* имя файла часто говорит само: «Зарубин_ЛР3.docx», «ПР-10 Сети.docx», «Курсовая.docx».
+   Учитываем, только если внутри файла нет ни титула, ни шапки — их слово главнее */
+function byFileName(g, name){
+  if(!g || g.by === 'title' || g.by === 'header' || g.by === 'cover') return g;
+  const n = String(name || '').replace(/\.docx$/i, '').replace(/[_\-.]+/g, ' ');
+  const R = [[/(^|[^а-яёa-z])(лр|лаб|лабораторн\S*)\s*№?\s*(\d{1,3})?/i, 'laba'], [/(^|[^а-яёa-z])(пр|практическ\S*|практ)\s*№?\s*(\d{1,3})?(?![а-яё])/i, 'prakt'],
+    [/курсов\S*\s*проект/i, 'kproekt'], [/курсов/i, 'kursovaya'], [/реферат/i, 'referat'], [/(^|[^а-яёa-z])(кр|контрольн\S*)\s*№?\s*(\d{1,3})?(?![а-яё])/i, 'kontrol'],
+    [/эссе/i, 'esse'], [/доклад/i, 'doklad'], [/ргр/i, 'rgr'], [/вкр|диплом/i, 'vkr'], [/отч[её]т.{0,20}практик/i, 'praktika']];
+  for(const [re, k] of R){ const m = re.exec(n); if(!m || !WorkKinds.KINDS[k]) continue;
+    if(g.by === 'structure' && g.conf >= .8 && g.kind !== k && !(['laba','prakt'].includes(g.kind) && ['laba','prakt'].includes(k))) return g;
+    const r = Object.assign({}, g, { kind: k, by: 'filename', conf: .88, why: 'по названию файла' });
+    if(m[3] && (k === 'laba' || k === 'prakt' || k === 'kontrol')) r.header = Object.assign({}, g.header || {}, { kind: k, num: m[3] });
+    return r; }
+  return g;
+}
 function setKind(k, auto, info){
   if(!WorkKinds.KINDS[k]) k = 'referat';
   STO.kind = k; const K = WorkKinds.KINDS[k];
@@ -1456,7 +1473,8 @@ function setKind(k, auto, info){
   $('kFound').innerHTML = '<b>' + esc(K.name) + (STO.header && STO.header.num && (k === 'laba' || k === 'prakt') ? ' №' + esc(STO.header.num) : '') + '</b>' +
     '<small>' + (auto ? (sure ? 'определил ' : 'похоже, определил ') + esc(why || 'по тексту') : 'выбрано вручную') + '</small>';
   $('kFoundBox').classList.toggle('unsure', !!auto && !sure);
-  if(auto && !sure) $('kChips').classList.remove('hide');
+  if(auto && !sure){ $('kPick').classList.remove('hide'); $('kChange').textContent = 'Готово'; }
+  else if(auto){ $('kPick').classList.add('hide'); $('kChange').textContent = 'Изменить'; }
   // вид титульного листа идёт за видом работы, если титул не взят из файла
   const tt = WorkKinds.TO_TITLE[k]; if(tt && !STO.fileTitleType){ $('tType').value = tt; titleSync(); }
   kindChips();
@@ -1472,7 +1490,7 @@ function stoPick(file){
   if($('stoZTop')) $('stoZTop').disabled = true;
   if(!file) return;
   if(!/\.docx$/i.test(file.name)){ $('stoErr').textContent = /\.doc$/i.test(file.name) ? 'Это старый формат .doc. Откройте файл в Word и сохраните как .docx.' : 'Нужен файл Word в формате .docx.'; return; }
-  STO.file = file; STO.last = null; $('stoName').textContent = file.name; $('stoHint').textContent = 'готов к оформлению — проверь вид работы и титульник ниже';
+  STO.file = file; STO.last = null; $('stoName').textContent = file.name; $('stoHint').textContent = 'проверь вид работы и титульник ниже';
   $('stoDrop').classList.add('has'); $('stoGo').disabled = false;
   if($('stoZTop') && window.Zashita) $('stoZTop').disabled = false;
   STO.fileTitle = false;
@@ -1482,7 +1500,8 @@ function stoPick(file){
   file.arrayBuffer().then(b => StoInspect.inspect(b, { all: true, size: $('stoSmall').checked ? 12 : 14, binding: $('stoBind').checked })).then(r => { if(STO.file === file){ STO.before = r; errSummary(); } }).catch(() => {});
   // поля конкретной работы — только из этого файла: тема и дисциплина прошлой работы сюда не переезжают
   ['tDiscipline','tTopic','tNum'].forEach(id => $(id).value = ''); STO.header = null; STO.fileTitleType = null;
-  STO.titleP = file.arrayBuffer().then(b => Formatter.readTitle(b).catch(() => null).then(d => WorkKinds.guessDetailed(b, d && d.found ? d.type || d.workKind : null).then(g => {
+  STO.titleP = file.arrayBuffer().then(b => Formatter.readTitle(b).catch(() => null).then(d => WorkKinds.guessDetailed(b, d && d.found ? d.type || d.workKind : null).catch(() => ({ kind: 'referat', by: 'default', conf: .2, why: '' })).then(g => {
+    g = byFileName(g, file.name);
     if(STO.file !== file) return d;
     STO.header = g.header || null;
     if(d && d.found && d.type) STO.fileTitleType = d.type;
@@ -1610,11 +1629,11 @@ const STO_COUNT_URL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '/p
 function stoStatShow(d){
   const el = $('stoCount'); if(!el || !d) return;
   const v = { today: d.today ? +d.today.n || 0 : null, fixed: d.fixed != null ? +d.fixed : null, n: d.n != null ? +d.n : null };
-  for(const [k, n] of Object.entries(v)){ const b = el.querySelector('[data-k="' + k + '"]'); if(b && n != null && !isNaN(n)) b.textContent = n.toLocaleString('ru-RU'); }
+  for(const [k, n] of Object.entries(v)){ const b = el.querySelector('[data-k="' + k + '"]'); if(!b) continue; const no = n == null || isNaN(n); b.parentNode.classList.toggle('nodata', no); if(!no) b.textContent = n.toLocaleString('ru-RU'); }
   const t = el.querySelector('[data-k="today"]'); if(t && v.today != null) t.nextElementSibling.textContent = plural(v.today, 'работа сегодня', 'работы сегодня', 'работ сегодня');
   const f = el.querySelector('[data-k="fixed"]'); if(f && v.fixed != null) f.nextElementSibling.textContent = plural(v.fixed, 'нарушение исправлено', 'нарушения исправлено', 'нарушений исправлено');
   const a = el.querySelector('[data-k="n"]'); if(a && v.n != null) a.nextElementSibling.textContent = plural(v.n, 'работа всего', 'работы всего', 'работ всего');
-  el.classList.add('on');
+  el.classList.toggle('on', !!v.n);   // пока работ нет, пустую полоску из нулей не показываем
 }
 function stoCount(ev, extra){
   let s = ''; try{ s = localStorage.getItem('arktika.pid') || ''; }catch(e){}
@@ -1713,7 +1732,7 @@ function titleSync(){
   // запоминаем только своё (ФИО, группа, руководитель…); вид, номер, тема и дисциплина — у каждой работы свои
   const keep = Object.assign({}, d); ['type','num','discipline','topic'].forEach(k => delete keep[k]); lsSet('stoTitle', keep);
 }
-{ const saved = lsGet('stoTitle', {}); T_FIELDS.forEach(f => { if(saved[f]) $(tId(f)).value = saved[f]; }); if(!$('tYear').value) $('tYear').value = new Date().getFullYear(); }
+{ const saved = lsGet('stoTitle', {}); T_FIELDS.forEach(f => { if(saved[f] && !['type','num','discipline','topic'].includes(f)) $(tId(f)).value = saved[f]; }); if(!$('tYear').value) $('tYear').value = new Date().getFullYear(); }
 $('tForm').addEventListener('input', titleSync); $('tForm').addEventListener('change', titleSync); titleSync();
 function saveBlob(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
 /* «Защита под ключ»: речь, слайды .pptx и вопросы комиссии.

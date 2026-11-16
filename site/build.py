@@ -219,7 +219,28 @@ if os.path.isdir(os.path.join(HERE, "raspisanie")):
         print("расписание:", len(os.listdir(os.path.join(data, "snapshots"))) - 1 if os.path.isdir(os.path.join(data, "snapshots")) else 0, "копий в архиве")
     # Экономия трафика: GitHub Pages отдаёт ETag по времени изменения файла, а сайт пересобирается каждые полчаса.
     # Ставим время изменения из содержимого — тогда у неизменившихся файлов ETag тот же и браузер получает «304, не менялось».
-import zlib
+import zlib, re
+# Свои скрипты — с ?v=<контрольная сумма>: иначе браузер (особенно Safari на iPhone) берёт старый format.js из кэша
+# к новой странице, и новые функции молча не находятся.
+for top in ("antiplagiat", "admin", "otmetki", "spravka", "status", "raspisanie"):
+    d = os.path.join(OUT, top)
+    if not os.path.isdir(d):
+        continue
+    for dirpath, _, names in os.walk(d):
+        for n in names:
+            if not n.endswith(".html"):
+                continue
+            fp = os.path.join(dirpath, n)
+            html = open(fp, encoding="utf-8").read()
+            def ver(m, base=dirpath):
+                src = m.group(2)
+                f = os.path.normpath(os.path.join(base, src))
+                if not os.path.isfile(f):
+                    return m.group(0)
+                return m.group(1) + src + "?v=" + format(zlib.crc32(open(f, "rb").read()), "08x") + m.group(3)
+            new = re.sub(r'(<script\s[^>]*?src=")((?!https?:|//)[^"?#]+\.js)(")', ver, html)
+            if new != html:
+                open(fp, "w", encoding="utf-8").write(new)
 for top in ("raspisanie", "spravka", "status", "otmetki", "antiplagiat"):
     for dirpath, _, names in os.walk(os.path.join(OUT, top)):
         for n in names:
