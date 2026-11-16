@@ -40,6 +40,22 @@ TYPES = {"html": "text/html; charset=utf-8", "js": "text/javascript; charset=utf
 
 
 RING_DOCS, RING_IDX = {}, {}
+STO_STATS = {"n": 0, "fixed": 0, "days": {}}
+
+
+def sto_admin():
+    """Статистика СТО для админки — в том же виде, что отдаёт stats-api/pulse.js."""
+    now = time.time() + 3 * 3600
+    days = []
+    for d in range(13, -1, -1):
+        key = time.strftime("%Y-%m-%d", time.gmtime(now - d * 86400))
+        v = STO_STATS["days"].get(key, {"n": 0, "f": 0, "k": {}})
+        days.append({"day": key, "n": v["n"], "f": v["f"], "k": dict(v["k"])})
+    kinds = {}
+    for d in days:
+        for k, v in d["k"].items():
+            kinds[k] = kinds.get(k, 0) + v
+    return {"total": STO_STATS["n"], "fixed": STO_STATS["fixed"], "today": days[-1], "days": days, "kinds": kinds}
 
 
 def ring_excerpt(text, positions, win=350, limit=40000):
@@ -237,7 +253,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/pulse":
             if self.headers.get("X-Admin-Token") != "local":
                 return self.reply(403, "application/json", '{"error":"Нужен пароль администратора."}'.encode())
-            return self.reply(200, "application/json", json.dumps(pulse_stats(), ensure_ascii=False).encode())
+            return self.reply(200, "application/json", json.dumps(dict(pulse_stats(), sto=sto_admin()), ensure_ascii=False).encode())
         name = path.lstrip("/")
         if not name or name.endswith("/"):
             name += "index.html"
@@ -275,6 +291,15 @@ class Handler(BaseHTTPRequestHandler):
                     if d["action"] == "dispatch":
                         return js(400, {"error": "Кнопки управления не подключены: задайте GH_TOKEN у функции."})
                     return js(400, {"error": "Неизвестная команда."})
+                if d.get("ev") in ("sto", "sto-count"):   # статистика оформления по СТО (как в stats-api/pulse.js)
+                    day = time.strftime("%Y-%m-%d", time.gmtime(now / 1000 + 3 * 3600))
+                    t = STO_STATS["days"].setdefault(day, {"n": 0, "f": 0, "k": {}})
+                    if d["ev"] == "sto" and _re.fullmatch(r"[\w-]{8,40}", str(d.get("s"))):
+                        f = max(0, min(2000, int(float(d.get("fixed") or 0))))
+                        STO_STATS["n"] += 1; STO_STATS["fixed"] += f; t["n"] += 1; t["f"] += f
+                        k = str(d.get("kind") or "")
+                        if _re.fullmatch(r"[a-z]{2,12}", k): t["k"][k] = t["k"].get(k, 0) + 1
+                    return js(200, {"n": STO_STATS["n"], "fixed": STO_STATS["fixed"], "today": {"n": t["n"], "f": t["f"]}})
                 if _re.fullmatch(r"[\w-]{8,40}", str(d.get("s"))) and _re.fullmatch(r"[a-z]{2,20}", str(d.get("p"))):
                     ip = (self.headers.get("X-Forwarded-For") or self.client_address[0]).split(",")[0].strip()
                     PULSE[(int(now // 3600e3), d["p"], d["s"])] = (now, pulse_device(self.headers.get("User-Agent") or "", d.get("m") == 1),

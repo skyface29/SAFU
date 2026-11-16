@@ -435,6 +435,80 @@ function normBib(src) {
   return s.replace(/\u0001(\d+)\u0002/g, (x, i) => urls[+i]);
 }
 
+/* ------------- строки из PDF: где абзац на самом деле продолжается ------------- */
+// Конвертеры PDF → Word (и копипаст из PDF) рвут абзац на строки: каждая строка — отдельный абзац или разрыв
+// строки внутри. Строка продолжает предыдущую, если та не кончилась знаком конца фразы и следующая начинается
+// со строчной буквы, либо в предыдущей осталась незакрытая «кавычка» или (скобка). Шапку титульного листа
+// («федеральное государственное… учреждение / высшего образования») не склеиваем.
+const TITLE_VOCAB = /(министерств|образовательное учреждение|высшего образования|^«?северный \(арктический\)|университет имени|^\(наименование|^\(ф\.?\s?и\.?\s?о)/i;
+const LIST_START = /^([-–—•·▪●◦*]|\d{1,3}[.)]|[а-яa-z]\)|[IVX]{1,4}\.)\s/;
+/** Продолжает ли строка b строку a. Возвращает false, 'space' (склеить через пробел) или 'hyphen' (снять перенос «инфор-/мации»). */
+function continuesLine(a, b) {
+  a = (a || '').replace(/[\s ]+$/, ''); b = (b || '').replace(/^[\s ]+/, '');
+  if (!a || !b || a.length > 1200) return false;
+  if (TITLE_VOCAB.test(a) || TITLE_VOCAB.test(b)) return false;
+  if (LIST_START.test(b) || /^\d+(\.\d+)+\.?\s/.test(b)) return false;
+  if (/[а-яёa-z][-‐]$/i.test(a) && !/\s[-‐]$/.test(a) && /^[а-яё]/.test(b)) return 'hyphen';
+  const open = (s, o, c) => (s.split(o).length - 1) > (s.split(c).length - 1);
+  if (/[.!?…;:]["»”)]?$/.test(a) && !open(a, '«', '»') && !open(a, '(', ')')) return false;
+  if (open(a, '«', '»') || open(a, '(', ')')) return 'space';
+  if (/^[а-яё]/.test(b) && !/^[а-яё]\)/.test(b)) return 'space';
+  // «…из списка литературы / (кроме закона № 162-ФЗ)»: скобка со строчной после слова со строчной; «ПРИЛОЖЕНИЕ А / (обязательное)» — нет
+  if (/^\([а-яё]/.test(b) && /[а-яё,»"”]$/.test(a)) return 'space';
+  return false;
+}
+/** Склеить строки текста, разорванные переносами из PDF. */
+function unwrapText(lines) {
+  const out = [];
+  for (const l of lines) {
+    const t = String(l || '').replace(/\s+/g, ' ').trim(); if (!t) continue;
+    const how = out.length ? continuesLine(out[out.length - 1], t) : false;
+    if (how === 'hyphen') out[out.length - 1] = out[out.length - 1].replace(/[-‐]$/, '') + t;
+    else if (how) out[out.length - 1] += ' ' + t;
+    else out.push(t);
+  }
+  return out;
+}
+/* «Практическая работа №10», «ЛАБОРАТОРНАЯ РАБОТА № 3», «Отчёт по лабораторной работе №2» — вид работы в первой строке */
+const KIND_LINES = [
+  [/^отч[её]т\S*\s+(?:по|о)\s+лабораторн/i, 'laba'], [/^отч[её]т\S*\s+(?:по|о)\s+практическ\S*\s+(?:работ|заняти)/i, 'prakt'],
+  [/^практическ\S*\s+(?:работ|заняти)\S*/i, 'prakt'], [/^лабораторн\S*\s+(?:работ|практикум)\S*/i, 'laba'],
+  [/^контрольн\S*\s+работ/i, 'kontrol'], [/^расч[её]тно-графическ/i, 'rgr'], [/^курсов\S*\s+проект/i, 'kproekt'], [/^курсов\S*\s+работ/i, 'kursovaya'],
+  [/^отч[её]т\S*\s+о\s+(?:прохождении\s+)?(?:\S+\s+){0,2}практик/i, 'praktika'], [/^отч[её]т\S*\s+о\s+научно-исследовательск/i, 'nir'],
+  [/^выпускн\S*\s+квалификационн/i, 'vkr'], [/^магистерск\S*\s+диссертац/i, 'magistr'], [/^дипломн\S*\s+проект/i, 'specialist'],
+  [/^реферат(?![а-яё])/i, 'referat'], [/^эссе(?![а-яё])/i, 'esse'], [/^доклад(?![а-яё])/i, 'doklad'], [/^тезисы(?![а-яё])/i, 'tezisy'],
+];
+function kindOfLine(l) {
+  l = String(l || '').trim();
+  if (!l || l.length > 90) return null;
+  for (const [re, k] of KIND_LINES) if (re.test(l)) return k;
+  return null;
+}
+/** Шапка работы без титульного листа: «Практическая работа №10» / тема / дальше пункты.
+    lines — первые абзацы документа (текст). Возвращает { kind, num, topic, head: сколько абзацев занимает шапка } или null. */
+function docHeader(lines) {
+  const L = unwrapText(lines.slice(0, 40));
+  for (let i = 0; i < Math.min(L.length, 4); i++) {
+    const kind = kindOfLine(L[i]); if (!kind) continue;
+    if (L.slice(0, i).some(l => TITLE_VOCAB.test(l))) return null;   // это титульный лист — его разбирает readTitle
+    const m = /№\s*([\dA-Za-zА-Яа-я]+(?:[.\-]\d+)?)/.exec(L[i]) || /(?:работа|занятие|проект)\s+(\d{1,3})(?!\S)/i.exec(L[i]);
+    const r = { kind, num: m ? m[1] : '', topic: '', head: i + 1 };
+    const t = L[i + 1];
+    if (t && t.length <= 260 && !/:$/.test(t) && !/^(\d+[.)]?\s*|цель|задани|вариант|выполнил|студент|по дисциплине|ход\s|теорет)/i.test(t)) {
+      r.topic = t.replace(/^(?:на\s+тему|тема(?:\s+работы)?)\s*[:.]?\s*/i, '').replace(/^[«"“]|[»"”]$/g, '').replace(/\.$/, '').trim();
+      r.head = i + 2;
+    } else if (t && /^(?:на\s+тему|тема(?:\s+работы)?)\s*[:.]/i.test(t)) {
+      r.topic = t.replace(/^(?:на\s+тему|тема(?:\s+работы)?)\s*[:.]\s*/i, '').replace(/^[«"“]|[»"”]$/g, '').replace(/\.$/, '').trim();
+      r.head = i + 2;
+    }
+    // «по дисциплине «Информатика»» в шапке
+    const d = L.slice(i, i + 4).map(l => /по\s+(?:дисциплине|курсу|предмету)\s*[:«"]?\s*([^»"]+)/i.exec(l)).find(Boolean);
+    if (d) r.discipline = d[1].replace(/[.»"]+$/, '').trim();
+    return r;
+  }
+  return null;
+}
+
 /* ---------------------------- распознавание ---------------------------- */
 const norm = s => s.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').replace(/[.:;]+$/, '').trim();
 const STRUCT_SET = new Set(STRUCT_SAFU.map(norm));
@@ -475,6 +549,103 @@ function buildStyles(stylesDoc) {
 }
 
 /* ============================ главное ============================ */
+/* --------- склейка строк, разорванных при переводе из PDF (до распознавания) --------- */
+const plainPara = p => p.localName === 'p' && !hasDrawing(p) && !hasMath(p) && !p.getElementsByTagNameNS(W, 'fldChar').length &&
+  !p.getElementsByTagNameNS(W, 'instrText').length && !p.getElementsByTagNameNS(W, 'txbxContent').length && !p.getElementsByTagNameNS(W, 'fldSimple').length &&
+  !kid(kid(p, 'pPr'), 'sectPr') && ![...p.getElementsByTagNameNS(W, 'br')].some(e => attr(e, 'type') === 'page') && !kid(kid(p, 'pPr'), 'pageBreakBefore');
+const pStyleOf = p => attr(kid(kid(p, 'pPr'), 'pStyle'), 'val') || '';
+const jcOf = p => attr(kid(kid(p, 'pPr'), 'jc'), 'val') || '';
+const boldOf = p => { let b = 0, all = 0; for (const r of ownRuns(p)) { const n = kids(r, 't').reduce((s, t) => s + t.textContent.length, 0); all += n; const rp = kid(r, 'rPr'); if (rp && kid(rp, 'b') && !['0', 'false'].includes(attr(kid(rp, 'b'), 'val'))) b += n; } return all ? b / all : 0; };
+/** Абзац разрезать по позиции в тексте (только абзацы из одного текста, без табуляций и разрывов). */
+function splitParaAt(p, off) {
+  const q = p.cloneNode(true);
+  for (const el of [...q.getElementsByTagNameNS(W, 'bookmarkStart'), ...q.getElementsByTagNameNS(W, 'bookmarkEnd')]) el.parentNode.removeChild(el);
+  for (const a of [...q.attributes]) if (/paraId|textId|rsid/i.test(a.localName)) q.removeAttributeNode(a);
+  const cut = (para, keepHead) => { let s = 0; for (const t of ownTexts(para)) { const x = t.textContent, e = s + x.length;
+    if (keepHead) { if (s >= off) t.textContent = ''; else if (e > off) t.textContent = x.slice(0, off - s); }
+    else { if (e <= off) t.textContent = ''; else if (s < off) t.textContent = x.slice(off - s); }
+    s = e; } };
+  cut(p, true); cut(q, false);
+  const tp = ownTexts(p).filter(t => t.textContent), tq = ownTexts(q).filter(t => t.textContent);
+  if (tp.length) tp[tp.length - 1].textContent = tp[tp.length - 1].textContent.replace(/\s+$/, '');
+  if (tq.length) tq[0].textContent = tq[0].textContent.replace(/^\s+/, '');
+  p.parentNode.insertBefore(q, p.nextSibling);
+  return q;
+}
+/** Склеивает строки-абзацы и разрывы строк из PDF; разделяет «6.3. … 6.4. …», слитые конвертером в один абзац.
+    Включается, только если документ явно собран из PDF: таких разорванных мест несколько. Возвращает число правок. */
+function unwrapPdf(body) {
+  const B = blocks(body).filter(b => b.localName === 'p');
+  const text = p => paraText(p).replace(/\s+/g, ' ').trim();
+  const nextEl = a => { let n = a.nextSibling; while (n && (n.nodeType !== 1 || ['bookmarkStart', 'bookmarkEnd', 'proofErr', 'permStart', 'permEnd'].includes(n.localName))) n = n.nextSibling; return n; };
+  const pairOk = (a, b) => plainPara(a) && plainPara(b) && nextEl(a) === b &&
+    !kid(kid(b, 'pPr'), 'numPr') && pStyleOf(a) === pStyleOf(b) && jcOf(a) !== 'center' && jcOf(b) !== 'center' && (boldOf(a) > .6) === (boldOf(b) > .6);
+  let pairs = 0, nonEmpty = 0, brs = 0;
+  for (let i = 0; i < B.length; i++) {
+    const t = text(B[i]); if (t) nonEmpty++;
+    if (i + 1 < B.length && t && pairOk(B[i], B[i + 1]) && continuesLine(t, text(B[i + 1]))) pairs++;
+    for (const br of B[i].getElementsByTagNameNS(W, 'br')) if (attr(br, 'type') !== 'page') brs++;
+  }
+  if (!(pairs >= 3 && pairs >= nonEmpty * 0.05)) return 0;
+  let fixes = 0;
+  // 1) разрывы строки внутри абзаца: «… в Российской<br/>Федерации» → пробел
+  for (const p of B) {
+    if (!plainPara(p)) continue;
+    for (const br of [...p.getElementsByTagNameNS(W, 'br')]) {
+      if (attr(br, 'type') === 'page' || attr(br, 'type') === 'column') continue;
+      const all = paraText(p), r = br.parentNode;
+      // текст до и после этого разрыва
+      let before = '', after = '', seen = false;
+      for (const rr of ownRuns(p)) for (const c of kids(rr)) { if (c === br) { seen = true; continue; } const s = c.localName === 't' ? c.textContent : (c.localName === 'tab' || c.localName === 'br') ? '\n' : ''; if (seen) after += s; else before += s; }
+      const how = continuesLine(before.split('\n').pop(), after.split('\n')[0]);
+      if (!how || !all) continue;
+      const t = mk(br.ownerDocument, 't'); t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve'); t.textContent = how === 'hyphen' ? '' : ' ';
+      if (how === 'hyphen') { const prev = ownTexts(p).filter(x => x.compareDocumentPosition(br) & 4 && x.textContent).pop(); if (prev) prev.textContent = prev.textContent.replace(/[-‐]$/, ''); }
+      r.replaceChild(t, br); fixes++;
+    }
+  }
+  // 2) строка — отдельный абзац: приклеиваем к предыдущему
+  let cur = blocks(body).filter(b => b.localName === 'p');
+  for (let i = 0; i + 1 < cur.length; i++) {
+    const a = cur[i], b = cur[i + 1], ta = text(a), tb = text(b);
+    if (!ta || !pairOk(a, b)) continue;
+    const how = continuesLine(ta, tb); if (!how) continue;
+    const at = ownTexts(a).filter(t => t.textContent), bt = ownTexts(b).filter(t => t.textContent);
+    if (!at.length || !bt.length) continue;
+    const last = at[at.length - 1];
+    if (how === 'hyphen') last.textContent = last.textContent.replace(/[-‐]\s*$/, '');
+    else { last.textContent = last.textContent.replace(/[\s ]+$/, '') + ' '; last.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve'); bt[0].textContent = bt[0].textContent.replace(/^[\s ]+/, ''); }
+    for (const c of [...b.childNodes]) if (c.localName !== 'pPr') a.appendChild(c);
+    b.parentNode.removeChild(b); cur.splice(i + 1, 1); i--; fixes++;
+  }
+  // 3) «6.3. Заполните… 6.4. Проверьте…» в одном абзаце → по абзацу на пункт
+  for (const p of blocks(body).filter(b => b.localName === 'p')) {
+    if (!plainPara(p) || p.getElementsByTagNameNS(W, 'tab').length || [...p.getElementsByTagNameNS(W, 'br')].length) continue;
+    let q = p;
+    for (let guard = 0; guard < 30; guard++) {
+      const s = paraText(q), m0 = /^\s*(\d{1,2})\.(\d{1,2})\.?\s/.exec(s); if (!m0) break;
+      const re = new RegExp('[.!?»;]\\s+(' + m0[1] + '\\.\\d{1,2}\\.?\\s+)(?=[А-ЯЁA-Z])', 'g');
+      const m = re.exec(s); if (!m) break;
+      q = splitParaAt(q, m.index + m[0].length - m[1].length); fixes++;
+    }
+  }
+  return fixes;
+}
+/** Сколько первых абзацев занимает шапка «Практическая работа №10 / тема», чтобы убрать её, когда собран титульный лист. */
+function headerParas(B) {
+  const ps = [];
+  for (const b of B) { if (b.localName !== 'p') break; ps.push(b); if (ps.length > 12) break; }
+  const texts = ps.map(p => paraText(p).replace(/\s+/g, ' ').trim());
+  const h = docHeader(texts); if (!h) return [];
+  for (let k = 1; k <= ps.length; k++) {
+    if (unwrapText(texts.slice(0, k)).length === h.head && (k === ps.length || unwrapText(texts.slice(0, k + 1)).length > h.head)) {
+      let e = k; while (e < ps.length && !texts[e]) e++;   // и пустые строки за шапкой
+      return ps.slice(0, e);
+    }
+  }
+  return [];
+}
+
 async function formatOnce(buf, opts) {
   opts = Object.assign({ profile: 'safu', binding: false, toc: true, typography: true, pageNumbers: true }, opts || {});
   const prof = PROFILES[opts.profile] || PROFILES.safu;
@@ -493,6 +664,11 @@ async function formatOnce(buf, opts) {
   const body = doc.getElementsByTagNameNS(W, 'body')[0];
   const stats = { body: 0, heads: 0, struct: 0, figs: 0, figCaps: 0, tabCaps: 0, tables: 0, bib: 0, empty: 0, typo: 0, breaks: 0, listings: 0, foot: 0, toc: false, tocAdded: false, appx: 0, lists: 0, renamed: false, bibFixed: 0 };
   const notes = [];
+
+  /* ---------- 0. строки из PDF и шапка работы ---------- */
+  if (opts.unwrap !== false) stats.unwrap = unwrapPdf(body);
+  // титульный лист собран сайтом из шапки «Практическая работа №10 / тема» — сама шапка в тексте больше не нужна
+  if (opts.titleXml && opts.dropHeader) { const hp = headerParas(blocks(body)); for (const p of hp) p.parentNode.removeChild(p); stats.headerDropped = hp.length; }
 
   /* ---------- 1. классификация ---------- */
   let B = blocks(body);
@@ -542,6 +718,13 @@ async function formatOnce(buf, opts) {
       // (иначе она попадала в автоматическое оглавление, если сам заголовок списка не распознан — фазз 15.11)
       else if (m && short && /^[А-ЯЁA-Z]/.test(m[4]) && !BIBLIKE.test(text) && (bold > .6 || lvl || (!/[.!?]$/.test(text) && text.length < 120) )) { x.kind = 'head'; x.level = m[1] ? 1 : m[2].split('.').length; x.num = m; }
       else if (short && !/[.!?]$/.test(text) && text.length < 90 && (bold > .8 && isAllCaps(text))) { x.kind = 'head'; x.level = 1; }
+      // «3. Подготовка к работе: / 3.1 Повторить материалы лекции / 3.2 Ознакомиться с литературой» — это пункты, а не подразделы:
+      // перед подразделом не бывает строки с двоеточием, а пункты идут подряд с тем же номером раздела
+      if (x.kind === 'head' && x.num && x.num[2].includes('.') && !lvl) {
+        let k = i - 1; while (k >= 0 && B[k].localName === 'p' && !info.get(B[k]).text) k--;
+        const px = k >= 0 && info.get(B[k]), major = x.num[2].split('.')[0];
+        if (px && (/:$/.test(px.text) || px.listItem === major)) { x.kind = 'body'; x.listItem = major; delete x.level; delete x.num; }
+      }
     }
     info.set(b, x);
   });
@@ -1238,6 +1421,8 @@ async function formatOnce(buf, opts) {
   if (stats.foot) list.push(`Сноски (${stats.foot}): ${prof.foot.size} пт, одинарный интервал`);
   if (stats.listings) list.push(`Листинги кода (${stats.listings}): моноширинный шрифт ${prof.listing.size} пт, одинарный интервал`);
   if (opts.pageNumbers) list.push('Номера страниц внизу по центру, на титульном листе' + (prof.hideNumbersOn.length ? ' и реферате' : '') + ' не ставятся');
+  if (stats.unwrap) list.push(`Склеены строки, разорванные при переводе из PDF: ${stats.unwrap} ${pl(stats.unwrap, 'место', 'места', 'мест')}`);
+  if (stats.headerDropped) list.push('Шапка «вид работы и тема» перенесена на титульный лист');
   if (stats.empty) list.push(`Убрано пустых строк: ${stats.empty}`);
   if (stats.typo) list.push(`Исправлены пробелы, тире и кавычки в ${stats.typo} ${pl(stats.typo, 'абзаце', 'абзацах', 'абзацах')}`);
   list.push('Включён автоматический перенос слов, текст — чёрным цветом');
@@ -1392,7 +1577,14 @@ async function readTitle(buf) {
   const d = {};
   const TYPES = [[/^реферат(?![а-яёА-ЯЁA-Za-z])/i, 'referat'], [/^эссе(?![а-яёА-ЯЁA-Za-z])/i, 'esse'], [/^контрольная работа(?![а-яёА-ЯЁA-Za-z])/i, 'kontrol'], [/^расч[её]тно-графическая(?![а-яёА-ЯЁA-Za-z])/i, 'rgr'],
     [/^курсовая работа(?![а-яёА-ЯЁA-Za-z])/i, 'kursovaya'], [/^курсовой проект(?![а-яёА-ЯЁA-Za-z])/i, 'kproekt'], [/^отч[её]т(?![а-яёА-ЯЁA-Za-z]).*практик|^отч[её]т$/i, 'praktika']];
-  for (const l of lines) { const hit = TYPES.find(([re]) => re.test(l)); if (hit) { d.type = hit[1]; break; } }
+  // вид — по первой строке, где он назван: «ВЫПУСКНАЯ КВАЛИФИКАЦИОННАЯ РАБОТА» выше «РЕФЕРАТА» (реферат ВКР — раздел, а не вид)
+  for (const l of lines) {
+    const hit = TYPES.find(([re]) => re.test(l)); if (hit) { d.type = hit[1]; break; }
+    const k = kindOfLine(l); if (!k) continue;
+    if (['laba', 'prakt', 'doklad'].includes(k)) { d.type = k; const m = /№\s*([\dA-Za-zА-Яа-я]+(?:[.\-]\d+)?)/.exec(l); if (m) d.num = m[1]; }
+    else d.workKind = k;   // ВКР, НИР, диссертация: своего титула у нас нет, но вид работы известен
+    break;
+  }
   const clean = s => {
     s = s.replace(/\s*_{2,}\s*/g, ' ').trim().replace(/\.$/, '');
     s = s.replace(/(\S) +(?:[-—]|--) +(?=\S)/g, '$1 – ');
@@ -1454,5 +1646,6 @@ async function formatDocx(buf, opts) {
     return Object.assign({}, r1, { blob: r2.blob, passes: 2 });
   } catch (e) { return r1; }   // второй проход — улучшение; если он сломался, отдаём первый
 }
-global.Formatter = { formatDocx, readTitle, PROFILES, zipFiles: zip, unzip, normBib, _countLines: countLines, _textW: textW, _nbsp: nbsp };
+global.Formatter = { formatDocx, readTitle, PROFILES, zipFiles: zip, unzip, normBib, _countLines: countLines, _textW: textW, _nbsp: nbsp,
+  continuesLine, unwrapText, docHeader, kindOfLine, KIND_LINES };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -60,6 +60,7 @@ const KINDS = {
   referat:   { name: 'Реферат', hint: 'обзор по теме', toc: true, need: ['intro', 'concl', 'bib'], soft: ['toc'], intro: ['actual', 'goal', 'tasks'], pages: [10, 25], src: 8, sto: true },
   kontrol:   { name: 'Контрольная', hint: 'задания и ответы', toc: false, need: [], soft: ['intro', 'concl', 'bib'], intro: [], pages: [5, 20], src: 0, sto: true },
   laba:      { name: 'Лабораторная', hint: 'цель, ход, выводы', toc: false, need: ['goal', 'concl'], intro: [], pages: [2, 20], src: 0 },
+  prakt:     { name: 'Практическая работа', hint: 'цель, задание, вывод', toc: false, need: ['goal', 'concl'], soft: ['task'], intro: [], pages: [2, 20], src: 0 },
   rgr:       { name: 'РГР', hint: 'расчётно-графическая', toc: true, need: [], soft: ['toc', 'task', 'intro', 'concl', 'bib'], intro: [], pages: [8, 25], src: 3, sto: true },
   kursovaya: { name: 'Курсовая работа', hint: 'введение, главы, заключение', toc: true, need: ['toc', 'intro', 'concl', 'bib'], soft: ['task'], intro: ['actual', 'goal', 'tasks', 'object', 'subject'], pages: [25, 40], src: 15, sto: true },
   kproekt:   { name: 'Курсовой проект', hint: 'с расчётной частью', toc: true, need: ['toc', 'intro', 'concl', 'bib'], soft: ['task', 'calc'], intro: ['actual', 'goal', 'tasks'], pages: [25, 50], src: 15, sto: true },
@@ -72,7 +73,9 @@ const KINDS = {
   magistr:   { name: 'Магистерская диссертация', hint: 'ВКР магистра', toc: true, need: ['abstract', 'toc', 'intro', 'concl', 'bib'], soft: ['task'], intro: ['actual', 'goal', 'tasks', 'object', 'subject', 'novelty', 'practical', 'methods'], pages: [70, 110], src: 50, sto: true },
 };
 /* вид с титульника (StoTools.TITLE_TYPES) → вид проверки */
-const FROM_TITLE = { referat: 'referat', esse: 'esse', kontrol: 'kontrol', rgr: 'rgr', kursovaya: 'kursovaya', kproekt: 'kproekt', praktika: 'praktika' };
+const FROM_TITLE = { referat: 'referat', esse: 'esse', kontrol: 'kontrol', rgr: 'rgr', kursovaya: 'kursovaya', kproekt: 'kproekt', praktika: 'praktika', laba: 'laba', prakt: 'prakt', doklad: 'doklad', vkr: 'vkr', magistr: 'magistr', specialist: 'specialist', nir: 'nir', statya: 'statya', tezisy: 'tezisy' };
+/* вид проверки → вид титульного листа (StoTools.TITLE_TYPES); для ВКР, НИР, статьи и тезисов свои формы — их не трогаем */
+const TO_TITLE = { referat: 'referat', esse: 'esse', kontrol: 'kontrol', rgr: 'rgr', kursovaya: 'kursovaya', kproekt: 'kproekt', praktika: 'praktika', laba: 'laba', prakt: 'prakt', doklad: 'doklad' };
 
 const CHARS_PER_PAGE = 1800;   // Times New Roman 14, полуторный интервал, поля СТО: ≈ 1800 знаков с пробелами
 const norm = s => s.toLowerCase().replace(/ё/g, 'е').replace(/[\s ]+/g, ' ').replace(/^[\s\d.]+(?=[a-zа-я])/i, '').replace(/[\s.:;]+$/, '').trim();
@@ -120,7 +123,7 @@ async function check(buf, kind, after) {
   if (found.toc == null && hasTocField) found.toc = -1;
   // «Цель работы: …» и «Ключевые слова: …» пишут прямо в абзаце
   P.forEach((x, i) => { const n = norm(x.text);
-    if (found.goal == null && /^цель(\s+работы)?\s*[:–-]/i.test(x.text)) found.goal = i;
+    if (found.goal == null && /^(\d{1,2}[.)]\s*)?цель(\s+(работы|занятия))?\s*[:–-]/i.test(x.text)) found.goal = i;
     if (found.keywords == null && /^ключевые\s+слова\s*[:–-]/i.test(n)) found.keywords = i;
     if (found.annot == null && /^(аннотация|abstract)\s*[:.–-]/i.test(x.text)) found.annot = i; });
 
@@ -199,28 +202,67 @@ async function check(buf, kind, after) {
   return { kind, name: K.name, items, found, pages, words, chars, sources, cited: cited.size, introMissing, ok: !items.some(x => x.level === 'err') };
 }
 
-/** Угадать вид по тексту, если титульника нет. */
-function guess(buf, titleType) {
-  if (titleType && FROM_TITLE[titleType]) return Promise.resolve(FROM_TITLE[titleType]);
-  return docXml(buf).then(x => {
-    const t = x.replace(/<[^>]+>/g, ' ').slice(0, 60000).toLowerCase();
-    const has = re => re.test(t);
-    if (has(/выпускн\S*\s+квалификационн\S*\s+работ/)) return has(/магистр/) ? 'magistr' : 'vkr';
-    if (has(/магистерск\S*\s+диссертац/)) return 'magistr';
-    if (has(/дипломн\S*\s+проект/)) return 'specialist';
-    if (has(/курсов\S*\s+проект/)) return 'kproekt';
-    if (has(/курсов\S*\s+работ/)) return 'kursovaya';
-    if (has(/отч[её]т\S*\s+о\s+(прохождении\s+)?\S*\s*практик/)) return 'praktika';
-    if (has(/научно-исследовательск\S*\s+работ/)) return 'nir';
-    if (has(/лабораторн\S*\s+работ/)) return 'laba';
-    if (has(/расч[её]тно-графическ/)) return 'rgr';
-    if (has(/контрольн\S*\s+работ/)) return 'kontrol';
-    if (has(/ключевые\s+слова/) && has(/аннотаци/)) return 'statya';
-    if (has(/(?<![а-яёa-z0-9])эссе(?![а-яёa-z0-9])/)) return 'esse';
-    if (has(/(?<![а-яёa-z0-9])доклад(?![а-яёa-z0-9])/)) return 'doklad';
-    return 'referat';
-  }).catch(() => 'referat');
+/* признаки структуры: по заголовкам и первым словам абзацев */
+const FEAT = {
+  goal: /^цель(\s+(работы|занятия|практической работы|лабораторной работы))?\s*[:.–-]?/,
+  hod: /^(ход|порядок)\s+(выполнения\s+)?(работы|занятия)|^выполнение\s+работы/,
+  quest: /^контрольные\s+вопросы/,
+  equip: /^(основное\s+)?(оборудование|приборы|материалы\s+и\s+оборудование)/,
+  theory: /^(теоретическ\S*\s+(часть|сведения|основы)|краткие\s+теоретическ)/,
+  task: /^(задание|задания|постановка\s+задачи|индивидуальное\s+задание)(?![а-яё])/,
+  variant: /^вариант\s*(№\s*)?\d/,
+  zad: /^задача\s*(№\s*)?\d/,
+  intro: /^введение$/, concl: /^(заключение|выводы|вывод)$/, toc: /^(содержание|оглавление)$/,
+  bib: /(список\s+(использованн\S*\s+)?(литературы|источников)|^литература$)/,
+  chapter: /^(глава\s+\d|\d\s+[а-яё])/, annot: /^(аннотация|abstract)/, keywords: /^ключевые\s+слова/,
+};
+/** Угадать вид работы и объяснить, почему так.
+    Порядок: титульный лист → шапка «Практическая работа №10» → строка вида на титуле → структура → слова в тексте.
+    Возвращает { kind, by: 'title' | 'header' | 'cover' | 'structure' | 'text' | 'default', conf: 0…1, why, header }. */
+async function guessDetailed(buf, titleType) {
+  if (titleType && FROM_TITLE[titleType]) return { kind: FROM_TITLE[titleType], by: 'title', conf: .97, why: 'по титульному листу' };
+  let xml; try { xml = await docXml(buf); } catch (e) { return { kind: 'referat', by: 'default', conf: .2, why: '' }; }
+  const F = global.Formatter;
+  const P = readParas(xml), texts = P.map(x => x.text).filter(Boolean);
+  // 1) шапка без титульника
+  const header = F && F.docHeader ? F.docHeader(texts.slice(0, 40)) : null;
+  if (header && KINDS[header.kind]) return { kind: header.kind, by: 'header', conf: .95, why: 'по заголовку «' + texts.find(t => F.kindOfLine(t)) + '»', header };
+  // 2) строка вида среди первых строк (титульник, который не разобрался целиком)
+  if (F && F.kindOfLine) for (const t of texts.slice(0, 45)) { const k = F.kindOfLine(t); if (k && KINDS[k]) return { kind: k, by: 'cover', conf: .9, why: 'по строке «' + t.trim() + '» в начале работы' }; }
+  // 3) структура
+  const isHeadLike = x => x.text && x.text.length <= 120 && (x.head || !/[.;,]$/.test(x.text) && x.text.split(' ').length <= 12);
+  const has = {};
+  P.forEach(x => { if (!x.text || x.toc) return; const n = norm(x.text);
+    for (const [k, re] of Object.entries(FEAT)) if (re.test(n) && (isHeadLike(x) || ['goal', 'task', 'keywords', 'annot', 'variant', 'zad'].includes(k))) has[k] = (has[k] || 0) + 1; });
+  const all = texts.join(' ').toLowerCase().replace(/ё/g, 'е'), chars = all.length;
+  const S = {};
+  const add = (k, n) => { S[k] = (S[k] || 0) + n; };
+  const lab = (has.goal ? 3 : 0) + (has.hod ? 3 : 0) + (has.quest ? 2 : 0) + (has.equip ? 2 : 0) + (has.theory ? 1 : 0) + (has.concl && !has.intro ? 1 : 0);
+  if (lab) {
+    const wl = (all.match(/лабораторн/g) || []).length + (has.equip ? 1 : 0) + (/измерени|установк|прибор/.test(all) ? 1 : 0), wp = (all.match(/практическ\S*\s+(работ|заняти)/g) || []).length;
+    add(wp > wl ? 'prakt' : 'laba', lab + 1); add(wp > wl ? 'laba' : 'prakt', lab);
+  }
+  if (has.variant || (has.zad || 0) >= 2) add('kontrol', 3 + (has.task ? 2 : 0) + Math.min(2, has.zad || 0));
+  if (has.annot && has.keywords) add('statya', 6);
+  if (has.intro || has.concl && has.bib) {
+    const v = (has.intro ? 2 : 0) + (has.concl ? 2 : 0) + (has.bib ? 1 : 0) + (has.toc ? 1 : 0) + (has.chapter ? 1 : 0);
+    add(chars > 45000 || has.chapter >= 3 && chars > 30000 ? 'kursovaya' : 'referat', v);
+  }
+  const best = Object.entries(S).sort((a, b) => b[1] - a[1])[0];
+  if (best && best[1] >= 4) {
+    const why = { laba: 'есть цель работы и ход работы', prakt: 'есть цель работы, задание и вывод', kontrol: 'есть варианты и задачи', statya: 'есть аннотация и ключевые слова', referat: 'есть введение, заключение и список литературы', kursovaya: 'введение, главы и объём как у курсовой' }[best[0]] || '';
+    return { kind: best[0], by: 'structure', conf: Math.min(.9, .5 + best[1] / 20), why: why ? 'по структуре: ' + why : 'по структуре', scores: S };
+  }
+  // 4) слова в начале текста
+  const t = all.slice(0, 6000), hasW = re => re.test(t);
+  const W2 = [[/выпускн\S*\s+квалификационн\S*\s+работ/, 'vkr'], [/магистерск\S*\s+диссертац/, 'magistr'], [/дипломн\S*\s+проект/, 'specialist'], [/курсов\S*\s+проект/, 'kproekt'], [/курсов\S*\s+работ/, 'kursovaya'],
+    [/отч[её]т\S*\s+о\s+(прохождении\s+)?\S*\s*практик/, 'praktika'], [/научно-исследовательск\S*\s+работ/, 'nir'], [/практическ\S*\s+работ/, 'prakt'], [/лабораторн\S*\s+работ/, 'laba'],
+    [/расч[её]тно-графическ/, 'rgr'], [/контрольн\S*\s+работ/, 'kontrol'], [/(?<![а-яёa-z0-9])эссе(?![а-яёa-z0-9])/, 'esse'], [/(?<![а-яёa-z0-9])доклад(?![а-яёa-z0-9])/, 'doklad']];
+  for (const [re, k] of W2) if (hasW(re)) return { kind: k, by: 'text', conf: .55, why: 'по словам в начале текста' };
+  return { kind: 'referat', by: 'default', conf: .3, why: '' };
 }
+/** Совместимость: только вид. */
+function guess(buf, titleType) { return guessDetailed(buf, titleType).then(r => r.kind).catch(() => 'referat'); }
 
-global.WorkKinds = { KINDS, PART, INTRO, HOW, HOW_INTRO, check, guess, FROM_TITLE, CHARS_PER_PAGE };
+global.WorkKinds = { KINDS, PART, INTRO, HOW, HOW_INTRO, check, guess, guessDetailed, FROM_TITLE, TO_TITLE, CHARS_PER_PAGE, readParas };
 })(typeof window !== 'undefined' ? window : globalThis);
