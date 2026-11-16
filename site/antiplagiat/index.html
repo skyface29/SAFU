@@ -1452,6 +1452,7 @@ function setKind(k, auto, info){
   const sure = auto && info && info.conf >= .85, why = auto && info && info.why ? info.why : '';
   $('kNote').textContent = (K.toc ? 'Содержание добавлю автоматически' : 'Содержание для этого вида не нужно') +
     (K.pages ? ', обычный объём ' + K.pages[0] + '–' + K.pages[1] + ' стр.' : '') + (K.src ? ', источников от ' + K.src : '') + '.';
+  $('kNote').textContent = $('kNote').textContent.replace(/\.\.$/, '.');
   $('kFound').innerHTML = '<b>' + esc(K.name) + (STO.header && STO.header.num && (k === 'laba' || k === 'prakt') ? ' №' + esc(STO.header.num) : '') + '</b>' +
     '<small>' + (auto ? (sure ? 'определил ' : 'похоже, определил ') + esc(why || 'по тексту') : 'выбрано вручную') + '</small>';
   $('kFoundBox').classList.toggle('unsure', !!auto && !sure);
@@ -1471,7 +1472,7 @@ function stoPick(file){
   if($('stoZTop')) $('stoZTop').disabled = true;
   if(!file) return;
   if(!/\.docx$/i.test(file.name)){ $('stoErr').textContent = /\.doc$/i.test(file.name) ? 'Это старый формат .doc. Откройте файл в Word и сохраните как .docx.' : 'Нужен файл Word в формате .docx.'; return; }
-  STO.file = file; STO.last = null; $('stoName').textContent = file.name; $('stoHint').textContent = 'нажмите «Оформить по СТО» или выберите другой файл';
+  STO.file = file; STO.last = null; $('stoName').textContent = file.name; $('stoHint').textContent = 'готов к оформлению — проверь вид работы и титульник ниже';
   $('stoDrop').classList.add('has'); $('stoGo').disabled = false;
   if($('stoZTop') && window.Zashita) $('stoZTop').disabled = false;
   STO.fileTitle = false;
