@@ -1,0 +1,31 @@
+# Тесты Айсберга (оформление по СТО) и статистики: на каждый пуш и PR, где менялись сайт антиплагиата или функция статистики.
+name: Тесты СТО
+on:
+  workflow_dispatch:
+  push:
+    paths: [ 'site/antiplagiat/**', 'stats-api/**', '.github/workflows/sto-tests.yml' ]
+  pull_request:
+    paths: [ 'site/antiplagiat/**', 'stats-api/**', '.github/workflows/sto-tests.yml' ]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Без браузера — типографика, библиография, строки из PDF, статистика
+        run: |
+          node site/antiplagiat/tests/typo.test.js
+          node site/antiplagiat/tests/bib.test.js
+          node site/antiplagiat/tests/lines.test.js
+          node stats-api/tests/sto.test.js
+      - name: Playwright
+        run: |
+          npm i --no-save --no-package-lock playwright@1
+          npx playwright install --with-deps chromium
+      - name: В браузере — вид работы, склейка, титул, страница
+        run: node site/antiplagiat/tests/sto.test.js

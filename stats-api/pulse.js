@@ -26,6 +26,16 @@ const DAILY_CAP = +process.env.DAILY_CAP || 6000;
 let capDay = '', capCount = 0;
 let stoDay = '', stoPer = new Map();
 const BIBOT = ua => BOT.test(ua);
+/** Сутки статистики СТО из хранилища: { n — работ, f — исправлено нарушений, k — по видам работ }. */
+const parseDay = v => { try { const o = JSON.parse(v || '{}'); return { n: +o.n || 0, f: +o.f || 0, k: o.k && typeof o.k === 'object' ? o.k : {} }; } catch (e) { return { n: 0, f: 0, k: {} }; } };
+/** Статистика СТО для админки: всего, сегодня и по дням за две недели. */
+async function stoStats(db, now) {
+  const days = [];
+  for (let d = 13; d >= 0; d--) { const key = new Date(now + MSK - d * 864e5).toISOString().slice(0, 10); days.push({ day: key, ...parseDay(await db.getKv('sto.d.' + key)) }); }
+  const kinds = {}; for (const d of days) for (const [k, v] of Object.entries(d.k)) kinds[k] = (kinds[k] || 0) + v;
+  return { total: +(await db.getKv('sto.count')) || 0, fixed: +(await db.getKv('sto.fixed')) || 0, today: days[days.length - 1], days, kinds };
+}
+let stoCache = null;
 const HOUR = 3600e3, MSK = 3 * HOUR, KEEP_HOURS = 24 * 35;
 
 function cors(origin) {
@@ -179,16 +189,24 @@ async function handle(method, body, headers, db, now = Date.now(), context = nul
     }
     return [400, { error: 'Неизвестная команда.' }];
   }
-  if (method === 'POST' && body && (body.ev === 'sto' || body.ev === 'sto-count')) {   // счётчик оформленных работ (СТО)
+  if (method === 'POST' && body && (body.ev === 'sto' || body.ev === 'sto-count')) {   // статистика оформления по СТО
     const s = String(body.s || ''), ua = headers['User-Agent'] || headers['user-agent'] || '';
-    let n = +(await db.getKv('sto.count')) || 0;
+    const mday = new Date(now + MSK).toISOString().slice(0, 10);   // сутки по Москве
+    let n = +(await db.getKv('sto.count')) || 0, fixed = +(await db.getKv('sto.fixed')) || 0;
+    let today = parseDay(await db.getKv('sto.d.' + mday));
     if (body.ev === 'sto' && /^[\w-]{8,40}$/.test(s) && !BIBOT(ua)) {
       const day = new Date(now).toISOString().slice(0, 10), k = day + s;
       if (stoDay !== day) { stoDay = day; stoPer.clear(); }
       const c = (stoPer.get(k) || 0) + 1; stoPer.set(k, c);
-      if (c <= 30) { n++; await db.setKv('sto.count', String(n)); }   // с одного браузера — не больше 30 работ в сутки
+      if (c <= 30) {   // с одного браузера — не больше 30 работ в сутки
+        const f = Math.max(0, Math.min(2000, Math.round(+body.fixed || 0)));   // исправленных нарушений в одной работе
+        n++; fixed += f; today.n++; today.f += f;
+        const kind = /^[a-z]{2,12}$/.test(String(body.kind || '')) ? String(body.kind) : '';
+        if (kind) today.k[kind] = (today.k[kind] || 0) + 1;
+        await db.setKv('sto.count', String(n)); await db.setKv('sto.fixed', String(fixed)); await db.setKv('sto.d.' + mday, JSON.stringify(today));
+      }
     }
-    return [200, { n }];
+    return [200, { n, fixed, today: { n: today.n, f: today.f } }];
   }
   if (method === 'POST') {
     const s = body && String(body.s || ''), p = body && String(body.p || '');
@@ -210,7 +228,9 @@ async function handle(method, body, headers, db, now = Date.now(), context = nul
     let usage = null, usageError = null;
     try { usage = await billingUsage(context, now); } catch (e) { usageError = e.message; }
     const cfg = await getConfig(db, now);
-    return [200, { now, ...res, usage, usageError, banner: liveBanner(cfg, now),
+    // статистику СТО пересчитываем не чаще раза в 2 минуты: это 16 чтений из базы
+    if (!stoCache || now - stoCache.at > 120e3) { try { stoCache = { at: now, v: await stoStats(db, now) }; } catch (e) { stoCache = { at: now, v: null }; } }
+    return [200, { now, ...res, usage, usageError, banner: liveBanner(cfg, now), sto: stoCache.v,
       can: { dispatch: !!process.env.GH_TOKEN, billing: !!process.env.BILLING_BUCKET } }];
   }
   return [405, { error: 'Метод не поддерживается.' }];
@@ -356,4 +376,4 @@ module.exports.handler = async (event, context) => {
     return reply(500, { error: 'Статистика сейчас недоступна.' }, head);
   }
 };
-module.exports._test = { handle, memoryDb, clock, parseCsv, billingUsage, device, netPrint };
+module.exports._test = { handle, memoryDb, clock, parseCsv, billingUsage, device, netPrint, resetSto: () => { stoCache = null; stoDay = ''; stoPer.clear(); } };

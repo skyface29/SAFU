@@ -21,7 +21,10 @@ const TITLE_TYPES = {
   rgr: { name: 'Расчётно-графическая работа', head: 'РАСЧЕТНО-ГРАФИЧЕСКАЯ РАБОТА', mark: 'zachet' },
   kursovaya: { name: 'Курсовая работа', head: 'КУРСОВАЯ РАБОТА', mark: 'defense' },
   kproekt: { name: 'Курсовой проект', head: 'КУРСОВОЙ ПРОЕКТ', mark: 'defense' },
-  praktika: { name: 'Отчёт о практике', head: 'ОТЧЕТ', sub: 'о прохождении практики', mark: 'report', practice: true }
+  praktika: { name: 'Отчёт о практике', head: 'ОТЧЕТ', sub: 'о прохождении практики', mark: 'report', practice: true },
+  laba: { name: 'Лабораторная работа', head: 'ЛАБОРАТОРНАЯ РАБОТА', mark: 'zachet', numbered: true },
+  prakt: { name: 'Практическая работа', head: 'ПРАКТИЧЕСКАЯ РАБОТА', mark: 'zachet', numbered: true },
+  doklad: { name: 'Доклад', head: 'ДОКЛАД', mark: 'zachet' }
 };
 
 function run(text, o) {
@@ -67,7 +70,8 @@ function titleXml(d) {
   out.push(P('высшего образования', { size: 12 }));
   out.push(P('«Северный (Арктический) федеральный университет имени М.В.' + NB + 'Ломоносова»', { size: 14, bold: true, after: 12 }));
   out.push(filled(d.school, t.practice ? '(наименование высшей школы / филиала / института)' : '(наименование высшей школы / филиала / института / колледжа)', { blank: 60 }));
-  out.push(para(run(t.head, { size: 16, bold: true }), { before: 60, after: t.sub ? 0 : 12 }));
+  const num = t.numbered ? String(d.num || '').replace(/^№\s*/, '').trim() : '';
+  out.push(para(run(t.head + (num ? ' №' + NB + num : ''), { size: 16, bold: true }), { before: 60, after: t.sub ? 0 : 12 }));
   if (t.sub) out.push(P(t.sub, { size: 14, bold: true, after: 12 }));
   if (t.practice) {
     out.push(para([run('Вид практики: '), run(d.kind || '________________', { u: !!d.kind })], { jc: 'left' }));
