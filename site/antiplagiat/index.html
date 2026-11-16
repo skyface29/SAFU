@@ -916,6 +916,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 <script src="sto-tools.js"></script>
 <script src="work-kinds.js"></script>
 <script src="sto-inspect.js"></script>
+<script src="zashita.js"></script>
 <script>
 /* Адрес помощника, который скачивает страницы сайтов и выдачу поисковиков (antiplagiat-api/ в репозитории).
    Пусто — работает только Википедия и своя коллекция. Для проверки у себя: python3 antiplagiat/site_dev.py */
@@ -1550,6 +1551,7 @@ async function stoRun(){
     STO.last = { blob: r.blob, report: r.report, notes: r.notes, before: null, after: null };
     try{ STO.last.before = (await Iceberg.gostCheck(buf)).problems; STO.last.gost = await Iceberg.gostCheck(await r.blob.arrayBuffer()); }catch(e){}
     $('stoRes').querySelector('.sto-dl').insertAdjacentHTML('afterend', '<div id="stoReady" style="margin-top:14px"></div>');
+    if(window.Zashita) $('stoRes').insertAdjacentHTML('beforeend', '<div id="stoZ" class="sto-z" style="margin-top:14px"><button class="btn" id="stoZBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M7 10v4c0 1 2 2 5 2s5-1 5-2v-4"/></svg>Собрать защиту: речь + слайды + вопросы</button><small class="muted" style="display:block;margin-top:6px">доклад на 7 минут, презентация .pptx и вероятные вопросы комиссии — из этой же работы</small></div>');
     stoStep(4);
     await stoKindReport();
     stoStats(r); stoCount('sto');
@@ -1586,6 +1588,26 @@ function titleSync(){
 { const saved = lsGet('stoTitle', {}); T_FIELDS.forEach(f => { if(saved[f]) $(tId(f)).value = saved[f]; }); if(!$('tYear').value) $('tYear').value = new Date().getFullYear(); }
 $('tForm').addEventListener('input', titleSync); $('tForm').addEventListener('change', titleSync); titleSync();
 function saveBlob(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
+/* «Защита под ключ»: из оформленного файла — речь, слайды .pptx и вопросы комиссии */
+async function stoZashita(){
+  const L = STO.last, box = $('stoZ'), btn = $('stoZBtn'); if(!L || !window.Zashita || !box) return;
+  if(btn){ btn.disabled = true; btn.lastChild && (btn.lastChild.textContent = 'Собираю защиту…'); }
+  box.querySelectorAll('.sto-zres,.err').forEach(n => n.remove());
+  try{
+    const r = await Zashita.build(await L.blob.arrayBuffer(), { minutes: 7, title: titleData() });
+    const base = STO.file ? STO.file.name.replace(/\.docx$/i, '') : 'Работа';
+    saveBlob(r.pptx, base + ' — презентация.pptx');
+    const para = (t, b) => '<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/>' + (b ? '' : '<w:ind w:firstLine="709"/><w:jc w:val="both"/>') + '</w:pPr><w:r>' + (b ? '<w:rPr><w:b/></w:rPr>' : '') + '<w:t xml:space="preserve">' + esc(t) + '</w:t></w:r></w:p>';
+    let body = para('Доклад к защите', 1) + '<w:p/>';
+    r.speech.text.split(/\n\n+/).forEach(p => body += para(p));
+    body += '<w:p/>' + para('Вероятные вопросы комиссии и подсказки к ответам', 1) + '<w:p/>';
+    r.questions.forEach((q, i) => { body += para((i + 1) + '. ' + q.q, 1); body += para('Подсказка: ' + q.a); });
+    saveBlob(await StoTools.docxFromBody(body), base + ' — доклад и вопросы.docx');
+    box.insertAdjacentHTML('beforeend', '<div class="sto-zres" style="margin-top:12px"><div class="muted">Скачаны «презентация.pptx» (' + r.slides.length + ' слайдов) и «доклад и вопросы.docx» (речь ≈ ' + Math.max(1, Math.round(r.speech.words / 125)) + ' мин). Вопросы комиссии:</div><ul style="margin:8px 0 0;padding-left:18px">' + r.questions.map(q => '<li style="margin:4px 0">' + esc(q.q) + '</li>').join('') + '</ul></div>');
+  }catch(e){ box.insertAdjacentHTML('beforeend', '<div class="err" style="margin-top:8px">Не получилось собрать защиту: ' + esc(e.message || String(e)) + '</div>'); }
+  if(btn){ btn.disabled = false; btn.lastChild && (btn.lastChild.textContent = 'Собрать защиту ещё раз'); }
+}
+document.addEventListener('click', e => { if(e.target.closest('#stoZBtn')) stoZashita(); });
 $('tDl').onclick = async () => { const d = titleData(); saveBlob(await StoTools.docxFromBody(StoTools.titleXml(d)), 'Титульный лист' + (d.student ? ' — ' + d.student.split(' ')[0] : '') + '.docx'); };
 
 /* ---------- требование вуза ---------- */
