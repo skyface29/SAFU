@@ -119,6 +119,15 @@ h1 em{font-style:normal;background:var(--aurora);background-size:200% 100%;-webk
 .primary svg{width:17px;height:17px;transition:transform .35s var(--ease)}
 .primary:hover svg{transform:translateX(3px)}
 .primary.block{width:100%;padding:17px}
+.sto-defense{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:10px;padding:16px;border-radius:999px;font-size:15px;font-weight:600;cursor:pointer;color:#fff;border:0;background:linear-gradient(120deg,#2E6FB0,#4C9BD6);box-shadow:0 6px 20px color-mix(in srgb,#2E6FB0 35%,transparent)}
+.sto-defense svg{width:20px;height:20px}
+.sto-defense:hover{filter:brightness(1.07)}
+.sto-defense:disabled{opacity:.45;cursor:default;box-shadow:none;filter:none}
+.sto-defense:disabled:hover{filter:none}
+.sto-zcard{margin-top:12px;border:1px solid color-mix(in srgb,#2E6FB0 35%,var(--line2));border-radius:16px;padding:14px 16px;background:color-mix(in srgb,#2E6FB0 7%,transparent)}
+.sto-zcard h4{margin:0 0 6px;font-size:15px}
+.sto-zcard ul{margin:8px 0 0;padding-left:18px}
+.sto-zcard li{margin:5px 0}
 .lg{padding:14px 22px;font-size:15px}
 .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--glass);color:var(--ink);border-radius:999px;padding:9px 16px;font-size:14px;
   transition:border-color .2s,background .2s,transform .2s;text-decoration:none;white-space:nowrap}
@@ -776,6 +785,8 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
     <div class="sto-kind hide" id="stoKind"><div class="kh"><b>Какая это работа?</b><small id="kNote">проверю по правилам именно для неё: нужно ли содержание, что обязательно и какой объём</small></div>
       <div class="kchips few" id="kChips" role="radiogroup" aria-label="Вид работы"></div><button class="link kmore" id="kMore" type="button">Все виды работ ›</button></div>
     <button class="primary block" id="stoGo" disabled>Оформить по СТО САФУ<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <button class="block sto-defense" id="stoZTop" disabled type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M7 10v4c0 1.2 2.4 2 5 2s5-.8 5-2v-4"/><path d="M21 7v5"/></svg>Собрать защиту: речь + слайды + вопросы</button>
+    <div id="stoZOut"></div>
     <div class="err" id="stoErr"></div>
     <div class="sto-res" id="stoRes"></div>
     <details class="sto-more" id="stoTitle"><summary><span>Титульный лист по форме СТО</span><small id="stoTitleNote">необязательно — заполните, и он заменит титульник в работе</small></summary>
@@ -1384,11 +1395,13 @@ function setKind(k, auto){
 $('kChips').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if(b){ setKind(b.dataset.kind); try{ localStorage.setItem('sto.kind', b.dataset.kind); }catch(x){} } });
 $('kMore').onclick = () => { const c = $('kChips'); c.classList.toggle('few'); $('kMore').textContent = c.classList.contains('few') ? 'Все виды работ ›' : 'Свернуть'; };
 function stoPick(file){
-  $('stoErr').textContent = ''; $('stoRes').innerHTML = '';
+  $('stoErr').textContent = ''; $('stoRes').innerHTML = ''; $('stoZOut').innerHTML = '';
+  if($('stoZTop')) $('stoZTop').disabled = true;
   if(!file) return;
   if(!/\.docx$/i.test(file.name)){ $('stoErr').textContent = /\.doc$/i.test(file.name) ? 'Это старый формат .doc. Откройте файл в Word и сохраните как .docx.' : 'Нужен файл Word в формате .docx.'; return; }
   STO.file = file; STO.last = null; $('stoName').textContent = file.name; $('stoHint').textContent = 'нажмите «Оформить по СТО» или выберите другой файл';
   $('stoDrop').classList.add('has'); $('stoGo').disabled = false;
+  if($('stoZTop') && window.Zashita) $('stoZTop').disabled = false;
   STO.fileTitle = false;
   // данные со старого титульника работы: собираем титул по форме СТО без ручного ввода
   $('stoKind').classList.remove('hide');
@@ -1551,7 +1564,6 @@ async function stoRun(){
     STO.last = { blob: r.blob, report: r.report, notes: r.notes, before: null, after: null };
     try{ STO.last.before = (await Iceberg.gostCheck(buf)).problems; STO.last.gost = await Iceberg.gostCheck(await r.blob.arrayBuffer()); }catch(e){}
     $('stoRes').querySelector('.sto-dl').insertAdjacentHTML('afterend', '<div id="stoReady" style="margin-top:14px"></div>');
-    if(window.Zashita) $('stoRes').insertAdjacentHTML('beforeend', '<div id="stoZ" class="sto-z" style="margin-top:14px"><button class="btn" id="stoZBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M7 10v4c0 1 2 2 5 2s5-1 5-2v-4"/></svg>Собрать защиту: речь + слайды + вопросы</button><small class="muted" style="display:block;margin-top:6px">доклад на 7 минут, презентация .pptx и вероятные вопросы комиссии — из этой же работы</small></div>');
     stoStep(4);
     await stoKindReport();
     stoStats(r); stoCount('sto');
@@ -1588,13 +1600,17 @@ function titleSync(){
 { const saved = lsGet('stoTitle', {}); T_FIELDS.forEach(f => { if(saved[f]) $(tId(f)).value = saved[f]; }); if(!$('tYear').value) $('tYear').value = new Date().getFullYear(); }
 $('tForm').addEventListener('input', titleSync); $('tForm').addEventListener('change', titleSync); titleSync();
 function saveBlob(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
-/* «Защита под ключ»: из оформленного файла — речь, слайды .pptx и вопросы комиссии */
-async function stoZashita(){
-  const L = STO.last, box = $('stoZ'), btn = $('stoZBtn'); if(!L || !window.Zashita || !box) return;
-  if(btn){ btn.disabled = true; btn.lastChild && (btn.lastChild.textContent = 'Собираю защиту…'); }
-  box.querySelectorAll('.sto-zres,.err').forEach(n => n.remove());
+/* «Защита под ключ»: речь, слайды .pptx и вопросы комиссии.
+   Работает и от оформленного файла (STO.last), и от только что загруженного (STO.file). */
+async function stoZashita(trigger){
+  const src = STO.last ? STO.last.blob : STO.file;
+  const out = $('stoZOut') || $('stoZ'); if(!src || !window.Zashita || !out) return;
+  const btns = [$('stoZTop'), $('stoZBtn')].filter(Boolean);
+  btns.forEach(b => b.disabled = true);
+  const top = $('stoZTop'); if(top && top.lastChild) top.lastChild.textContent = 'Собираю защиту…';
+  out.innerHTML = '<div class="muted" style="margin-top:10px">Собираю доклад, слайды и вопросы…</div>';
   try{
-    const r = await Zashita.build(await L.blob.arrayBuffer(), { minutes: 7, title: titleData() });
+    const r = await Zashita.build(await src.arrayBuffer(), { minutes: 7, title: titleData() });
     const base = STO.file ? STO.file.name.replace(/\.docx$/i, '') : 'Работа';
     saveBlob(r.pptx, base + ' — презентация.pptx');
     const para = (t, b) => '<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/>' + (b ? '' : '<w:ind w:firstLine="709"/><w:jc w:val="both"/>') + '</w:pPr><w:r>' + (b ? '<w:rPr><w:b/></w:rPr>' : '') + '<w:t xml:space="preserve">' + esc(t) + '</w:t></w:r></w:p>';
@@ -1603,11 +1619,12 @@ async function stoZashita(){
     body += '<w:p/>' + para('Вероятные вопросы комиссии и подсказки к ответам', 1) + '<w:p/>';
     r.questions.forEach((q, i) => { body += para((i + 1) + '. ' + q.q, 1); body += para('Подсказка: ' + q.a); });
     saveBlob(await StoTools.docxFromBody(body), base + ' — доклад и вопросы.docx');
-    box.insertAdjacentHTML('beforeend', '<div class="sto-zres" style="margin-top:12px"><div class="muted">Скачаны «презентация.pptx» (' + r.slides.length + ' слайдов) и «доклад и вопросы.docx» (речь ≈ ' + Math.max(1, Math.round(r.speech.words / 125)) + ' мин). Вопросы комиссии:</div><ul style="margin:8px 0 0;padding-left:18px">' + r.questions.map(q => '<li style="margin:4px 0">' + esc(q.q) + '</li>').join('') + '</ul></div>');
-  }catch(e){ box.insertAdjacentHTML('beforeend', '<div class="err" style="margin-top:8px">Не получилось собрать защиту: ' + esc(e.message || String(e)) + '</div>'); }
-  if(btn){ btn.disabled = false; btn.lastChild && (btn.lastChild.textContent = 'Собрать защиту ещё раз'); }
+    out.innerHTML = '<div class="sto-zcard"><h4>Защита собрана ✓</h4><div class="muted">Скачаны: <b>презентация.pptx</b> (' + r.slides.length + ' слайдов) и <b>доклад и вопросы.docx</b> — речь ≈ ' + Math.max(1, Math.round(r.speech.words / 125)) + ' мин, читается в спокойном темпе.</div><div style="margin-top:10px;font-weight:600">Вопросы, к которым стоит подготовиться:</div><ul>' + r.questions.map(q => '<li>' + esc(q.q) + '</li>').join('') + '</ul></div>';
+  }catch(e){ out.innerHTML = '<div class="err" style="margin-top:8px">Не получилось собрать защиту: ' + esc(e.message || String(e)) + '</div>'; }
+  btns.forEach(b => b.disabled = false);
+  if(top && top.lastChild) top.lastChild.textContent = 'Собрать защиту ещё раз';
 }
-document.addEventListener('click', e => { if(e.target.closest('#stoZBtn')) stoZashita(); });
+document.addEventListener('click', e => { if(e.target.closest('#stoZBtn') || e.target.closest('#stoZTop')) stoZashita(); });
 $('tDl').onclick = async () => { const d = titleData(); saveBlob(await StoTools.docxFromBody(StoTools.titleXml(d)), 'Титульный лист' + (d.student ? ' — ' + d.student.split(' ')[0] : '') + '.docx'); };
 
 /* ---------- требование вуза ---------- */
