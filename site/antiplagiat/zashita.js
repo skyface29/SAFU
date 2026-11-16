@@ -98,33 +98,56 @@ function outline(ps) {
   return { sections, steps, goal: clean(goal), tasks: tasks.slice(0, 6), concl };
 }
 
-/* ----------------------- речь по таймингу ----------------------- */
+/* ----------------------- речь по таймингу -----------------------
+   Живой доклад от первого лица, как на защите у кафедры: обращение,
+   переходы между частями, акценты, уверенная концовка. */
+const LEAD_IN = ['Прежде всего отмечу, что', 'Отдельно подчеркну, что', 'Здесь важно сказать, что', 'Замечу, что', 'Как показала работа,'];
+const STEP_INTRO = ['Начну с того, что', 'Первым шагом', 'Далее', 'Затем', 'После этого', 'Следующим этапом', 'Отдельное внимание я уделил тому, что', 'Также', 'Наконец', 'В завершение практической части'];
+
 function buildSpeech(meta, o, minutes) {
   const target = Math.round(minutes * WPM);
   const topic = meta.topic || 'представленной работы';
+  const kind = meta.kindWord || 'работа';
   const S = [];
-  S.push(`Уважаемый председатель, уважаемые члены комиссии! Вашему вниманию представляется ${meta.kindWord || 'работа'} на тему «${topic}».`);
-  const goalTxt = o.goal.replace(/^цель[ьюи]?\s*(работы)?\s*[—:–-]?\s*/i, '');
-  if (goalTxt) S.push(`Цель работы — ${lower(goalTxt).replace(/[.\s]+$/, '')}.`);
-  else S.push(`Цель работы — изучение и практическое освоение вопросов, обозначенных в теме.`);
+
+  // 1. Обращение
+  S.push(`Уважаемый председатель, уважаемые члены комиссии! Вашему вниманию представляется ${kind} на тему «${topic}».`);
+
+  // 2. Актуальность + цель, связно
+  const goalTxt = o.goal.replace(/^цель[ьюи]?\s*(работы)?\s*[—:–-]?\s*/i, '').replace(/[.\s]+$/, '');
+  if (goalTxt) S.push(`Тема работы актуальна: рассматриваемые в ней вопросы имеют прямое практическое значение. Исходя из этого, цель работы я определил как ${lower(goalTxt)}.`);
+  else S.push(`Тема работы актуальна и имеет практическое значение. Цель работы — изучить и практически освоить вопросы, обозначенные в её названии.`);
+
+  // 3. Задачи
   if (o.tasks.length) {
-    S.push(`Для достижения цели были поставлены следующие задачи: ${o.tasks.map((t, i) => `${i + 1}) ${lower(t).replace(/[.;\s]+$/, '')}`).join('; ')}.`);
+    S.push(`Для достижения этой цели я поставил перед собой несколько задач: ${o.tasks.map((t, i) => `${i === o.tasks.length - 1 && o.tasks.length > 1 ? 'и, наконец, ' : ''}${lower(t).replace(/[.;\s]+$/, '')}`).join('; ')}.`);
   }
+
+  // 4. Переход к содержанию + проход по этапам/разделам с живыми связками
   const walk = o.steps && o.steps.length >= 3 ? o.steps : o.sections;
   if (walk.length) {
-    S.push(walk === o.steps ? `В ходе работы выполнены следующие этапы.` : `Работа состоит из ${numWord(o.sections.length, 'основного раздела', 'основных разделов', 'основных разделов')}.`);
-    walk.forEach((s, i) => S.push(`${walk === o.steps ? cap(s.name) : ordinal(i + 1) + ' раздел — «' + s.name + '»'}. ${s.summary ? cap(s.summary) : 'Приведены ход выполнения и полученные результаты.'}`));
+    S.push(walk === o.steps ? 'Позвольте коротко рассказать, что было сделано в практической части.' : 'Структурно работа построена следующим образом.');
+    walk.forEach((s, i) => {
+      const lead = walk === o.steps ? (STEP_INTRO[Math.min(i, STEP_INTRO.length - 1)] + ' ') : (ordinal(i + 1) + ' раздел посвящён теме «' + s.name + '». ');
+      const bodyTxt = s.summary ? cap(s.summary) : 'здесь приведены ход выполнения и полученные результаты.';
+      S.push(walk === o.steps ? `${lead}${lower(s.name)}: ${lower(bodyTxt)}` : `${lead}${bodyTxt}`);
+    });
   }
-  if (o.concl.length) { S.push('По результатам работы можно сделать следующие выводы.'); o.concl.forEach(c => S.push(cap(c))); }
-  else S.push('По результатам работы цель достигнута, все поставленные задачи выполнены.');
-  S.push('Доклад окончен. Благодарю за внимание! Готов ответить на ваши вопросы.');
 
-  // подгонка под тайминг: если коротко — добавляем связки, если длинно — режем выводы/разделы
+  // 5. Выводы
+  if (o.concl.length) {
+    S.push('Позвольте перейти к основным выводам.');
+    o.concl.forEach((c, i) => S.push((i === 0 ? '' : (i === o.concl.length - 1 ? 'И, наконец, ' : 'Кроме того, ')) + cap(c)));
+    S.push('Таким образом, поставленная цель достигнута, а все задачи работы выполнены.');
+  } else S.push('Подводя итог, отмечу: поставленная цель достигнута, а все задачи работы выполнены в полном объёме.');
+
+  // 6. Концовка
+  S.push('На этом мой доклад окончен. Благодарю за внимание и готов ответить на ваши вопросы.');
+
+  // подгонка под тайминг: длинно — режем пояснения к этапам из середины
   let text = S.join('\n\n');
-  let words = wc(text);
-  if (words > target * 1.15) {
-    // убираем часть пояснений к разделам
-    while (wc(text) > target * 1.1 && S.length > 6) { const idx = S.findIndex((x, i) => i > 3 && /раздел —/.test(x)); if (idx < 0) break; S.splice(idx, 1); text = S.join('\n\n'); }
+  if (wc(text) > target * 1.15) {
+    while (wc(S.join('\n\n')) > target * 1.1) { const idx = S.findIndex((x, i) => i > 4 && i < S.length - 3 && x.length > 60); if (idx < 0) break; S.splice(idx, 1); }
   }
   return { text: S.join('\n\n'), words: wc(S.join('\n\n')), minutes, target };
 }
@@ -143,21 +166,46 @@ function buildQuestions(meta, o) {
   return q.slice(0, 7);
 }
 
-/* ----------------------- презентация .pptx ----------------------- */
-function slideDoc(title, body, isTitle) {
-  const shapes = [];
-  const sp = (nm, x, y, w, h, paras) =>
-    `<p:sp><p:nvSpPr><p:cNvPr id="${nm[0]}" name="${nm[1]}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr/></p:nvSpPr>` +
-    `<p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>` +
-    `<p:txBody><a:bodyPr wrap="square"><a:normAutofit/></a:bodyPr><a:lstStyle/>${paras}</p:txBody></p:sp>`;
-  const P = (t, o) => { o = o || {}; return `<a:p>${o.bullet ? '<a:pPr marL="342900" indent="-342900"><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr>' : (o.center ? '<a:pPr algn="ctr"/>' : '')}<a:r><a:rPr lang="ru-RU" sz="${o.sz || 2000}"${o.b ? ' b="1"' : ''}/><a:t>${esc(t)}</a:t></a:r></a:p>`; };
+/* ----------------------- презентация .pptx -----------------------
+   Фирменный стиль «Айсберг»: тёмно-синий титул, акцентная полоса,
+   номера слайдов и подвал с темой. */
+const C = { dark: '1F3B57', accent: '2E6FB0', accent2: '4C9BD6', light: 'EAF2F8', muted: '7D93A6', white: 'FFFFFF' };
+let SID = 1;
+function rect(x, y, w, h, fill, paras, line) {
+  return `<p:sp><p:nvSpPr><p:cNvPr id="${++SID}" name="s${SID}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
+    `<p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>` +
+    (fill ? `<a:solidFill><a:srgbClr val="${fill}"/></a:solidFill>` : '<a:noFill/>') + (line ? `<a:ln w="${line.w || 12700}"><a:solidFill><a:srgbClr val="${line.c}"/></a:solidFill></a:ln>` : '<a:ln><a:noFill/></a:ln>') + `</p:spPr>` +
+    `<p:txBody><a:bodyPr wrap="square" lIns="91440" tIns="45720" rIns="91440" bIns="45720" anchor="${(paras && paras.anchor) || 't'}"><a:normAutofit/></a:bodyPr><a:lstStyle/>${(paras && paras.xml) || '<a:p/>'}</p:txBody></p:sp>`;
+}
+function run(t, o) { o = o || {}; return `<a:p>${o.bullet ? '<a:pPr marL="285750" indent="-285750"><a:spcBef><a:spcPts val="600"/></a:spcBef><a:buClr><a:srgbClr val="' + C.accent + '"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="▪"/></a:pPr>' : '<a:pPr algn="' + (o.algn || 'l') + '"/>'}<a:r><a:rPr lang="ru-RU" sz="${o.sz || 2000}"${o.b ? ' b="1"' : ''}${o.i ? ' i="1"' : ''}><a:solidFill><a:srgbClr val="${o.c || C.dark}"/></a:solidFill><a:latin typeface="Arial"/></a:rPr><a:t>${esc(t)}</a:t></a:r></a:p>`; }
 
-  if (isTitle) {
-    shapes.push(sp([2, 'title'], 838200, 2200000, SLIDE_W - 1676400, 1600000, P(title, { sz: 3600, b: true, center: true })));
-    shapes.push(sp([3, 'sub'], 838200, 3900000, SLIDE_W - 1676400, 1600000, body.map(b => P(b, { sz: 1800, center: true })).join('')));
+function slideDoc(s, no, total) {
+  SID = 1;
+  const shapes = [];
+  if (s.kind === 'title' || s.kind === 'end') {
+    shapes.push(rect(0, 0, SLIDE_W, SLIDE_H, C.dark));                      // фон
+    shapes.push(rect(0, 0, SLIDE_W, 220980, C.accent));                    // верхняя полоса
+    shapes.push(rect(0, SLIDE_H - 220980, SLIDE_W, 220980, C.accent));     // нижняя полоса
+  }
+  if (s.kind === 'title') {
+    shapes.push(rect(990600, 2360000, SLIDE_W - 1981200, 1700000, null, { anchor: 'b', xml: run(s.title, { sz: 3600, b: true, c: C.white, algn: 'ctr' }) }));
+    shapes.push(rect(SLIDE_W / 2 - 457200, 4180000, 914400, 54000, C.accent2)); // акцентная черта
+    shapes.push(rect(990600, 4360000, SLIDE_W - 1981200, 1500000, null, { anchor: 't', xml: s.body.map((b, i) => run(b, { sz: i === 0 ? 2200 : 1700, c: i === 0 ? C.white : C.light, algn: 'ctr' })).join('') }));
+  } else if (s.kind === 'end') {
+    shapes.push(rect(990600, 2600000, SLIDE_W - 1981200, 1200000, null, { anchor: 'b', xml: run(s.title, { sz: 4000, b: true, c: C.white, algn: 'ctr' }) }));
+    shapes.push(rect(SLIDE_W / 2 - 457200, 4060000, 914400, 54000, C.accent2));
+    shapes.push(rect(990600, 4240000, SLIDE_W - 1981200, 900000, null, { anchor: 't', xml: s.body.map(b => run(b, { sz: 1800, c: C.light, algn: 'ctr' })).join('') }));
   } else {
-    shapes.push(sp([2, 'title'], 609600, 365760, SLIDE_W - 1219200, 1143000, P(title, { sz: 2800, b: true })));
-    shapes.push(sp([3, 'body'], 609600, 1600200, SLIDE_W - 1219200, 4600000, body.map(b => P(b, { bullet: true, sz: 2000 })).join('')));
+    shapes.push(rect(0, 0, SLIDE_W, SLIDE_H, C.white));
+    shapes.push(rect(0, 0, 182880, SLIDE_H, C.accent));                     // левая акцентная полоса
+    // номер-бейдж
+    shapes.push(rect(609600, 400050, 700000, 700000, C.accent, { anchor: 'ctr', xml: run(String(no), { sz: 2400, b: true, c: C.white, algn: 'ctr' }) }));
+    shapes.push(rect(1430000, 400050, SLIDE_W - 2100000, 760000, null, { anchor: 'ctr', xml: run(s.title, { sz: 2600, b: true, c: C.dark }) }));
+    shapes.push(rect(1430000, 1230000, SLIDE_W - 2040000, 24000, C.light)); // тонкая линия под заголовком
+    shapes.push(rect(1370000, 1480000, SLIDE_W - 2040000, 4400000, null, { anchor: 't', xml: s.body.map(b => run(b, { sz: 2000, c: C.dark, bullet: true })).join('') }));
+    // подвал: тема слева, номер справа
+    shapes.push(rect(609600, SLIDE_H - 520000, SLIDE_W - 2400000, 360000, null, { anchor: 'ctr', xml: run(s.footer || '', { sz: 1100, c: C.muted }) }));
+    shapes.push(rect(SLIDE_W - 1700000, SLIDE_H - 520000, 1100000, 360000, null, { anchor: 'ctr', xml: run(no + ' / ' + total, { sz: 1100, c: C.muted, algn: 'r' }) }));
   }
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">` +
@@ -167,18 +215,21 @@ function slideDoc(title, body, isTitle) {
 }
 
 function buildSlides(meta, o) {
+  const foot = (meta.topic || '').length > 70 ? meta.topic.slice(0, 67) + '…' : (meta.topic || '');
   const slides = [];
-  slides.push({ title: meta.topic || 'Тема работы', body: [meta.student || '', meta.discipline ? '«' + meta.discipline + '»' : '', meta.city && meta.year ? meta.city + ' ' + meta.year : (meta.year || '')].filter(Boolean), isTitle: true });
+  slides.push({ kind: 'title', title: meta.topic || 'Тема работы', body: [meta.student || '', meta.discipline ? '«' + meta.discipline + '»' : '', [meta.city, meta.year].filter(Boolean).join(' ')].filter(Boolean) });
   const gt = [];
   if (o.goal) gt.push('Цель: ' + o.goal.replace(/^цель[ью]?\s*(работы)?\s*[—:-]?\s*/i, ''));
   o.tasks.forEach((t, i) => gt.push('Задача ' + (i + 1) + ': ' + t));
-  if (gt.length) slides.push({ title: 'Цель и задачи', body: gt });
+  if (gt.length) slides.push({ kind: 'section', title: 'Цель и задачи', body: gt, footer: foot });
   const walk = o.steps && o.steps.length >= 3 ? o.steps : o.sections;
-  walk.forEach((s, i) => slides.push({ title: s.name.length > 60 ? s.name.slice(0, 57) + '…' : s.name, body: s.summary ? [s.summary] : ['Ключевые положения', 'Основные результаты'] }));
-  slides.push({ title: 'Выводы', body: o.concl.length ? o.concl.slice(0, 5) : ['Цель работы достигнута', 'Поставленные задачи выполнены'] });
-  slides.push({ title: 'Спасибо за внимание!', body: ['Готов ответить на вопросы'], isTitle: true });
+  walk.forEach(s => slides.push({ kind: 'section', title: s.name.length > 58 ? s.name.slice(0, 55) + '…' : s.name, body: s.summary ? splitBullets(s.summary) : ['Ключевые положения', 'Основные результаты'], footer: foot }));
+  slides.push({ kind: 'section', title: 'Выводы', body: o.concl.length ? o.concl.slice(0, 5) : ['Цель работы достигнута', 'Поставленные задачи выполнены'], footer: foot });
+  slides.push({ kind: 'end', title: 'Спасибо за внимание!', body: ['Готов ответить на ваши вопросы'] });
   return slides;
 }
+/* длинный пересказ → 1–2 пункта для слайда */
+function splitBullets(s) { const parts = (s.match(/[^.!?]+[.!?]+/g) || [s]).map(clean).filter(x => x.length > 15); return parts.slice(0, 2).map(x => x.length > 160 ? x.slice(0, 157) + '…' : x); }
 
 async function packPptx(slides) {
   const enc = new TextEncoder();
@@ -198,7 +249,7 @@ async function packPptx(slides) {
   files['ppt/slideLayouts/slideLayout1.xml'] = LAYOUT;
   files['ppt/slideLayouts/_rels/slideLayout1.xml.rels'] = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`;
   slides.forEach((s, i) => {
-    files[`ppt/slides/slide${i + 1}.xml`] = slideDoc(s.title, s.body, s.isTitle);
+    files[`ppt/slides/slide${i + 1}.xml`] = slideDoc(s, i + 1, slides.length);
     files[`ppt/slides/_rels/slide${i + 1}.xml.rels`] = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`;
   });
   return global.Formatter.zipFiles(Object.entries(files).map(([name, s]) => ({ name, data: enc.encode(s) })));
