@@ -473,6 +473,18 @@ async function gostCheck(buf) {
     // строки оглавления: «Название ……… 12» — у них свой стиль (без отступа, по левому краю)
     if (/\d$/.test(text) && p.getElementsByTagNameNS(W_NS, 'tab').length) continue;
     if (/^(рисунок|рис\.|таблица|продолжение таблицы|листинг)\s/i.test(text)) continue;
+    // листинги кода: по СТО моноширинный шрифт, одинарный интервал, без отступа —
+    // оформитель (format.js) так их и собирает, поэтому в статистику тела не берём
+    {
+      let mono = 0, allr = 0;
+      for (const r of p.getElementsByTagNameNS(W_NS, 'r')) {
+        const n = [...r.getElementsByTagNameNS(W_NS, 't')].reduce((s, t) => s + t.textContent.length, 0);
+        if (!n) continue; allr += n;
+        const f = wKid(wKid(r, 'rPr'), 'rFonts');
+        if (f && /courier|consolas|mono|menlo|lucida console|source code/i.test((wAttr(f, 'ascii') || '') + (wAttr(f, 'hAnsi') || ''))) mono += n;
+      }
+      if (allr && mono / allr > 0.8) continue;
+    }
     const pp = [pPr, ...sts.map(s => s.pPr), defP];
     const spacing = pick(pp, x => wKid(x, 'spacing') && wAttr(wKid(x, 'spacing'), 'line') ? wKid(x, 'spacing') : null);
     const line = spacing ? +wAttr(spacing, 'line') / 240 : 1, rule = spacing ? wAttr(spacing, 'lineRule') || 'auto' : 'auto';
