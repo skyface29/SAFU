@@ -1,6 +1,7 @@
 // Сборка для развёртывания (вставляется в редакторы кода в консолях, поэтому — по одному файлу):
 //   dist/worker.js — Cloudflare Worker (ES-модуль): ядро + хранилище D1
-//   dist/proxy.js  — функция Yandex Cloud (index.handler): пересылает запросы в Worker
+//   dist/proxy.js  — функция Yandex Cloud (index.handler): пересылает запросы в Worker (не работает: Cloudflare режут)
+//   dist/yandex.js — функция Yandex Cloud (index.handler): ядро + Object Storage (рабочий вариант)
 // node pack.js
 'use strict';
 const fs = require('fs'), path = require('path');
@@ -11,4 +12,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const worker = '// Собрано из otmetki-api/ (node pack.js). Не править руками.\n' + shim + ['core', 'store-d1', 'worker'].map(wrap).join('') + 'export default __req(\'./worker\');\n';
 fs.writeFileSync(path.join(OUT, 'worker.js'), worker);
 fs.copyFileSync(path.join(D, 'proxy.js'), path.join(OUT, 'proxy.js'));
+// dist/yandex.js — функция Yandex (index.handler) с хранилищем в Object Storage, одним файлом (CommonJS)
+const ya = '// Собрано из otmetki-api/ (node pack.js). Не править руками.\n\'use strict\';\n' + shim + ['core', 'store-s3', 'yandex'].map(wrap).join('') + 'module.exports = __req(\'./yandex\');\n';
+fs.writeFileSync(path.join(OUT, 'yandex.js'), ya);
 console.log('dist/worker.js', worker.length, 'байт; dist/proxy.js', fs.statSync(path.join(OUT, 'proxy.js')).size, 'байт');

@@ -27,17 +27,16 @@ node otmetki-api/dev-server.js 8790 <папка с данными ветки ruz
 ```
 Открыть `http://localhost:8790/otmetki/`, в консоли браузера: `localStorage.setItem('otmetki.api','/api')`.
 
-## Как работает сейчас (бесплатно, без карты)
+## Как работает сейчас
 
 ```
-браузер → функция Yandex otmetki (proxy.js) → воркер Cloudflare otmetki-api (worker.js) → D1 otmetki
+браузер → функция Yandex otmetki (yandex.js, обработчик index.handler) → Object Storage, бакет otmetki-arktika-data
 ```
-1. Cloudflare, бесплатный план: воркер `otmetki-api` (`https://otmetki-api.zarubin-kirillcka.workers.dev/`),
-   база D1 `otmetki`, привязка `DB`. Код: `node pack.js` → `dist/worker.js`. Таблица создаётся сама.
-   Лимиты бесплатного плана: 100 тыс. запросов к воркеру, 5 млн прочитанных и 100 тыс. записанных строк в день,
-   5 ГБ. При превышении Cloudflare просто отвечает ошибкой до конца суток, счёта не будет.
-2. Yandex Cloud Functions: функция `otmetki`, публичная, Node.js 22, точка входа `index.handler`,
-   код — `dist/proxy.js` (в консоли он лежит в `index.js`). Адрес воркера можно поменять переменной `UPSTREAM`.
-   Бесплатно 1 млн вызовов и 10 ГБ×ч в месяц.
-3. Адрес `https://functions.yandexcloud.net/d4e8m5ak49b1ggo0cbkh` вписан в `API_DEFAULT` в `site/otmetki/index.html`.
+- Функция `otmetki`: публичная, Node.js 22, точка входа `index.handler`, таймаут 15 с, 128 МБ, сервисный аккаунт
+  `otmetki-fn` (роль `storage.editor`). Код: `node pack.js` → `dist/yandex.js` (зависимостей нет), в консоли — файл `index.js`.
+- Ключей нет: в бакет функция ходит с IAM-токеном сервисного аккаунта (`context.token`).
+- Бесплатно в месяц: 1 млн вызовов функции, 100 тыс. чтений и 10 тыс. записей Object Storage, 1 ГБ.
 
+Cloudflare (воркер `otmetki-api` + D1: `worker.js`, `store-d1.js`, `proxy.js`) — про запас. Из России его режут
+и с телефонов, и из Yandex Cloud, поэтому данные хранятся в Яндексе. Перенос из D1 — операция `import` в `yandex.js`
+(включается переменной окружения `IMPORT_KEY` на время переноса).
