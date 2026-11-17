@@ -814,8 +814,9 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       </div>
       <div class="kpick hide" id="kPick"><div class="kchips few" id="kChips" role="radiogroup" aria-label="Вид работы"></div><button class="link kmore" id="kMore" type="button">Все виды работ ›</button></div>
       <small class="knote" id="kNote"></small>
-      <details class="sto-card sto-title" id="stoTitle"><summary><span class="sto-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
-        <div class="kf-txt"><span class="kf-l">Титульный лист</span><div id="tSum"></div><small id="stoTitleNote"></small></div><span class="link">Поля</span></summary>
+    </div>
+    <details class="sto-card sto-title" id="stoTitle"><summary><span class="sto-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+        <div class="kf-txt"><span class="kf-l">Титульный лист</span><div id="tSum"></div><small id="stoTitleNote"></small></div><span class="link">Редактировать</span></summary>
     <div class="sto-form" id="tForm">
       <label class="fld">Вид работы<select id="tType"></select></label>
       <label class="fld tnum hide">Номер работы<input id="tNum" inputmode="numeric" placeholder="10"></label>
@@ -836,10 +837,8 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       <label class="fld">Год<input id="tYear" inputmode="numeric"></label>
     </div>
     <datalist id="tSchools"><option>Высшая школа информационных технологий и автоматизированных систем</option><option>Высшая инженерная школа</option><option>Высшая школа энергетики, нефти и газа</option><option>Высшая школа естественных наук и технологий</option><option>Высшая школа экономики, управления и права</option><option>Высшая школа социально-гуманитарных наук и международной коммуникации</option><option>Высшая школа психологии, педагогики и физической культуры</option></datalist>
-        <datalist id="tSchools"><option>Высшая школа информационных технологий и автоматизированных систем</option><option>Высшая инженерная школа</option><option>Высшая школа энергетики, нефти и газа</option><option>Высшая школа естественных наук и технологий</option><option>Высшая школа экономики, управления и права</option><option>Высшая школа социально-гуманитарных наук и международной коммуникации</option><option>Высшая школа психологии, педагогики и физической культуры</option></datalist>
       <div class="sto-acts"><button class="btn" id="tDl" type="button">Скачать только титульный лист</button></div>
       </details>
-    </div>
     <div class="err-sum hide" id="errSum"></div>
     <div class="err-view hide" id="errView"></div>
     <button class="primary block" id="stoGo" disabled>Оформить по СТО<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
@@ -1962,7 +1961,7 @@ function titleSync(){
   $('stoTitleNote').textContent = STO.fileTitle ? 'взят из твоей работы и будет пересобран по форме СТО' : ready ? (STO.header ? 'собран из заголовка работы — заменит шапку в тексте' : 'заполнен — встанет первой страницей') : !d.student ? 'впиши своё ФИО — и титульник по форме СТО встанет первой страницей' : 'впиши тему — и титульник встанет первой страницей';
   const tt = StoTools.TITLE_TYPES[d.type] || {}, card = $('stoTitle');
   $('tSum').innerHTML = '<b>' + esc((tt.name || 'Титульный лист') + (tt.numbered && d.num ? ' №' + d.num : '')) + '</b><small>' +
-    esc(pr ? (d.place || 'место практики не указано') : (d.topic ? '«' + d.topic + '»' : 'тема не найдена')) + ' · ' + esc(d.student || 'ФИО не заполнено') + (d.group ? ', гр. ' + esc(d.group) : '') + '</small>';
+    esc(pr ? (d.place || 'место практики не указано') : (d.topic ? '«' + d.topic + '»' : STO.file ? 'тема не найдена' : 'тема не указана')) + ' · ' + esc(d.student || 'ФИО не заполнено') + (d.group ? ', гр. ' + esc(d.group) : '') + '</small>';
   card.classList.toggle('ok', STO.useTitle); card.classList.toggle('need', !!STO.file && !STO.useTitle);
   // запоминаем только своё (ФИО, группа, руководитель…); вид, номер, тема и дисциплина — у каждой работы свои
   const keep = Object.assign({}, d); ['type','num','discipline','topic'].forEach(k => delete keep[k]); lsSet('stoTitle', keep);
