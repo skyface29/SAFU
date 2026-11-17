@@ -147,6 +147,47 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
     const d = await page.evaluate(async () => Formatter.readTitle(await StoFixtures.docx([{ t: 'МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ', jc: 'center' }, { t: 'ПРАКТИЧЕСКАЯ РАБОТА № 4', jc: 'center' }, 'По дисциплине «Сети»', 'На тему «Маршрутизация»', 'Выполнил обучающийся:', 'Иванов Иван Иванович', 'Архангельск 2026'])));
     eq([d.type, d.num, d.topic, d.discipline], ['prakt', '4', 'Маршрутизация', 'Сети']); });
 
+  /* ===== выгрузка из Google Docs / Notion / Claude Docs: название документа, дата, «Титульный лист», потом сам титул ===== */
+  const EXPORT = [{ t: 'Лабораторная работа №4', style: 'Heading1' }, 'Nov 17, 2026 · @kirill', { t: 'Титульный лист', style: 'Heading2' },
+    'МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ',
+    'Федеральное государственное автономное образовательное учреждение высшего образования «Северный (Арктический) федеральный университет имени М. В. Ломоносова»',
+    'Высшая школа информационных технологий и автоматизированных систем', { t: 'ОТЧЁТ ПО ЛАБОРАТОРНОЙ РАБОТЕ № 4', b: true },
+    { t: '«Исследование процессов подготовки программ и сервисов»', b: true }, 'Дисциплина: ______________________',
+    'Выполнил: студент 1 курса группы 151621, направление 10.03.01 «Информационная безопасность» Зарубин Кирилл Вениаминович',
+    'Проверил: ______________________', 'Архангельск, 2026',
+    { t: '1 Цель работы', style: 'Heading2' }, 'Изучить установку пакетов через dpkg.',
+    { t: '2 Ход выполнения работы', style: 'Heading2' }, 'Содержимое поля Depends в ./pip_extracted/DEBIAN/control, пакет .deb и файл .gitignore.',
+    { t: 'Depends: ca-certificates, python3-distutils', style: 'Code' },
+    { t: '3 Ответы на контрольные вопросы', style: 'Heading2' },
+    { t: '8.1 Каково принципиальное различие между dpkg -i и apt install?', b: true }, 'dpkg ставит только локальный файл.',
+    { t: '8.5 Сравнение пакетных менеджеров', b: true }, 'Сравнение приведено ниже.',
+    { t: '4 Вывод', style: 'Heading2' }, 'Пакет развёрнут.'];
+  await T('выгрузка: readTitle берёт вид, номер, тему без «на тему» и пол по отчеству', async () => {
+    const d = await page.evaluate(async x => Formatter.readTitle(await StoFixtures.docx(x)), EXPORT);
+    eq([d.type, d.num, d.topic, d.student, d.gender, d.group], ['laba', '4', 'Исследование процессов подготовки программ и сервисов', 'Зарубин Кирилл Вениаминович', 'm', '151621']); });
+  await T('readTitle: пол по отчеству — «…вна» женский, хотя написано «Выполнил»', async () => {
+    const d = await page.evaluate(async () => Formatter.readTitle(await StoFixtures.docx(['МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ', 'РЕФЕРАТ', 'На тему «Арктика»', 'Выполнил: Иванова Мария Петровна', 'Архангельск 2026'])));
+    eq([d.student, d.gender], ['Иванова Мария Петровна', 'f']); });
+  const EX = await fmt(EXPORT, { titleXml: await titleXml({ type: 'laba', num: '4', topic: 'Исследование процессов подготовки программ и сервисов', student: 'Зарубин Кирилл Вениаминович', gender: 'm', group: '151621', course: '1', year: '2026' }) });
+  await T('выгрузка: старый титул убран вместе с названием документа и датой', () => {
+    for (const t of ['Лабораторная работа №4', 'Nov 17, 2026 · @kirill', 'Титульный лист', 'Проверил: ______________________']) assert(!EX.paras.some(p => p.t === t), 'остался «' + t + '»');
+    assert(!EX.paras.some(p => /^отч[её]т по лабораторной/i.test(p.t)), 'остался «Отчёт по лабораторной работе»');
+    eq(EX.paras.filter(p => /^Архангельск/.test(p.t)).length, 1, 'строк «Архангельск»'); eq(EX.paras.filter(p => /^МИНИСТЕРСТВО/.test(p.t)).length, 1, 'шапок министерства');
+    const i = EX.paras.findIndex(p => /^Архангельск/.test(p.t)), next = EX.paras.slice(i + 1).find(p => p.t); eq(next.t, '1 Цель работы'); });
+  await T('выгрузка: пути и расширения не склеены с предыдущим словом («в ./pip», «пакет .deb»)', () =>
+    assert(has(EX.paras, /в \.\/pip_extracted\/DEBIAN\/control, пакет \.deb и файл \.gitignore\./), JSON.stringify(EX.paras.find(p => /Depends в/.test(p.t)))));
+  await T('выгрузка: «8.1 …?» и «8.5 …» в главе 3 — пункты, а не заголовки', () => {
+    for (const k of ['8.1 Каково', '8.5 Сравнение']) { const p = EX.paras.find(p => p.t.startsWith(k)); assert(p, k); assert(!/heading/i.test(p.style), k + ' стал заголовком'); }
+    for (const k of ['1 Цель работы', '3 Ответы на контрольные вопросы', '4 Вывод']) assert(/heading/i.test((EX.paras.find(p => p.t === k) || {}).style || ''), k + ' перестал быть заголовком'); });
+  await T('выгрузка: код со стилем «Code» — моноширинным шрифтом, слева, без отступа', async () => {
+    const r = await page.evaluate(async x => { const res = await Formatter.formatDocx(await StoFixtures.docx(x), { profile: 'safu', toc: false });
+      const files = await Formatter.unzip(await res.blob.arrayBuffer()), d = files.find(f => f.name === 'word/document.xml');
+      const doc = new DOMParser().parseFromString(new TextDecoder().decode(d.data), 'application/xml'), W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+      const p = [...doc.getElementsByTagNameNS(W, 'p')].find(p => p.textContent.startsWith('Depends:'));
+      const f = p.getElementsByTagNameNS(W, 'rFonts')[0], jc = p.getElementsByTagNameNS(W, 'jc')[0], ind = p.getElementsByTagNameNS(W, 'ind')[0];
+      return [f && f.getAttributeNS(W, 'ascii'), jc && jc.getAttributeNS(W, 'val'), ind && ind.getAttributeNS(W, 'firstLine')]; }, EXPORT);
+    eq(r, ['Courier New', 'left', '0']); });
+
   /* ================= проверка по виду «Практическая работа» ================= */
   const kc = (paras, kind) => page.evaluate(async ([p, k]) => { const c = await WorkKinds.check(await StoFixtures.docx(p), k); return { ok: c.ok, errs: c.items.filter(x => x.level === 'err').map(x => x.part) }; }, [paras, kind]);
   await T('проверка: практическая без цели и вывода — ошибки', async () => { const c = await kc(['Задание', 'Настроить сеть.'], 'prakt'); assert(!c.ok); eq(c.errs.sort(), ['concl', 'goal']); });

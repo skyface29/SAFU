@@ -272,7 +272,9 @@ function fixTypography(p, stats, bib) {
   const cyr = CYR.test(st.s);
   rep(st, /^[ \u00a0]+/, '');
   rep(st, / {2,}/g, ' ');
-  rep(st, bib ? / +([,.!?)\]»])/g : / +([,.;:!?)\]»])/g, '$1');
+  // пробел перед точкой убираем, только если точка — знак препинания: «./pip_extracted», «пакет .deb», «.gitignore»
+  // — это путь или расширение, пробел перед ними настоящий (раньше выходило «в./pip», «пакета.deb»)
+  rep(st, bib ? / +(?:([,!?)\]»])|(\.)(?![\p{L}\d/\\_~]))/gu : / +(?:([,;:!?)\]»])|(\.)(?![\p{L}\d/\\_~]))/gu, '$1$2');
   rep(st, /([(\[«]) +/g, '$1');
   if (!bib) { rep(st, /([а-яё]{2}[»)]?[.!?])(?=[А-ЯЁ][а-яё])/g, '$1 '); rep(st, /([а-яё]),(?=[а-яё])/g, '$1, '); }
   rep(st, /(\S) +[-—] +(?=\S)/g, '$1 – '); rep(st, /(\S) -- (?=\S)/g, '$1 – ');
@@ -528,6 +530,8 @@ const HEAD_NUM = /^(?:(глава|раздел|часть)\s+)?(\d{1,2}(?:\.\d{1
 const FIG = /^(рис(?:унок|\.)?)\s*([А-ЯA-Z]?\.?\s?\d+(?:[.\-]\d+)?)\s*[.\-–—:]?\s*(.*)$/i;
 const TAB = /^(таблица|табл\.)\s*([А-ЯA-Z]?\.?\s?\d+(?:[.\-]\d+)?)\s*[.\-–—:]?\s*(.*)$/i;
 const MONO = /courier|consolas|mono|menlo|lucida console|source code/i;
+/** Последняя строка титула: «Архангельск 2026», «Северодвинск, 2025 г.» */
+const CITY_YEAR = /^[А-ЯЁ][а-яё-]+,?\s+(?:19|20)\d\d(?:\s*г\.?)?$/;
 const BIBLIKE = /(https?:\/\/|www\.|\bURL\b|режим доступа|дата обращения|\bISBN\b|\bDOI\b|№\s*\d+-ФЗ|(?:^|\s)(от|изд\.?)\s+\d{2}\.\d{2}\.\d{4}|\[электронный ресурс\]|\s\/\/\s|\.\s*[–-]\s*\d{4}\.|:\s*[А-ЯЁA-Z][\p{L}-]+,\s*\d{4}|\d+\s*с\.\s*$)/iu;
 
 function buildStyles(stylesDoc) {
@@ -680,6 +684,13 @@ async function formatOnce(buf, opts) {
     return null;
   };
   const boldShare = p => { let b = 0, all = 0; for (const r of ownRuns(p)) { const n = kids(r, 't').reduce((s, t) => s + t.textContent.length, 0); all += n; const rp = kid(r, 'rPr'); if (rp && kid(rp, 'b') && !['0', 'false'].includes(attr(kid(rp, 'b'), 'val'))) b += n; } return all ? b / all : 0; };
+  // код, набранный стилем «Code» / «HTML Preformatted» (шрифт задан в стиле, а не у прогонов) — тоже листинг:
+  // иначе он становился обычным текстом по ширине, с отступом и Times New Roman
+  const codeStyle = p => {
+    const id = attr(kid(kid(p, 'pPr'), 'pStyle'), 'val'); if (!id) return false;
+    return St.chain(id).some(s => /^(code|source code|html preformatted|plain text|листинг|код)$/.test(s.name) ||
+      (s.rPr && MONO.test((attr(kid(s.rPr, 'rFonts'), 'ascii') || '') + (attr(kid(s.rPr, 'rFonts'), 'hAnsi') || ''))));
+  };
   const monoShare = p => { let m = 0, all = 0; for (const r of ownRuns(p)) { const n = kids(r, 't').reduce((s, t) => s + t.textContent.length, 0); all += n; const f = kid(kid(r, 'rPr'), 'rFonts'); if (f && MONO.test((attr(f, 'ascii') || '') + (attr(f, 'hAnsi') || ''))) m += n; } return all ? m / all : 0; };
 
   let tocField = false;
@@ -695,6 +706,7 @@ async function formatOnce(buf, opts) {
   };
   // рисунок перед подписью: пропускаем пустые абзацы между ними
   const prevDrawing = i => { for (let k = i - 1; k >= 0 && k >= i - 3; k--) { const b = B[k]; if (b.localName !== 'p') return false; if (hasDrawing(b)) return true; if (paraText(b).trim()) return false; } return false; };
+  let chapterNum = null;   // номер текущей главы «3 …»: подраздел «8.5» внутри неё — это пункт, а не заголовок
   B.forEach((b, i) => {
     if (b.localName === 'tbl') { info.set(b, { kind: 'table' }); return; }
     const raw = paraText(b, true), text = raw.replace(/\s+/g, ' ').trim();
@@ -709,22 +721,26 @@ async function formatOnce(buf, opts) {
     else if (APPX.test(text) && text.length < 90 && !/\t|\.{3,}|…/.test(raw)) x.kind = 'appendix';
     else if (FIG.test(text) && text.length < 300 && !/^рис\S*\s+\d+\s+[а-яё]/.test(text) && /^рис/i.test(text) && (prevDrawing(i) || /^рисунок\s/i.test(text) && text.length < 200)) x.kind = 'figcap';
     else if (TAB.test(text) && text.length < 300 && (B[i + 1] && B[i + 1].localName === 'tbl' || B[i + 2] && B[i + 2].localName === 'tbl' && !paraText(B[i + 1]).trim())) x.kind = 'tabcap';
-    else if (monoShare(b) > .8) x.kind = 'listing';
+    else if (monoShare(b) > .8 || codeStyle(b)) x.kind = 'listing';
     else {
       const lvl = styleLevel(b), m = HEAD_NUM.exec(text), bold = boldShare(b);
       const short = text.length <= 160 && !/[;:,]$/.test(text) && text.split(' ').length <= 22;
       if (lvl && lvl >= 1 && short) { x.kind = 'head'; x.level = Math.min(lvl, 4); }
       // «6 Федеральный закон от … № 152-ФЗ», «7 OWASP Top 10. – URL: …» — запись списка источников, а не заголовок главы
       // (иначе она попадала в автоматическое оглавление, если сам заголовок списка не распознан — фазз 15.11)
-      else if (m && short && /^[А-ЯЁA-Z]/.test(m[4]) && !BIBLIKE.test(text) && (bold > .6 || lvl || (!/[.!?]$/.test(text) && text.length < 120) )) { x.kind = 'head'; x.level = m[1] ? 1 : m[2].split('.').length; x.num = m; }
+      // «8.1 Каково различие между dpkg и apt?» — вопрос (контрольные вопросы, билеты), а не подраздел: заголовок вопросом не кончается
+      else if (m && short && /^[А-ЯЁA-Z]/.test(m[4]) && !BIBLIKE.test(text) && !/\?$/.test(text) && (bold > .6 || lvl || (!/[.!?]$/.test(text) && text.length < 120) )) { x.kind = 'head'; x.level = m[1] ? 1 : m[2].split('.').length; x.num = m; }
       else if (short && !/[.!?]$/.test(text) && text.length < 90 && (bold > .8 && isAllCaps(text))) { x.kind = 'head'; x.level = 1; }
       // «3. Подготовка к работе: / 3.1 Повторить материалы лекции / 3.2 Ознакомиться с литературой» — это пункты, а не подразделы:
       // перед подразделом не бывает строки с двоеточием, а пункты идут подряд с тем же номером раздела
       if (x.kind === 'head' && x.num && x.num[2].includes('.') && !lvl) {
         let k = i - 1; while (k >= 0 && B[k].localName === 'p' && !info.get(B[k]).text) k--;
         const px = k >= 0 && info.get(B[k]), major = x.num[2].split('.')[0];
-        if (px && (/:$/.test(px.text) || px.listItem === major)) { x.kind = 'body'; x.listItem = major; delete x.level; delete x.num; }
+        // «8.5 Сравнение пакетных менеджеров» внутри главы «3 Ответы на контрольные вопросы»: номер пункта задания, а не подраздел
+        // (у подраздела первая цифра — номер своей главы)
+        if (px && (/:$/.test(px.text) || px.listItem === major) || chapterNum != null && major !== chapterNum) { x.kind = 'body'; x.listItem = major; delete x.level; delete x.num; }
       }
+      if (x.kind === 'head' && m && m[2] && !m[2].includes('.')) chapterNum = m[2];
     }
     info.set(b, x);
   });
@@ -742,8 +758,21 @@ async function formatOnce(buf, opts) {
     }
   }
   {
+    // работа начинается с заголовка, а титул идёт после него (выгрузка из Google Docs, Notion, Claude Docs:
+    // «Лабораторная работа №4», дата, «Титульный лист», потом сам титул). Заголовок в начале не значит, что титула нет:
+    // если до структурных элементов есть «Архангельск 2026», а над ним министерство или вуз — всё до этой строки титул.
+    // Иначе старый титул оставался в тексте после собранного, а «ОТЧЁТ ПО ЛАБОРАТОРНОЙ…» становился заголовком главы.
+    const lim = Math.min(B.length, firstStruct >= 0 ? firstStruct : 60);
+    const j = B.slice(0, lim).findIndex(b => b.localName === 'p' && CITY_YEAR.test(info.get(b).text));
+    if (j >= titleEnd) {
+      const zone = B.slice(0, j + 1).filter(b => b.localName === 'p');
+      const zoneText = zone.map(b => info.get(b).text).join(' ');
+      if (/министерств|университет|высшая школа/i.test(zoneText) && !zone.some(b => info.get(b).text.length > 250) && zone.filter(b => info.get(b).text).length <= 30) titleEnd = j + 1;
+    }
+  }
+  {
     // титул кончается строкой «Архангельск 2026»: всё, что после неё, уже работа (иначе можно потерять текст при замене титула)
-    const j = B.slice(0, titleEnd).findIndex(b => b.localName === 'p' && /^[А-ЯЁ][а-яё-]+,?\s+(?:19|20)\d\d(?:\s*г\.?)?$/.test(info.get(b).text));
+    const j = B.slice(0, titleEnd).findIndex(b => b.localName === 'p' && CITY_YEAR.test(info.get(b).text));
     if (j >= 0) { titleEnd = j + 1; while (titleEnd < B.length && B[titleEnd].localName === 'p' && !info.get(B[titleEnd]).text && !hasDrawing(B[titleEnd])) titleEnd++; }
   }
   {
@@ -963,7 +992,12 @@ async function formatOnce(buf, opts) {
       case 'listing': {
         stats.listings++;
         setSpacing(pPr, 0, 0, 1); setIndent(pPr, 0, 0); setJc(pPr, 'left');
-        runsOf(p, r => setRun(r, prof, prof.listing.size, { keepFont: true }));
+        runsOf(p, r => {
+          setRun(r, prof, prof.listing.size, { keepFont: true });
+          // моноширинный шрифт был только в стиле — ставим его прогону, стиль ниже приводится к Times New Roman
+          const f = kid(kid(r, 'rPr'), 'rFonts');
+          if (!f || !MONO.test((attr(f, 'ascii') || '') + (attr(f, 'hAnsi') || ''))) setAttrs(ensure(rPrOf(r), 'rFonts'), { ascii: 'Courier New', hAnsi: 'Courier New', cs: 'Courier New', eastAsia: null, asciiTheme: null, hAnsiTheme: null, cstheme: null, eastAsiaTheme: null });
+        });
         return;
       }
       case 'tocline': {
@@ -1607,6 +1641,14 @@ async function readTitle(buf) {
   d.discipline = after(/(?:^|\s)по (?:дисциплине|курсу|предмету)(?![а-яёА-ЯЁA-Za-z])/i, /тем/i);
   d.topic = after(/(?:^|\s)(?:на тему|тема(?: работы)?)(?![а-яёА-ЯЁA-Za-z])/i, /выполнил|студент|обучающ/i);
   if (d.topic) d.topic = d.topic.replace(/^(?:на тему|тема)\s*:?\s*/i, '');
+  // «ОТЧЁТ ПО ЛАБОРАТОРНОЙ РАБОТЕ № 4 / «Исследование процессов…»» — тема без слов «на тему»: строка в кавычках сразу после вида работы
+  if (!d.topic) {
+    for (let k = 0; k < lines.length - 1 && !d.topic; k++) {
+      if (!(kindOfLine(lines[k]) || /^отч[её]т\s+(?:о|по)\s/i.test(lines[k]))) continue;
+      if (/^[«"“„].{8,}[»"”]$/.test(lines[k + 1])) d.topic = clean(lines[k + 1]);
+    }
+  }
+  if (!d.discipline) d.discipline = after(/^дисциплина(?![а-яёА-ЯЁA-Za-z])/i, /тем|выполнил|студент/i);
   const sch = lines.find(l => /^(высшая\s+\S*\s*школа|высшая школа|институт|колледж|филиал)/i.test(l) && l.length < 140); if (sch) d.school = sch.replace(/\s*\(.*$/, '');
   const FIO = /([А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?)\s+(?:([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+(?:вич|вна|ична|оглы|кызы))|([А-ЯЁ])\.\s?([А-ЯЁ])\.?)/;
   const FIO2 = /([А-ЯЁ])\.\s?([А-ЯЁ])\.\s?([А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?)/;
@@ -1617,6 +1659,14 @@ async function readTitle(buf) {
     for (let i = iStud; i < Math.min(lines.length, iStud + 4) && (iTeach < 0 || i < iTeach || i === iStud); i++) { const f = fioFrom(lines[i].replace(/^.*?(выполнил[аи]?|студент(ка)?|обучающ\S*)\s*:?/i, '')); if (f) { d.student = f; break; } }
     if (/выполнила|обучающаяся|студентка/i.test(lines[iStud])) d.gender = 'f';
   }
+  // пол — по отчеству, а без него по «выполнил»: иначе на титул попадал пол, сохранённый в браузере с прошлой работы
+  // («Выполнила обучающаяся» у Кирилла Вениаминовича)
+  if (d.student) {
+    const pat = d.student.split(/\s+/)[2] || '';
+    if (/(вич|оглы|улы|уулу)$/i.test(pat)) d.gender = 'm';
+    else if (/(вна|ична|кызы|гызы)$/i.test(pat)) d.gender = 'f';
+  }
+  if (!d.gender && iStud >= 0 && /выполнил(?![а-яё])|обучающийся|студент(?![а-яё])/i.test(lines[iStud])) d.gender = 'm';
   if (iTeach >= 0) {
     for (let i = iTeach; i < Math.min(lines.length, iTeach + 3); i++) {
       const raw = lines[i].replace(/^.*?(проверил[аи]?|руководитель( практики)?( от университета)?|научный руководитель|преподаватель|принял[аи]?)\s*:?\s*/i, '');
