@@ -233,7 +233,7 @@ body[data-mode=zashita] #check,body[data-mode=zashita] #checkHead,body[data-mode
 .zget li{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--glass)}
 .zget b{font-weight:600;font-size:15px}.zget small{font-size:13px;color:var(--muted);line-height:1.4}
 @media (max-width:700px){.zget{grid-template-columns:1fr}}
-.hero-in h1{font-size:clamp(34px,4.8vw,70px);max-width:min(12em,60vw)}@media (max-width:820px){.hero-in h1{max-width:none;text-shadow:0 1px 14px rgba(3,8,20,.95)}.hero-in .sub{display:none}.hero .dock{background:linear-gradient(180deg,rgba(14,30,56,.92),rgba(6,14,30,.94))}}
+.hero-in h1{font-size:clamp(34px,4.8vw,70px);max-width:min(12em,60vw)}@media (max-width:820px){.hero-in h1{max-width:none;text-shadow:0 1px 14px rgba(3,8,20,.95)}.hero-in .sub{display:none}}
 .free{margin:0 0 16px;padding:18px 20px;border-radius:20px;border:1px solid var(--line2)}
 .free b{font-weight:600;font-size:16px}.free ul{margin:10px 0 0;padding:0 0 0 18px;columns:2;column-gap:32px;font-size:14px;color:var(--ink2);line-height:1.5}
 @media (max-width:700px){.free ul{columns:1}}
@@ -791,12 +791,12 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 /* ===================== «брось работу в воду» ===================== */
 .dock{position:relative;display:flex;align-items:center;gap:16px;width:min(640px,100%);margin:30px 0 0;padding:16px 16px 16px 18px;border-radius:22px;cursor:pointer;
   color:#eef2fb;font:inherit;text-align:left;border:1px solid rgba(166,230,255,.28);
-  background:linear-gradient(180deg,rgba(166,230,255,.13),rgba(90,160,255,.05) 60%,rgba(4,10,24,.35));
-  backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);
+  background:linear-gradient(180deg,rgba(28,52,88,.82),rgba(10,22,44,.86) 60%,rgba(6,12,28,.9));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 20px 60px -20px rgba(40,140,255,.45);transition:transform .35s var(--ease),border-color .3s,box-shadow .35s}
 .dock::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;
   background:conic-gradient(from var(--a,0deg),transparent 0 70%,#a6e6ff 80%,#5ef2d0 86%,transparent 92%);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:dockRim 5s linear infinite;opacity:.9}
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .4s}
+.dock:hover::before,.dock.over::before,body.dragging .dock::before{opacity:.95;animation:dockRim 2.4s linear infinite}
 @property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
 @keyframes dockRim{to{--a:360deg}}
 .dock:hover{transform:translateY(-2px);border-color:rgba(166,230,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 26px 70px -18px rgba(60,170,255,.6)}
@@ -823,11 +823,12 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 body.dragging .flood{opacity:1}body.dragging .flood b{transform:none}
 
 /* под водой: лучи света сквозь толщу и редкие пузырьки — проявляются, когда страница «уходит» под воду */
-.deep{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:var(--dive,0);overflow:hidden;
+.deep{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;overflow:hidden;contain:strict;transition:opacity 1.2s ease;
   background:radial-gradient(90% 60% at 50% -10%,rgba(40,120,220,.22),transparent 70%),linear-gradient(180deg,rgba(6,30,60,.35),transparent 60%)}
 .rays{position:absolute;left:-20%;right:-20%;top:-10%;height:90%;transform-origin:50% 0;
-  background:repeating-linear-gradient(100deg,transparent 0 60px,rgba(166,230,255,.05) 60px 90px,transparent 90px 170px,rgba(166,230,255,.035) 170px 185px);
-  -webkit-mask:linear-gradient(180deg,#000,transparent 85%);mask:linear-gradient(180deg,#000,transparent 85%);filter:blur(6px);animation:rays 14s ease-in-out infinite alternate}
+  background:repeating-linear-gradient(100deg,transparent 0 50px,rgba(166,230,255,.03) 64px,rgba(166,230,255,.05) 75px,rgba(166,230,255,.03) 86px,transparent 100px 160px,rgba(166,230,255,.03) 172px,transparent 186px);
+  -webkit-mask:linear-gradient(180deg,#000,transparent 85%);mask:linear-gradient(180deg,#000,transparent 85%);transform:skewX(-4deg)}   /* лучи неподвижны: так слой рисуется один раз */
+.deep.on{opacity:1}.deep:not(.on) .bub{animation-play-state:paused}
 @keyframes rays{from{transform:skewX(-6deg) translateX(-3%)}to{transform:skewX(6deg) translateX(3%)}}
 .bub{position:absolute;bottom:-20px;width:6px;height:6px;border-radius:50%;border:1px solid rgba(166,230,255,.45);background:rgba(166,230,255,.08);animation:bub 16s linear infinite}
 .bub:nth-child(2){left:12%;animation-duration:19s;animation-delay:-4s}.bub:nth-child(3){left:31%;width:4px;height:4px;animation-duration:14s;animation-delay:-9s}
@@ -838,11 +839,13 @@ body.dragging .flood{opacity:1}body.dragging .flood b{transform:none}
 [data-theme=light] .deep{display:none}
 
 /* шаги: подсветка переезжает к выбранному; при прокрутке панель прилипает к верху и сжимается */
-.route{position:sticky;top:10px;overflow:hidden;transition:padding .3s var(--ease),box-shadow .3s}
+.route{position:sticky;top:10px;overflow:hidden;transition:padding .3s var(--ease),box-shadow .3s;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:color-mix(in srgb,var(--bg) 94%,transparent)}
 .route li{position:relative;z-index:1}
 .route-pill{position:absolute;z-index:0;left:0;top:0;border-radius:18px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);
   box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 20%,transparent),0 10px 40px -10px color-mix(in srgb,var(--accent) 55%,transparent);
   transition:transform .55s cubic-bezier(.2,1.25,.35,1),width .55s cubic-bezier(.2,1.25,.35,1),height .55s cubic-bezier(.2,1.25,.35,1);pointer-events:none}
+.route.resizing .route-pill{transition:none}
 .route.pill-on button[aria-selected=true]{border-color:transparent;background:none}
 .route.stuck{padding:6px;box-shadow:0 18px 50px -20px rgba(0,0,0,.7)}
 .route.stuck small{display:none}.route.stuck button{padding:10px 14px}.route.stuck em{font-size:11.5px}
@@ -872,7 +875,7 @@ body.dragging .flood{opacity:1}body.dragging .flood b{transform:none}
 .opts>summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);font-weight:600;font-size:14px}
 .opts>summary::-webkit-details-marker{display:none}.opts>summary small{font-weight:400;font-size:12px;color:var(--muted)}
 .opts[open]>summary{margin-bottom:14px}.opts>div{margin-bottom:16px}
-/* смена шага — переход «сквозь воду» */
+/* смена шага — переход «сквозь воду» (страница целиком не анимируется — см. выше) */
 ::view-transition-old(tool){animation:toolOut .32s var(--ease) both}
 ::view-transition-new(tool){animation:toolIn .55s cubic-bezier(.2,1,.3,1) both}
 @keyframes toolOut{to{opacity:0;transform:translateY(-14px);filter:blur(6px)}}
@@ -896,13 +899,13 @@ body.dragging .flood{opacity:1}body.dragging .flood b{transform:none}
   box-shadow:0 0 18px rgba(120,200,255,.55),inset 0 0 12px rgba(120,200,255,.35);animation:ring 1.9s cubic-bezier(.15,.7,.3,1) forwards}
 .ring:nth-child(2n){animation-delay:.18s;border-width:1.5px}.ring:nth-child(3n){animation-delay:.38s;border-width:1px}
 @keyframes ring{0%{opacity:1;transform:scale(.1,.025)}100%{opacity:0;transform:scale(5.2,1.25)}}
-.drop{position:absolute;width:5px;height:9px;margin:-4px 0 0 -2px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:#cfefff;box-shadow:0 0 8px rgba(160,220,255,.9)}
+.spray{position:absolute;width:5px;height:9px;margin:-4px 0 0 -2px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:#cfefff;box-shadow:0 0 8px rgba(160,220,255,.9)}
 .berg.bob{opacity:1;animation:bob 2.2s cubic-bezier(.3,.6,.25,1)}
 @keyframes bob{0%{translate:0 0;rotate:0deg}14%{translate:0 14px;rotate:.9deg}38%{translate:0 -7px;rotate:-.6deg}62%{translate:0 4px;rotate:.3deg}100%{translate:0 0;rotate:0deg}}
 /* сонар от нажатого шага */
 .route button .sonar{position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px;border-radius:50%;border:1.5px solid var(--accent);pointer-events:none;animation:sonar .9s cubic-bezier(.2,.7,.3,1) forwards}
 @keyframes sonar{from{transform:scale(.4);opacity:.9}to{transform:scale(9);opacity:0}}
-@media (prefers-reduced-motion:reduce){.cracks path{transition:none}.fly,.ring,.drop,.sonar{display:none}.berg.bob{animation:none}}
+@media (prefers-reduced-motion:reduce){.cracks path{transition:none}.fly,.ring,.spray,.sonar{display:none}.berg.bob{animation:none}}
 </style>
 </head>
 <body>
@@ -1318,7 +1321,7 @@ drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if(f) ta
 /* ---------- экраны ---------- */
 function show(which){
   ['check','progressCard','report'].forEach(id => $(id).classList.toggle('hide', id !== which));
-  ['sto','how','why','unis','teachers'].forEach(id => $(id).classList.toggle('hide', which !== 'check'));
+  // разделы шагов не прячем: какой шаг виден, решает панель шагов (body[data-mode])
   const el = $(which); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
   const top = el.getBoundingClientRect().top + scrollY - 20;
   if(Math.abs(scrollY - top) > 40) window.scrollTo({top, behavior: calm ? 'auto' : 'smooth'});
@@ -2114,7 +2117,8 @@ function routePill(){
   pill.style.transform = `translate(${q.left - r.left - $('modes').clientLeft}px,${q.top - r.top - $('modes').clientTop}px)`;
   $('modes').classList.add('pill-on');
 }
-addEventListener('resize', routePill);
+let pillT = 0; addEventListener('resize', () => { $('modes').classList.add('resizing'); requestAnimationFrame(routePill); clearTimeout(pillT);
+  pillT = setTimeout(() => { routePill(); $('modes').classList.remove('resizing'); }, 250); });   // при смене размера подсветка не «едет», а сразу на месте
 if('ResizeObserver' in window) new ResizeObserver(routePill).observe($('modes'));
 $('modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if(!b) return;
   if(!calm){ const s = document.createElement('i'); s.className = 'sonar'; b.appendChild(s); setTimeout(() => s.remove(), 950); }
@@ -2142,7 +2146,7 @@ function splashFly(from){
 function splashAt(x, top){
   const L = $('splashLayer');
   for(let i = 0; i < 3; i++){ const r = document.createElement('i'); r.className = 'ring'; r.style.left = x + 'px'; r.style.top = top + 'px'; L.appendChild(r); setTimeout(() => r.remove(), 2600); }
-  for(let i = 0; i < 9; i++){ const d = document.createElement('i'); d.className = 'drop'; d.style.left = x + 'px'; d.style.top = top + 'px'; L.appendChild(d);
+  for(let i = 0; i < 9; i++){ const d = document.createElement('i'); d.className = 'spray'; d.style.left = x + 'px'; d.style.top = top + 'px'; L.appendChild(d);
     const a = -Math.PI / 2 + (Math.random() - .5) * 1.6, v = 60 + Math.random() * 70;
     d.animate([{transform: 'translate(0,0)', opacity: 1}, {transform: `translate(${Math.cos(a) * v * .6}px,${Math.sin(a) * v}px)`, opacity: 1, offset: .45}, {transform: `translate(${Math.cos(a) * v}px,${10}px)`, opacity: 0}],
       {duration: 800 + Math.random() * 300, easing: 'cubic-bezier(.2,.6,.4,1)'}).onfinish = () => d.remove(); }
@@ -2182,7 +2186,10 @@ $('dockFile').onchange = e => { dockTake(e.target.files[0]); e.target.value = ''
   let depth = 0;
   const has = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
   addEventListener('dragenter', e => { if(!has(e)) return; depth++; document.body.classList.add('dragging'); });
-  addEventListener('dragleave', () => { if(--depth <= 0){ depth = 0; document.body.classList.remove('dragging'); } });
+  const off = () => { depth = 0; document.body.classList.remove('dragging'); $('dock').classList.remove('over'); };
+  addEventListener('dragleave', e => { const out = e.clientX <= 0 || e.clientY <= 0 || e.clientX >= innerWidth || e.clientY >= innerHeight;
+    if(--depth <= 0 || out) off(); });   // ушли за край окна — убираем сразу
+  addEventListener('dragend', off); addEventListener('blur', off);
   addEventListener('dragover', e => { if(!has(e)) return; e.preventDefault();
     const f = $('flood'); f.style.setProperty('--fx', e.clientX + 'px'); f.style.setProperty('--fy', e.clientY + 'px'); });
   addEventListener('drop', e => { depth = 0; document.body.classList.remove('dragging');
@@ -2197,7 +2204,9 @@ if('IntersectionObserver' in window) new IntersectionObserver(es => { $('modes')
 (function(){
   if(calm) return;
   let t = false;
-  const upd = () => { t = false; const h = $('hero').offsetHeight || innerHeight; document.documentElement.style.setProperty('--dive', Math.min(1, Math.max(0, (scrollY - h * .35) / (h * .5))).toFixed(3)); };
+  const deep = $('deep');
+  const upd = () => { t = false; const h = $('hero').offsetHeight || innerHeight, v = Math.min(1, Math.max(0, (scrollY - h * .35) / (h * .5)));
+    deep.classList.toggle('on', v > .35); };   // слой включается целиком с плавным переходом, а не меняется каждый кадр
   addEventListener('scroll', () => { if(!t){ t = true; requestAnimationFrame(upd); } }, {passive: true}); upd();
 })();
 const MODES = ['#sto', '#check', '#zashita'];
