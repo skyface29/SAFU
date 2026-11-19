@@ -233,7 +233,7 @@ body[data-mode=zashita] #check,body[data-mode=zashita] #checkHead,body[data-mode
 .zget li{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--glass)}
 .zget b{font-weight:600;font-size:15px}.zget small{font-size:13px;color:var(--muted);line-height:1.4}
 @media (max-width:700px){.zget{grid-template-columns:1fr}}
-.hero-in h1{font-size:clamp(34px,4.8vw,70px);max-width:min(12em,60vw)}@media (max-width:820px){.hero-in h1{max-width:none}.hero-in h1,.hero-in .sub{text-shadow:0 1px 14px rgba(3,8,20,.95),0 0 2px rgba(3,8,20,.9)}.hero-in .sub{background:linear-gradient(90deg,rgba(4,10,24,.82),rgba(4,10,24,.5));margin-left:-12px;margin-right:-12px;padding:10px 12px;border-radius:14px}}
+.hero-in h1{font-size:clamp(34px,4.8vw,70px);max-width:min(12em,60vw)}@media (max-width:820px){.hero-in h1{max-width:none;text-shadow:0 1px 14px rgba(3,8,20,.95)}.hero-in .sub{display:none}.hero .dock{background:linear-gradient(180deg,rgba(14,30,56,.92),rgba(6,14,30,.94))}}
 .free{margin:0 0 16px;padding:18px 20px;border-radius:20px;border:1px solid var(--line2)}
 .free b{font-weight:600;font-size:16px}.free ul{margin:10px 0 0;padding:0 0 0 18px;columns:2;column-gap:32px;font-size:14px;color:var(--ink2);line-height:1.5}
 @media (max-width:700px){.free ul{columns:1}}
@@ -787,6 +787,97 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
   :root{--bg:#fff;--ink:#000;--glass:#fff;--glass2:#fff;--field:#f5f5f5;--line:#ddd}
   main{margin:0;padding:0}.panel{border:0;box-shadow:none;backdrop-filter:none}.side{position:static;max-height:none}.cols{grid-template-columns:1fr}
 }
+
+/* ===================== «брось работу в воду» ===================== */
+.dock{position:relative;display:flex;align-items:center;gap:16px;width:min(640px,100%);margin:30px 0 0;padding:16px 16px 16px 18px;border-radius:22px;cursor:pointer;
+  color:#eef2fb;font:inherit;text-align:left;border:1px solid rgba(166,230,255,.28);
+  background:linear-gradient(180deg,rgba(166,230,255,.13),rgba(90,160,255,.05) 60%,rgba(4,10,24,.35));
+  backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 20px 60px -20px rgba(40,140,255,.45);transition:transform .35s var(--ease),border-color .3s,box-shadow .35s}
+.dock::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;
+  background:conic-gradient(from var(--a,0deg),transparent 0 70%,#a6e6ff 80%,#5ef2d0 86%,transparent 92%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:dockRim 5s linear infinite;opacity:.9}
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes dockRim{to{--a:360deg}}
+.dock:hover{transform:translateY(-2px);border-color:rgba(166,230,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 26px 70px -18px rgba(60,170,255,.6)}
+.dock:focus-visible{outline:2px solid #a6e6ff;outline-offset:3px}
+.dock-ic{flex:none;width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:rgba(166,230,255,.12);color:#a6e6ff}
+.dock-ic svg{width:28px;height:28px}
+.dock-t{display:flex;flex-direction:column;gap:3px;min-width:0}
+.dock-t b{font:500 18px/1.2 var(--display);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dock-t small{font-size:13px;color:#9fb3cf}
+.dock-go{margin-left:auto;flex:none;padding:10px 16px;border-radius:999px;background:#eef6ff;color:#04121f;font-weight:600;font-size:14px}
+.dock.has .dock-ic{background:#5ef2d0;color:#04121f}
+.dock.has .dock-go{background:transparent;color:#a6e6ff;border:1px solid rgba(166,230,255,.35)}
+.dock.splash::after{content:"";position:absolute;left:44px;top:50%;width:12px;height:12px;margin:-6px;border-radius:50%;border:2px solid #a6e6ff;pointer-events:none;animation:splash 1s var(--ease) forwards}
+@keyframes splash{from{transform:scale(1);opacity:1}to{transform:scale(28);opacity:0}}
+@media (max-width:560px){.dock{gap:12px;padding:14px}.dock-ic{width:44px;height:44px}.dock-go{display:none}.dock-t b{font-size:16px}}
+
+/* файл тащат над страницей — по всему экрану круги по воде */
+.flood{position:fixed;inset:0;z-index:60;pointer-events:none;overflow:hidden;opacity:0;transition:opacity .25s;display:grid;place-items:center;
+  background:radial-gradient(60% 50% at var(--fx,50%) var(--fy,50%),rgba(30,110,220,.42),rgba(3,7,18,.9) 70%);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.flood b{font:500 clamp(24px,3.4vw,40px)/1.1 var(--display);letter-spacing:-.03em;color:#eef6ff;text-shadow:0 2px 30px rgba(40,140,255,.6);transform:translateY(10px);transition:transform .4s var(--ease)}
+.flood i{position:absolute;left:var(--fx,50%);top:var(--fy,50%);width:40px;height:40px;margin:-20px;border-radius:50%;border:1.5px solid rgba(166,230,255,.55);animation:ripple 2.4s cubic-bezier(.2,.6,.3,1) infinite}
+.flood i:nth-child(2){animation-delay:.8s}.flood i:nth-child(3){animation-delay:1.6s}
+@keyframes ripple{from{transform:scale(.4);opacity:.9}to{transform:scale(18);opacity:0}}
+body.dragging .flood{opacity:1}body.dragging .flood b{transform:none}
+
+/* под водой: лучи света сквозь толщу и редкие пузырьки — проявляются, когда страница «уходит» под воду */
+.deep{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:var(--dive,0);overflow:hidden;
+  background:radial-gradient(90% 60% at 50% -10%,rgba(40,120,220,.22),transparent 70%),linear-gradient(180deg,rgba(6,30,60,.35),transparent 60%)}
+.rays{position:absolute;left:-20%;right:-20%;top:-10%;height:90%;transform-origin:50% 0;
+  background:repeating-linear-gradient(100deg,transparent 0 60px,rgba(166,230,255,.05) 60px 90px,transparent 90px 170px,rgba(166,230,255,.035) 170px 185px);
+  -webkit-mask:linear-gradient(180deg,#000,transparent 85%);mask:linear-gradient(180deg,#000,transparent 85%);filter:blur(6px);animation:rays 14s ease-in-out infinite alternate}
+@keyframes rays{from{transform:skewX(-6deg) translateX(-3%)}to{transform:skewX(6deg) translateX(3%)}}
+.bub{position:absolute;bottom:-20px;width:6px;height:6px;border-radius:50%;border:1px solid rgba(166,230,255,.45);background:rgba(166,230,255,.08);animation:bub 16s linear infinite}
+.bub:nth-child(2){left:12%;animation-duration:19s;animation-delay:-4s}.bub:nth-child(3){left:31%;width:4px;height:4px;animation-duration:14s;animation-delay:-9s}
+.bub:nth-child(4){left:58%;width:8px;height:8px;animation-duration:22s;animation-delay:-2s}.bub:nth-child(5){left:77%;animation-duration:17s;animation-delay:-12s}
+.bub:nth-child(6){left:91%;width:5px;height:5px;animation-duration:20s;animation-delay:-6s}.bub:nth-child(7){left:45%;width:3px;height:3px;animation-duration:12s;animation-delay:-7s}
+@keyframes bub{from{transform:translate(0,0)}50%{transform:translate(14px,-55vh)}to{transform:translate(-8px,-110vh);opacity:0}}
+.lite .deep .rays,.lite .bub{animation:none}.lite .bub{display:none}
+[data-theme=light] .deep{display:none}
+
+/* шаги: подсветка переезжает к выбранному; при прокрутке панель прилипает к верху и сжимается */
+.route{position:sticky;top:10px;overflow:hidden;transition:padding .3s var(--ease),box-shadow .3s}
+.route li{position:relative;z-index:1}
+.route-pill{position:absolute;z-index:0;left:0;top:0;border-radius:18px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 20%,transparent),0 10px 40px -10px color-mix(in srgb,var(--accent) 55%,transparent);
+  transition:transform .55s cubic-bezier(.2,1.25,.35,1),width .55s cubic-bezier(.2,1.25,.35,1),height .55s cubic-bezier(.2,1.25,.35,1);pointer-events:none}
+.route.pill-on button[aria-selected=true]{border-color:transparent;background:none}
+.route.stuck{padding:6px;box-shadow:0 18px 50px -20px rgba(0,0,0,.7)}
+.route.stuck small{display:none}.route.stuck button{padding:10px 14px}.route.stuck em{font-size:11.5px}
+
+/* файл уже брошен — шаги «всплывают» и подсказывают, что с ним сделать */
+.route.has-file button:not([aria-selected=true]) i{animation:ping 1.6s var(--ease) infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent)}100%{box-shadow:0 0 0 12px transparent}}
+.route.rise li{animation:rise .8s cubic-bezier(.2,1.2,.35,1) both}.route.rise li:nth-child(3){animation-delay:.08s}.route.rise li:nth-child(4){animation-delay:.16s}
+@keyframes rise{from{transform:translateY(26px) scale(.97);opacity:0;filter:blur(4px)}to{transform:none;opacity:1;filter:none}}
+.route .apply{display:none;color:var(--a1);font-weight:600}
+.route.has-file .apply{display:inline}.route.has-file .plain{display:none}
+
+/* лёгкий интерфейс: шаги — просто названия, лишнее свёрнуто */
+.sto-drop{min-height:0;flex-direction:row;gap:14px;padding:18px 20px;text-align:left}.sto-drop svg{width:26px;height:26px;flex:none}
+.route{max-width:680px;margin-top:-34px;padding:6px;gap:6px;border-radius:999px;view-transition-name:route}
+.route b{white-space:nowrap}.route .wide-only{display:inline}
+.route button{display:flex;align-items:center;justify-content:center;padding:11px 14px;border-radius:999px;gap:10px;white-space:nowrap}
+.route i{width:26px;height:26px;font-size:12.5px;flex:none}
+.route b{font-size:15px}.route small{font-size:12px}.route em{font-size:11.5px;font-weight:500;opacity:.9}
+.route-pill{border-radius:999px}
+@media (max-width:820px){.route .wide-only{display:none}.route b{white-space:nowrap}}
+.route.stuck{padding:5px}.route.stuck button{padding:8px 12px}.route.stuck em{display:none}
+@media (max-width:820px){.route{grid-template-columns:repeat(3,1fr);border-radius:999px;margin-top:-20px}.route button{padding:10px 8px;gap:6px}.route b{font-size:13.5px;white-space:normal;line-height:1.15}.route i{display:none}}
+.sto-head{margin-bottom:14px}.sto-stat{display:none}
+.tool-note{max-width:880px;margin:30px auto 12px;padding:0 4px;font-size:13px;color:var(--muted);text-align:center}
+.zget{margin:16px 2px;font-size:14.5px;color:var(--ink2);line-height:1.5}.zget b{color:var(--ink);font-weight:600}
+.opts>summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);font-weight:600;font-size:14px}
+.opts>summary::-webkit-details-marker{display:none}.opts>summary small{font-weight:400;font-size:12px;color:var(--muted)}
+.opts[open]>summary{margin-bottom:14px}.opts>div{margin-bottom:16px}
+/* смена шага — переход «сквозь воду» */
+::view-transition-old(tool){animation:toolOut .32s var(--ease) both}
+::view-transition-new(tool){animation:toolIn .55s cubic-bezier(.2,1,.3,1) both}
+@keyframes toolOut{to{opacity:0;transform:translateY(-14px);filter:blur(6px)}}
+@keyframes toolIn{from{opacity:0;transform:translateY(22px);filter:blur(8px)}}
+@media (prefers-reduced-motion:reduce){.dock::before,.flood i,.rays,.bub{animation:none!important}.route-pill{transition:none}}
 </style>
 </head>
 <body>
@@ -803,7 +894,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M18 3l7 11-3.5 2.2L26 20H10l3.6-6L11 11.6z" fill="#fff"/><path d="M18 3l7 11-3.5 2.2L18 12z" fill="#cfe6ff"/><path d="M8 23h20l-3.4 6.2L18 32l-6.6-2.8z" fill="#5aa0ff" opacity=".85"/><path d="M3 21.5h30" stroke="#a6e6ff" stroke-width="1.4" stroke-linecap="round"/></svg>
       Айсберг<small>Арктика</small>
     </a>
-    <div class="links"><a href="#check">Проверка</a><a href="#sto">Оформление по СТО</a><a href="#zashita">Защита</a><a href="#price" class="hide" id="navPrice">Тарифы</a><a href="#teachers">Преподавателям</a></div>
+    <div class="links"><a href="#price" class="hide" id="navPrice">Тарифы</a></div>
     <div class="nav-r">
       <button class="ghost" id="btnSettings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/></svg>Коллекция</button>
       <button class="ghost icon" id="btnTheme" title="Полярная ночь / полярный день" aria-label="Сменить тему"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M5.3 18.7l1.5-1.5M17.2 6.8l1.5-1.5"/></svg></button>
@@ -811,27 +902,34 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
   </nav>
   <div class="hero-in">
     <h1>Проверить, оформить и&nbsp;защитить работу</h1>
-    <p class="sub">Загрузи работу в .docx — сайт найдёт заимствования, оформит её по СТО САФУ 2026 и подготовит к защите речь, слайды и вопросы комиссии.</p>
+    <p class="sub">Брось работу в воду — сайт найдёт заимствования, оформит её по СТО САФУ 2026 и подготовит к защите речь, слайды и вопросы комиссии.</p>
+    <button class="dock" id="dock" type="button" aria-describedby="dockHint">
+      <span class="dock-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M3 15c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 4.5 0 3-1.2 4.5 0M3 19.5c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 4.5 0 3-1.2 4.5 0"/></svg></span>
+      <span class="dock-t"><b id="dockName">Перетащи сюда работу</b><small id="dockHint">.docx, .pdf или .txt — или нажми, чтобы выбрать файл</small></span>
+      <span class="dock-go" id="dockGo" aria-hidden="true">Выбрать файл</span>
+    </button>
+    <input type="file" id="dockFile" accept=".docx,.pdf,.txt,.md" class="hide">
   </div>
   <a class="cue" href="#modes" aria-label="К шагам"></a>
 </header>
+<div class="flood" id="flood" aria-hidden="true"><i></i><i></i><i></i><b>Отпусти — дальше разберёмся</b></div>
+<div class="deep" id="deep" aria-hidden="true"><span class="rays"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
 
 <main>
-<ol class="route" id="modes" role="tablist" aria-label="Что сделать с работой">
-  <li><button type="button" role="tab" data-mode="check"><i>1</i><span><b>Проверка на заимствования</b><small>процент оригинальности, совпадения и источники</small></span><em data-price="check">бесплатно</em></button></li>
-  <li><button type="button" role="tab" data-mode="sto"><i>2</i><span><b>Оформление по СТО САФУ</b><small>титульник, поля, шрифты, содержание, список литературы</small></span><em data-price="fmt">бесплатно</em></button></li>
-  <li><button type="button" role="tab" data-mode="zashita"><i>3</i><span><b>Защита под ключ</b><small>речь на 7 минут, презентация и вопросы комиссии</small></span><em data-price="def">бесплатно</em></button></li>
+<div class="route-sentinel" id="routeSentinel" aria-hidden="true"></div>
+<ol class="route" id="modes" role="tablist" aria-label="Что сделать с работой"><span class="route-pill" id="routePill" aria-hidden="true"></span>
+  <li><button type="button" role="tab" data-mode="check"><i>1</i><b>Проверка</b></button></li>
+  <li><button type="button" role="tab" data-mode="sto"><i>2</i><b>Оформление<span class="wide-only"> по СТО</span></b></button></li>
+  <li><button type="button" role="tab" data-mode="zashita"><i>3</i><b>Защита</b></button></li>
 </ol>
 <section class="sec" id="sto">
   <div class="sto-head">
-    <div><h3>Оформление по СТО САФУ</h3>
-      <ol class="howto"><li>Загрузи работу в .docx — вид работы и титульник найдутся сами</li><li>Проверь титульный лист, если нужно — поправь</li><li>Нажми «Оформить по СТО» и скачай готовый файл</li></ol></div>
     <div class="sto-stat" id="stoCount" aria-live="polite"><div><b data-k="today">—</b><small>работ сегодня</small></div><div><b data-k="fixed">—</b><small>нарушений исправлено</small></div><div><b data-k="n">—</b><small>работ всего</small></div></div>
   </div>
   <div class="panel sto-one" id="stoFmt">
     <div class="sto-drop" id="stoDrop" tabindex="0" role="button" aria-label="Выбрать файл .docx">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>
-      <div><b id="stoName">Перетащи сюда работу в .docx</b><small id="stoHint">или нажми, чтобы выбрать файл</small></div>
+      <div><b id="stoName">Выбрать работу .docx</b><small id="stoHint">или перетащи её сюда</small></div>
       <span class="sto-swap">Другой файл</span>
     </div>
     <input type="file" id="stoFile" accept=".docx" class="hide">
@@ -870,32 +968,22 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       </details>
     <div class="err-sum hide" id="errSum"></div>
     <div class="err-view hide" id="errView"></div>
-    <label class="sw sto-ringopt hide" id="stoRingOpt"><span><b>Добавить в базу работ САФУ</b><small>без титульника и ФИО — по ней ищется списывание в чужих работах. Удалить можно в любой момент</small></span><input type="checkbox" id="stoRing"><i></i></label>
     <button class="primary block" id="stoGo" disabled>Оформить по СТО<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     <div class="err" id="stoErr"></div>
     <div class="sto-res" id="stoRes"></div>
-    <details class="sto-more"><summary><span>Настройки</span><small>поле для переплёта, кегль, содержание</small></summary>
+    <details class="sto-more"><summary><span>Настройки</span><small>переплёт, кегль, содержание, база САФУ</small></summary>
       <div class="sws">
         <label class="sw"><span><b>Поле для переплёта</b><small>левое поле 30 мм вместо 25 мм</small></span><input type="checkbox" id="stoBind"><i></i></label>
         <label class="sw"><span><b>Кегль 12</b><small>по умолчанию 14 — оба варианта допускает п. 4.1.5</small></span><input type="checkbox" id="stoSmall"><i></i></label>
         <label class="sw"><span><b>Содержание</b><small>добавить автоматическое, если его нет</small></span><input type="checkbox" id="stoToc" checked><i></i></label>
         <label class="sw"><span><b>Типографика</b><small>пробелы, тире «–», кавычки «ёлочки», неразрывные пробелы</small></span><input type="checkbox" id="stoTypo" checked><i></i></label>
+        <label class="sw sto-ringopt hide" id="stoRingOpt"><span><b>Добавить в базу работ САФУ</b><small>без титульника и ФИО — по ней ищется списывание в чужих работах. Удалить можно в любой момент</small></span><input type="checkbox" id="stoRing"><i></i></label>
       </div>
     </details>
   </div>
-  <ul class="why-list sto-why">
-    <li><b>Без регистрации</b><small>просто загрузи файл</small></li>
-    <li><b>Файл не уходит с устройства</b><small>оформление идёт прямо в браузере</small></li>
-    <li><b>По СТО САФУ 2026 пункт за пунктом</b><small>титульник по форме, разделы с новой страницы, «–», ссылки [1]</small></li>
-    <li><b>Понимает работы из PDF</b><small>склеивает разорванные строки и пункты</small></li>
-  </ul>
 </section>
 
-<div class="tool-head" id="checkHead">
-  <h3>Проверка на заимствования</h3>
-  <ol class="howto"><li>Вставь текст или загрузи файл — .docx, .pdf, .txt</li><li>Нажми «Проверить» и подожди около минуты</li><li>Смотри процент, подсвеченные совпадения и источники</li></ol>
-  <p class="muted">Ищет по интернету, Википедии, КиберЛенинке и базе работ САФУ. Закрытых баз вуза у сайта нет, поэтому процент может отличаться от вузовского «Антиплагиата».</p>
-</div>
+<p class="tool-note" id="checkHead">Ищет по интернету, Википедии, научным статьям и базе работ САФУ. Закрытых баз вуза у сайта нет — процент может отличаться от вузовского «Антиплагиата».</p>
 <section class="panel" id="check">
   <div class="grid">
     <div class="editor">
@@ -909,6 +997,14 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       <div id="gostBox" class="gost hide"></div>
     </div>
     <aside class="controls">
+      <div id="fullBox" class="hide">
+        <span class="label">Полная проверка</span>
+        <div class="sws">
+          <label class="sw"><span><b>Поиск Яндекса</b><small id="fullNote">находит рефераты и курсовые, которые пропускают бесплатные поисковики</small></span><input type="checkbox" id="oFull"><i></i></label>
+        </div>
+        <button class="link" id="btnPay" type="button">Купить или ввести код</button>
+      </div>
+      <details class="opts"><summary>Настройки проверки<small>глубина, где искать, как считать</small></summary>
       <div>
         <span class="label">Глубина</span>
         <div class="seg" id="seg"><span class="thumb"></span>
@@ -927,13 +1023,6 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
           <label class="sw"><span><b>Моя коллекция</b><small>ваши документы в этом браузере</small></span><input type="checkbox" id="oLib" checked><i></i></label>
         </div>
       </div>
-      <div id="fullBox" class="hide">
-        <span class="label">Полная проверка</span>
-        <div class="sws">
-          <label class="sw"><span><b>Поиск Яндекса</b><small id="fullNote">находит рефераты и курсовые, которые пропускают бесплатные поисковики</small></span><input type="checkbox" id="oFull"><i></i></label>
-        </div>
-        <button class="link" id="btnPay" type="button">Купить или ввести код</button>
-      </div>
       <div>
         <span class="label">Как считать</span>
         <div class="sws">
@@ -944,6 +1033,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
         </div>
       </div>
       <details><summary>Сравнить с конкретными страницами</summary><textarea id="urls" rows="3" placeholder="Адреса страниц, по одному в строке"></textarea></details>
+      </details>
       <div style="margin-top:auto">
         <button class="primary block" id="btnCheck">Проверить<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         <div class="err" id="inputError"></div>
@@ -953,21 +1043,13 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 </section>
 
 <section class="sec" id="zashita">
-  <div class="sto-head">
-    <div><h3>Защита под ключ</h3>
-      <ol class="howto"><li>Загрузи готовую работу в .docx — или сначала оформи её на шаге 2</li><li>Нажми «Собрать защиту»</li><li>Скачай презентацию и доклад с вопросами</li></ol></div>
-  </div>
   <div class="panel sto-one">
     <div class="sto-drop" id="zDrop" tabindex="0" role="button" aria-label="Выбрать файл .docx">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>
-      <div><b id="zName">Перетащи сюда работу в .docx</b><small id="zHint">или нажми, чтобы выбрать файл</small></div>
+      <div><b id="zName">Выбрать работу .docx</b><small id="zHint">или перетащи её сюда</small></div>
       <span class="sto-swap">Другой файл</span>
     </div>
-    <ul class="zget">
-      <li><b>Речь на 7 минут</b><small>по введению, главам и выводам твоей работы, читается спокойно</small></li>
-      <li><b>Презентация .pptx</b><small>титульный слайд, цель и задачи, главное по главам, выводы</small></li>
-      <li><b>Вопросы комиссии</b><small>те, что вероятнее всего зададут, с подсказками к ответам</small></li>
-    </ul>
+    <p class="zget">Получишь <b>речь на 7 минут</b>, <b>презентацию .pptx</b> и <b>вопросы комиссии</b> с подсказками к ответам.</p>
     <button class="primary block" id="stoZTop" disabled type="button">Собрать защиту<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     <div id="stoZOut"></div>
   </div>
@@ -1023,31 +1105,9 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
   </div>
 </section>
 
-<section class="sec" id="how">
-  <div class="sec-h reveal"><div><span class="label">Как устроена проверка</span><h3>Как сайт ищет заимствования</h3></div>
-    <p>Всё сравнение идёт прямо в вашем браузере. Наружу уходят только короткие фразы — чтобы найти, где ещё встречается текст.</p></div>
-  <div class="steps">
-    <div class="step reveal" style="--i:0"><svg class="art" viewBox="0 0 150 150" fill="none" stroke="url(#gAur)" stroke-width="1.2" opacity=".7"><circle cx="90" cy="60" r="34"/><circle cx="90" cy="60" r="52" stroke-dasharray="2 6"/><path d="M114 84l22 22"/></svg>
-      <span class="n">01</span><h4>Ищем, где ещё есть текст</h4><p>Каждое предложение уходит запросом в поисковики, Википедию и КиберЛенинку. Похожие страницы скачиваются целиком.</p></div>
-    <div class="step reveal" style="--i:1"><svg class="art" viewBox="0 0 150 150" fill="none" stroke="url(#gAur)" stroke-width="1.2" opacity=".7"><path d="M40 40h70M40 58h50M40 76h64M40 94h40"/><path d="M60 40h70M60 58h40M60 76h60" transform="translate(0 6)" stroke-dasharray="3 5"/></svg>
-      <span class="n">02</span><h4>Сравниваем по смыслу слов</h4><p>Слова сводятся к основам, поэтому замена падежей, синонимов и порядок слов не спасают — совпадение растягивается через правки.</p></div>
-    <div class="step reveal" style="--i:2"><svg class="art" viewBox="0 0 150 150" fill="none" stroke="url(#gAur)" stroke-width="1.2" opacity=".7"><circle cx="85" cy="65" r="40"/><path d="M85 25a40 40 0 0 1 38 52" stroke-width="5" stroke-linecap="round"/></svg>
-      <span class="n">03</span><h4>Показываем всё как есть</h4><p>Каждый фрагмент — с источником и ссылкой. Отключите лишний источник, и процент пересчитается сразу.</p></div>
-  </div>
-</section>
 
 
 
-<section class="sec" id="teachers">
-  <div class="sec-h reveal"><div><span class="label">Преподавателям</span><h3>Проверяйте работы всей группы</h3></div>
-    <p>Загрузите работу — получите отчёт с источниками и справку, которую можно распечатать или сохранить в PDF. Отдельный тариф для преподавателей и кафедр — с большим запасом полных проверок.</p></div>
-  <div class="feats tfeats">
-    <div class="feat reveal" style="--i:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M16 5.5a3 3 0 0 1 0 5.6M17.5 14.6c1.7.6 2.7 2.1 3 4.4"/></svg><b>Работы студентов</b><span>Каждую работу можно сохранить в своей коллекции и сверять с ней следующие.</span></div>
-    <div class="feat reveal" style="--i:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><b>Справка в PDF</b><span>Оригинальность, порог вуза, главные источники и оформление — на одной странице.</span></div>
-    <div class="feat reveal" style="--i:2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h3l2-6 4 12 2-6h5"/></svg><b>Поиск Яндекса</b><span>Полная проверка находит рефераты и курсовые, которые пропускают бесплатные поисковики.</span></div>
-    <div class="feat reveal" style="--i:3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><b>Работы не утекают</b><span>Текст сравнивается в браузере и не загружается на сервер.</span></div>
-  </div>
-</section>
 
 <section class="sec hide" id="price">
   <div class="sec-h reveal"><div><h3>Сколько стоит</h3></div>
@@ -1055,6 +1115,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
   <div class="free">
     <b>Бесплатно, без кода</b>
     <ul><li>Проверка по интернету, Википедии и научным статьям — процент и 3 главных источника</li><li>Оформление по СТО с разбором, что исправлено</li><li>Титульный лист по форме СТО</li><li>Проверка оформления по ГОСТу</li></ul>
+    <p class="muted" style="margin:10px 0 0;font-size:13.5px">Преподавателю: отчёт с источниками и справка в PDF по каждой работе — тариф на 150 полных проверок.</p>
   </div>
   <div class="plans" id="pricePlans"></div>
   <div class="honest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></svg>
@@ -1985,7 +2046,7 @@ async function stoRun(){
     const ringNote = await ringFromSto(r.blob);
     if(ringNote) $('stoReady').insertAdjacentHTML('beforebegin', '<div class="muted" style="margin-top:10px">' + esc(ringNote) + '</div>');
     if(!payLocked('format', STO.file)){ try{ $('stoDl').click(); }catch(e){} }
-    else $('stoReady').insertAdjacentHTML('beforebegin', '<div class="paynote">Файл оформлен — посмотри, что исправлено, ниже. Скачать готовый .docx можно по коду: «Оформление» входит в пакеты от ' + payFrom('fmt') + '.</div>');
+    else $('stoReady').insertAdjacentHTML('beforebegin', '<div class="paynote">Файл оформлен — посмотри, что исправлено, ниже. Скачать готовый .docx можно по коду: «Оформление» входит в пакеты ' + payFrom('fmt') + '.</div>');
   }catch(e){ $('stoRes').innerHTML = ''; $('stoErr').textContent = e.message || 'Не получилось оформить файл.'; }
   btn.disabled = false;
 }
@@ -1999,21 +2060,96 @@ $('stoGo').onclick = stoRun;
 document.addEventListener('click', e => { if(e.target.id === 'btnStoFix' && S.docx){ setMode('sto'); stoPick(S.docx); $('sto').scrollIntoView({behavior: calm ? 'auto' : 'smooth'}); stoRun(); } });
 $('kChange').onclick = () => { const k = $('kPick'); k.classList.toggle('hide'); $('kChange').textContent = k.classList.contains('hide') ? 'Изменить' : 'Готово'; };
 /* ---------- режим страницы: оформление по СТО или проверка ---------- */
-function setMode(m, scroll){
-  if(!['sto', 'check', 'zashita'].includes(m)) m = 'sto';
+const TOOL = {sto: 'sto', check: 'checkHead', zashita: 'zashita'};
+function setModePlain(m){
   document.body.dataset.mode = m;
   document.querySelectorAll('#modes [data-mode]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === m)));
+  Object.entries(TOOL).forEach(([k, id]) => { const el = $(id); if(el) el.style.viewTransitionName = k === m ? 'tool' : ''; });
   try{ localStorage.setItem('mode', m); }catch(e){}
-  if(scroll) $('modes').scrollIntoView({behavior: calm ? 'auto' : 'smooth', block: 'start'});
+  routePill();
 }
-$('modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if(b) setMode(b.dataset.mode); });
+/** Переключить шаг. animate — с переходом «сквозь воду» (по нажатию), без него — сразу (при загрузке, из кода). */
+function setMode(m, scroll, animate){
+  if(!['sto', 'check', 'zashita'].includes(m)) m = 'sto';
+  const same = document.body.dataset.mode === m;
+  if(animate && !same && !calm && document.startViewTransition) document.startViewTransition(() => setModePlain(m));
+  else setModePlain(m);
+  if(scroll){
+    const top = $('modes').getBoundingClientRect().top + scrollY - 10;
+    if(scrollY < top - 4) scrollTo({top, behavior: calm ? 'auto' : 'smooth'});
+  }
+}
+/* подсветка выбранного шага переезжает к нему */
+function routePill(){
+  const pill = $('routePill'), b = document.querySelector('#modes button[aria-selected=true]'); if(!pill || !b) return;
+  const r = $('modes').getBoundingClientRect(), q = b.getBoundingClientRect();
+  pill.style.width = q.width + 'px'; pill.style.height = q.height + 'px';
+  pill.style.transform = `translate(${q.left - r.left - $('modes').clientLeft}px,${q.top - r.top - $('modes').clientTop}px)`;
+  $('modes').classList.add('pill-on');
+}
+addEventListener('resize', routePill);
+if('ResizeObserver' in window) new ResizeObserver(routePill).observe($('modes'));
+$('modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if(b) goStep(b.dataset.mode); });
+
+/* ---------- «брось работу в воду»: один файл на все три шага ---------- */
+const DOCK = {file: null};
+function dockTake(file){
+  if(!file) return;
+  if(!/\.(docx|pdf|txt|md)$/i.test(file.name)){ $('dockHint').textContent = 'Нужен файл .docx, .pdf или .txt'; return; }
+  DOCK.file = file;
+  const d = $('dock');
+  $('dockName').textContent = file.name;
+  $('dockHint').textContent = 'Теперь выбери шаг: проверка, оформление или защита';
+  $('dockGo').textContent = 'Другой файл';
+  d.classList.add('has'); d.classList.remove('splash'); void d.offsetWidth; d.classList.add('splash');
+  const route = $('modes'); route.classList.add('has-file'); route.classList.remove('rise'); void route.offsetWidth; route.classList.add('rise');
+  const r = route.getBoundingClientRect();
+  if(r.top > innerHeight - 120 || r.bottom < 0) scrollTo({top: scrollY + r.top - innerHeight * .45, behavior: calm ? 'auto' : 'smooth'});
+}
+/** Шаг выбран: если брошен файл — сразу отдаём его этому шагу и запускаем. */
+async function goStep(m){
+  const f = DOCK.file;
+  setMode(m, !!f, true);
+  if(!f) return;
+  DOCK.file = null; $('modes').classList.remove('has-file');
+  $('dockHint').textContent = 'Передал «' + (m === 'check' ? 'Проверке' : m === 'sto' ? 'Оформлению' : 'Защите') + '». Можно бросить следующий файл';
+  if(m === 'check'){ await takeFile(f); if($('text').value.trim()) $('btnCheck').click(); return; }
+  if(!/\.docx$/i.test(f.name)){ (m === 'sto' ? $('stoErr') : $('stoZOut')).textContent = 'Для этого шага нужен файл .docx — PDF и TXT подходят только для проверки.'; return; }
+  stoPick(f);
+  if(m === 'sto'){ await new Promise(r => setTimeout(r, 60)); try{ await STO.titleP; }catch(e){} $('stoGo').click(); }
+  else { await new Promise(r => setTimeout(r, 60)); $('stoZTop').click(); }
+}
+$('dock').onclick = () => $('dockFile').click();
+$('dockFile').onchange = e => { dockTake(e.target.files[0]); e.target.value = ''; };
+/* файл тащат над страницей: круги по воде от курсора; бросили мимо полей — файл ложится в «воду» */
+(function(){
+  let depth = 0;
+  const has = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
+  addEventListener('dragenter', e => { if(!has(e)) return; depth++; document.body.classList.add('dragging'); });
+  addEventListener('dragleave', () => { if(--depth <= 0){ depth = 0; document.body.classList.remove('dragging'); } });
+  addEventListener('dragover', e => { if(!has(e)) return; e.preventDefault();
+    const f = $('flood'); f.style.setProperty('--fx', e.clientX + 'px'); f.style.setProperty('--fy', e.clientY + 'px'); });
+  addEventListener('drop', e => { depth = 0; document.body.classList.remove('dragging');
+    if(e.defaultPrevented || !has(e)) return; e.preventDefault(); dockTake(e.dataTransfer.files[0]); });
+  $('dock').addEventListener('dragover', e => { e.preventDefault(); $('dock').classList.add('over'); });
+  $('dock').addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); depth = 0; document.body.classList.remove('dragging'); dockTake(e.dataTransfer.files[0]); });
+})();
+/* панель шагов прилипла к верху — сжимается */
+if('IntersectionObserver' in window) new IntersectionObserver(es => { $('modes').classList.toggle('stuck', !es[0].isIntersecting && es[0].boundingClientRect.top < 0); requestAnimationFrame(routePill); }).observe($('routeSentinel'));
+/* «погружение»: чем глубже страница, тем заметнее подводный свет */
+(function(){
+  if(calm) return;
+  let t = false;
+  const upd = () => { t = false; const h = $('hero').offsetHeight || innerHeight; document.documentElement.style.setProperty('--dive', Math.min(1, Math.max(0, (scrollY - h * .35) / (h * .5))).toFixed(3)); };
+  addEventListener('scroll', () => { if(!t){ t = true; requestAnimationFrame(upd); } }, {passive: true}); upd();
+})();
 const MODES = ['#sto', '#check', '#zashita'];
 document.addEventListener('click', e => { const a = e.target.closest('a[href="#sto"],a[href="#check"],a[href="#zashita"]'); if(!a) return; e.preventDefault(); setMode(a.getAttribute('href').slice(1), true); });
 addEventListener('hashchange', () => { if(MODES.includes(location.hash)) setMode(location.hash.slice(1), true); });
 setMode(MODES.includes(location.hash) ? location.hash.slice(1) : (() => { try{ return localStorage.getItem('mode') || 'sto'; }catch(e){ return 'sto'; } })(), MODES.includes(location.hash));
 /* шаг 3 «Защита»: тот же файл, что и в оформлении (STO.file) — выбранный там виден здесь, и наоборот */
 window.zSync = zSync;
-function zSync(){ $('zName').textContent = STO.file ? STO.file.name : 'Перетащи сюда работу в .docx'; $('zHint').textContent = STO.file ? (STO.last ? 'берётся оформленная версия' : 'файл из шага 2 — можно взять другой') : 'или нажми, чтобы выбрать файл'; $('zDrop').classList.toggle('has', !!STO.file); }
+function zSync(){ $('zName').textContent = STO.file ? STO.file.name : 'Выбрать работу .docx'; $('zHint').textContent = STO.file ? (STO.last ? 'берётся оформленная версия' : 'файл из шага 2 — можно взять другой') : 'или перетащи её сюда'; $('zDrop').classList.toggle('has', !!STO.file); }
 $('zDrop').onclick = () => $('stoFile').click();
 $('zDrop').onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); $('stoFile').click(); } };
 ['dragenter','dragover'].forEach(ev => $('zDrop').addEventListener(ev, e => { e.preventDefault(); $('zDrop').classList.add('over'); }));
@@ -2297,10 +2433,6 @@ async function payCheckOrder(wait){
     $('pricePlans').innerHTML = d.plans.map(p => planCard(p, false)).join('');
     $('fullBox').classList.remove('hide'); $('price').classList.remove('hide');
     $('price').querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
-    const tag = (el, txt) => { if(el){ el.textContent = txt; el.classList.add('paid'); } };
-    tag(document.querySelector('[data-price="check"]'), 'бесплатно, полная проверка ' + payFrom('checks'));
-    tag(document.querySelector('[data-price="fmt"]'), 'смотреть бесплатно, скачать ' + payFrom('fmt'));
-    tag(document.querySelector('[data-price="def"]'), payFrom('def'));
     $('navPrice').classList.remove('hide');
     const back = new URLSearchParams(location.search).get('pay');
     if(back) history.replaceState(null, '', location.pathname + location.hash);

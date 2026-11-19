@@ -198,9 +198,9 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
   await page.evaluate(() => localStorage.clear()); await page.reload({ waitUntil: 'load' }); await setup();
   await T('страница: по умолчанию открыто «Оформить по СТО»', async () => { eq(await page.evaluate(() => document.body.dataset.mode), 'sto'); assert(await page.isVisible('#sto')); assert(!(await page.isVisible('#check'))); });
   await T('страница: переключение на проверку и обратно, выбор запоминается', async () => {
-    await page.click('#modes [data-mode=check]'); assert(await page.isVisible('#check')); assert(!(await page.isVisible('#sto')));
+    await page.click('#modes [data-mode=check]'); await page.waitForSelector('#check', { state: 'visible' }); assert(!(await page.isVisible('#sto')));   // смена шага — с анимацией перехода
     await page.reload({ waitUntil: 'load' }); await setup(); eq(await page.evaluate(() => document.body.dataset.mode), 'check');
-    await page.click('#modes [data-mode=sto]'); assert(await page.isVisible('#sto')); });
+    await page.click('#modes [data-mode=sto]'); await page.waitForSelector('#sto', { state: 'visible' }); });
   await T('страница: ссылка #check открывает проверку', async () => { await page.goto(base + '/antiplagiat/#check', { waitUntil: 'load' }); await setup(); eq(await page.evaluate(() => document.body.dataset.mode), 'check'); await page.click('#modes [data-mode=sto]'); });
 
   // старый титульник в браузере — от другой работы: тема и дисциплина не должны переехать
