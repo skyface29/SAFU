@@ -24,10 +24,10 @@ const ORDER_TTL = 24 * 3600e3;                  // неоплаченный за
 const UNLIM = 999;
 const PLANS = {
   one:      { price: 79,  checks: 1,   fmt: 0,     def: 0,     days: 90,  title: 'Полная проверка' },
-  iceberg:  { price: 199, checks: 1,   fmt: 1,     def: 0,     days: 90,  title: 'Проверка + оформление по СТО' },
-  combo:    { price: 349, checks: 1,   fmt: 1,     def: 1,     days: 90,  title: 'Проверка + оформление + защита под ключ', best: true },
-  semester: { price: 599, checks: 15,  fmt: UNLIM, def: UNLIM, days: 150, title: 'Семестр: 15 проверок, оформление и защита без ограничений' },
-  teacher:  { price: 990, checks: 150, fmt: 0,     def: 0,     days: 30,  title: 'Преподаватель: 150 полных проверок' },
+  iceberg:  { price: 199, checks: 1,   fmt: 1,     def: 0,     days: 90,  title: 'Проверка + оформление' },
+  combo:    { price: 349, checks: 1,   fmt: 1,     def: 1,     days: 90,  title: 'Работа под ключ', best: true },
+  semester: { price: 599, checks: 15,  fmt: UNLIM, def: UNLIM, days: 150, title: 'Семестр' },
+  teacher:  { price: 990, checks: 150, fmt: 0,     def: 0,     days: 30,  title: 'Преподаватель' },
   five:     { price: 149, checks: 5,   fmt: 0,     def: 0,     days: 180, title: 'Полная проверка — 5 раз', hidden: true },
   month:    { price: 299, checks: 40,  fmt: 0,     def: 0,     days: 30,  title: 'Полная проверка — месяц, до 40 раз', hidden: true },
 };
@@ -131,7 +131,7 @@ async function handle(body, db, env, ip, now = Date.now()) {
       plan = String(body.plan || '');
       if (!PLANS[plan] || PLANS[plan].hidden) return [400, { error: 'Нет такого тарифа.' }];
       if (tooMany('c' + ip, 30)) return [429, { error: 'Слишком много попыток. Попробуйте позже.' }];
-      amount = PLANS[plan].price; title = PLANS[plan].title;
+      amount = PLANS[plan].price; title = 'Айсберг: ' + PLANS[plan].title.toLowerCase();
     }
     const inv = await newInv(db), secret = crypto.randomBytes(12).toString('base64url');
     await db.putOrder({ inv, secret: sha(secret), purpose, plan, ext, amount: money(amount), status: 'new', code: '', created: now, paid: 0 });
