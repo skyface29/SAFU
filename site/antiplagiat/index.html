@@ -1088,8 +1088,8 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 const API_DEFAULT = 'https://functions.yandexcloud.net/d4er34jsfe1f9gqu4vg8'; // функция Yandex Cloud antiplagiat (antiplagiat-api/yandex.js)
 const API_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '/proxy' : '';
 Iceberg.setApi((() => { try { return localStorage.getItem('antiplagiat.api') || ''; } catch (e) { return ''; } })() || API_LOCAL || API_DEFAULT);
-/* «Кольцо САФУ» (antiplagiat-api/ring.js). Пусто — кольцо скрыто. У себя: python3 antiplagiat/site_dev.py даёт /ring в памяти. */
-const RING_DEFAULT = '';
+/* База работ САФУ (antiplagiat-api/ring.js, функция antiplagiat-ring). Пусто — база скрыта. У себя: python3 antiplagiat/site_dev.py даёт /ring в памяти. */
+const RING_DEFAULT = 'https://functions.yandexcloud.net/d4efe2dr49jj79kqt4lb';
 const RING_URL = (API_LOCAL ? '/ring' : '') || RING_DEFAULT;
 Iceberg.setRing(RING_URL);
 /* Оплата полной проверки (antiplagiat-api/pay.js). Пусто — блок полной проверки и цены скрыты. */
