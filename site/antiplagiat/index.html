@@ -878,6 +878,31 @@ body.dragging .flood{opacity:1}body.dragging .flood b{transform:none}
 @keyframes toolOut{to{opacity:0;transform:translateY(-14px);filter:blur(6px)}}
 @keyframes toolIn{from{opacity:0;transform:translateY(22px);filter:blur(8px)}}
 @media (prefers-reduced-motion:reduce){.dock::before,.flood i,.rays,.bub{animation:none!important}.route-pill{transition:none}}
+
+/* ===================== моушн: лёд трескается, файл падает в воду, айсберг качается ===================== */
+.cracks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.cracks path{fill:none;stroke:rgba(220,244,255,.75);stroke-width:1.1;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:140;stroke-dashoffset:140;filter:drop-shadow(0 0 3px rgba(166,230,255,.9));transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1)}
+.cracks path:nth-child(2){transition-delay:.06s}.cracks path:nth-child(3){transition-delay:.12s}.cracks path:nth-child(4){transition-delay:.18s}.cracks path:nth-child(5){transition-delay:.24s}.cracks path:nth-child(6){transition-delay:.3s}
+.dock:hover .cracks path,.dock.over .cracks path,body.dragging .dock .cracks path{stroke-dashoffset:0}
+.dock:hover .dock-ic svg{animation:bobIc 1.6s ease-in-out infinite}
+@keyframes bobIc{50%{transform:translateY(-3px)}}
+/* летящий файл и круги по воде (координаты — из JS) */
+.splash-layer{position:absolute;left:0;top:0;width:100%;height:0;z-index:5;pointer-events:none}
+.fly{position:absolute;left:0;top:0;width:44px;height:54px;margin:-27px 0 0 -22px;border-radius:7px;z-index:70;pointer-events:none;
+  background:linear-gradient(160deg,#fff,#d6ecff);box-shadow:0 10px 30px rgba(40,140,255,.5);display:grid;place-items:center;color:#2a6fd6;font:700 9px/1 var(--body)}
+.fly::before{content:"";position:absolute;right:0;top:0;width:12px;height:12px;background:linear-gradient(225deg,#04060c 50%,#b9dcff 50%);border-top-right-radius:7px}
+.ring{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(190,236,255,.85);transform:scale(.1,.025);opacity:0;
+  box-shadow:0 0 18px rgba(120,200,255,.55),inset 0 0 12px rgba(120,200,255,.35);animation:ring 1.9s cubic-bezier(.15,.7,.3,1) forwards}
+.ring:nth-child(2n){animation-delay:.18s;border-width:1.5px}.ring:nth-child(3n){animation-delay:.38s;border-width:1px}
+@keyframes ring{0%{opacity:1;transform:scale(.1,.025)}100%{opacity:0;transform:scale(5.2,1.25)}}
+.drop{position:absolute;width:5px;height:9px;margin:-4px 0 0 -2px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:#cfefff;box-shadow:0 0 8px rgba(160,220,255,.9)}
+.berg.bob{opacity:1;animation:bob 2.2s cubic-bezier(.3,.6,.25,1)}
+@keyframes bob{0%{translate:0 0;rotate:0deg}14%{translate:0 14px;rotate:.9deg}38%{translate:0 -7px;rotate:-.6deg}62%{translate:0 4px;rotate:.3deg}100%{translate:0 0;rotate:0deg}}
+/* сонар от нажатого шага */
+.route button .sonar{position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px;border-radius:50%;border:1.5px solid var(--accent);pointer-events:none;animation:sonar .9s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes sonar{from{transform:scale(.4);opacity:.9}to{transform:scale(9);opacity:0}}
+@media (prefers-reduced-motion:reduce){.cracks path{transition:none}.fly,.ring,.drop,.sonar{display:none}.berg.bob{animation:none}}
 </style>
 </head>
 <body>
@@ -907,11 +932,13 @@ body.dragging .flood{opacity:1}body.dragging .flood b{transform:none}
       <span class="dock-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M3 15c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 4.5 0 3-1.2 4.5 0M3 19.5c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 4.5 0 3-1.2 4.5 0"/></svg></span>
       <span class="dock-t"><b id="dockName">Перетащи сюда работу</b><small id="dockHint">.docx, .pdf или .txt — или нажми, чтобы выбрать файл</small></span>
       <span class="dock-go" id="dockGo" aria-hidden="true">Выбрать файл</span>
+      <svg class="cracks" viewBox="0 0 640 84" preserveAspectRatio="none" aria-hidden="true"><path d="M0 22l38 6 22 14 30-4 18 12"/><path d="M640 60l-44-4-18-16-34 6-12-10"/><path d="M212 84l8-18 24-8 6-14 20-6"/><path d="M430 0l-6 16-22 8-4 14 14 10"/><path d="M60 42l10 20 20 6"/><path d="M578 40l-8-22 12-18"/></svg>
     </button>
     <input type="file" id="dockFile" accept=".docx,.pdf,.txt,.md" class="hide">
   </div>
   <a class="cue" href="#modes" aria-label="К шагам"></a>
 </header>
+<div class="splash-layer" id="splashLayer" aria-hidden="true"></div>
 <div class="flood" id="flood" aria-hidden="true"><i></i><i></i><i></i><b>Отпусти — дальше разберёмся</b></div>
 <div class="deep" id="deep" aria-hidden="true"><span class="rays"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
 
@@ -2089,11 +2116,39 @@ function routePill(){
 }
 addEventListener('resize', routePill);
 if('ResizeObserver' in window) new ResizeObserver(routePill).observe($('modes'));
-$('modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if(b) goStep(b.dataset.mode); });
+$('modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if(!b) return;
+  if(!calm){ const s = document.createElement('i'); s.className = 'sonar'; b.appendChild(s); setTimeout(() => s.remove(), 950); }
+  goStep(b.dataset.mode); });
 
 /* ---------- «брось работу в воду»: один файл на все три шага ---------- */
 const DOCK = {file: null};
-function dockTake(file){
+/* моушн броска: файл по дуге летит из точки броска в воду у айсберга, всплеск, круги, айсберг качается */
+function splashFly(from){
+  if(calm) return;
+  const hero = $('hero'), hr = hero.getBoundingClientRect();
+  const phone = innerWidth <= 760, water = hr.top + hr.height * (1 - (phone ? .24 : .36));
+  if(water < -40 || water > innerHeight + 40) return;
+  const berg = document.querySelector('.berg'), br = berg ? berg.getBoundingClientRect() : null;
+  /* всё в координатах страницы — прокрутка во время полёта ничего не сдвигает */
+  const Y = scrollY, tx = br ? br.left + br.width * (phone ? .2 : .12) : innerWidth * .62, ty = water + Y;
+  const sx = from ? from[0] : $('dock').getBoundingClientRect().left + 44, sy = (from ? from[1] : $('dock').getBoundingClientRect().top + 40) + Y;
+  const fly = document.createElement('div'); fly.className = 'fly'; fly.textContent = 'DOCX'; $('splashLayer').appendChild(fly);
+  const peak = Math.min(sy, ty) - Math.max(120, Math.abs(tx - sx) * .35);
+  const pts = [], N = 24;
+  for(let i = 0; i <= N; i++){ const t = i / N, x = sx + (tx - sx) * t, y = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * peak + t * t * ty;
+    pts.push({transform: `translate(${x}px,${y}px) rotate(${t * 220 - 20}deg) scale(${1 - t * .45})`, opacity: t > .93 ? 0 : 1}); }
+  fly.animate(pts, {duration: 900, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'forwards'}).onfinish = () => { fly.remove(); splashAt(tx, ty); };
+}
+function splashAt(x, top){
+  const L = $('splashLayer');
+  for(let i = 0; i < 3; i++){ const r = document.createElement('i'); r.className = 'ring'; r.style.left = x + 'px'; r.style.top = top + 'px'; L.appendChild(r); setTimeout(() => r.remove(), 2600); }
+  for(let i = 0; i < 9; i++){ const d = document.createElement('i'); d.className = 'drop'; d.style.left = x + 'px'; d.style.top = top + 'px'; L.appendChild(d);
+    const a = -Math.PI / 2 + (Math.random() - .5) * 1.6, v = 60 + Math.random() * 70;
+    d.animate([{transform: 'translate(0,0)', opacity: 1}, {transform: `translate(${Math.cos(a) * v * .6}px,${Math.sin(a) * v}px)`, opacity: 1, offset: .45}, {transform: `translate(${Math.cos(a) * v}px,${10}px)`, opacity: 0}],
+      {duration: 800 + Math.random() * 300, easing: 'cubic-bezier(.2,.6,.4,1)'}).onfinish = () => d.remove(); }
+  const berg = document.querySelector('.berg'); if(berg){ berg.classList.remove('bob'); void berg.offsetWidth; berg.classList.add('bob'); setTimeout(() => berg.classList.remove('bob'), 2300); }
+}
+function dockTake(file, from){
   if(!file) return;
   if(!/\.(docx|pdf|txt|md)$/i.test(file.name)){ $('dockHint').textContent = 'Нужен файл .docx, .pdf или .txt'; return; }
   DOCK.file = file;
@@ -2102,9 +2157,10 @@ function dockTake(file){
   $('dockHint').textContent = 'Теперь выбери шаг: проверка, оформление или защита';
   $('dockGo').textContent = 'Другой файл';
   d.classList.add('has'); d.classList.remove('splash'); void d.offsetWidth; d.classList.add('splash');
+  splashFly(from);
   const route = $('modes'); route.classList.add('has-file'); route.classList.remove('rise'); void route.offsetWidth; route.classList.add('rise');
-  const r = route.getBoundingClientRect();
-  if(r.top > innerHeight - 120 || r.bottom < 0) scrollTo({top: scrollY + r.top - innerHeight * .45, behavior: calm ? 'auto' : 'smooth'});
+  setTimeout(() => { const r = route.getBoundingClientRect();     // сначала всплеск, потом — к шагам
+    if(r.top > innerHeight - 120 || r.bottom < 0) scrollTo({top: scrollY + r.top - innerHeight * .45, behavior: calm ? 'auto' : 'smooth'}); }, calm ? 0 : 1500);
 }
 /** Шаг выбран: если брошен файл — сразу отдаём его этому шагу и запускаем. */
 async function goStep(m){
@@ -2130,9 +2186,10 @@ $('dockFile').onchange = e => { dockTake(e.target.files[0]); e.target.value = ''
   addEventListener('dragover', e => { if(!has(e)) return; e.preventDefault();
     const f = $('flood'); f.style.setProperty('--fx', e.clientX + 'px'); f.style.setProperty('--fy', e.clientY + 'px'); });
   addEventListener('drop', e => { depth = 0; document.body.classList.remove('dragging');
-    if(e.defaultPrevented || !has(e)) return; e.preventDefault(); dockTake(e.dataTransfer.files[0]); });
+    if(e.defaultPrevented || !has(e)) return; e.preventDefault(); dockTake(e.dataTransfer.files[0], [e.clientX, e.clientY]); });
   $('dock').addEventListener('dragover', e => { e.preventDefault(); $('dock').classList.add('over'); });
-  $('dock').addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); depth = 0; document.body.classList.remove('dragging'); dockTake(e.dataTransfer.files[0]); });
+  $('dock').addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); depth = 0; document.body.classList.remove('dragging'); $('dock').classList.remove('over'); dockTake(e.dataTransfer.files[0], [e.clientX, e.clientY]); });
+  $('dock').addEventListener('dragleave', () => $('dock').classList.remove('over'));
 })();
 /* панель шагов прилипла к верху — сжимается */
 if('IntersectionObserver' in window) new IntersectionObserver(es => { $('modes').classList.toggle('stuck', !es[0].isIntersecting && es[0].boundingClientRect.top < 0); requestAnimationFrame(routePill); }).observe($('routeSentinel'));
