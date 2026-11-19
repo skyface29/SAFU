@@ -93,7 +93,9 @@ def ring_handle(body):
                 return 400, {"error": "Не удалось разобрать текст."}
             seen.setdefault(f[0], f[1])
         doc_id, key = secrets.token_urlsafe(9), secrets.token_urlsafe(15)
-        RING_DOCS[doc_id] = {"title": title, "text": text, "created": time.time(), "owner": hashlib.sha256(key.encode()).hexdigest(), "fps": list(seen)}
+        meta = body.get("meta") if isinstance(body.get("meta"), dict) else {}
+        meta = {k: str(meta[k])[:n].strip() for k, n in (("kind", 60), ("discipline", 120), ("school", 120), ("year", 4)) if meta.get(k)}
+        RING_DOCS[doc_id] = {"title": title, "text": text, "created": time.time(), "owner": hashlib.sha256(key.encode()).hexdigest(), "fps": list(seen), "meta": meta}
         for fp, pos in seen.items():
             RING_IDX.setdefault(fp, {})[doc_id] = pos
         return 200, {"id": doc_id, "key": key}
@@ -112,9 +114,11 @@ def ring_handle(body):
                 continue
             doc = RING_DOCS[d]
             pos = [RING_IDX[fp][d] for fp in lst if d in RING_IDX.get(fp, {})]
-            docs.append({"id": d, "title": doc["title"], "year": time.localtime(doc["created"]).tm_year, "hits": n,
+            docs.append({"id": d, "title": doc["title"], "year": time.localtime(doc["created"]).tm_year, "meta": doc.get("meta", {}), "hits": n,
                          "excerpt": ring_excerpt(doc["text"], pos)})
         return 200, {"docs": docs}
+    if action == "stats":
+        return 200, {"docs": len(RING_DOCS)}
     if action == "delete":
         doc = RING_DOCS.get(str(body.get("id")))
         if not doc:

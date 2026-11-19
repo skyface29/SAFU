@@ -4,7 +4,8 @@
 // чужую работу целиком получить нельзя. Удалить свою работу можно ключом, который выдаётся при добавлении.
 //
 // Хранилище — YDB (переменная YDB_DATABASE, доступ через сервисный аккаунт функции, нужен пакет ydb-sdk).
-// Таблицы создаются сами: ring_docs(id, title, text, created, owner, fps) и ring_fp(fp, doc, pos).
+// Таблицы создаются сами: ring_docs(id, title, text, created, owner, fps, meta) и ring_fp(fp, doc, pos).
+// meta — карточка работы без персональных данных: вид, дисциплина, школа, год (видна в отчёте у других).
 'use strict';
 const crypto = require('crypto');
 
@@ -46,6 +47,27 @@ function tooManyAdds(ip) {
   return list.length > ADDS_PER_HOUR;
 }
 
+/** Карточка работы: только короткие строки из белого списка полей. */
+const META_FIELDS = { kind: 60, discipline: 120, school: 120, year: 4 };
+function cleanMeta(m) {
+  const out = {};
+  if (!m || typeof m !== 'object') return out;
+  for (const [k, max] of Object.entries(META_FIELDS)) {
+    const v = String(m[k] == null ? '' : m[k]).replace(/\s+/g, ' ').trim().slice(0, max);
+    if (v) out[k] = v;
+  }
+  if (out.year && !/^20\d\d$/.test(out.year)) delete out.year;
+  return out;
+}
+/** Вторая линия защиты после страницы: фамилии с инициалами («Иванов И. И.», «И. И. Иванов») заменяются на «[ФИО]».
+    Длина текста не меняется — позиции отпечатков остаются верными. */
+function scrub(text) {
+  const mask = m => '[ФИО]'.padEnd(m.length, ' ').slice(0, m.length);
+  return text
+    .replace(/[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?\s+[А-ЯЁ]\.\s?[А-ЯЁ]\./g, mask)
+    .replace(/[А-ЯЁ]\.\s?[А-ЯЁ]\.\s?[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?/g, mask);
+}
+
 /** Логика кольца поверх любого хранилища db: add, counts, positions, get, remove. */
 async function handle(body, db, ip) {
   const action = body && body.action;
@@ -62,7 +84,7 @@ async function handle(body, db, ip) {
     if (tooManyAdds(ip)) return [429, { error: 'Слишком много работ за час. Попробуйте позже.' }];
     const id = randomId(9), key = randomId(15);
     const fps = [...seen.entries()].map(([fp, pos]) => ({ fp, pos }));
-    await db.add({ id, title, text, created: Date.now(), owner: sha(key), fps });
+    await db.add({ id, title: scrub(title).replace(/\[ФИО\]\s*/g, '').trim(), text: scrub(text), created: Date.now(), owner: sha(key), fps, meta: cleanMeta(body.meta) });
     return [200, { id, key }];
   }
   if (action === 'query') {
@@ -76,9 +98,12 @@ async function handle(body, db, ip) {
       const d = await db.get(id);
       if (!d) continue;
       const pos = await db.positions(id, list);
-      docs.push({ id, title: d.title, year: new Date(Number(d.created)).getFullYear(), hits, excerpt: excerpt(d.text, pos) });
+      docs.push({ id, title: d.title, year: new Date(Number(d.created)).getFullYear(), meta: d.meta || {}, hits, excerpt: excerpt(d.text, pos) });
     }
     return [200, { docs }];
+  }
+  if (action === 'stats') {
+    return [200, { docs: db.size ? await db.size() : null }];
   }
   if (action === 'delete') {
     const d = body.id && await db.get(String(body.id));
@@ -99,13 +124,14 @@ function memoryDb() {
     async positions(id, list) { const out = []; for (const fp of list) { const m = idx.get(fp); if (m && m.has(id)) out.push(m.get(id)); } return out; },
     async get(id) { return docs.get(id) || null; },
     async remove(id, fps) { for (const fp of fps) { const m = idx.get(fp); if (m) m.delete(id); } docs.delete(id); },
+    async size() { return docs.size; },
   };
 }
 
 /* ---------- YDB ---------- */
 let ydb = null;
 function ydbDb(context) {
-  const { Driver, TokenAuthService, getCredentialsFromEnv, TypedValues, TypedData, Types, TableDescription, Column } = require('ydb-sdk');
+  const { Driver, TokenAuthService, getCredentialsFromEnv, TypedValues, TypedData, Types, TableDescription, AlterTableDescription, Column } = require('ydb-sdk');
   const tok = context && context.token && context.token.access_token;
   if (!ydb || (tok && tok !== ydb.tok)) {
     if (ydb) ydb.driver.destroy().catch(() => {});
@@ -114,13 +140,17 @@ function ydbDb(context) {
     const ready = Promise.race([(async () => {
       if (!(await driver.ready(5000))) throw new Error('YDB не отвечает');
       await driver.tableClient.withSession(async s => {
-        try { await s.describeTable('ring_docs'); } catch (e) {
+        let docs = null;
+        try { docs = await s.describeTable('ring_docs'); } catch (e) {
           await s.createTable('ring_docs', new TableDescription()
             .withColumns(new Column('id', Types.optional(Types.UTF8)), new Column('title', Types.optional(Types.UTF8)),
               new Column('text', Types.optional(Types.UTF8)), new Column('created', Types.optional(Types.UINT64)),
-              new Column('owner', Types.optional(Types.UTF8)), new Column('fps', Types.optional(Types.UTF8)))
+              new Column('owner', Types.optional(Types.UTF8)), new Column('fps', Types.optional(Types.UTF8)), new Column('meta', Types.optional(Types.UTF8)))
             .withPrimaryKeys('id'));
         }
+        // база, созданная до карточек работ, — без столбца meta
+        if (docs && !(docs.columns || []).some(c => c.name === 'meta'))
+          await s.alterTable('ring_docs', new AlterTableDescription().withAddColumn(new Column('meta', Types.optional(Types.UTF8))));
         try { await s.describeTable('ring_fp'); } catch (e) {
           await s.createTable('ring_fp', new TableDescription()
             .withColumns(new Column('fp', Types.optional(Types.UINT32)), new Column('doc', Types.optional(Types.UTF8)), new Column('pos', Types.optional(Types.UINT32)))
@@ -143,9 +173,10 @@ function ydbDb(context) {
   const fpList = list => TypedValues.list(Types.UINT32, list);
   return {
     async add(d) {
-      await q(`DECLARE $id AS Utf8; DECLARE $title AS Utf8; DECLARE $text AS Utf8; DECLARE $created AS Uint64; DECLARE $owner AS Utf8; DECLARE $fps AS Utf8;
-        UPSERT INTO ring_docs (id, title, text, created, owner, fps) VALUES ($id, $title, $text, $created, $owner, $fps);`,
-        { $id: U(d.id), $title: U(d.title), $text: U(d.text), $created: TypedValues.uint64(d.created), $owner: U(d.owner), $fps: U(JSON.stringify(d.fps.map(f => f.fp))) });
+      await q(`DECLARE $id AS Utf8; DECLARE $title AS Utf8; DECLARE $text AS Utf8; DECLARE $created AS Uint64; DECLARE $owner AS Utf8; DECLARE $fps AS Utf8; DECLARE $meta AS Utf8;
+        UPSERT INTO ring_docs (id, title, text, created, owner, fps, meta) VALUES ($id, $title, $text, $created, $owner, $fps, $meta);`,
+        { $id: U(d.id), $title: U(d.title), $text: U(d.text), $created: TypedValues.uint64(d.created), $owner: U(d.owner),
+          $fps: U(JSON.stringify(d.fps.map(f => f.fp))), $meta: U(JSON.stringify(d.meta || {})) });
       for (const part of chunks(d.fps, CHUNK)) {
         await q(`DECLARE $doc AS Utf8; DECLARE $rows AS List<Struct<fp: Uint32, pos: Uint32>>;
           UPSERT INTO ring_fp SELECT fp, $doc AS doc, pos FROM AS_TABLE($rows);`, { $doc: U(d.id), $rows: TypedValues.list(FP_ROW, part) });
@@ -170,9 +201,14 @@ function ydbDb(context) {
       return out;
     },
     async get(id) {
-      const [rows] = await q('DECLARE $id AS Utf8; SELECT title, text, created, owner, fps FROM ring_docs WHERE id = $id;', { $id: U(id) });
+      const [rows] = await q('DECLARE $id AS Utf8; SELECT title, text, created, owner, fps, meta FROM ring_docs WHERE id = $id;', { $id: U(id) });
       const r = rows && rows[0];
-      return r ? { title: r.title, text: r.text, created: Number(r.created), owner: r.owner, fps: JSON.parse(r.fps || '[]') } : null;
+      let meta = {}; try { meta = JSON.parse(r && r.meta || '{}'); } catch (e) {}
+      return r ? { title: r.title, text: r.text, created: Number(r.created), owner: r.owner, fps: JSON.parse(r.fps || '[]'), meta } : null;
+    },
+    async size() {
+      const [rows] = await q('SELECT COUNT(*) AS n FROM ring_docs;');
+      return Number(rows && rows[0] && rows[0].n || 0);
     },
     async remove(id, fps) {
       for (const part of chunks(fps, CHUNK)) {
@@ -204,4 +240,4 @@ module.exports.handler = async (event, context) => {
     return reply(500, { error: 'Кольцо САФУ сейчас недоступно, попробуйте позже.' }, head);
   }
 };
-module.exports._test = { handle, memoryDb, excerpt };
+module.exports._test = { handle, memoryDb, excerpt, scrub, cleanMeta };

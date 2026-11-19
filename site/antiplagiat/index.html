@@ -566,6 +566,12 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 .plan .pr{font:500 26px/1 var(--display);letter-spacing:-.03em}
 .plan small{font-size:12.5px;color:var(--muted)}
 .plan:disabled{opacity:.5;cursor:wait;transform:none}
+.plan{position:relative}.plan ul{margin:2px 0 0;padding:0;list-style:none;font-size:13px;color:var(--ink)}.plan li::before{content:"✓ ";color:var(--ok)}
+.plan.best{border-color:var(--a2)}.plan-best{position:absolute;top:-10px;right:12px;font:600 11px/1 var(--body);font-style:normal;background:var(--a2);color:#fff;border-radius:99px;padding:5px 9px}
+.plan.dim{opacity:.45}.plan.dim:hover{opacity:.8}
+.src.locked .t{filter:blur(.2px);color:var(--muted);font-style:italic}.src.locked a{pointer-events:none}
+.src-more{display:block;width:100%;margin-top:8px;padding:12px;border-radius:14px;border:1px dashed var(--a2);background:transparent;color:var(--ink);font:500 14px/1.3 var(--body);cursor:pointer}
+.paynote{margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--a2);background:var(--glass);font-size:14px}
 .paycode{display:flex;gap:8px;margin-top:8px}
 .paycode input{flex:1;min-width:0;border:1px solid var(--line2);background:var(--glass);color:var(--ink);border-radius:999px;padding:9px 16px;font:500 15px var(--mono,monospace);letter-spacing:.06em;text-transform:uppercase}
 .codeok{font:500 22px var(--mono,monospace);letter-spacing:.08em;margin:10px 0;user-select:all}
@@ -841,6 +847,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       </details>
     <div class="err-sum hide" id="errSum"></div>
     <div class="err-view hide" id="errView"></div>
+    <label class="sw sto-ringopt hide" id="stoRingOpt"><span><b>Добавить в базу работ САФУ</b><small>без титульника и ФИО — по ней ищется списывание в чужих работах. Удалить можно в любой момент</small></span><input type="checkbox" id="stoRing"><i></i></label>
     <button class="primary block" id="stoGo" disabled>Оформить по СТО<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     <button class="block sto-defense" id="stoZTop" disabled type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M7 10v4c0 1.2 2.4 2 5 2s5-.8 5-2v-4"/><path d="M21 7v5"/></svg>Собрать защиту: речь + слайды + вопросы</button>
     <div id="stoZOut"></div>
@@ -890,7 +897,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
           <label class="sw"><span><b>Интернет</b><small>сайты, учебные порталы, рефераты</small></span><input type="checkbox" id="oWeb" checked><i></i></label>
           <label class="sw"><span><b>Википедия</b><small>статьи целиком</small></span><input type="checkbox" id="oWiki" checked><i></i></label>
           <label class="sw"><span><b>Научные статьи</b><small>КиберЛенинка</small></span><input type="checkbox" id="oSci" checked><i></i></label>
-          <label class="sw" id="ringSw"><span><b>База студентов</b><small>работы, которые студенты разных вузов добавили сами</small></span><input type="checkbox" id="oRing" checked><i></i></label>
+          <label class="sw" id="ringSw"><span><b>База работ САФУ</b><small>работы, которые студенты САФУ добавили сами</small></span><input type="checkbox" id="oRing" checked><i></i></label>
           <label class="sw"><span><b>Моя коллекция</b><small>ваши документы в этом браузере</small></span><input type="checkbox" id="oLib" checked><i></i></label>
         </div>
       </div>
@@ -954,7 +961,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
       <button class="btn" id="btnCert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>Справка для преподавателя</button>
       <button class="btn" id="btnPrint">Печать / PDF</button>
       <button class="btn" id="btnAddLib">Добавить в коллекцию</button>
-      <button class="btn" id="btnRing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>В базу студентов</button>
+      <button class="btn" id="btnRing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>В базу работ САФУ</button>
       <button class="btn" id="btnNew">Новая проверка</button>
     </div>
   </div>
@@ -1044,7 +1051,7 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
     <button class="btn" id="btnLibAdd">Добавить документы</button>
     <input type="file" id="libFile" accept=".docx,.pdf,.txt,.md" multiple class="hide">
     <div id="ringBox">
-      <h2 style="margin:28px 0 6px">Мои работы в базе студентов</h2>
+      <h2 style="margin:28px 0 6px">Мои работы в базе САФУ</h2>
       <p class="muted" style="margin:0 0 4px">Работы, которые вы добавили в общую базу с этого браузера. Удалённая работа сразу пропадает из базы.</p>
       <div id="ringList"></div>
     </div>
@@ -1053,12 +1060,12 @@ footer{display:grid;gap:8px;color:var(--muted);font-size:13px;line-height:1.65;m
 
 <div class="modal" id="payModal">
   <div class="panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 style="margin:0">Полная проверка</h2><button class="btn" id="payClose">Закрыть</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 style="margin:0">Тарифы</h2><button class="btn" id="payClose">Закрыть</button></div>
     <div id="payDone" class="hide">
-      <p class="muted" style="margin:14px 0 0">Оплата прошла. Ваш код — сохраните его, по нему можно проверять и с другого устройства:</p>
+      <p class="muted" style="margin:14px 0 0">Оплата прошла. Ваш код — сохраните его, он работает и на другом устройстве:</p>
       <div class="codeok" id="payCodeShow"></div>
     </div>
-    <p class="muted" style="margin:12px 0 0">К обычной проверке добавляется поиск Яндекса по точным фразам из вашего текста. Одна проверка списывается при её запуске.</p>
+    <p class="muted" id="payWhy" style="margin:12px 0 0"></p>
     <div class="plans" id="payPlans"></div>
     <span class="label">Уже есть код</span>
     <div class="paycode"><input id="payCode" placeholder="AIS-XXXX-XXXX" autocomplete="off" spellcheck="false"><button class="btn" id="payApply">Применить</button></div>
@@ -1092,13 +1099,13 @@ const PAY_URL = (API_LOCAL ? '/pay' : '') || PAY_DEFAULT;
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = x => (Math.round(x * 10) / 10).toLocaleString('ru-RU', {minimumFractionDigits: 1, maximumFractionDigits: 1});
-const KIND = {web:'интернет', wiki:'Википедия', science:'наука', sci:'наука', library:'коллекция', ring:'база студентов'};
+const KIND = {web:'интернет', wiki:'Википедия', science:'наука', sci:'наука', library:'коллекция', ring:'база САФУ'};
 const S = {result:null, enabled:new Set(), focus:null, spans:[], flags:{}, run:null, useQuotes:true, name:''};
 const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function plural(n, a, b, c){ const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c); }
 function hueOf(s){ let h = 0; for(const ch of s || '?') h = (h * 31 + ch.charCodeAt(0)) % 360; return h; }
 const avatar = (domain, kind) => '<span class="av" style="--h:' + (kind === 'library' ? 150 : kind === 'ring' ? 190 : hueOf(domain)) + '">' + esc(((domain || 'К').replace(/^(www|ru|en|m)\./, '')[0] || '?').toUpperCase()) + '</span>';
-const noUrlText = kind => kind === 'ring' ? 'работа из базы студентов' : 'документ из вашей коллекции';
+const noUrlText = kind => kind === 'ring' ? 'работа из базы САФУ' : 'документ из вашей коллекции';
 
 /* ---------- тема: круг от кнопки ---------- */
 $('btnTheme').onclick = e => {
@@ -1369,14 +1376,16 @@ function renderAll(first){
   $('srcCount').textContent = R.sources.length ? '· ' + R.sources.length : '';
   $('srcHint').classList.toggle('hide', !R.sources.length);
   const top = Math.max(1, ...R.sources.map(s => s.percent));
-  $('sources').innerHTML = R.sources.length ? R.sources.map(s =>
-    '<div class="src' + (S.enabled.has(s.id) ? '' : ' off') + (S.focus === s.id ? ' focus' : '') + '" data-id="' + s.id + '">' +
+  const hidden = R.sources.filter(srcLocked).length;
+  $('sources').innerHTML = R.sources.length ? R.sources.map(srcView).map(s =>
+    '<div class="src' + (s.locked ? ' locked' : '') + (S.enabled.has(s.id) ? '' : ' off') + (S.focus === s.id ? ' focus' : '') + '" data-id="' + s.id + '">' +
     '<input type="checkbox" ' + (S.enabled.has(s.id) ? 'checked' : '') + ' title="Учитывать источник" aria-label="Учитывать источник">' +
     avatar(s.domain, s.kind) +
     '<div class="t">' + (s.id + 1) + '. ' + esc(s.title) + '</div>' +
     '<div class="p">' + fmt(s.percent) + '%</div>' +
     '<div class="d"><span class="badge">' + (KIND[s.kind] || 'интернет') + '</span>' + (s.url ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + esc(s.domain) + '</a>' : noUrlText(s.kind)) + '</div>' +
-    '<div class="meter"><i style="width:' + Math.max(3, 100 * s.percent / top) + '%"></i></div></div>').join('')
+    '<div class="meter"><i style="width:' + Math.max(3, 100 * s.percent / top) + '%"></i></div></div>').join('') +
+    (hidden ? '<button class="src-more" type="button" data-pay="check">Ещё ' + hidden + ' ' + plural(hidden, 'источник скрыт', 'источника скрыты', 'источников скрыто') + ' — открыть в полной проверке · ' + payFrom('checks') + '</button>' : '')
     : '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>Совпадений с открытыми источниками не найдено.</div>';
 }
 $('sources').addEventListener('click', e => {
@@ -1390,18 +1399,19 @@ $('sources').addEventListener('click', e => {
 $('doc').addEventListener('click', e => {
   const m = e.target.closest('mark'); if(!m) return;
   document.querySelectorAll('#doc mark.sel').forEach(x => x.classList.remove('sel')); m.classList.add('sel');
-  const sp = S.spans[+m.dataset.sp], src = S.result.sources[sp.src];
+  const sp = S.spans[+m.dataset.sp], src = srcView(S.result.sources[sp.src]);
   const kind = m.classList.contains('m3') ? 'Цитата' : (sp.type === 'exact' ? 'Дословное совпадение' : 'Перефразирование');
   $('detail').innerHTML = '<b>' + kind + '</b> · источник ' + (src.id + 1) + '<div style="margin-top:4px">' + esc(src.title) + '</div>' +
+    (src.locked ? '<button class="link" type="button" data-pay="check" style="margin-top:8px">Открыть источник в полной проверке →</button>' :
     '<div class="muted" style="margin-top:8px">Фрагмент в источнике:</div><q>' + esc(sp.excerpt) + '</q>' +
-    (src.url ? '<a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">Открыть источник →</a>' : noUrlText(src.kind)[0].toUpperCase() + noUrlText(src.kind).slice(1));
+    (src.url ? '<a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">Открыть источник →</a>' : noUrlText(src.kind)[0].toUpperCase() + noUrlText(src.kind).slice(1)));
   const d = $('detail'); d.classList.add('hide'); void d.offsetWidth; d.classList.remove('hide');
   if(window.innerWidth <= 820) d.scrollIntoView({behavior:'smooth', block:'center'}); else document.querySelector('.side').scrollTo({top: 0, behavior: 'smooth'});
 });
 $('btnPrint').onclick = () => window.print();
 $('btnDownload').onclick = () => {
   const R = S.result, css = document.querySelector('style').textContent;
-  const rows = R.sources.filter(s => S.enabled.has(s.id)).map(s => '<tr><td>' + (s.id + 1) + '</td><td>' + esc(s.title) + '<br>' +
+  const rows = R.sources.filter(s => S.enabled.has(s.id)).map(srcView).map(s => '<tr><td>' + (s.id + 1) + '</td><td>' + esc(s.title) + '<br>' +
     (s.url ? '<a href="' + esc(s.url) + '">' + esc(s.url) + '</a>' : noUrlText(s.kind)) + '</td><td>' + (KIND[s.kind] || 'интернет') + '</td><td style="text-align:right">' + fmt(s.percent) + '%</td></tr>').join('');
   const html = '<!doctype html><html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Отчёт о проверке на заимствования</title>' +
     '<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@500&display=swap" rel="stylesheet"><style>' + css +
@@ -1459,7 +1469,7 @@ function ringMine(){ try{ return JSON.parse(localStorage.getItem(RING_KEY) || '[
 function ringSaveMine(list){ try{ localStorage.setItem(RING_KEY, JSON.stringify(list)); }catch(e){} }
 function ringUi(){
   const on = !!RING_URL;
-  $('ringSw').classList.toggle('hide', !on); $('btnRing').classList.toggle('hide', !on); $('ringBox').classList.toggle('hide', !on);
+  $('ringSw').classList.toggle('hide', !on); $('btnRing').classList.toggle('hide', !on); $('ringBox').classList.toggle('hide', !on); $('stoRingOpt').classList.toggle('hide', !on);
 }
 function refreshRing(){
   const mine = ringMine();
@@ -1469,32 +1479,52 @@ function refreshRing(){
 $('ringList').addEventListener('click', async e => {
   const k = e.target.dataset.rdel; if(k === undefined) return;
   const mine = ringMine(), r = mine[+k];
-  if(!r || !confirm('Удалить «' + (r.title || 'работу') + '» из базы студентов? Это нельзя отменить.')) return;
+  if(!r || !confirm('Удалить «' + (r.title || 'работу') + '» из базы САФУ? Это нельзя отменить.')) return;
   try{ await Iceberg.ringDelete(r.id, r.key); }
   catch(err){ if(!/не найдена/.test(err.message)){ alert(err.message); return; } }
   mine.splice(+k, 1); ringSaveMine(mine); refreshRing();
 });
+/* Карточка работы для базы САФУ — из формы титульника и вида работы; ФИО в неё не попадает, а из текста вычищается. */
+function ringCard(){
+  const d = titleData(), K = (window.WorkKinds && WorkKinds.KINDS[STO.kind]) || null, tt = StoTools.TITLE_TYPES[d.type] || {};
+  const school = (d.school || '').replace(/^Высшая школа /, 'ВШ ');
+  return { title: (d.topic || '').trim(), meta: { kind: (K && K.name) || tt.name || '', discipline: d.discipline || '', school, year: d.year || String(new Date().getFullYear()) },
+    names: [d.student, d.teacher].filter(Boolean) };
+}
+async function ringSubmit(text, title, card){
+  const r = await Iceberg.ringAdd(title, text, card.meta, card.names);
+  const mine = ringMine(); mine.push({id: r.id, key: r.key, title: title || card.meta.discipline || 'Работа', date: new Date().toLocaleDateString('ru-RU')}); ringSaveMine(mine);
+  return r;
+}
 $('btnRing').onclick = async () => {
   if(!S.result) return;
-  const ok = confirm('Добавить эту работу в базу студентов?\n\n' +
-    '• Она будет храниться в общей базе и помогать находить списывание в работах других студентов.\n' +
+  const ok = confirm('Добавить эту работу в базу работ САФУ?\n\n' +
+    '• По базе ищется списывание в работах других студентов.\n' +
     '• Другие увидят только совпавшие куски, а не работу целиком.\n' +
-    '• Перед добавлением уберите титульный лист с ФИО — список литературы отрежется сам.\n' +
-    '• Удалить работу можно в любой момент: «Коллекция» → «Мои работы в базе студентов».');
+    '• Титульный лист, ФИО и список литературы вырезаются автоматически.\n' +
+    '• Удалить работу можно в любой момент: «Коллекция» → «Мои работы в базе САФУ».');
   if(!ok) return;
-  const title = prompt('Тема или предмет (видно другим в отчёте, без ФИО):', '');
+  const card = ringCard();
+  const title = prompt('Тема работы (видна другим в отчёте, без ФИО):', card.title || S.name.replace(/\.(docx|pdf|txt|md)$/i, ''));
   if(title === null) return;
   const b = $('btnRing'); b.disabled = true; const was = b.innerHTML; b.textContent = 'Добавляю…';
-  try{
-    const r = await Iceberg.ringAdd(title, S.result.text);
-    const mine = ringMine(); mine.push({id: r.id, key: r.key, title: title.trim(), date: new Date().toLocaleDateString('ru-RU')}); ringSaveMine(mine);
-    b.textContent = 'Добавлено в Кольцо';
-  }catch(err){ alert(err.message); b.innerHTML = was; b.disabled = false; }
+  try{ await ringSubmit(S.result.text, title.trim(), card); b.textContent = 'Добавлено в базу САФУ ✓'; }
+  catch(err){ alert(err.message); b.innerHTML = was; b.disabled = false; }
 };
+/* После «Айсберга»: оформленная работа уходит в базу, только если стоит галочка. */
+async function ringFromSto(blob){
+  if(!RING_URL || !$('stoRing').checked) return '';
+  try{
+    const { text } = await Iceberg.docxToText(await blob.arrayBuffer());
+    const card = ringCard();
+    await ringSubmit(text, card.title, card);
+    return 'Работа добавлена в базу САФУ без титульника и ФИО. Удалить: «Коллекция» → «Мои работы в базе САФУ».';
+  }catch(e){ return 'В базу САФУ не добавлено: ' + (e.message || e); }
+}
 const openModalPlain = $('btnSettings').onclick;
 $('btnSettings').onclick = () => { openModalPlain(); refreshRing(); };
 const openReportRing = openReport;
-openReport = function(R){ openReportRing(R); const b = $('btnRing'); b.disabled = false; b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>В Кольцо САФУ'; };
+openReport = function(R){ openReportRing(R); const b = $('btnRing'); b.disabled = false; b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></svg>В базу работ САФУ'; };
 ringUi();
 updateCounter();
 
@@ -1887,7 +1917,7 @@ async function stoRun(){
       await scene.go(6, insAfter ? insAfter.checks.toLocaleString('ru-RU') + ' ' + plural(insAfter.checks, 'проверка', 'проверки', 'проверок') : '', 520);
       const total = STO.before ? STO.before.issues.length : 0, left = insAfter ? insAfter.issues.length : 0;
       await scene.finish(total ? Math.round((total - Math.min(left, total)) / total * 100) : 100, left,
-        left ? 'исправлено автоматически, ' + left + ' ' + plural(left, 'место', 'места', 'мест') + ' проверь вручную' : total ? 'всё исправлено — файл скачивается' : 'оформление приведено к СТО — файл скачивается');
+        left ? 'исправлено автоматически, ' + left + ' ' + plural(left, 'место', 'места', 'мест') + ' проверь вручную' : (total ? 'всё исправлено' : 'оформление приведено к СТО') + (payLocked('format', STO.file) ? ' — файл готов' : ' — файл скачивается'));
       await scene.out();
     }
     let delta = '';
@@ -1902,7 +1932,8 @@ async function stoRun(){
     const name = stoOut(STO.file.name);
     const items = r.report.map((t, i) => '<li class="ok" style="--i:' + i + '"><i>✓</i><div>' + esc(t) + '</div></li>').join('') +
       r.notes.map((t, i) => '<li class="tip" style="--i:' + (r.report.length + i) + '"><i>!</i><div>' + esc(t) + '</div></li>').join('');
-    $('stoRes').innerHTML = '<div class="sto-dl"><a class="primary" id="stoDl" href="' + STO.url + '" download="' + esc(name) + '">Скачать .docx<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg></a>' +
+    const locked = payLocked('format', STO.file);
+    $('stoRes').innerHTML = '<div class="sto-dl"><a class="primary" id="stoDl" href="' + STO.url + '" download="' + esc(name) + '">' + (locked ? 'Скачать .docx · ' + payFrom('fmt') : 'Скачать .docx') + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg></a>' +
       '<button class="btn sto-share" id="stoShare" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13"/></svg>Похвастаться в чате</button>' +
       '<span class="muted">Откройте в Word: он предложит обновить поля — нажмите «Да», чтобы проставились номера страниц в содержании.</span></div>' + delta.replace('margin:0 0 12px', '') + '<div class="gost closed" id="stoGist"><h4 data-gost><span>Что исправлено и что проверить</span><span class="tag">' + r.report.length + ' ✓' + (r.notes.length ? ' · ' + r.notes.length + ' !' : '') + '</span></h4><ul>' + items + '</ul></div>' ;
     STO.last = { blob: r.blob, report: r.report, notes: r.notes, before: null, after: null, ins: insAfter };
@@ -1917,7 +1948,10 @@ async function stoRun(){
     // сколько нарушений было до оформления и сколько осталось — в общую статистику идёт разница
     const fixedN = Math.max(0, (STO.before ? STO.before.issues.length : 0) - (STO.last && STO.last.ins ? STO.last.ins.issues.length : 0)) + (r.stats && r.stats.unwrap || 0);
     stoCount('sto', { fixed: fixedN, kind: STO.kind || '' });
-    try{ $('stoDl').click(); }catch(e){}
+    const ringNote = await ringFromSto(r.blob);
+    if(ringNote) $('stoReady').insertAdjacentHTML('beforebegin', '<div class="muted" style="margin-top:10px">' + esc(ringNote) + '</div>');
+    if(!payLocked('format', STO.file)){ try{ $('stoDl').click(); }catch(e){} }
+    else $('stoReady').insertAdjacentHTML('beforebegin', '<div class="paynote">Файл оформлен — посмотри, что исправлено, ниже. Скачать готовый .docx можно по коду: «Оформление» входит в пакеты от ' + payFrom('fmt') + '.</div>');
   }catch(e){ $('stoRes').innerHTML = ''; $('stoErr').textContent = e.message || 'Не получилось оформить файл.'; }
   btn.disabled = false;
 }
@@ -1974,6 +2008,7 @@ function saveBlob(blob, name){ const a = document.createElement('a'); a.href = U
 async function stoZashita(trigger){
   const src = STO.last ? STO.last.blob : STO.file;
   const out = $('stoZOut') || $('stoZ'); if(!src || !window.Zashita || !out) return;
+  if(!(await payUnlock('defense', STO.file))) return;
   const btns = [$('stoZTop'), $('stoZBtn')].filter(Boolean);
   btns.forEach(b => b.disabled = true);
   const top = $('stoZTop'); if(top && top.lastChild) top.lastChild.textContent = 'Собираю защиту…';
@@ -2010,7 +2045,7 @@ $('btnCert').onclick = async () => {
   const R = S.result; if(!R) return;
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(R.text || $('text').value)))].slice(0, 6).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
   const need = +$('oNeed').value, o = S.pct.orig;
-  const top = R.sources.filter(x => S.enabled.has(x.id)).sort((a, b) => b.percent - a.percent).slice(0, 10);
+  const top = R.sources.filter(x => S.enabled.has(x.id)).sort((a, b) => b.percent - a.percent).slice(0, 10).map(srcView);
   const row = (k, v) => '<tr><th>' + k + '</th><td>' + v + '</td></tr>';
   const html = '<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Справка о проверке на заимствования</title><style>' +
     '@page{size:A4;margin:18mm 16mm}body{font:12pt/1.45 "Times New Roman",serif;color:#000;margin:0}h1{font-size:17pt;text-align:center;margin:0 0 4px}' +
@@ -2097,8 +2132,12 @@ $('btnCert').onclick = async () => {
   });
 })();
 
-/* ---------- полная проверка: оплата и коды ---------- */
-const PAY = {on: false, plans: []};
+/* ---------- оплата: полная проверка, «Айсберг», «Защита под ключ» ---------- */
+/* Пока оплата не подключена (PAY.on = false), всё работает бесплатно, как раньше. Код AIS-XXXX-XXXX хранит остатки:
+   left — полные проверки, fmt — скачивания оформленной работы, def — сборки защиты (999 и больше — без ограничений). */
+const PAY = {on: false, plans: [], unlim: 999, paidRun: false};
+const FREE_SOURCES = 3;          // в бесплатной проверке видно столько источников, остальные — в полной
+const UNLOCK_TTL = 2 * 3600e3;   // оплаченное оформление или защиту одной и той же работы можно пересобирать 2 часа
 const store = {get: k => { try{ return localStorage.getItem(k) || ''; }catch(e){ return ''; } },
   set: (k, v) => { try{ v ? localStorage.setItem(k, v) : localStorage.removeItem(k); }catch(e){} }};
 async function payCall(body){
@@ -2108,19 +2147,57 @@ async function payCall(body){
   return d;
 }
 const until = t => new Date(t).toLocaleDateString('ru-RU', {day: 'numeric', month: 'long'});
+const many = (n, a, b, c) => n >= PAY.unlim ? 'без ограничений' : n > 0 ? n + ' ' + plural(n, a, b, c) : 'нет';
+/** «от 199 ₽» — самый дешёвый тариф, в который входит услуга (fmt | def | checks). */
+function payFrom(field){ const ps = PAY.plans.filter(p => p[field] > 0).map(p => p.price); return ps.length ? 'от ' + Math.min(...ps) + ' ₽' : ''; }
+const unlockKey = (kind, file) => 'pay.unlock.' + kind + '.' + (file ? file.name + ':' + file.size : '');
+function payLocked(kind, file){
+  if(!PAY.on) return false;
+  try{ return !(+sessionStorage.getItem(unlockKey(kind, file)) > Date.now()); }catch(e){ return true; }
+}
+/** Списать одну услугу с кода (kind: format | defense). Нет кода или услуги — открывается окно тарифов. */
+async function payUnlock(kind, file){
+  if(!payLocked(kind, file)) return true;
+  const code = store.get('pay.code');
+  if(!code){ openPay(kind); return false; }
+  try{
+    const d = await payCall({action: 'ticket', code, kind});
+    try{ sessionStorage.setItem(unlockKey(kind, file), String(Date.now() + UNLOCK_TTL)); }catch(e){}
+    payShow(d); return true;
+  }catch(e){ openPay(kind); $('payErr').textContent = e.message; if(e.data && typeof e.data.left === 'number') payShow(e.data); return false; }
+}
 function payShow(d){
   const code = store.get('pay.code');
-  if(!code){ $('fullNote').textContent = 'находит рефераты и курсовые, которые пропускают бесплатные поисковики'; $('btnPay').textContent = 'Купить или ввести код'; return; }
+  if(!code){ $('fullNote').textContent = 'находит рефераты и курсовые, которые пропускают бесплатные поисковики'; $('btnPay').textContent = 'Купить или ввести код'; $('payInfo').textContent = ''; return; }
   if(d && typeof d.left === 'number'){
-    $('fullNote').textContent = d.left > 0 ? 'осталось ' + d.left + ' ' + plural(d.left, 'проверка', 'проверки', 'проверок') + ' · до ' + until(d.until) : 'проверки по коду закончились';
-    $('payInfo').textContent = 'Код ' + code + ': ' + $('fullNote').textContent + '.';
-    if(d.left <= 0) $('oFull').checked = false;
+    const live = d.until > Date.now();
+    $('fullNote').textContent = !live ? 'срок действия кода закончился' : d.left > 0 ? 'осталось ' + many(d.left, 'проверка', 'проверки', 'проверок') + ' · до ' + until(d.until) : 'проверки по коду закончились';
+    $('payInfo').innerHTML = 'Код <b>' + esc(code) + '</b>' + (live ? ' до ' + until(d.until) + ': проверки — ' + esc(many(d.left, 'шт.', 'шт.', 'шт.')) + ', оформление — ' + esc(many(d.fmt || 0, 'раз', 'раза', 'раз')) + ', защита — ' + esc(many(d.def || 0, 'раз', 'раза', 'раз')) : ': срок закончился') + '.';
+    if(d.left <= 0 || !live) $('oFull').checked = false;
   }
   $('btnPay').textContent = 'Код ' + code + ' · купить ещё';
 }
-const planCard = (p, button) => '<' + (button ? 'button type="button" data-plan="' + p.id + '"' : 'div') + ' class="plan"><b>' + esc(p.title.replace('Полная проверка — ', '')) + '</b><span class="pr">' + p.price + ' ₽</span><small>' + p.checks + ' ' + plural(p.checks, 'проверка', 'проверки', 'проверок') + ' · код действует ' + p.days + ' дн.</small></' + (button ? 'button' : 'div') + '>';
-function openPay(){ $('payErr').textContent = ''; $('payModal').classList.add('on'); }
-$('btnPay').onclick = openPay;
+function planCard(p, button){
+  const has = [p.checks ? many(p.checks, 'полная проверка', 'полные проверки', 'полных проверок') : '',
+    p.fmt ? 'оформление по СТО' + (p.fmt >= PAY.unlim ? ' без ограничений' : '') : '', p.def ? 'защита: речь, слайды, вопросы' + (p.def >= PAY.unlim ? ' без ограничений' : '') : ''].filter(Boolean);
+  const tag = button ? 'button type="button" data-plan="' + p.id + '"' : 'div';
+  return '<' + tag + ' class="plan' + (p.best ? ' best' : '') + '" data-has="' + [p.checks ? 'check' : '', p.fmt ? 'format' : '', p.def ? 'defense' : ''].join(' ') + '">' +
+    (p.best ? '<em class="plan-best">выгоднее всего</em>' : '') + '<b>' + esc(p.title) + '</b><span class="pr">' + p.price + ' ₽</span>' +
+    '<ul>' + has.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul><small>код действует ' + p.days + ' дн.</small></' + (button ? 'button' : 'div') + '>';
+}
+const PAY_WHY = {
+  check: 'К обычной проверке добавляется поиск Яндекса по точным фразам из вашего текста и все найденные источники. Одна проверка списывается при запуске.',
+  format: 'Работа уже оформлена — посмотрите, что исправлено. Чтобы скачать готовый .docx, нужен код с оформлением.',
+  defense: 'Речь на 7 минут, презентация .pptx и вероятные вопросы комиссии собираются по вашей работе. Нужен код с защитой.',
+};
+function openPay(kind){
+  kind = PAY_WHY[kind] ? kind : 'check';
+  $('payErr').textContent = ''; $('payWhy').textContent = PAY_WHY[kind];
+  $('payPlans').querySelectorAll('.plan').forEach(p => p.classList.toggle('dim', !p.dataset.has.split(' ').includes(kind)));
+  $('payModal').classList.add('on');
+}
+$('btnPay').onclick = () => openPay('check');
+document.addEventListener('click', e => { const b = e.target.closest('[data-pay]'); if(b){ e.preventDefault(); openPay(b.dataset.pay); } });
 $('payClose').onclick = () => $('payModal').classList.remove('on');
 $('payModal').addEventListener('click', e => { if(e.target === $('payModal')) $('payModal').classList.remove('on'); });
 document.addEventListener('keydown', e => { if(e.key === 'Escape') $('payModal').classList.remove('on'); });
@@ -2140,6 +2217,12 @@ $('payApply').onclick = async () => {
     store.set('pay.code', d.code); $('payCode').value = ''; $('oFull').checked = d.left > 0; payShow(d);
   }catch(err){ $('payErr').textContent = err.message; }
 };
+/* Скачивание оформленной работы: без кода — окно тарифов; с кодом — списывается одно оформление и файл скачивается. */
+document.addEventListener('click', async e => {
+  const a = e.target.closest('#stoDl'); if(!a || !payLocked('format', STO.file)) return;
+  e.preventDefault();
+  if(await payUnlock('format', STO.file)){ a.firstChild.textContent = 'Скачать .docx'; document.querySelectorAll('.paynote').forEach(n => n.remove()); a.click(); }
+});
 async function payRefresh(){
   const code = store.get('pay.code');
   if(!code) return payShow();
@@ -2151,7 +2234,7 @@ async function payCheckOrder(wait){
     try{
       const d = await payCall({action: 'status', order});
       if(d.paid){
-        store.set('pay.order', ''); store.set('pay.code', d.code); $('oFull').checked = true;
+        store.set('pay.order', ''); store.set('pay.code', d.code); $('oFull').checked = d.left > 0;
         $('payCodeShow').textContent = d.code; $('payDone').classList.remove('hide'); openPay(); payShow(d); return;
       }
       if(d.expired){ store.set('pay.order', ''); return; }
@@ -2165,28 +2248,36 @@ async function payCheckOrder(wait){
     const [d, ok] = await Promise.all([payCall({action: 'plans'}), Iceberg.pingProxy()]);
     const y = Iceberg.yandexInfo();
     if(!d.ready || !ok || !y.yandex || !y.paid) return;   // без поиска Яндекса продавать нечего
-    PAY.on = true; PAY.plans = d.plans;
+    PAY.on = true; PAY.plans = d.plans; PAY.unlim = d.unlim || 999;
     $('payPlans').innerHTML = d.plans.map(p => planCard(p, true)).join('');
     $('pricePlans').innerHTML = d.plans.map(p => planCard(p, false)).join('');
     $('fullBox').classList.remove('hide'); $('price').classList.remove('hide');
     $('price').querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
+    document.querySelectorAll('[data-free-badge]').forEach(el => el.textContent = el.dataset.freeBadge);
     const back = new URLSearchParams(location.search).get('pay');
     if(back) history.replaceState(null, '', location.pathname + location.hash);
     if(back === 'fail'){ store.set('pay.order', ''); openPay(); $('payErr').textContent = 'Оплата не прошла или отменена. Деньги не списаны.'; }
     await payRefresh();
     await payCheckOrder(back === 'ok');
-  }catch(e){ /* оплата недоступна — работает бесплатная проверка */ }
+  }catch(e){ /* оплата недоступна — всё бесплатно */ }
 })();
+/** В бесплатной проверке (когда продаётся полная) названия и ссылки видны у FREE_SOURCES самых крупных источников. */
+function srcLocked(s){
+  if(!PAY.on || PAY.paidRun || !S.result) return false;
+  const top = S.result.sources.slice().sort((a, b) => b.percent - a.percent).slice(0, FREE_SOURCES).map(x => x.id);
+  return !top.includes(s.id);
+}
+const srcView = s => srcLocked(s) ? Object.assign({}, s, {title: 'Источник откроется в полной проверке', url: '', domain: '?', locked: true}) : s;
 const runPlain = $('btnCheck').onclick;
 $('btnCheck').onclick = async () => {
-  Iceberg.setTicket('');
+  Iceberg.setTicket(''); PAY.paidRun = false;
   const text = $('text').value;
   const valid = (text.match(/[\p{L}\p{N}]+/gu) || []).length >= 20 && text.length <= 600000;
   if(PAY.on && $('oFull').checked && valid){
     const code = store.get('pay.code');
-    if(!code){ openPay(); return; }
-    try{ const d = await payCall({action: 'ticket', code}); Iceberg.setTicket(d.ticket); payShow(d); }
-    catch(e){ $('inputError').textContent = e.message; if(e.status === 402){ payShow(e.data); openPay(); } return; }
+    if(!code){ openPay('check'); return; }
+    try{ const d = await payCall({action: 'ticket', code}); Iceberg.setTicket(d.ticket); PAY.paidRun = true; payShow(d); }
+    catch(e){ $('inputError').textContent = e.message; if(e.status === 402){ if(e.data) payShow(e.data); openPay('check'); } return; }
   }
   try{ await runPlain(); } finally { Iceberg.setTicket(''); }
 };
