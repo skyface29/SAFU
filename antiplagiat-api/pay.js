@@ -18,13 +18,21 @@ const ROBO_URL = 'https://auth.robokassa.ru/Merchant/Index.aspx';
 const TICKET_TTL = 2 * 3600e3;                  // билет действует 2 часа — одна проверка, даже глубокая
 const ORDER_TTL = 24 * 3600e3;                  // неоплаченный заказ можно оплатить в течение суток
 
-/* Тарифы. Цена — в рублях, checks — сколько полных проверок, days — сколько дней действует код. */
+/* Тарифы. Цена — в рублях; checks — полные проверки (поиск Яндекса), fmt — скачивания работы, оформленной «Айсбергом»,
+   def — сборки «Защиты под ключ»; days — сколько дней действует код. UNLIM и больше показывается как «без ограничений».
+   hidden — старые тарифы: купить их нельзя, но уже начатые заказы по ним оплачиваются как раньше. */
+const UNLIM = 999;
 const PLANS = {
-  one:   { price: 49,  checks: 1,  days: 90,  title: 'Полная проверка — 1 раз' },
-  five:  { price: 149, checks: 5,  days: 180, title: 'Полная проверка — 5 раз' },
-  month: { price: 299, checks: 40, days: 30,  title: 'Полная проверка — месяц, до 40 раз' },
-  teacher: { price: 990, checks: 150, days: 30, title: 'Полная проверка — преподаватель, 150 раз' },
+  one:      { price: 79,  checks: 1,   fmt: 0,     def: 0,     days: 90,  title: 'Полная проверка' },
+  iceberg:  { price: 199, checks: 1,   fmt: 1,     def: 0,     days: 90,  title: 'Проверка + оформление' },
+  combo:    { price: 349, checks: 1,   fmt: 1,     def: 1,     days: 90,  title: 'Работа под ключ', best: true },
+  semester: { price: 599, checks: 15,  fmt: UNLIM, def: UNLIM, days: 150, title: 'Семестр' },
+  teacher:  { price: 990, checks: 150, fmt: 0,     def: 0,     days: 30,  title: 'Преподаватель' },
+  five:     { price: 149, checks: 5,   fmt: 0,     def: 0,     days: 180, title: 'Полная проверка — 5 раз', hidden: true },
+  month:    { price: 299, checks: 40,  fmt: 0,     def: 0,     days: 30,  title: 'Полная проверка — месяц, до 40 раз', hidden: true },
 };
+/* Что списывает action:"ticket": kind → поле кода. */
+const KINDS = { check: 'left', format: 'fmt', defense: 'def' };
 
 function cors(origin) {
   return { 'Vary': 'Origin', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type',
@@ -92,13 +100,21 @@ function tooMany(ip, limit) {
   return list.length > limit;
 }
 
+/** Остатки кода для страницы. После срока — нули. */
+function counts(c, now) {
+  if (!c) return { left: 0, fmt: 0, def: 0, until: 0 };
+  const on = c.until > now;
+  return { left: on ? c.left || 0 : 0, fmt: on ? c.fmt || 0 : 0, def: on ? c.def || 0 : 0, until: c.until };
+}
+
 /** Действия страницы и сервера бота. Возвращает [код ответа, объект]. */
 async function handle(body, db, env, ip, now = Date.now()) {
   const action = body && body.action;
   const ready = env.ROBO_LOGIN && env.ROBO_PASS1 && env.ROBO_PASS2 && env.TICKET_SECRET;
   if (action === 'plans') {
     return [200, { ready: !!ready, test: env.ROBO_TEST === '1',
-      plans: Object.entries(PLANS).map(([id, p]) => ({ id, price: p.price, checks: p.checks, days: p.days, title: p.title })) }];
+      plans: Object.entries(PLANS).filter(([, p]) => !p.hidden)
+        .map(([id, p]) => ({ id, price: p.price, checks: p.checks, fmt: p.fmt, def: p.def, days: p.days, title: p.title, best: !!p.best })), unlim: UNLIM }];
   }
   if (!ready) return [503, { error: 'Оплата ещё не подключена.' }];
 
@@ -113,9 +129,9 @@ async function handle(body, db, env, ip, now = Date.now()) {
       if (!same(hmac(env.BOT_SECRET, `${ext}:${money(amount)}`), String(body.sig || ''))) return [403, { error: 'Неверная подпись.' }];
     } else {
       plan = String(body.plan || '');
-      if (!PLANS[plan]) return [400, { error: 'Нет такого тарифа.' }];
+      if (!PLANS[plan] || PLANS[plan].hidden) return [400, { error: 'Нет такого тарифа.' }];
       if (tooMany('c' + ip, 30)) return [429, { error: 'Слишком много попыток. Попробуйте позже.' }];
-      amount = PLANS[plan].price; title = PLANS[plan].title;
+      amount = PLANS[plan].price; title = 'Айсберг: ' + PLANS[plan].title.toLowerCase();
     }
     const inv = await newInv(db), secret = crypto.randomBytes(12).toString('base64url');
     await db.putOrder({ inv, secret: sha(secret), purpose, plan, ext, amount: money(amount), status: 'new', code: '', created: now, paid: 0 });
@@ -128,7 +144,7 @@ async function handle(body, db, env, ip, now = Date.now()) {
     if (!o || !same(o.secret, sha(secret || ''))) return [404, { error: 'Заказ не найден.' }];
     if (o.status !== 'paid') return [200, { paid: false, expired: now - o.created > ORDER_TTL }];
     const c = o.code ? await db.code(o.code) : null;
-    return [200, { paid: true, code: o.code, left: c ? c.left : 0, until: c ? c.until : 0 }];
+    return [200, { paid: true, code: o.code, ...counts(c, now) }];
   }
 
   if (action === 'balance' || action === 'ticket') {
@@ -138,13 +154,17 @@ async function handle(body, db, env, ip, now = Date.now()) {
     if (action === 'balance') {
       const c = await db.code(code);
       if (!c) return [404, { error: 'Такого кода нет. Проверьте, нет ли опечатки.' }];
-      return [200, { code, left: c.until > now ? c.left : 0, until: c.until }];
+      return [200, { code, ...counts(c, now) }];
     }
-    const before = await db.spend(code, now);
+    const kind = KINDS[body.kind || 'check'] ? (body.kind || 'check') : '';
+    if (!kind) return [400, { error: 'Неизвестная услуга.' }];
+    const field = KINDS[kind], what = { left: 'Полные проверки', fmt: 'Оформления', def: 'Сборки защиты' }[field];
+    const before = await db.spend(code, now, field);
     if (!before) return [404, { error: 'Такого кода нет. Проверьте, нет ли опечатки.' }];
-    if (before.until <= now) return [402, { error: 'Срок действия кода закончился.', left: 0, until: before.until }];
-    if (before.left <= 0) return [402, { error: 'Проверки по этому коду закончились.', left: 0, until: before.until }];
-    return [200, { ticket: makeTicket(env.TICKET_SECRET, code, now), left: before.left - 1, until: before.until }];
+    if (before.until <= now) return [402, { error: 'Срок действия кода закончился.', ...counts(before, now) }];
+    if (!(before[field] > 0)) return [402, { error: what + ' по этому коду закончились или не входят в тариф.', kind, ...counts(before, now) }];
+    const after = { ...before, [field]: before[field] >= UNLIM ? before[field] : before[field] - 1 };
+    return [200, { ticket: makeTicket(env.TICKET_SECRET, code, now), kind, ...counts(after, now) }];
   }
   return [400, { error: 'Неизвестное действие.' }];
 }
@@ -171,7 +191,7 @@ async function handleResult(p, db, env, now = Date.now(), send = fetch) {
   if (!plan) return text(400, 'bad plan');
   let code = newCode();
   for (let i = 0; i < 3 && await db.code(code); i++) code = newCode();
-  await db.putCode({ code, left: plan.checks, until: now + plan.days * 86400e3, created: now, inv });
+  await db.putCode({ code, left: plan.checks, fmt: plan.fmt || 0, def: plan.def || 0, until: now + plan.days * 86400e3, created: now, inv });
   await db.markPaid(inv, code, now);
   return text(200, 'OK' + inv);
 }
@@ -185,10 +205,10 @@ function memoryDb() {
     async markPaid(inv, code, now) { const o = orders.get(inv); if (o) Object.assign(o, { status: 'paid', code, paid: now }); },
     async code(code) { return codes.get(code) || null; },
     async putCode(c) { codes.set(c.code, { ...c }); },
-    async spend(code, now) {
+    async spend(code, now, field = 'left') {
       const c = codes.get(code); if (!c) return null;
-      const before = { ...c };
-      if (c.left > 0 && c.until > now) c.left--;
+      const before = { left: 0, fmt: 0, def: 0, ...c };
+      if (c[field] > 0 && c[field] < UNLIM && c.until > now) c[field]--;
       return before;
     },
   };
@@ -197,7 +217,7 @@ function memoryDb() {
 /* ---------- YDB ---------- */
 let ydb = null;
 function ydbDb(context) {
-  const { Driver, TokenAuthService, getCredentialsFromEnv, TypedValues, TypedData, Types, TableDescription, Column } = require('ydb-sdk');
+  const { Driver, TokenAuthService, getCredentialsFromEnv, TypedValues, TypedData, Types, TableDescription, AlterTableDescription, Column } = require('ydb-sdk');
   const tok = context && context.token && context.token.access_token;
   if (!ydb || (tok && tok !== ydb.tok)) {
     if (ydb) ydb.driver.destroy().catch(() => {});
@@ -214,11 +234,20 @@ function ydbDb(context) {
               new Column('status', O(Types.UTF8)), new Column('code', O(Types.UTF8)), new Column('created', O(Types.UINT64)), new Column('paid', O(Types.UINT64)))
             .withPrimaryKeys('inv'));
         }
-        try { await s.describeTable('pay_codes'); } catch (e) {
+        let codes = null;
+        try { codes = await s.describeTable('pay_codes'); } catch (e) {
           await s.createTable('pay_codes', new TableDescription()
             .withColumns(new Column('code', O(Types.UTF8)), new Column('remaining', O(Types.INT32)), new Column('expires', O(Types.UINT64)),
-              new Column('created', O(Types.UINT64)), new Column('inv', O(Types.UINT64)))
+              new Column('created', O(Types.UINT64)), new Column('inv', O(Types.UINT64)),
+              new Column('fmt_left', O(Types.INT32)), new Column('def_left', O(Types.INT32)))
             .withPrimaryKeys('code'));
+        }
+        // коды, купленные до пакетов с оформлением и защитой, — без этих столбцов: добавляем (у старых кодов там NULL = 0)
+        const have = new Set(((codes && codes.columns) || []).map(c => c.name));
+        if (codes && !(have.has('fmt_left') && have.has('def_left'))) {
+          const alter = new AlterTableDescription();
+          for (const name of ['fmt_left', 'def_left']) if (!have.has(name)) alter.withAddColumn(new Column(name, O(Types.INT32)));
+          await s.alterTable('pay_codes', alter);
         }
       });
       return driver;
@@ -256,20 +285,24 @@ function ydbDb(context) {
     async code(code) {
       const [rows] = await q('DECLARE $code AS Utf8; SELECT * FROM pay_codes WHERE code = $code;', { $code: U(code) });
       const r = rows && rows[0];
-      return r ? { code: r.code, left: num(r.remaining), until: num(r.expires), created: num(r.created), inv: num(r.inv) } : null;
+      return r ? { code: r.code, left: num(r.remaining), fmt: num(r.fmt_left), def: num(r.def_left), until: num(r.expires), created: num(r.created), inv: num(r.inv) } : null;
     },
     async putCode(c) {
-      await q(`DECLARE $code AS Utf8; DECLARE $left AS Int32; DECLARE $until AS Uint64; DECLARE $created AS Uint64; DECLARE $inv AS Uint64;
-        UPSERT INTO pay_codes (code, remaining, expires, created, inv) VALUES ($code, $left, $until, $created, $inv);`,
-        { $code: U(c.code), $left: TypedValues.int32(c.left), $until: U64(c.until), $created: U64(c.created), $inv: U64(c.inv) });
+      await q(`DECLARE $code AS Utf8; DECLARE $left AS Int32; DECLARE $fmt AS Int32; DECLARE $def AS Int32; DECLARE $until AS Uint64; DECLARE $created AS Uint64; DECLARE $inv AS Uint64;
+        UPSERT INTO pay_codes (code, remaining, fmt_left, def_left, expires, created, inv) VALUES ($code, $left, $fmt, $def, $until, $created, $inv);`,
+        { $code: U(c.code), $left: TypedValues.int32(c.left), $fmt: TypedValues.int32(c.fmt || 0), $def: TypedValues.int32(c.def || 0),
+          $until: U64(c.until), $created: U64(c.created), $inv: U64(c.inv) });
     },
-    /** Списывает одну проверку одной транзакцией и возвращает состояние кода ДО списания. */
-    async spend(code, now) {
+    /** Списывает одну единицу услуги (field: left | fmt | def) одной транзакцией и возвращает состояние кода ДО списания.
+        Значение UNLIM и больше не уменьшается. */
+    async spend(code, now, field = 'left') {
+      const col = { left: 'remaining', fmt: 'fmt_left', def: 'def_left' }[field];
+      if (!col) throw new Error('неизвестное поле ' + field);
       const [rows] = await q(`DECLARE $code AS Utf8; DECLARE $now AS Uint64;
-        SELECT remaining, expires FROM pay_codes WHERE code = $code;
-        UPDATE pay_codes SET remaining = remaining - 1 WHERE code = $code AND remaining > 0 AND expires > $now;`, { $code: U(code), $now: U64(now) });
+        SELECT remaining, fmt_left, def_left, expires FROM pay_codes WHERE code = $code;
+        UPDATE pay_codes SET ${col} = ${col} - 1 WHERE code = $code AND ${col} > 0 AND ${col} < ${UNLIM} AND expires > $now;`, { $code: U(code), $now: U64(now) });
       const r = rows && rows[0];
-      return r ? { left: num(r.remaining), until: num(r.expires) } : null;
+      return r ? { left: num(r.remaining), fmt: num(r.fmt_left), def: num(r.def_left), until: num(r.expires) } : null;
     },
   };
 }
@@ -308,4 +341,4 @@ module.exports.handler = async (event, context) => {
     return reply(500, { error: 'Оплата сейчас недоступна, попробуйте позже.' }, head);
   }
 };
-module.exports._test = { handle, handleResult, memoryDb, payUrl, resultOk, makeTicket, codeKey, newCode, hmac, md5, PLANS };
+module.exports._test = { handle, handleResult, memoryDb, payUrl, resultOk, makeTicket, codeKey, newCode, hmac, md5, PLANS, UNLIM, counts };

@@ -843,23 +843,37 @@ function fingerprints(text, tokens) {
   return out;
 }
 async function ringCall(body, ms = 20000) {
-  if (!RING) throw new Error('Кольцо САФУ пока не подключено.');
+  if (!RING) throw new Error('База работ САФУ пока не подключена.');
   return timed(async signal => {
     const r = await fetch(RING, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
     const data = await r.json().catch(() => ({}));
-    if (!r.ok || data.error) throw new Error(data.error || 'Кольцо САФУ не ответило (' + r.status + ')');
+    if (!r.ok || data.error) throw new Error(data.error || 'База работ САФУ не ответила (' + r.status + ')');
     return data;
   }, ms);
 }
-/** Добавить работу в кольцо. Возвращает {id, key} — ключ нужен, чтобы потом удалить работу. */
-async function ringAdd(title, rawText) {
+/** Убрать из работы титульный лист и ФИО перед отправкой в базу: всё до «Содержания» / «Введения» / «Цели работы»
+    в начале текста отрезается, а названные имена (студент, руководитель) и фамилии с инициалами заменяются на «[ФИО]». */
+function ringScrub(text, names) {
+  const head = /(^|\n)[ \t]*(СОДЕРЖАНИЕ|ОГЛАВЛЕНИЕ|ВВЕДЕНИЕ|Содержание|Оглавление|Введение|Цель работы|ЦЕЛЬ РАБОТЫ)(?![А-Яа-яЁё])/.exec(text.slice(0, 8000));
+  let t = head ? text.slice(head.index + head[1].length) : text;
+  for (const n of names || []) {
+    for (const part of String(n || '').split(/\s+/).filter(w => w.length >= 3 && /^[А-ЯЁ]/.test(w)))
+      t = t.replace(new RegExp(part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![а-яё])', 'g'), '[ФИО]');
+  }
+  return t.replace(/[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?\s+[А-ЯЁ]\.\s?[А-ЯЁ]\./g, '[ФИО]')
+          .replace(/[А-ЯЁ]\.\s?[А-ЯЁ]\.\s?[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?/g, '[ФИО]');
+}
+/** Добавить работу в базу работ САФУ. meta — карточка без ФИО: {kind, discipline, school, year};
+    names — ФИО, которые надо вычистить из текста. Возвращает {id, key} — ключ нужен, чтобы потом удалить работу. */
+async function ringAdd(title, rawText, meta, names) {
   const [text] = cleanText(rawText);
   const bib = bibliographyStart(text);
-  const body = (bib !== null ? text.slice(0, bib) : text).slice(0, 600000);
+  const body = ringScrub(bib !== null ? text.slice(0, bib) : text, names).slice(0, 600000);
   const fps = fingerprints(body);
-  if (fps.length < 30) throw new Error('Текст слишком короткий для Кольца.');
-  return ringCall({ action: 'add', title: String(title || '').slice(0, 160), text: body, fps }, 30000);
+  if (fps.length < 30) throw new Error('Текст слишком короткий для базы работ.');
+  return ringCall({ action: 'add', title: String(title || '').slice(0, 160), text: body, fps, meta: meta || {} }, 30000);
 }
+async function ringStats() { return ringCall({ action: 'stats' }, 8000).then(d => d.docs).catch(() => null); }
 async function ringDelete(id, key) { return ringCall({ action: 'delete', id, key }); }
 async function ringPing() { return !!RING && ringCall({ action: 'ping' }, 8000).then(d => d.ok === true).catch(() => false); }
 
@@ -983,17 +997,19 @@ async function runCheck(rawText, opts, ui) {
   // 1б. «Кольцо САФУ»: сервер возвращает только куски чужих работ вокруг общих отпечатков
   stats.ring = 0;
   if (opts.ring !== false && RING) {
-    ui.set('Сверка с Кольцом САФУ', 0.03);
+    ui.set('Сверка с базой работ САФУ', 0.03);
     try {
       const fps = fingerprints(text, doc).map(f => f[0]);
       const res = await ringCall({ action: 'query', fps: [...new Set(fps)].slice(0, 20000) }, 25000);
       for (const d of res.docs || []) {
-        const title = 'Кольцо САФУ: ' + (d.title || 'работа студента') + (d.year ? ', ' + d.year : '');
+        const m = d.meta || {};
+        const card = [m.kind ? m.kind.toLowerCase() + (m.discipline ? ' по дисциплине «' + m.discipline + '»' : '') : m.discipline, m.school, m.year || d.year].filter(Boolean).join(', ');
+        const title = 'База работ САФУ: ' + (d.title ? '«' + d.title + '»' : 'работа студента') + (card ? ' — ' + card : '');
         if (consider(title, d.excerpt || '', '', 'ring')) stats.ring++;
         await sleep(0);
       }
-      ui.say(stats.ring ? `Кольцо САФУ: совпадения с ${stats.ring} ${stats.ring === 1 ? 'работой' : 'работами'} студентов.` : 'Кольцо САФУ: совпадений с работами студентов нет.');
-    } catch (e) { ui.say('Кольцо САФУ сейчас не ответило — проверка идёт без него.'); }
+      ui.say(stats.ring ? `База работ САФУ: совпадения с ${stats.ring} ${stats.ring === 1 ? 'работой' : 'работами'}.` : 'База работ САФУ: совпадений нет.');
+    } catch (e) { ui.say('База работ САФУ сейчас не ответила — проверка идёт без неё.'); }
   }
 
   // 2. Помощник для скачивания страниц: без него остаётся только Википедия
@@ -1168,5 +1184,5 @@ async function runCheck(rawText, opts, ui) {
   };
 }
 
-global.Iceberg = { runCheck, readFile, gostCheck, setApi, pingProxy, setTicket, yandexInfo: () => ({ yandex: YANDEX, paid: PAID }), setRing, ringAdd, ringDelete, ringPing, fingerprints, bibliographyStart, cleanText, Tokens, align, htmlToText, docxToText, normalizeWord, stem };
+global.Iceberg = { runCheck, readFile, gostCheck, setApi, pingProxy, setTicket, yandexInfo: () => ({ yandex: YANDEX, paid: PAID }), setRing, ringAdd, ringDelete, ringPing, ringStats, ringScrub, fingerprints, bibliographyStart, cleanText, Tokens, align, htmlToText, docxToText, normalizeWord, stem };
 })(window);
