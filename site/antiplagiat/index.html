@@ -875,6 +875,9 @@ body.dragging .flood{opacity:1}body.dragging .flood b{transform:none}
 .opts>summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);font-weight:600;font-size:14px}
 .opts>summary::-webkit-details-marker{display:none}.opts>summary small{font-weight:400;font-size:12px;color:var(--muted)}
 .opts[open]>summary{margin-bottom:14px}.opts>div{margin-bottom:16px}
+/* поле для файла подсказывает, куда его положить */
+.nudge{animation:nudge 1.1s var(--ease)}
+@keyframes nudge{0%,100%{box-shadow:0 0 0 0 transparent}30%{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 55%,transparent),0 0 40px color-mix(in srgb,var(--accent) 35%,transparent)}}
 /* смена шага — переход «сквозь воду» (страница целиком не анимируется — см. выше) */
 ::view-transition-old(tool){animation:toolOut .32s var(--ease) both}
 ::view-transition-new(tool){animation:toolIn .55s cubic-bezier(.2,1,.3,1) both}
@@ -2017,7 +2020,8 @@ async function stoRun(){
   // сцена оформления: этапы идут, пока работает оформитель; цифры в подписях — из этой работы
   const scene = calm ? null : stoScene($('stoRes'), STO.before);
   if(!scene) $('stoRes').innerHTML = '<div class="muted" style="padding-top:22px">Оформляю…</div>';
-  else $('stoRes').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  else $('stoRes').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if(window.skyHold) skyHold(8000);
   const intro = scene ? (async () => { await scene.go(0, STO.before ? STO.before.checked.toLocaleString('ru-RU') + ' ' + plural(STO.before.checked, 'абзац', 'абзаца', 'абзацев') : '', 420); for(let i = 1; i < 6; i++) await scene.go(i, '', 330); })() : null;
   try{
     try{ await STO.titleP; }catch(e){}
@@ -2129,6 +2133,7 @@ const DOCK = {file: null};
 /* моушн броска: файл по дуге летит из точки броска в воду у айсберга, всплеск, круги, айсберг качается */
 function splashFly(from){
   if(calm) return;
+  if(window.skyHold) skyHold(3000);
   const hero = $('hero'), hr = hero.getBoundingClientRect();
   const phone = innerWidth <= 760, water = hr.top + hr.height * (1 - (phone ? .24 : .36));
   if(water < -40 || water > innerHeight + 40) return;
@@ -2168,7 +2173,16 @@ function dockTake(file, from){
 }
 /** Шаг выбран: если брошен файл — сразу отдаём его этому шагу и запускаем. */
 async function goStep(m){
+  if(window.skyHold) skyHold(4000);
   const f = DOCK.file;
+  if(!f){   // файла нет: на уже выбранном шаге — сразу выбор файла; на другом — переход и подсветка поля или кнопки
+    const has = m === 'check' ? !!$('text').value.trim() : !!STO.file;
+    if(document.body.dataset.mode === m && !has){ DOCK.pending = m; $('dockFile').click(); return; }
+    setMode(m, true, true);
+    setTimeout(() => { const z = has ? (m === 'check' ? $('btnCheck') : m === 'sto' ? $('stoGo') : $('stoZTop')) : (m === 'check' ? $('drop') : m === 'sto' ? $('stoDrop') : $('zDrop')); if(!z) return;
+      z.scrollIntoView({behavior: calm ? 'auto' : 'smooth', block: 'center'}); z.classList.remove('nudge'); void z.offsetWidth; z.classList.add('nudge'); }, 350);
+    return;
+  }
   setMode(m, !!f, true);
   if(!f) return;
   DOCK.file = null; $('modes').classList.remove('has-file');
@@ -2180,7 +2194,8 @@ async function goStep(m){
   else { await new Promise(r => setTimeout(r, 60)); $('stoZTop').click(); }
 }
 $('dock').onclick = () => $('dockFile').click();
-$('dockFile').onchange = e => { dockTake(e.target.files[0]); e.target.value = ''; };
+$('dockFile').onchange = e => { const f = e.target.files[0], m = DOCK.pending; DOCK.pending = ''; e.target.value = '';
+  dockTake(f); if(m && DOCK.file) setTimeout(() => goStep(m), calm ? 0 : 900); };   // выбрали файл с шага — сразу в работу
 /* файл тащат над страницей: круги по воде от курсора; бросили мимо полей — файл ложится в «воду» */
 (function(){
   let depth = 0;
@@ -2525,7 +2540,8 @@ $('btnCheck').onclick = async () => {
     try{ const d = await payCall({action: 'ticket', code}); Iceberg.setTicket(d.ticket); PAY.paidRun = true; payShow(d); }
     catch(e){ $('inputError').textContent = e.message; if(e.status === 402){ if(e.data) payShow(e.data); openPay('check'); } return; }
   }
-  try{ await runPlain(); } finally { Iceberg.setTicket(''); }
+  const hold = setInterval(() => window.skyHold && skyHold(1500), 1000);   // пока идёт проверка, небо не «решает», что компьютер слабый
+  try{ await runPlain(); } finally { Iceberg.setTicket(''); clearInterval(hold); }
 };
 </script>
 <script src="../pulse.js" data-section="antiplagiat" defer></script>

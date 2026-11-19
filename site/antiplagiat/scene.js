@@ -239,8 +239,11 @@ void main(){
   const uRes = U('uRes'), uTime = U('uTime'), uMouse = U('uMouse'), uHorizon = U('uHorizon'), uBergX = U('uBergX'), uBergS = U('uBergS');
 
   const phone = matchMedia('(max-width: 760px)').matches;
-  let scale = lite ? (phone ? .36 : .42) : (phone ? .5 : .55);
-  const step = lite || phone ? 42 : 30;     // мс между кадрами: 24 или 33 кадра в секунду
+  const BASE = lite ? (phone ? .36 : .42) : (phone ? .5 : .55);
+  let scale = BASE;
+  /* мс между кадрами: телефоны и слабые — 24 кадра, обычные компьютеры — 60 (сияние течёт плавно) */
+  const strong = !lite && !phone && (navigator.hardwareConcurrency || 4) >= 8;
+  let step = lite || phone ? 42 : strong ? 15 : 30;
   let dive = 0, scrolling = false;
   let W = 0, H = 0, visible = true, mouse = [0, 0], target = [0, 0], start = performance.now(), last = 0;
   function layout() {
@@ -260,25 +263,37 @@ void main(){
     gl.uniform1f(uBergS, wide ? .26 : phone ? .17 : .28);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
-  /* Подстройка под устройство: если кадры приходят заметно реже задуманного, сцена рисуется
-     в меньшем разрешении; если не помогает и это — замирает на последнем кадре (страница не тормозит). */
+  /* Подстройка под устройство: если кадры долго приходят заметно реже задуманного, сцена рисуется
+     в меньшем разрешении, потом реже; когда снова плавно — качество возвращается. Пока страница занята
+     своей работой (оформление, проверка, анимация броска — window.skyHold), кадры не считаются:
+     иначе разовая занятость навсегда портила небо. */
   const gaps = [];
-  let frozen = false;
-  function adapt(gap) {
-    if (gap > 250) { gaps.length = 0; return; }            // вкладка просыпалась — не считаем
+  let frozen = false, good = 0, holdUntil = 0;
+  const STEP0 = step;
+  window.skyHold = ms => { holdUntil = Math.max(holdUntil, performance.now() + (ms || 2500)); gaps.length = 0; };
+  function adapt(gap, now) {
+    if (gap > 250 || now < holdUntil) { gaps.length = 0; return; }   // вкладка просыпалась или страница занята — не считаем
     gaps.push(gap);
-    if (gaps.length < 40) return;
+    if (gaps.length < 60) return;
     const sorted = gaps.slice().sort((a, b) => a - b), med = sorted[gaps.length >> 1];
     gaps.length = 0;
-    if (med < step * 1.45) return;
-    if (scale > .26) { scale = Math.max(.25, scale * .78); layout(); }
+    if (med < step * 1.45) {                                          // плавно — понемногу возвращаем качество
+      if (++good >= 3) { good = 0;
+        if (step > STEP0) step = Math.max(STEP0, step / 1.5);
+        else if (scale < BASE) { scale = Math.min(BASE, scale / .85); layout(); } }
+      return;
+    }
+    good = 0;
+    if (step < 30) step = 30;                                         // сначала реже, потом мельче
+    else if (scale > .26) { scale = Math.max(.25, scale * .8); layout(); }
+    else if (step < 60) step = 60;
     else frozen = true;
   }
   function loop(now) {
     requestAnimationFrame(loop);
     if (!visible || document.hidden || frozen || scrolling) return;   // во время прокрутки небо не перерисовывается
     if (now - last < step) return;
-    if (last) adapt(now - last);
+    if (last) adapt(now - last, now);
     last = now;
     draw(now);
   }
