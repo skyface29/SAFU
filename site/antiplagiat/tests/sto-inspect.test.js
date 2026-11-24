@@ -79,6 +79,10 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
           if (!sz) { sz = doc.createElementNS(W, 'w:sz'); rPr.appendChild(sz); }
           sz.setAttributeNS(W, 'w:val', '28');
         }
+      } else if (kind === 'tabref') {
+        const p = paras.find(p => /^Таблица\s+\d/i.test(text(p).trim()));
+        if (!p) throw new Error('подпись таблицы не найдена');
+        for (const t of p.getElementsByTagNameNS(W, 't')) { if (/^\d/.test(t.textContent)) { t.textContent = t.textContent.replace(/^\d+/, '99'); break; } }
       } else if (kind === 'footer') {
         const fe = z.find(e => /^word\/footer\d*\.xml$/.test(e.name)); if (!fe) throw new Error('колонтитул не найден');
         fe.data = new TextEncoder().encode(new TextDecoder().decode(fe.data).replace(/(<w:sz w:val=")\d+(")/g, '$120$2'));
@@ -161,6 +165,15 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
       return { clause: x.clause, hint: x.hint, grade: ins.grade, score: ins.score };
     });
     assert(r.clause, 'нет пункта СТО'); assert(r.hint, 'нет подсказки'); assert(r.grade, 'нет оценки готовности');
+  });
+  await T('проверки ссылок и механизм рекомендаций работают', async () => {
+    const r = await page.evaluate(async () => {
+      const ins = await StoInspect.inspect(await __fmt('METOD_PDF'), { size: 14, binding: false });
+      return { ok: ins.ok, hasWarnings: Array.isArray(ins.warnings), rules: ins.rules.filter(x => /Ссылк/i.test(x)) };
+    });
+    assert(r.ok, 'оформленный файл не должен давать ошибок');
+    assert(r.hasWarnings, 'нет массива warnings');
+    assert(r.rules.includes('Ссылки на таблицы в тексте'), r.rules.join('; '));
   });
   await T('на странице нет ошибок JavaScript', async () => assert(!errors.length, errors.join(' | ')));
 

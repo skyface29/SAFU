@@ -131,10 +131,11 @@ async function inspect(buf, opts) {
   if (th) { const t = new DOMParser().parseFromString(th, 'application/xml');
     for (const [k, tag] of [['minor', 'minorFont'], ['major', 'majorFont']]) { const f = t.getElementsByTagNameNS('*', tag)[0], l = f && f.getElementsByTagNameNS('*', 'latin')[0]; if (l) theme[k] = l.getAttribute('typeface'); } }
   const body = doc.getElementsByTagNameNS(W, 'body')[0];
-  const issues = [], rules = new Set();
+  const issues = [], warnings = [], rules = new Set();
   let checked = 0, checks = 0;
   const bad = (rule, where, need, found, p) => { const m = RULE_META[rule] || []; issues.push({ rule, where, need, found, clause: m[0] || '', hint: m[1] || '', idx: p ? P.indexOf(p) : -1, gi: p ? ALL.indexOf(p) : -1, text: p ? textOf(p).replace(/\s+/g, ' ').trim().slice(0, 80) : '' }); };
   const ok = rule => { rules.add(rule); checks++; };
+  const warn = (rule, where, need, found) => { const m = RULE_META[rule] || []; warnings.push({ rule, where, need, found, clause: m[0] || '', hint: m[1] || '', severity: 'warn' }); };
 
   /* 1. листы: формат, поля — у каждого раздела (альбомные листы с широкими таблицами — свои поля) */
   const sects = [...body.getElementsByTagNameNS(W, 'sectPr')];
@@ -203,7 +204,8 @@ async function inspect(buf, opts) {
       ok('Заголовок раздела: полужирный'); if (!R.every(x => x.bold)) bad('Заголовок раздела: полужирный', where, 'полужирный', 'обычное начертание', p);
       ok('Заголовок раздела: без отступа'); if (Math.abs(cm(pr.firstLine + pr.left)) > .06) bad('Заголовок раздела: без отступа', where, 'без абзацного отступа', cm(pr.firstLine) + ' см', p);
       ok('Заголовок раздела: интервал 12 пт после'); if (Math.abs(pr.after - 240) > 20) bad('Заголовок раздела: интервал 12 пт после', where, '12 пт', (pr.after / 20) + ' пт', p);
-      if (app) { ok('Приложение: с новой страницы'); if (!pr.pageBreakBefore && !(i > 0 && brk(i - 1))) bad('Приложение: с новой страницы', where, 'с новой страницы', 'не с новой страницы', p); }
+      if (app) { ok('Приложение: с новой страницы'); if (!pr.pageBreakBefore && !(i > 0 && brk(i - 1))) bad('Приложение: с новой страницы', where, 'с новой страницы', 'не с новой страницы', p);
+        const am = t.match(/^приложение\s+([А-ЯA-Z])/i); if (am && /[ЕЗЙОЧЬЫЪ]/.test(am[1].toUpperCase())) warn('Приложение: допустимое обозначение', where, 'кроме Е, З, Й, О, Ч, Ь, Ы, Ъ', 'буква ' + am[1]); }
       continue;
     }
     if (head) {
@@ -278,6 +280,32 @@ async function inspect(buf, opts) {
     }
   }
 
+  /* 5. ссылки на рисунки и таблицы и сноски — рекомендации (п. 4.14.10, 4.10) */
+  const capRe = /^(рисунок|таблица)\s/i;
+  const plain = texts.filter(t => !capRe.test(t)).join(' ').toLowerCase();
+  const rx = s2 => s2.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const seenFig = new Set(), seenTab = new Set();
+  for (const t of texts) {
+    let m = t.match(/^рисунок\s+([\dА-ЯA-Z]+(?:\.\d+)*)/i); if (m) seenFig.add(m[1].toLowerCase());
+    m = t.match(/^таблица\s+([\dА-ЯA-Z]+(?:\.\d+)*)/i); if (m) seenTab.add(m[1].toLowerCase());
+  }
+  ok('Ссылки на рисунки в тексте');
+  for (const n of seenFig) if (!new RegExp('рисун[а-яё]*\\s+' + rx(n) + '(?![\\d.])').test(plain)) warn('Ссылка на рисунок в тексте', 'рисунок ' + n, 'ссылка «в соответствии с рисунком N»', 'в тексте ссылки нет');
+  ok('Ссылки на таблицы в тексте');
+  for (const n of seenTab) if (!new RegExp('таблиц[а-яё]*\\s+' + rx(n) + '(?![\\d.])').test(plain)) warn('Ссылка на таблицу в тексте', 'таблица ' + n, 'ссылка «в таблице N»', 'в тексте ссылки нет');
+  const fns = get('word/footnotes.xml');
+  if (fns) {
+    ok('Сноски: кегль на 1–2 пт меньше');
+    const fd = new DOMParser().parseFromString(fns, 'application/xml');
+    for (const fn of fd.getElementsByTagNameNS(W, 'footnote')) {
+      const id = at(fn, 'id'); if (!id || id === '-1' || id === '0') continue;
+      for (const r of fn.getElementsByTagNameNS(W, 'r')) {
+        const szv = at(kid(kid(r, 'rPr'), 'sz'), 'val');
+        if (szv && (+szv / 2 < 9 || +szv / 2 > 12)) warn('Сноска: кегль на 1–2 пт меньше', 'сноска ' + id, '10–12 пт', (+szv / 2) + ' пт');
+      }
+    }
+  }
+
   /* 4. номера страниц */
   let pageNum = false, pageNumBad = null;
   for (const f of files) {
@@ -296,7 +324,7 @@ async function inspect(buf, opts) {
   const failed = Object.keys(byRule).length, total = rules.size;
   const score = total ? Math.round(100 * (total - failed) / total) : 100;
   const grade = score === 100 ? 'Готово к сдаче' : score >= 90 ? 'Почти готово' : score >= 70 ? 'Есть замечания' : 'Много замечаний';
-  return { checked, checks, rules: [...rules], issues, byRule, ok: !issues.length, failed, total, score, grade };
+  return { checked, checks, rules: [...rules], issues, byRule, warnings, ok: !issues.length, failed, total, score, grade };
 }
 
 global.StoInspect = { inspect };
