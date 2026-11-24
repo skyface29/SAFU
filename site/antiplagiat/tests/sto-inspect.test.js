@@ -154,6 +154,14 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
     const bad = await page.evaluate(async () => (await StoInspect.inspect(await __mutate(await __fmt('REFERAT'), 'body'), { size: 14, binding: false })).score);
     assert(good === 100, 'оформленный: ' + good); assert(bad < 100, 'испорченный: ' + bad);
   });
+  await T('у замечаний есть пункт СТО и подсказка «как исправить»', async () => {
+    const r = await page.evaluate(async () => {
+      const ins = await StoInspect.inspect(await __src('REFERAT'), { all: true, size: 14, binding: false });
+      const x = ins.issues.find(i => i.clause) || ins.issues[0] || {};
+      return { clause: x.clause, hint: x.hint, grade: ins.grade, score: ins.score };
+    });
+    assert(r.clause, 'нет пункта СТО'); assert(r.hint, 'нет подсказки'); assert(r.grade, 'нет оценки готовности');
+  });
   await T('на странице нет ошибок JavaScript', async () => assert(!errors.length, errors.join(' | ')));
 
   console.log(results.join('\n'));
