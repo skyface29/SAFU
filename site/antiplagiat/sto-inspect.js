@@ -293,6 +293,12 @@ async function inspect(buf, opts) {
   for (const n of seenFig) if (!new RegExp('рисун[а-яё]*\\s+' + rx(n) + '(?![\\d.])').test(plain)) warn('Ссылка на рисунок в тексте', 'рисунок ' + n, 'ссылка «в соответствии с рисунком N»', 'в тексте ссылки нет');
   ok('Ссылки на таблицы в тексте');
   for (const n of seenTab) if (!new RegExp('таблиц[а-яё]*\\s+' + rx(n) + '(?![\\d.])').test(plain)) warn('Ссылка на таблицу в тексте', 'таблица ' + n, 'ссылка «в таблице N»', 'в тексте ссылки нет');
+  ok('Формулы: номер в круглых скобках');
+  for (let i = start; i < P.length; i++) {
+    const p = P[i]; if (!p.getElementsByTagNameNS('*', 'oMath').length) continue;
+    const txt = texts[i].trim(), letters = (txt.match(/[A-Za-zА-Яа-яЁё]/g) || []).length;
+    if (letters <= 3 && !/\(\d+(\.\d+)*\)\s*$/.test(txt)) warn('Формула: номер в круглых скобках', txt.slice(0, 40) || 'формула', 'номер у правого поля: (1)', 'номера нет');
+  }
   const fns = get('word/footnotes.xml');
   if (fns) {
     ok('Сноски: кегль на 1–2 пт меньше');
