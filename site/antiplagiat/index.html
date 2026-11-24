@@ -1205,6 +1205,7 @@ body.dragging .flood{opacity:1}body.dragging .flood b{transform:none}
 <script src="sto-tools.js"></script>
 <script src="work-kinds.js"></script>
 <script src="sto-inspect.js"></script>
+<script src="sto-report.js"></script>
 <script src="zashita.js"></script>
 <script>
 /* Адрес помощника, который скачивает страницы сайтов и выдачу поисковиков (antiplagiat-api/ в репозитории).
@@ -1809,8 +1810,8 @@ function errSummary(){
   const paras = new Set(ins.issues.map(x => x.gi)).size;
   el.classList.remove('hide');
   el.innerHTML = ins.issues.length
-    ? '<div><b>' + ins.issues.length + '</b> ' + plural(ins.issues.length, 'нарушение', 'нарушения', 'нарушений') + ' СТО в <b>' + paras + '</b> ' + plural(paras, 'абзаце', 'абзацах', 'абзацах') + '<small>' + Object.keys(ins.byRule).slice(0, 3).map(r => esc(r) + ' — ' + ins.byRule[r].length).join(' · ') + '</small></div><button class="btn" id="errBtn" type="button">Посмотреть все — с картинками</button>'
-    : '<div><b>Нарушений не нашёл</b><small>' + ins.checked + ' ' + plural(ins.checked, 'абзац', 'абзаца', 'абзацев') + ' проверено — оформление всё равно приведу к единому виду</small></div>';
+    ? '<div><b>' + ins.issues.length + '</b> ' + plural(ins.issues.length, 'нарушение', 'нарушения', 'нарушений') + ' СТО в <b>' + paras + '</b> ' + plural(paras, 'абзаце', 'абзацах', 'абзацах') + '<small>' + (ins.grade ? esc(ins.grade) + ' · ' + ins.score + '% · ' : '') + (ins.warnings && ins.warnings.length ? ins.warnings.length + ' ' + plural(ins.warnings.length, 'рекомендация', 'рекомендации', 'рекомендаций') + ' · ' : '') + Object.keys(ins.byRule).slice(0, 3).map(r => esc(r) + ' — ' + ins.byRule[r].length).join(' · ') + '</small></div><button class="btn" id="errBtn" type="button">Посмотреть все — с картинками</button><button class="btn" id="repBtn" type="button">Скачать отчёт проверки</button>'
+    : '<div><b>Нарушений не нашёл</b><small>' + (ins.grade ? esc(ins.grade) + ' · ' + ins.score + '% · ' : '') + ins.checked + ' ' + plural(ins.checked, 'абзац', 'абзаца', 'абзацев') + ' проверено — оформление всё равно приведу к единому виду</small></div><button class="btn" id="repBtn" type="button">Скачать отчёт проверки</button>';
 }
 async function openErrView(){
   const box = $('errView'), ins = STO.before; if(!ins || !STO.file) return;
@@ -1835,16 +1836,28 @@ async function openErrView(){
       const el = find(g.x); n++;
       if(el){ el.classList.add('pv-err'); el.dataset.n = n; el.id = 'pvErr' + n; }
       rows.push('<li' + (el ? ' data-go="' + n + '"' : '') + '><b class="en">' + n + '</b><div><span class="et">' + esc(g.x.text || g.x.where) + '</span>' +
-        g.list.map(x => '<small>' + esc(x.rule) + ': ' + esc(String(x.found)) + ' → ' + esc(String(x.need)) + ' <em class="' + (RULE_MANUAL.has(x.rule) ? 'man' : 'auto') + '">' + (RULE_MANUAL.has(x.rule) ? 'вручную' : 'исправлю') + '</em></small>').join('') + '</div></li>');
+        g.list.map(x => '<small' + (x.hint ? ' title="' + esc(x.hint) + '"' : '') + '>' + esc(x.rule) + (x.clause ? ' <em class="cl">п. ' + esc(x.clause) + '</em>' : '') + ': ' + esc(String(x.found)) + ' → ' + esc(String(x.need)) + ' <em class="' + (RULE_MANUAL.has(x.rule) ? 'man' : 'auto') + '">' + (RULE_MANUAL.has(x.rule) ? 'вручную' : 'исправлю') + '</em></small>').join('') + '</div></li>');
     }
     const other = ins.issues.filter(x => x.gi < 0);
-    box.insertAdjacentHTML('beforeend', '<ol class="err-list">' + rows.join('') + other.map(x => '<li><b class="en">•</b><div><span class="et">' + esc(x.where) + '</span><small>' + esc(x.rule) + ': ' + esc(String(x.found)) + ' → ' + esc(String(x.need)) + ' <em class="auto">исправлю</em></small></div></li>').join('') + '</ol>');
+    box.insertAdjacentHTML('beforeend', '<ol class="err-list">' + rows.join('') + other.map(x => '<li><b class="en">•</b><div><span class="et">' + esc(x.where) + '</span><small' + (x.hint ? ' title="' + esc(x.hint) + '"' : '') + '>' + esc(x.rule) + (x.clause ? ' <em class="cl">п. ' + esc(x.clause) + '</em>' : '') + ': ' + esc(String(x.found)) + ' → ' + esc(String(x.need)) + ' <em class="auto">исправлю</em></small></div></li>').join('') + (ins.warnings||[]).map(x => '<li><b class="en">•</b><div><span class="et">' + esc(x.where) + '</span><small' + (x.hint ? ' title="' + esc(x.hint) + '"' : '') + '>' + esc(x.rule) + (x.clause ? ' <em class="cl">п. ' + esc(x.clause) + '</em>' : '') + ': ' + esc(String(x.found)) + ' <em class="man">рекомендация</em></small></div></li>').join('') + '</ol>');
     box.querySelectorAll('[data-go]').forEach(li => li.onclick = () => { const t = document.getElementById('pvErr' + li.dataset.go); if(!t) return;
       const top = t.getBoundingClientRect().top - pv.getBoundingClientRect().top + pv.scrollTop - 60;
       pv.scrollTo({ top, behavior: calm ? 'auto' : 'smooth' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); });
   }catch(e){ box.innerHTML = '<div class="err" style="padding:12px">Не получилось показать страницы: ' + esc(e.message || String(e)) + '</div>'; }
 }
 document.addEventListener('click', e => { if(e.target.closest('#errBtn')) openErrView(); });
+async function stoReportDl(){
+  if(!STO.before || !STO.file) return;
+  try{
+    const blob = await StoReport.docx(STO.before, STO.file);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = STO.file.name.replace(/\.docx$/i, '') + ' — проверка СТО.docx';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }catch(e){ alert('Не получилось собрать отчёт: ' + (e.message || e)); }
+}
+document.addEventListener('click', e => { if(e.target.closest('#repBtn')) stoReportDl(); });
 async function stoPreview(){
   const box = $('stoPrev'), btn = $('stoPrevBtn'); if(!STO.last || !box) return;
   if(!box.classList.contains('hide') && box.dataset.done){ box.classList.add('hide'); btn.lastChild.textContent = 'Посмотреть страницы'; return; }

@@ -28,4 +28,6 @@ jobs:
           npm i --no-save --no-package-lock playwright@1
           npx playwright install --with-deps chromium
       - name: В браузере — вид работы, склейка, титул, страница
-        run: node site/antiplagiat/tests/sto.test.js
+        run: |
+          node site/antiplagiat/tests/sto.test.js
+          node site/antiplagiat/tests/sto-inspect.test.js
