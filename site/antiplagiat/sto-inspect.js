@@ -175,6 +175,9 @@ async function inspect(buf, opts) {
     if (fig) {
       ok('Подпись рисунка: по центру'); if (pr.jc !== 'center') bad('Подпись рисунка: по центру', where, 'по центру', pr.jc, p);
       ok('Подпись рисунка: без точки'); if (/\.$/.test(t) && !/(?<![а-яёa-z0-9])(др|т\.\s?д|т\.\s?п|г|гг|в|вв)\.$/i.test(t)) bad('Подпись рисунка: без точки', where, 'без точки в конце', 'точка в конце', p);
+      /* п. 4.5.7: кегль на 1–2 пт меньше основного, без абзацного отступа */
+      ok('Подпись рисунка: кегль меньше основного'); if (R.some(x => x.sz > size - .5 || x.sz < 10)) bad('Подпись рисунка: кегль меньше основного', where, 'на 1–2 пт меньше (' + (size - 2) + '–' + (size - 1) + ' пт)', [...new Set(R.map(x => x.sz))].join(', ') + ' пт', p);
+      ok('Подпись рисунка: без отступа'); if (Math.abs(cm(pr.firstLine + pr.left)) > .06) bad('Подпись рисунка: без отступа', where, 'без абзацного отступа', cm(pr.firstLine) + ' см', p);
       continue;
     }
     if (tab) {
@@ -197,22 +200,57 @@ async function inspect(buf, opts) {
       ok('Абзацный отступ 1,25 см');
       if (Math.abs(cm(pr.firstLine) + cm(pr.left) - prof.indent) > .06 && t.length > 40) bad('Абзацный отступ 1,25 см', where, '1,25 см', cm(pr.firstLine) + ' см', p);
     }
+    if (inBib) {
+      ok('Список источников: абзацный отступ 1,25 см');
+      if (Math.abs(cm(pr.firstLine) + cm(pr.left) - prof.indent) > .06 && t.length > 20) bad('Список источников: абзацный отступ 1,25 см', where, '1,25 см', cm(pr.firstLine) + ' см', p);
+    }
     ok('Без лишних интервалов между абзацами');
     if (pr.before > 0 || pr.after > 0) { const nx = p.nextElementSibling; if (!(nx && nx.localName === 'tbl') && !(p.previousElementSibling && p.previousElementSibling.localName === 'tbl')) bad('Без лишних интервалов между абзацами', where, '0 пт до и после', `${pr.before / 20} / ${pr.after / 20} пт`, p); }
     /* типографика */
     ok('Типографика: двойные пробелы'); if (/\S {2,}\S/.test(t.replace(/\t/g, ' '))) bad('Типографика: двойные пробелы', where, 'один пробел', 'два и больше подряд', p);
     ok('Типографика: кавычки «ёлочки»'); if (/"/.test(t) && !/https?:\/\//.test(t)) bad('Типографика: кавычки «ёлочки»', where, '«…»', '"…"', p);
     ok('Типографика: тире'); if (/[а-яё] - [а-яё]/i.test(t)) bad('Типографика: тире', where, '«–» с пробелами', 'дефис между словами', p);
+    ok('Типографика: без пробела после скобки'); if (/[(\u00ab\u201c] /.test(t)) bad('Типографика: без пробела после скобки', where, 'без пробела после «(» и ««»', 'пробел после скобки/кавычки', p);
+    ok('Типографика: без пробела перед знаком'); if (/ [.,;:!?]/.test(t)) bad('Типографика: без пробела перед знаком', where, 'без пробела перед «.,;:!?»', 'пробел перед знаком', p);
   }
 
-  /* 3. номера страниц */
-  let pageNum = false;
-  for (const f of files) if (/^word\/footer\d*\.xml$/.test(f.name) && /PAGE(?![A-Z])/.test(dec.decode(f.data))) pageNum = true;
+  /* 3. таблицы: положение и текст в ячейках (п. 4.9.7, 4.9.10). Титульный лист пропускаем — у него своя форма. */
+  const startEl = P[start] || null;
+  for (const tbl of body.getElementsByTagNameNS(W, 'tbl')) {
+    if (startEl && (tbl.compareDocumentPosition(startEl) & 4)) continue;   // DOCUMENT_POSITION_FOLLOWING: таблица до начала основной части
+    const tblPr = kid(tbl, 'tblPr');
+    ok('Таблица: по центру');
+    if (at(kid(tblPr, 'jc'), 'val') !== 'center') bad('Таблица: по центру', 'таблица', 'по центру', at(kid(tblPr, 'jc'), 'val') || 'слева', tbl);
+    for (const cp of tbl.getElementsByTagNameNS(W, 'p')) {
+      const txt = textOf(cp).replace(/\s+/g, ' ').trim(); if (!txt) continue;
+      const cpr = paraProps(T, cp), cruns = ownRuns(cp).filter(r => r.getElementsByTagNameNS(W, 't').length);
+      if (!cruns.length) continue;
+      const CR = cruns.map(r => runProps(T, r, cpr, theme));
+      const cwhere = '«' + (txt.length > 40 ? txt.slice(0, 37) + '…' : txt) + '»';
+      ok('Текст таблицы: одинарный интервал'); if (cpr.line !== 1) bad('Текст таблицы: одинарный интервал', cwhere, 'одинарный', typeof cpr.line === 'number' ? String(cpr.line).replace('.', ',') : 'точный', cp);
+      ok('Текст таблицы: кегль на 1–2 пт меньше'); if (CR.some(x => x.sz > size - .5 || x.sz < 10)) bad('Текст таблицы: кегль на 1–2 пт меньше', cwhere, (size - 2) + '–' + (size - 1) + ' пт', [...new Set(CR.map(x => x.sz))].join(', ') + ' пт', cp);
+      ok('Текст таблицы: без абзацного отступа'); if (Math.abs(cm(cpr.firstLine + cpr.left)) > .06) bad('Текст таблицы: без абзацного отступа', cwhere, 'без абзацного отступа', cm(cpr.firstLine) + ' см', cp);
+    }
+  }
+
+  /* 4. номера страниц */
+  let pageNum = false, pageNumBad = null;
+  for (const f of files) {
+    if (!/^word\/footer\d*\.xml$/.test(f.name)) continue;
+    const xml = dec.decode(f.data); if (!/PAGE(?![A-Z])/.test(xml)) continue;
+    pageNum = true;
+    const fd = new DOMParser().parseFromString(xml, 'application/xml');
+    const szs = [...fd.getElementsByTagNameNS(W, 'sz')].map(e => +at(e, 'val') / 2);
+    if (szs.length && szs.some(sz => sz < 11 || sz > 15)) pageNumBad = [...new Set(szs)].join(', ');
+  }
   ok('Номера страниц'); if (!pageNum) bad('Номера страниц', 'колонтитулы', 'внизу по центру', 'нет');
+  ok('Номер страницы: кегль 12–14'); if (pageNumBad) bad('Номер страницы: кегль 12–14', 'колонтитулы', '12–14 пт', pageNumBad + ' пт');
 
   const byRule = {};
   for (const x of issues) (byRule[x.rule] = byRule[x.rule] || []).push(x);
-  return { checked, checks, rules: [...rules], issues, byRule, ok: !issues.length };
+  const failed = Object.keys(byRule).length, total = rules.size;
+  const score = total ? Math.round(100 * (total - failed) / total) : 100;
+  return { checked, checks, rules: [...rules], issues, byRule, ok: !issues.length, failed, total, score };
 }
 
 global.StoInspect = { inspect };

@@ -65,6 +65,28 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
           sz.setAttributeNS(W, 'w:val', '20');
         }
         set(p, 'spacing', { line: '240', lineRule: 'auto' });
+      } else if (kind === 'table') {
+        const tbls = [...body.getElementsByTagNameNS(W, 'tbl')];
+        const tbl = tbls[tbls.length - 1]; if (!tbl) throw new Error('таблица не найдена');
+        const tblPr = [...tbl.childNodes].find(c => c.localName === 'tblPr');
+        let jc = [...tblPr.childNodes].find(c => c.localName === 'jc');
+        if (!jc) { jc = doc.createElementNS(W, 'w:jc'); tblPr.appendChild(jc); }
+        jc.setAttributeNS(W, 'w:val', 'left');
+        const cp = tbl.getElementsByTagNameNS(W, 'p')[0];
+        for (const r of cp.getElementsByTagNameNS(W, 'r')) {
+          const rPr = [...r.childNodes].find(c => c.localName === 'rPr'); if (!rPr) continue;
+          let sz = [...rPr.childNodes].find(c => c.localName === 'sz');
+          if (!sz) { sz = doc.createElementNS(W, 'w:sz'); rPr.appendChild(sz); }
+          sz.setAttributeNS(W, 'w:val', '28');
+        }
+      } else if (kind === 'footer') {
+        const fe = z.find(e => /^word\/footer\d*\.xml$/.test(e.name)); if (!fe) throw new Error('колонтитул не найден');
+        fe.data = new TextEncoder().encode(new TextDecoder().decode(fe.data).replace(/(<w:sz w:val=")\d+(")/g, '$120$2'));
+      } else if (kind === 'typo') {
+        const p = paras.find(p => { const t = text(p); return t.trim().length > 90 && !/^(рисунок|таблица)/i.test(t.trim()); });
+        if (!p) throw new Error('абзац не найден');
+        const t0 = p.getElementsByTagNameNS(W, 't')[0];
+        t0.textContent = 'Пример текста ( скобка и точка .';
       }
       const xml = new XMLSerializer().serializeToString(doc), enc = new TextEncoder();
       const entries = z.map(e => e.name === 'word/document.xml' ? { name: e.name, data: enc.encode(xml) } : { name: e.name, data: e.data });
@@ -106,6 +128,31 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
   await T('основной текст: ловится одинарный интервал', async () => {
     const r = await page.evaluate(async () => await __inspect(await __mutate(await __fmt('REFERAT'), 'body')));
     assert(r.issues.includes('Межстрочный интервал 1,5'), r.issues.join('; '));
+  });
+  await T('таблица: ловится отсутствие центрирования', async () => {
+    const r = await page.evaluate(async () => await __inspect(await __mutate(await __fmt('METOD_PDF'), 'table')));
+    assert(r.issues.includes('Таблица: по центру'), r.issues.join('; '));
+  });
+  await T('таблица: ловится кегль текста в ячейке', async () => {
+    const r = await page.evaluate(async () => await __inspect(await __mutate(await __fmt('METOD_PDF'), 'table')));
+    assert(r.issues.includes('Текст таблицы: кегль на 1–2 пт меньше'), r.issues.join('; '));
+  });
+  await T('номер страницы: ловится недопустимый кегль', async () => {
+    const r = await page.evaluate(async () => await __inspect(await __mutate(await __fmt('REFERAT'), 'footer')));
+    assert(r.issues.includes('Номер страницы: кегль 12–14'), r.issues.join('; '));
+  });
+  await T('типографика: ловится пробел после скобки', async () => {
+    const r = await page.evaluate(async () => await __inspect(await __mutate(await __fmt('REFERAT'), 'typo')));
+    assert(r.issues.includes('Типографика: без пробела после скобки'), r.issues.join('; '));
+  });
+  await T('типографика: ловится пробел перед знаком', async () => {
+    const r = await page.evaluate(async () => await __inspect(await __mutate(await __fmt('REFERAT'), 'typo')));
+    assert(r.issues.includes('Типографика: без пробела перед знаком'), r.issues.join('; '));
+  });
+  await T('оценка готовности: 100 у оформленного, меньше у испорченного', async () => {
+    const good = await page.evaluate(async () => (await StoInspect.inspect(await __fmt('REFERAT'), { size: 14, binding: false })).score);
+    const bad = await page.evaluate(async () => (await StoInspect.inspect(await __mutate(await __fmt('REFERAT'), 'body'), { size: 14, binding: false })).score);
+    assert(good === 100, 'оформленный: ' + good); assert(bad < 100, 'испорченный: ' + bad);
   });
   await T('на странице нет ошибок JavaScript', async () => assert(!errors.length, errors.join(' | ')));
 
