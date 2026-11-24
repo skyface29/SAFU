@@ -83,6 +83,26 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
         const p = paras.find(p => /^Таблица\s+\d/i.test(text(p).trim()));
         if (!p) throw new Error('подпись таблицы не найдена');
         for (const t of p.getElementsByTagNameNS(W, 't')) { if (/^\d/.test(t.textContent)) { t.textContent = t.textContent.replace(/^\d+/, '99'); break; } }
+      } else if (kind === 'listing') {
+        const vp = paras.findIndex(p => text(p).trim() === 'Введение');
+        const p = paras.slice(vp + 1).find(p => text(p).trim().length > 60);
+        if (!p) throw new Error('абзац не найден');
+        for (const r of p.getElementsByTagNameNS(W, 'r')) {
+          const rPr = [...r.childNodes].find(c => c.localName === 'rPr'); if (!rPr) continue;
+          let f = [...rPr.childNodes].find(c => c.localName === 'rFonts');
+          if (!f) { f = doc.createElementNS(W, 'w:rFonts'); rPr.appendChild(f); }
+          f.setAttributeNS(W, 'w:ascii', 'Courier New'); f.setAttributeNS(W, 'w:hAnsi', 'Courier New');
+          let sz = [...rPr.childNodes].find(c => c.localName === 'sz');
+          if (!sz) { sz = doc.createElementNS(W, 'w:sz'); rPr.appendChild(sz); }
+          sz.setAttributeNS(W, 'w:val', '28');
+        }
+        set(p, 'spacing', { line: '360', lineRule: 'auto' });
+      } else if (kind === 'units' || kind === 'abbr') {
+        const vp = paras.findIndex(p => text(p).trim() === 'Введение');
+        const p = paras.slice(vp + 1).find(p => text(p).trim().length > 60);
+        if (!p) throw new Error('абзац не найден');
+        const t0 = p.getElementsByTagNameNS(W, 't')[0];
+        t0.textContent = kind === 'units' ? 'Нагрузка 10м и 5кг.' : 'Текст и т.д. и т.п. напр.';
       } else if (kind === 'footer') {
         const fe = z.find(e => /^word\/footer\d*\.xml$/.test(e.name)); if (!fe) throw new Error('колонтитул не найден');
         fe.data = new TextEncoder().encode(new TextDecoder().decode(fe.data).replace(/(<w:sz w:val=")\d+(")/g, '$120$2'));
@@ -174,6 +194,20 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
     assert(r.ok, 'оформленный файл не должен давать ошибок');
     assert(r.hasWarnings, 'нет массива warnings');
     assert(r.rules.includes('Ссылки на таблицы в тексте'), r.rules.join('; '));
+  });
+  await T('листинг: ловится кегль больше 11 пт', async () => {
+    const r = await page.evaluate(async () => await __inspect(await __mutate(await __fmt('REFERAT'), 'listing')));
+    assert(r.issues.includes('Листинг: кегль 10–11'), r.issues.join('; '));
+  });
+  await T('единицы: ловится «10м» слитно', async () => {
+    const r = await page.evaluate(async () => (await StoInspect.inspect(await __mutate(await __fmt('REFERAT'), 'units'), { size: 14, binding: false })).warnings.map(x => x.rule));
+    assert(r.includes('Единицы: пробел между числом и единицей'), r.join('; '));
+  });
+  await T('сокращения: ловится «и т.д.» / «напр.»', async () => {
+    const r = await page.evaluate(async () => (await StoInspect.inspect(await __mutate(await __fmt('REFERAT'), 'abbr'), { size: 14, binding: false })).warnings.map(x => x.rule));
+    assert(r.includes('Сокращения: «и т. д.»'), r.join('; '));
+    assert(r.includes('Сокращения: «и т. п.»'), r.join('; '));
+    assert(r.includes('Сокращения: недопустимые сокращения'), r.join('; '));
   });
   await T('на странице нет ошибок JavaScript', async () => assert(!errors.length, errors.join(' | ')));
 
