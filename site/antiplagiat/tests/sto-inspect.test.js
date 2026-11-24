@@ -209,6 +209,19 @@ const eq = (got, want, msg) => { if (JSON.stringify(got) !== JSON.stringify(want
     assert(r.includes('Сокращения: «и т. п.»'), r.join('; '));
     assert(r.includes('Сокращения: недопустимые сокращения'), r.join('; '));
   });
+  await T('отчёт проверки: валидный .docx с пунктами СТО', async () => {
+    const r = await page.evaluate(async () => {
+      const ins = await StoInspect.inspect(await __src('REFERAT'), { all: true, size: 14, binding: false });
+      const blob = await StoReport.docx(ins, { name: 'test.docx' });
+      const z = await Formatter.unzip(await blob.arrayBuffer());
+      const xml = new TextDecoder().decode(z.find(e => e.name === 'word/document.xml').data);
+      return { len: xml.length, clause: /п\.\s*\d/.test(xml), grade: /Готовность/.test(xml), hint: /как исправить/.test(xml) };
+    });
+    assert(r.len > 800, 'нет наполнения отчёта');
+    assert(r.clause, 'нет пунктов СТО');
+    assert(r.grade, 'нет готовности');
+    assert(r.hint, 'нет подсказок');
+  });
   await T('на странице нет ошибок JavaScript', async () => assert(!errors.length, errors.join(' | ')));
 
   console.log(results.join('\n'));
