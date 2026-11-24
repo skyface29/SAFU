@@ -48,7 +48,7 @@
     vec3 L = normalize(vec3(.65,.55,-.45));
     vec4 o = vec4(0.);
     float t = 3.; bool hit=false; vec3 p;
-    for(int i=0;i<420;i++){
+    for(int i=0;i<220;i++){
       p = ro + rd*t;
       if(p.y < 0.) break;
       float h = H(p.xz);
@@ -65,7 +65,7 @@
       float hgt = clamp(p.y/2.2,0.,1.);
       float sh = 1.;                                   // мягкая тень от соседних гребней
       float st = .02;
-      for(int j=0;j<40;j++){ vec3 q=p+L*st; float dd=q.y-H(q.xz); sh=min(sh, 10.*dd/st); st+=max(.01,dd*.5); if(sh<0.||st>2.5) break; }
+      for(int j=0;j<16;j++){ vec3 q=p+L*st; float dd=q.y-H(q.xz); sh=min(sh, 10.*dd/st); st+=max(.01,dd*.5); if(sh<0.||st>2.5) break; }
       sh = clamp(sh,0.,1.);
       float ao = clamp(.45 + 1.2*(p.y - (H(p.xz+vec2(.06,0.))+H(p.xz-vec2(.06,0.))+H(p.xz+vec2(0.,.06))+H(p.xz-vec2(0.,.06)))*.25) + .4*hgt, 0., 1.);
       vec3 ice  = vec3(.55,.75,.92);
@@ -86,7 +86,7 @@
       {
         vec3 d2 = rd;                                         // классический «разрез»: вода прозрачная, видно массу подо льдом     // преломление: под водой луч уходит круче
         float s = 0.; bool uh=false; vec3 q;
-        for(int i=0;i<300;i++){ q = w + d2*s; float dd = U(q.xz) + q.y; if(dd > 0.){ uh = true; break; } s += .02; if(s>6.) break; }
+        for(int i=0;i<140;i++){ q = w + d2*s; float dd = U(q.xz) + q.y; if(dd > 0.){ uh = true; break; } s += .02; if(s>6.) break; }
         if(uh){
           float sh=0.;                                      // уточнение точки
           vec3 n = unrm(q.xz);
@@ -132,10 +132,11 @@
     const ch = Math.min(h * (ph ? .5 : .62), w * (ph ? .9 : .55)), cw = ch / .85;
     berg.style.width = cw + 'px'; berg.style.height = ch + 'px';
     berg.style.left = (cx * w - .465 * cw) + 'px'; berg.style.top = (h * (1 - hz) - ch * .699) + 'px';
-    const dpr = Math.min(devicePixelRatio || 1, 2), W = Math.round(cw * dpr), H = Math.round(ch * dpr), key = W + 'x' + H;
+    const dpr = Math.min(devicePixelRatio || 1, 1.5), W = Math.round(cw * dpr), H = Math.round(ch * dpr), key = W + 'x' + H;
     if (key !== bergKey) { bergKey = key; if (!renderBerg(berg, W, H)) berg.remove(); }
   }
-  placeBerg();
+  const idleBerg = () => ('requestIdleCallback' in window ? requestIdleCallback(placeBerg, { timeout: 900 }) : setTimeout(placeBerg, 60));
+  idleBerg();
   let bergT = 0; addEventListener('resize', () => { clearTimeout(bergT); bergT = setTimeout(placeBerg, 200); });
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gl = canvas.getContext('webgl', { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: 'low-power' });
@@ -143,7 +144,7 @@
 
   const VERT = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
   const lite = document.documentElement.classList.contains('lite');
-  const FRAG = (lite ? '#define OCT 3\n' : '#define OCT 5\n') + `
+  const FRAG = (lite ? '#define OCT 3\n' : '#define OCT 4\n') + `
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
@@ -239,8 +240,8 @@ void main(){
   const uRes = U('uRes'), uTime = U('uTime'), uMouse = U('uMouse'), uHorizon = U('uHorizon'), uBergX = U('uBergX'), uBergS = U('uBergS');
 
   const phone = matchMedia('(max-width: 760px)').matches;
-  let scale = lite ? (phone ? .36 : .42) : (phone ? .5 : .55);
-  const step = lite || phone ? 42 : 30;     // мс между кадрами: 24 или 33 кадра в секунду
+  let scale = lite ? (phone ? .3 : .34) : (phone ? .42 : .45);
+  const step = lite || phone ? 50 : 40;     // мс между кадрами: 20–25 кадров в секунду
   let dive = 0, scrolling = false;
   let W = 0, H = 0, visible = true, mouse = [0, 0], target = [0, 0], start = performance.now(), last = 0;
   function layout() {

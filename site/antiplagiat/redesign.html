@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Айсберг — оформление по СТО САФУ 2026 и проверка работы</title>
+<style>
+  :root{
+    --bg:#070c14; --bg2:#0b1420; --card:#0f1a29; --stroke:rgba(140,190,255,.14);
+    --ink:#eaf2ff; --muted:#8fa6c2; --accent:#59a7ff; --accent2:#7fe3ff; --ok:#3ddc97; --bad:#ff6b6b;
+    --r:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(70,140,255,.28), transparent 60%),
+      radial-gradient(900px 500px at 10% 0%, rgba(127,227,255,.14), transparent 55%),
+      linear-gradient(180deg,#070c14,#0a1220 60%,#070c14);
+    color:var(--ink); font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+  .nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);background:rgba(7,12,20,.72);border-bottom:1px solid var(--stroke)}
+  .nav .wrap{display:flex;align-items:center;gap:18px;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:.2px}
+  .brand svg{width:30px;height:30px}
+  .brand small{color:var(--muted);font-weight:600;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+  .nav .sp{flex:1}
+  .nav a.lnk{color:var(--muted);font-size:14.5px;padding:8px 10px;border-radius:10px}
+  .nav a.lnk:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+  .btn{display:inline-flex;align-items:center;gap:9px;border:0;cursor:pointer;font:inherit;font-weight:650;
+    padding:12px 18px;border-radius:12px;background:linear-gradient(180deg,#6cb4ff,#3f8df0);color:#04101f;
+    box-shadow:0 8px 24px rgba(63,141,240,.35), inset 0 1px 0 rgba(255,255,255,.35);transition:.18s}
+  .btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
+  .btn.ghost{background:rgba(255,255,255,.06);color:var(--ink);box-shadow:none;border:1px solid var(--stroke)}
+  .hero{padding:86px 0 54px;text-align:center}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--accent2);
+    border:1px solid var(--stroke);background:rgba(127,227,255,.07);padding:7px 14px;border-radius:999px;margin-bottom:22px}
+  .hero h1{font-size:clamp(34px,5.2vw,62px);line-height:1.04;margin:0 auto 18px;max-width:900px;letter-spacing:-.02em}
+  .hero h1 em{font-style:normal;color:var(--accent2)}
+  .hero p.lead{max-width:660px;margin:0 auto 30px;color:var(--muted);font-size:clamp(16px,1.6vw,19px)}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .trust{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:22px;color:var(--muted);font-size:13.5px}
+  .trust span{display:inline-flex;gap:7px;align-items:center}
+  section{padding:54px 0}
+  h2.h{font-size:clamp(24px,3vw,34px);margin:0 0 8px;letter-spacing:-.01em}
+  p.sub2{color:var(--muted);margin:0 0 26px;max-width:720px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid var(--stroke);
+    border-radius:var(--r);padding:22px}
+  .card h3{margin:14px 0 8px;font-size:19px}
+  .card p{margin:0;color:var(--muted);font-size:14.5px}
+  .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(89,167,255,.14);color:var(--accent2)}
+  .ic svg{width:22px;height:22px}
+  .why{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .why .card{display:flex;gap:14px;align-items:flex-start}
+  table.cmp{width:100%;border-collapse:separate;border-spacing:0;font-size:14.5px;border:1px solid var(--stroke);border-radius:14px;overflow:hidden}
+  table.cmp th,table.cmp td{padding:13px 14px;border-bottom:1px solid var(--stroke);text-align:left}
+  table.cmp th{background:rgba(255,255,255,.04);font-weight:650;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+  table.cmp tr:last-child td{border-bottom:0}
+  .yes{color:var(--ok);font-weight:700}
+  .no{color:var(--bad);font-weight:700}
+  .part{color:#f0c24b;font-weight:700}
+  .foot{border-top:1px solid var(--stroke);color:var(--muted);font-size:13px;padding:26px 0 60px;text-align:center}
+  @media(max-width:860px){.grid3{grid-template-columns:1fr}.why{grid-template-columns:1fr}table.cmp{font-size:13px}table.cmp th,table.cmp td{padding:10px 8px}}
+</style>
+</head>
+<body>
+
+<nav class="nav"><div class="wrap">
+  <a class="brand" href="#">
+    <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M18 3l7 11-3.5 2.2L26 20H10l3.6-6L11 11.6z" fill="#fff"/><path d="M18 3l7 11-3.5 2.2L18 12z" fill="#cfe6ff"/><path d="M8 23h20l-3.4 6.2L18 32l-6.6-2.8z" fill="#5aa0ff" opacity=".85"/><path d="M3 21.5h30" stroke="#a6e6ff" stroke-width="1.4" stroke-linecap="round"/></svg>
+    Айсберг<small>Арктика</small>
+  </a>
+  <span class="sp"></span>
+  <a class="lnk" href="#why">Почему мы</a>
+  <a class="lnk" href="#compare">Сравнение</a>
+  <a class="lnk" href="index.html#sto">Инструмент</a>
+  <a class="btn" href="index.html#sto">Открыть сайт</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <span class="pill">● СТО САФУ 2026 · обновлено 1 сентября</span>
+  <h1>Оформи работу по СТО САФУ — <em>за минуту</em>, без ошибок</h1>
+  <p class="lead">Проверяем каждый абзац по 20+ пунктам стандарта, исправляем и показываем, что именно не так — с пунктом СТО и подсказкой. Бесплатно, прямо в браузере.</p>
+  <div class="cta">
+    <a class="btn" href="index.html#sto">Оформить работу
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg>
+    </a>
+    <a class="btn ghost" href="index.html#check">Проверить на антиплагиат</a>
+  </div>
+  <div class="trust">
+    <span>✓ Бесплатно</span><span>✓ Без регистрации</span><span>✓ Файл не уходит на сервер</span><span>✓ Отчёт в .docx</span>
+  </div>
+</div></header>
+
+<section><div class="wrap">
+  <h2 class="h">Три инструмента — одна работа</h2>
+  <p class="sub2">От черновика до защиты: проверка, оформление и подготовка к ответу.</p>
+  <div class="grid3">
+    <div class="card">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></div>
+      <h3>Проверка</h3>
+      <p>Поиск заимствований и отчёт для преподавателя: оригинальность, источники, справка.</p>
+    </div>
+    <div class="card">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg></div>
+      <h3>Оформление по СТО</h3>
+      <p>Поля, шрифты, заголовки, таблицы, рисунки, список источников — всё по стандарту САФУ 2026.</p>
+    </div>
+    <div class="card">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.5 6 6.5.6-5 4.3 1.5 6.4L12 17l-5.5 3.3 1.5-6.4-5-4.3 6.5-.6z"/></svg></div>
+      <h3>Защита</h3>
+      <p>Речь на 7 минут, слайды и вероятные вопросы комиссии — из готовой работы.</p>
+    </div>
+  </div>
+</div></section>
+
+<section id="why"><div class="wrap">
+  <h2 class="h">Почему Айсберг</h2>
+  <p class="sub2">Не «ещё один нормоконтроль», а инструмент, который знает именно ваш стандарт.</p>
+  <div class="why">
+    <div class="card"><div class="ic">✓</div><div><h3>Точный СТО САФУ 2026</h3><p>Не общий ГОСТ, а действующий стандарт вуза — с новыми правилами титула, таблиц и ИИ-раздела.</p></div></div>
+    <div class="card"><div class="ic">✓</div><div><h3>Каждое замечание объяснено</h3><p>Пункт стандарта, что не так и как исправить. Оценка готовности в процентах.</p></div></div>
+    <div class="card"><div class="ic">✓</div><div><h3>Файл не покидает браузер</h3><p>Всё считается локально. Никаких загрузок на сервер и регистраций.</p></div></div>
+    <div class="card"><div class="ic">✓</div><div><h3>Отчёт проверки в .docx</h3><p>Скачиваешь готовый отчёт с пунктами СТО — можно приложить к работе.</p></div></div>
+  </div>
+</div></section>
+
+<section id="compare"><div class="wrap">
+  <h2 class="h">Как мы отличаемся</h2>
+  <p class="sub2">Честно: в чём сильнее мы, а в чём — большие сервисы.</p>
+  <table class="cmp">
+    <tr><th>Возможность</th><th>Айсберг</th><th>Орфограммка</th><th>Антиплагиат.Чистовик</th><th>Контекстум</th></tr>
+    <tr><td>СТО САФУ 2026 (точный стандарт вуза)</td><td class="yes">✓</td><td class="no">✕ общий ГОСТ</td><td class="no">✕</td><td class="no">✕</td></tr>
+    <tr><td>Бесплатно</td><td class="yes">✓</td><td class="no">✕ платно</td><td class="no">✕</td><td class="no">✕</td></tr>
+    <tr><td>Без загрузки файла на сервер</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td></tr>
+    <tr><td>Объяснение с пунктом СТО и подсказкой</td><td class="yes">✓</td><td class="part">частично</td><td class="part">частично</td><td class="part">частично</td></tr>
+    <tr><td>Отчёт проверки .docx</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td></tr>
+    <tr><td>Оценка готовности в %</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td></tr>
+    <tr><td>Проверка на антиплагиат</td><td class="part">есть, свой движок</td><td class="no">✕</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Известный бренд</td><td class="no">✕ молодой</td><td class="yes">✓</td><td class="yes">✓</td><td class="part">—</td></tr>
+  </table>
+</div></section>
+
+<section><div class="wrap" style="text-align:center">
+  <h2 class="h">Готов оформить?</h2>
+  <p class="sub2" style="margin:0 auto 24px">Загрузи работу — через минуту получишь файл по СТО и отчёт проверки.</p>
+  <a class="btn" href="index.html#sto">Открыть Айсберг</a>
+</div></section>
+
+<footer class="foot"><div class="wrap">Айсберг · Арктика · СТО САФУ 2026 · файлы не покидают браузер</div></footer>
+
+</body>
+</html>

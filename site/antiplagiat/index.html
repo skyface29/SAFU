@@ -78,13 +78,13 @@ button{cursor:pointer}
 .links a:hover{color:#fff}
 .nav-r{display:flex;gap:8px}
 .ghost{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#e6edf8;border-radius:999px;
-  padding:9px 16px;font-size:14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:background .25s,border-color .25s;white-space:nowrap;text-decoration:none}
+  padding:9px 16px;font-size:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background .25s,border-color .25s;white-space:nowrap;text-decoration:none}
 .ghost:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28)}
 .ghost.icon{padding:9px;width:38px;height:38px;justify-content:center}
 .ghost svg{width:17px;height:17px}
 .hero-in{max-width:1240px;width:100%;margin:auto auto 0;padding:clamp(40px,9vh,110px) 28px clamp(90px,14vh,150px)}
 .eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:13px;letter-spacing:.02em;color:#c9d6ea;border:1px solid rgba(255,255,255,.12);
-  background:rgba(8,14,28,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:7px 14px 7px 10px;border-radius:999px}
+  background:rgba(8,14,28,.45);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);padding:7px 14px 7px 10px;border-radius:999px}
 .eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--a1);box-shadow:0 0 0 4px rgba(94,242,208,.15),0 0 12px var(--a1);animation:beat 2.4s ease-in-out infinite}
 .sto-cta{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:999px;text-decoration:none;font-weight:600;font-size:16px;color:#fff;
   background:linear-gradient(rgba(8,14,28,.55),rgba(8,14,28,.55)) padding-box,var(--aurora) border-box;border:2px solid transparent;box-shadow:0 0 24px rgba(90,160,255,.3);transition:transform .25s var(--ease),box-shadow .25s}
@@ -193,7 +193,7 @@ h1 em{font-style:normal;background:var(--aurora);background-size:200% 100%;-webk
 .kchips.few .kchip:nth-child(n+7){display:none}
 .kmore{align-self:flex-start}
 /* ---- режимы: оформление по СТО / проверка на заимствования ---- */
-.modes{position:relative;z-index:2;max-width:880px;margin:-34px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:8px;border-radius:24px;border:1px solid var(--line2);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.modes{position:relative;z-index:2;max-width:880px;margin:-34px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:8px;border-radius:24px;border:1px solid var(--line2);background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .modes button{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:18px;border:1px solid transparent;background:none;color:var(--ink2);font:inherit;text-align:left;cursor:pointer;transition:background .2s,border-color .2s,color .2s}
 .modes button svg{flex:none;width:26px;height:26px;color:var(--muted)}
 .modes button span{display:flex;flex-direction:column;gap:2px;font-weight:600;font-size:15.5px;line-height:1.25}
@@ -207,7 +207,7 @@ body[data-mode=check] #sto,body[data-mode=check] #zashita{display:none!important
 body[data-mode=zashita] #check,body[data-mode=zashita] #checkHead,body[data-mode=zashita] #progressCard,body[data-mode=zashita] #report,body[data-mode=zashita] #sto{display:none!important}
 /* три шага работы — они же переключатель разделов; линия через номера — «ватерлиния» под айсбергом */
 .route{position:relative;z-index:2;max-width:960px;margin:-46px auto 0;padding:10px;list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
-  border-radius:26px;border:1px solid var(--line2);background:color-mix(in srgb,var(--bg) 84%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  border-radius:26px;border:1px solid var(--line2);background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .route button{position:relative;width:100%;height:100%;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;gap:6px 14px;padding:16px 18px 18px;border-radius:18px;border:1px solid transparent;
   background:none;color:var(--ink2);font:inherit;text-align:left;cursor:pointer;transition:background .2s,border-color .2s,color .2s}
 .route i{grid-row:1/3;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:500 14px/1 var(--display);font-style:normal;background:var(--bg);border:1px solid var(--line2);color:var(--muted)}
@@ -449,7 +449,7 @@ details[open] summary::before{transform:rotate(45deg)}
 /* отчёт */
 .r-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:36px;align-items:center;padding:32px}
 .gauge{position:relative;width:220px;height:220px}
-.gauge::before{content:"";position:absolute;inset:26px;border-radius:50%;background:conic-gradient(from 0deg,var(--a1),var(--a2),var(--a3),var(--exact),var(--a1));filter:blur(34px);opacity:.28;animation:spin 16s linear infinite}
+.gauge::before{content:"";position:absolute;inset:26px;border-radius:50%;background:conic-gradient(from 0deg,var(--a1),var(--a2),var(--a3),var(--exact),var(--a1));filter:blur(18px);opacity:.28}
 .gauge svg{position:relative;width:100%;height:100%;display:block;overflow:visible}
 .gauge circle{transition:stroke-dasharray 1.2s var(--ease),stroke-dashoffset 1.2s var(--ease)}
 .gauge .num{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
@@ -930,7 +930,7 @@ body.dragging .flood{opacity:1}body.dragging .flood b{transform:none}
   </nav>
   <div class="hero-in">
     <h1>Проверить, оформить и&nbsp;защитить работу</h1>
-    <p class="sub">Брось работу в воду — сайт найдёт заимствования, оформит её по СТО САФУ 2026 и подготовит к защите речь, слайды и вопросы комиссии.</p>
+    <p class="sub">Загрузи работу — сайт найдёт заимствования, оформит её по СТО САФУ 2026 и подготовит к защите речь, слайды и вопросы комиссии.</p>
     <button class="dock" id="dock" type="button" aria-describedby="dockHint">
       <span class="dock-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M3 15c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 4.5 0 3-1.2 4.5 0M3 19.5c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 4.5 0 3-1.2 4.5 0"/></svg></span>
       <span class="dock-t"><b id="dockName">Перетащи сюда работу</b><small id="dockHint">.docx, .pdf или .txt — или нажми, чтобы выбрать файл</small></span>
