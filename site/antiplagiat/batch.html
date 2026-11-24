@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Айсберг — пакетная проверка по СТО</title>
+<style>
+  :root{--bg:#070c14;--card:#0f1a29;--line:rgba(140,190,255,.16);--ink:#eaf2ff;--muted:#8fa6c2;--ok:#3ddc97;--warn:#f0c24b;--bad:#ff6b6b;--acc:#59a7ff}
+  *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#070c14,#0a1220);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 60px}
+  h1{font-size:30px;margin:6px 0 6px;letter-spacing:-.01em}
+  .muted{color:var(--muted)}
+  .drop{margin:22px 0;border:2px dashed var(--line);border-radius:18px;padding:34px;text-align:center;cursor:pointer;transition:.2s;background:rgba(255,255,255,.02)}
+  .drop.over{border-color:var(--acc);background:rgba(89,167,255,.08)}
+  .drop b{font-size:18px}
+  .drop small{display:block;color:var(--muted);margin-top:6px}
+  .sum{display:none;gap:14px;flex-wrap:wrap;margin:16px 0}
+  .sum.on{display:flex}
+  .pill{border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;background:rgba(255,255,255,.03)}
+  .pill b{color:var(--acc)}
+  table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+  th{background:rgba(255,255,255,.04);font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  tr:last-child td{border-bottom:0}
+  .name{font-weight:600}.name small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+  .score{font-weight:800}.s-ok{color:var(--ok)}.s-warn{color:var(--warn)}.s-bad{color:var(--bad)}
+  .tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);margin-right:6px}
+  .tag.e{color:var(--bad);border-color:rgba(255,107,107,.4)}.tag.w{color:var(--warn);border-color:rgba(240,194,75,.4)}
+  button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:8px 12px;background:rgba(255,255,255,.07);color:var(--ink)}
+  button:hover{background:rgba(255,255,255,.12)}
+  a.dl{color:#04101f;background:linear-gradient(180deg,#6cb4ff,#3f8df0);padding:8px 14px;border-radius:10px;font-weight:650;text-decoration:none;display:inline-block}
+  .err{color:var(--bad);margin-top:12px}
+  .foot{margin-top:26px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="index.html" class="muted" style="text-decoration:none">← Айсберг</a>
+  <h1>Пакетная проверка по СТО</h1>
+  <p class="muted">Закинь сразу несколько работ — получишь таблицу: готовность, замечания и исправленный файл. Всё в браузере, файлы никуда не уходят.</p>
+
+  <div class="drop" id="drop">
+    <b>Перетащи работы сюда</b>
+    <small>.docx — можно выбрать сразу много (папку группы) или нажми</small>
+    <input type="file" id="file" accept=".docx" multiple hidden>
+  </div>
+
+  <div class="sum" id="sum"></div>
+  <div id="err" class="err"></div>
+  <div id="list"></div>
+  <div class="foot">Максимум 20 файлов за раз. Оформление — по СТО САФУ 2026, проверка — строгим инспектором.</div>
+</div>
+
+<script src="format.js"></script>
+<script src="sto-tools.js"></script>
+<script src="work-kinds.js"></script>
+<script src="sto-inspect.js"></script>
+<script src="sto-report.js"></script>
+<script>
+(function(){
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const drop = $('#drop'), input = $('#file'), list = $('#list'), sum = $('#sum'), errBox = $('#err');
+let busy = false;
+
+async function one(file){
+  const buf = await file.arrayBuffer();
+  const r = await Formatter.formatDocx(buf, { profile:'safu', toc:true, typography:true, pageNumbers:true, size:14 });
+  const out = await r.blob.arrayBuffer();
+  const ins = await StoInspect.inspect(out, { size:14, binding:false });
+  const errs = ins.issues.length, warns = (ins.warnings||[]).length;
+  const score = ins.score != null ? ins.score : (errs ? 60 : 100);
+  return { file, blob:r.blob, errs, warns, score, grade:ins.grade || '' };
+}
+
+function row(x){
+  const cls = x.score >= 90 ? 's-ok' : x.score >= 70 ? 's-warn' : 's-bad';
+  const url = URL.createObjectURL(x.blob);
+  const name = x.file.name.replace(/\.docx$/i,'');
+  return '<tr><td class="name">' + esc(name) + '<small>' + esc(x.grade || '') + '</small></td>' +
+    '<td><span class="score ' + cls + '">' + x.score + '%</span></td>' +
+    '<td>' + (x.errs ? '<span class="tag e">' + x.errs + ' ошиб.</span>' : '<span class="tag">без ошибок</span>') + (x.warns ? '<span class="tag w">' + x.warns + ' рек.</span>' : '') + '</td>' +
+    '<td><a class="dl" href="' + url + '" download="' + esc(name) + ' (СТО САФУ).docx">Скачать</a> ' +
+    '<button type="button" data-rep="' + url + '" data-name="' + esc(name) + '">Отчёт</button></td></tr>';
+}
+
+async function handle(files){
+  if(busy) return; busy = true; errBox.textContent = '';
+  const arr = [...files].filter(f => /\.docx$/i.test(f.name)).slice(0, 20);
+  if(!arr.length){ errBox.textContent = 'Нужны файлы .docx'; busy = false; return; }
+  list.innerHTML = '<p class="muted" id="proc">Проверяю 0 из ' + arr.length + '…</p>';
+  const rows = [];
+  for(let i = 0; i < arr.length; i++){
+    $('#proc').textContent = 'Проверяю ' + (i+1) + ' из ' + arr.length + '…';
+    try{ rows.push(await one(arr[i])); }
+    catch(e){ rows.push({ file: arr[i], error: String(e && e.message || e) }); }
+  }
+  const ok = rows.filter(r => !r.error);
+  const ready = ok.filter(r => r.score >= 90).length;
+  sum.classList.add('on');
+  sum.innerHTML = '<span class="pill">файлов: <b>' + arr.length + '</b></span>' +
+    '<span class="pill">готовы к сдаче: <b>' + ready + '</b></span>' +
+    '<span class="pill">средняя готовность: <b>' + (ok.length ? Math.round(ok.reduce((s,r)=>s+r.score,0)/ok.length) : 0) + '%</b></span>' +
+    '<span class="pill">ошибок всего: <b>' + ok.reduce((s,r)=>s+r.errs,0) + '</b></span>';
+  list.innerHTML = '<table><thead><tr><th>Работа</th><th>Готовность</th><th>Замечания</th><th></th></tr></thead><tbody>' +
+    rows.map(r => r.error ? '<tr><td class="name">' + esc(r.file.name) + '</td><td colspan="3" class="err">' + esc(r.error) + '</td></tr>' : row(r)).join('') +
+    '</tbody></table>';
+  list.querySelectorAll('[data-rep]').forEach(b => b.onclick = async () => {
+    const name = b.dataset.name;
+    const found = rows.find(r => !r.error && r.file.name.replace(/\.docx$/i,'') === name);
+    if(!found) return;
+    const ins = await StoInspect.inspect(await found.blob.arrayBuffer(), { size:14, binding:false });
+    const blob = await StoReport.docx(ins, { name: found.file.name });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name + ' — проверка СТО.docx'; a.click();
+  });
+  busy = false;
+}
+
+drop.addEventListener('click', () => input.click());
+input.addEventListener('change', () => handle(input.files));
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { if(e.dataTransfer && e.dataTransfer.files) handle(e.dataTransfer.files); });
+})();
+</script>
+</body>
+</html>
